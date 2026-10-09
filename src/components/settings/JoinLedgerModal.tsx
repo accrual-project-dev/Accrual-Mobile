@@ -104,10 +104,10 @@ export function JoinLedgerContent({
     async (raw: string) => {
       let codeToJoin = raw.trim();
 
-      // Check if it's a URL (trouvaille://join?code=... or https://trouvaille.app/join?code=...)
+      // Check if it's a URL (accrual://join?code=..., trouvaille://join?code=... or https://...)
       try {
         if (codeToJoin.includes("code=")) {
-          const urlObj = new URL(codeToJoin.replace("trouvaille://", "https://trouvaille.app/"));
+          const urlObj = new URL(codeToJoin.replace(/^(?:accrual|trouvaille):\/\//i, "https://accrual.internal/"));
           const extracted = urlObj.searchParams.get("code");
           if (extracted) {
             codeToJoin = extracted;
@@ -153,8 +153,8 @@ export function JoinLedgerContent({
       } else {
         setCameraError(
           isIndonesian
-            ? "Format kode QR tidak dikenali sebagai space Trouvaille."
-            : "QR code format is not recognized as a Trouvaille space.",
+            ? "Format kode QR tidak dikenali sebagai space Accrual."
+            : "QR code format is not recognized as an Accrual space.",
         );
       }
     },
@@ -347,8 +347,8 @@ export function JoinLedgerContent({
             </h3>
             <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
               {isIndonesian
-                ? "Space Bersama disinkronkan secara aman antar-perangkat via cloud. Silakan masuk atau buat akun Trouvaille untuk melanjutkan."
-                : "Shared spaces are securely synchronized across devices via cloud. Please sign in or create a Trouvaille account to proceed."}
+                ? "Space Bersama disinkronkan secara aman antar-perangkat via cloud. Silakan masuk atau buat akun Accrual untuk melanjutkan."
+                : "Shared spaces are securely synchronized across devices via cloud. Please sign in or create an Accrual account to proceed."}
             </p>
           </div>
           <button

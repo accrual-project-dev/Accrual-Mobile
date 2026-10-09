@@ -112,8 +112,8 @@ export function WebDashboardLinkModal({
         setScanErrorMessage(
           parsed.error ||
             (isIndonesian
-              ? "QR Code bukan untuk Trouvaille Web Dashboard"
-              : "QR Code is not valid for Trouvaille Web Dashboard")
+              ? "QR Code bukan untuk Accrual Web Dashboard"
+              : "QR Code is not valid for Accrual Web Dashboard")
         );
       }
     },
@@ -371,7 +371,7 @@ export function WebDashboardLinkModal({
                     className="text-[14px] font-semibold tracking-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Trouvaille Web Workstation
+                    Accrual Web Workstation
                   </h3>
                   <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/[0.06] text-[var(--text-tertiary)] border border-[var(--glass-border)]">
                     PRO
@@ -457,8 +457,8 @@ export function WebDashboardLinkModal({
                   </span>
                   <p style={{ color: "var(--text-tertiary)" }}>
                     {isIndonesian
-                      ? "Buka Trouvaille Web di browser laptop Anda dan pilih tab 'Scan with App'."
-                      : "Open Trouvaille Web on your desktop browser and select 'Scan with App'."}
+                      ? "Buka Accrual Web di browser laptop Anda dan pilih tab 'Scan with App'."
+                      : "Open Accrual Web on your desktop browser and select 'Scan with App'."}
                   </p>
                 </div>
                 <div className="flex items-start gap-2.5">
@@ -544,7 +544,7 @@ export function WebDashboardLinkModal({
                             className="text-[12px] font-semibold truncate leading-tight"
                             style={{ color: "var(--text-primary)" }}
                           >
-                            {s.origin || "Trouvaille Web Dashboard"}
+                            {s.origin || "Accrual Web Dashboard"}
                           </p>
                           <p
                             className="text-[10px]  truncate mt-0.5"
@@ -720,7 +720,7 @@ export function WebDashboardLinkModal({
                   className="text-[12px] font-medium mt-0.5"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {scannedPayload.origin || "Trouvaille Web Dashboard"}
+                  {scannedPayload.origin || "Accrual Web Dashboard"}
                 </p>
               </div>
 

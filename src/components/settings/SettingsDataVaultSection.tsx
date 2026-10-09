@@ -672,7 +672,7 @@ export function SettingsDataVaultSection({
                     className="text-[12.5px] font-semibold truncate leading-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Trouvaille v{APP_VERSION}
+                    Accrual v{APP_VERSION}
                   </span>
                   <span className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian

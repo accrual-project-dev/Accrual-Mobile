@@ -22,9 +22,9 @@ export default defineConfig({
         "pwa-512x512.png",
       ],
       manifest: {
-        name: "Trouvaille",
-        short_name: "Trouvaille",
-        description: "Personal expense tracker",
+        name: "Accrual",
+        short_name: "Accrual",
+        description: "Personal expense and wealth tracker",
         theme_color: "#0A0A0B",
         background_color: "#0A0A0B",
         display: "standalone",

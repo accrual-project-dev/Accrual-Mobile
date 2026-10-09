@@ -404,7 +404,7 @@ export function generateJsonVaultContent(
   const vault = {
     trouvaille_vault_version: "2.0",
     generated_at: new Date().toISOString(),
-    system: "Trouvaille Luxury Wealth Engine",
+    system: "Accrual Luxury Wealth Engine",
     scope: {
       period: summary.periodLabel,
       space: summary.spaceName,
@@ -520,7 +520,7 @@ export function generateLuxuryPrintableHtml(
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Trouvaille ${isIndonesian ? "Laporan Eksekutif" : "Statement"} - ${summary.periodLabel}</title>
+  <title>Accrual ${isIndonesian ? "Laporan Eksekutif" : "Statement"} - ${summary.periodLabel}</title>
   <style>
     @media print {
       @page { margin: 15mm; size: A4 portrait; }
@@ -540,7 +540,7 @@ export function generateLuxuryPrintableHtml(
   <!-- Header Bar -->
   <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #09090c; padding-bottom: 14px; margin-bottom: 24px;">
     <div>
-      <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #09090c;">TROUVAILLE</div>
+      <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #09090c;">ACCRUAL</div>
       <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em; color: #71717a; text-transform: uppercase; margin-top: 2px;">${
         isIndonesian
           ? "Arsitektur Kekayaan Privat · Laporan Eksekutif"
@@ -648,7 +648,7 @@ export function generateLuxuryPrintableHtml(
   <!-- Confidentiality Statement / Footer -->
   <div style="border-top: 1px solid #e4e4e9; padding-top: 14px; display: flex; justify-content: space-between; font-size: 10px; color: #a1a1aa;">
     <div>${
-      isIndonesian ? "Trouvaille · Arsitektur Kekayaan Privat" : "Trouvaille · Private Wealth Architecture"
+      isIndonesian ? "Accrual · Arsitektur Kekayaan Privat" : "Accrual · Private Wealth Architecture"
     }</div>
     <div>${
       isIndonesian
@@ -728,7 +728,7 @@ export async function shareOrDownloadFile(
   content: string | Blob,
   filename: string,
   mimeType = "text/csv",
-  title = "Trouvaille Financial Report",
+  title = "Accrual Financial Report",
 ): Promise<boolean> {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
 
@@ -739,7 +739,7 @@ export async function shareOrDownloadFile(
         await navigator.share({
           files: [file],
           title,
-          text: `Here is the financial report export from Trouvaille (${filename}).`,
+          text: `Here is the financial report export from Accrual (${filename}).`,
         });
         return true;
       }
@@ -812,7 +812,7 @@ export async function generateLuxuryExcelBlob(
 
   // Data structure focused 100% on transaction records
   const aoaLedger: any[][] = [
-    ["TROUVAILLE — " + (isIndonesian ? "CATATAN TRANSAKSI" : "TRANSACTION RECORDS")],
+    ["ACCRUAL — " + (isIndonesian ? "CATATAN TRANSAKSI" : "TRANSACTION RECORDS")],
     [
       (isIndonesian ? "Space: " : "Space: ") +
         summary.spaceName +
@@ -966,7 +966,7 @@ export async function downloadLuxuryExcel(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_catatan_transaksi.xlsx",
+  filename = "accrual_catatan_transaksi.xlsx",
   isIndonesian = true,
 ): Promise<void> {
   const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
@@ -979,10 +979,10 @@ export async function downloadLuxuryExcel(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: isIndonesian ? "Catatan Transaksi Trouvaille" : "Trouvaille Transaction Records",
+          title: isIndonesian ? "Catatan Transaksi Accrual" : "Accrual Transaction Records",
           text: isIndonesian
-            ? `Berikut berkas catatan transaksi dari Trouvaille (${filename}).`
-            : `Here is the transaction records export from Trouvaille (${filename}).`,
+            ? `Berikut berkas catatan transaksi dari Accrual (${filename}).`
+            : `Here is the transaction records export from Accrual (${filename}).`,
         });
         return;
       }
@@ -1009,7 +1009,7 @@ export async function shareLuxuryExcel(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_catatan_transaksi.xlsx",
+  filename = "accrual_catatan_transaksi.xlsx",
   isIndonesian = true,
 ): Promise<boolean> {
   const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
@@ -1022,10 +1022,10 @@ export async function shareLuxuryExcel(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: isIndonesian ? "Catatan Transaksi Trouvaille" : "Trouvaille Transaction Records",
+          title: isIndonesian ? "Catatan Transaksi Accrual" : "Accrual Transaction Records",
           text: isIndonesian
-            ? `Berikut berkas catatan transaksi dari Trouvaille (${filename}).`
-            : `Here is the transaction records export from Trouvaille (${filename}).`,
+            ? `Berikut berkas catatan transaksi dari Accrual (${filename}).`
+            : `Here is the transaction records export from Accrual (${filename}).`,
         });
         return true;
       }
@@ -1111,7 +1111,7 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.setTextColor(18, 18, 20); // obsidian
-  doc.text("TROUVAILLE", margin, y);
+  doc.text("ACCRUAL", margin, y);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
@@ -1497,7 +1497,7 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(18, 18, 20);
-  doc.text("TROUVAILLE", margin, y);
+  doc.text("ACCRUAL", margin, y);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
@@ -1930,8 +1930,8 @@ export function generateLuxuryPdf(
     doc.setTextColor(161, 161, 170);
     doc.text(
       isIndonesian
-        ? "Trouvaille · Arsitektur Kekayaan Privat · Dokumen Rahasia"
-        : "Trouvaille · Private Wealth Architecture · Confidential Document",
+        ? "Accrual · Arsitektur Kekayaan Privat · Dokumen Rahasia"
+        : "Accrual · Private Wealth Architecture · Confidential Document",
       margin,
       pageHeight - 12
     );
@@ -1954,7 +1954,7 @@ export async function downloadLuxuryPdf(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_statement.pdf",
+  filename = "accrual_statement.pdf",
   isIndonesian = true,
   allTransactions: Transaction[] = [],
   options?: ReportFilterOptions,
@@ -1969,10 +1969,10 @@ export async function downloadLuxuryPdf(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: isIndonesian ? "Laporan Keuangan Trouvaille" : "Trouvaille Financial Statement",
+          title: isIndonesian ? "Laporan Keuangan Accrual" : "Accrual Financial Statement",
           text: isIndonesian
-            ? `Berikut laporan keuangan dari Trouvaille (${filename}).`
-            : `Here is the financial statement export from Trouvaille (${filename}).`,
+            ? `Berikut laporan keuangan dari Accrual (${filename}).`
+            : `Here is the financial statement export from Accrual (${filename}).`,
         });
         return;
       }
@@ -1993,7 +1993,7 @@ export async function shareLuxuryPdf(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   categories: Category[] = [],
-  filename = "trouvaille_statement.pdf",
+  filename = "accrual_statement.pdf",
   isIndonesian = true,
   allTransactions: Transaction[] = [],
   options?: ReportFilterOptions,
@@ -2007,10 +2007,10 @@ export async function shareLuxuryPdf(
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: isIndonesian ? "Laporan Keuangan Trouvaille" : "Trouvaille Financial Statement",
+          title: isIndonesian ? "Laporan Keuangan Accrual" : "Accrual Financial Statement",
           text: isIndonesian
-            ? `Berikut laporan keuangan dari Trouvaille (${filename}).`
-            : `Here is the financial statement export from Trouvaille (${filename}).`,
+            ? `Berikut laporan keuangan dari Accrual (${filename}).`
+            : `Here is the financial statement export from Accrual (${filename}).`,
         });
         return true;
       }

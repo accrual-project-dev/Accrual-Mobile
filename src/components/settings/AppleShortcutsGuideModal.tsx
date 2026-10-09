@@ -752,7 +752,7 @@ export function AppleShortcutsGuideModal({
                   <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
                     <Sparkles size={8} className="text-white" />
                     <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
-                      Trouvaille • {isIndonesian ? "Tercatat Otomatis ✓" : "Auto Logged ✓"}
+                      Accrual • {isIndonesian ? "Tercatat Otomatis ✓" : "Auto Logged ✓"}
                     </span>
                   </div>
                   <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.6)" }}>
@@ -900,7 +900,7 @@ export function AppleShortcutsGuideModal({
                     <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
                   </div>
                   <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
-                    <span style={{ color: "#2997ff" }}>trouvaille://add?text=</span>
+                    <span style={{ color: "#2997ff" }}>accrual://add?text=</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
                       URL Encoded Text
                     </span>
@@ -1041,7 +1041,7 @@ export function AppleShortcutsGuideModal({
                     <div style={{ display: "flex", alignItems: "center", gap: 3.5, marginBottom: 2 }}>
                       <Sparkles size={8} className="text-white" />
                       <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
-                        Trouvaille • {isIndonesian ? "Notifikasi Terproses ✓" : "Notification Processed ✓"}
+                        Accrual • {isIndonesian ? "Notifikasi Terproses ✓" : "Notification Processed ✓"}
                       </span>
                     </div>
                     <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.6)" }}>
@@ -1177,7 +1177,7 @@ export function AppleShortcutsGuideModal({
                     <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
                   </div>
                   <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
-                    <span style={{ color: "#2997ff" }}>trouvaille://add?text=</span>
+                    <span style={{ color: "#2997ff" }}>accrual://add?text=</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
                       URL Encoded Text
                     </span>
@@ -1220,7 +1220,7 @@ export function AppleShortcutsGuideModal({
                         {isIndonesian ? "Saat Notifikasi Bank Masuk" : "When Bank Notification Arrives"}
                       </p>
                       <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
-                        {isIndonesian ? "Buka URL di Trouvaille" : "Open URLs in Trouvaille"}
+                        {isIndonesian ? "Buka URL di Accrual" : "Open URLs in Accrual"}
                       </p>
                     </div>
                   </div>
@@ -1276,7 +1276,7 @@ export function AppleShortcutsGuideModal({
                       {isIndonesian ? "Ketuk 2x Belakang Terdeteksi" : "Back Tap Detected"}
                     </span>
                   </div>
-                  <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Trouvaille</span>
+                  <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Accrual</span>
                 </div>
 
                 {/* Bottom Keypad Sheet */}
@@ -1486,7 +1486,7 @@ export function AppleShortcutsGuideModal({
                         {isIndonesian ? "Mendengarkan..." : "Listening..."}
                       </span>
                     </div>
-                    <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Trouvaille Voice</span>
+                    <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Accrual Voice</span>
                   </div>
                   <p style={{ fontSize: 8.5, fontStyle: "italic", color: "white", fontWeight: 500, lineHeight: 1.3 }}>
                     "{isIndonesian ? "Kopi susu 25 ribu bayar pakai BCA" : "Iced coffee 25 thousand paid with BCA"}"
@@ -1496,7 +1496,7 @@ export function AppleShortcutsGuideModal({
                 {/* Parsed Result Capsule */}
                 <div style={{ background: "rgba(18,18,22,0.96)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 8, fontWeight: 700, color: "white", display: "block", marginBottom: 4 }}>
-                    Trouvaille NLP
+                    Accrual NLP
                   </span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.04)", fontSize: 7 }}>
@@ -1556,7 +1556,7 @@ export function AppleShortcutsGuideModal({
                     </div>
                     <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>Open</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
-                      trouvaille://voice
+                      accrual://voice
                     </span>
                     <div style={{ marginLeft: "auto", width: 13, height: 13, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "rgba(255,255,255,0.5)" }}>
                       ✕
@@ -1660,7 +1660,7 @@ export function AppleShortcutsGuideModal({
                 </div>
                 <div style={{ background: "rgba(24,24,28,0.92)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "6px 8px", marginBottom: 4 }}>
                   <p style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
-                    Trouvaille • {isIndonesian ? "Berhasil Disimpan" : "Saved Successfully"}
+                    Accrual • {isIndonesian ? "Berhasil Disimpan" : "Saved Successfully"}
                   </p>
                   <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
                     {isIndonesian ? "Rp 50.000 tersimpan hening" : "Rp 50,000 silently logged"}
@@ -1688,7 +1688,7 @@ export function AppleShortcutsGuideModal({
                   <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
                     <ChevronLeft size={10} strokeWidth={2.5} />
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>Trouvaille Dialog</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>Accrual Dialog</span>
                 </div>
 
                 <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "7px 9px", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" }}>
@@ -2017,7 +2017,7 @@ export function AppleShortcutsGuideModal({
                     <ChevronLeft size={9} strokeWidth={2.5} />
                   </div>
                   <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
-                    {isIndonesian ? "Enkode URL & Buka Trouvaille" : "URL Encode & Open Trouvaille"}
+                    {isIndonesian ? "Enkode URL & Buka Accrual" : "URL Encode & Open Accrual"}
                   </span>
                 </div>
 
@@ -2053,7 +2053,7 @@ export function AppleShortcutsGuideModal({
                       <ExternalLink size={5.5} strokeWidth={2.5} className="text-white" />
                     </div>
                     <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>Open</span>
-                    <span style={{ fontSize: 6.5, color: "#2997ff" }}>trouvaille://add?</span>
+                    <span style={{ fontSize: 6.5, color: "#2997ff" }}>accrual://add?</span>
                   </div>
                   
                   <div style={{ background: "#18181a", borderRadius: 4, padding: "3.5px 5px", fontSize: 6, lineHeight: 1.4, wordBreak: "break-all" }}>

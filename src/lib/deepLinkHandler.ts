@@ -391,9 +391,9 @@ export function parseDeepLink(
     // Standardize URL scheme to a valid dummy HTTP URL for safe URLSearchParams parsing
     let targetUrl = urlString.trim();
     if (targetUrl.startsWith("?")) {
-      targetUrl = `https://trouvaille.internal/${targetUrl}`;
-    } else if (/^trouvaille:\/\//i.test(targetUrl)) {
-      targetUrl = targetUrl.replace(/^trouvaille:\/\//i, "https://trouvaille.internal/");
+      targetUrl = `https://accrual.internal/${targetUrl}`;
+    } else if (/^(?:accrual|trouvaille):\/\//i.test(targetUrl)) {
+      targetUrl = targetUrl.replace(/^(?:accrual|trouvaille):\/\//i, "https://accrual.internal/");
     } else if (!/^https?:\/\//i.test(targetUrl)) {
       return { action: "none" };
     }

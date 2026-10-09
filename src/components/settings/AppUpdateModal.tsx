@@ -92,7 +92,7 @@ export function AppUpdateModal({
               style={{ color: "var(--text-tertiary)" }}
             >
               {isIndonesian
-                ? "Informasi versi rilis dan distribusi resmi Trouvaille"
+                ? "Informasi versi rilis dan distribusi resmi Accrual"
                 : "Official release versions and installation packages"}
             </p>
           </div>

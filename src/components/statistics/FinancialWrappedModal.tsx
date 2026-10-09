@@ -1392,7 +1392,7 @@ export function FinancialWrappedModal({
                           : "bg-black/[0.05] text-black/80 border-black/10"
                       }`}
                     >
-                      {isIndonesian ? "Trouvaille" : "Trouvaille"}
+                      {isIndonesian ? "Accrual" : "Accrual"}
                     </span>
                   </div>
 
@@ -1618,8 +1618,8 @@ export function FinancialWrappedModal({
                         1)
                       </span>{" "}
                       {isIndonesian
-                        ? `Indikator kinerja privat yang diaudit pada space internal Trouvaille untuk ${periodTitle}.`
-                        : `Audited private performance indicators across internal Trouvaille space for ${periodTitle}.`}
+                        ? `Indikator kinerja privat yang diaudit pada space internal Accrual untuk ${periodTitle}.`
+                        : `Audited private performance indicators across internal Accrual space for ${periodTitle}.`}
                     </p>
                     <p>
                       <span
@@ -3306,7 +3306,7 @@ export function FinancialWrappedModal({
                             isDark ? "text-zinc-400" : "text-zinc-600"
                           }`}
                         >
-                          Trouvaille
+                          Accrual
                         </p>
                         <h4
                           className={`text-xl font-medium tracking-tight mt-0.5 ${

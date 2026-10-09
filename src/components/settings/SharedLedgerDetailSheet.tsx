@@ -186,13 +186,13 @@ export function SharedLedgerDetailSheet({
   const handleShare = async () => {
     triggerHaptic("medium");
     const shareText = isIndonesian
-      ? `Ayo bergabung ke space bersama '${liveLedger.name}' di Trouvaille! Masukkan kode: ${inviteCode} atau buka: ${webUrl}`
-      : `Join the shared space '${liveLedger.name}' on Trouvaille! Use code: ${inviteCode} or open: ${webUrl}`;
+      ? `Ayo bergabung ke space bersama '${liveLedger.name}' di Accrual! Masukkan kode: ${inviteCode} atau buka: ${webUrl}`
+      : `Join the shared space '${liveLedger.name}' on Accrual! Use code: ${inviteCode} or open: ${webUrl}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Trouvaille - ${liveLedger.name}`,
+          title: `Accrual - ${liveLedger.name}`,
           text: shareText,
           url: webUrl,
         });

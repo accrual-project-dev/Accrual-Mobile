@@ -441,8 +441,8 @@ export function LoginPage() {
               <div className="text-center space-y-1 mb-4 px-1">
                 <h2 className="text-[19px] sm:text-[20px] font-bold tracking-tight">
                   {isIndonesian
-                    ? "Selamat Datang di Trouvaille"
-                    : "Welcome to Trouvaille"}
+                    ? "Selamat Datang di Accrual"
+                    : "Welcome to Accrual"}
                 </h2>
                 <p
                   className={cn(

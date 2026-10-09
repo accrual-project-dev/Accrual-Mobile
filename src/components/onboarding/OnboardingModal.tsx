@@ -759,7 +759,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <div className="space-y-0.5">
                 <h1 className="text-[23px] sm:text-[25px] font-semibold tracking-tight text-white leading-tight">
                   {isIndonesian ? "Selamat Datang di " : "Welcome to "}
-                  <span>Trouvaille</span>
+                  <span>Accrual</span>
                 </h1>
                 <p className="text-[12px] text-white/50">
                   {isIndonesian
@@ -1299,8 +1299,8 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               <span>
                 {step === 5
                   ? isIndonesian
-                    ? "Buka Trouvaille"
-                    : "Enter Trouvaille"
+                    ? "Buka Accrual"
+                    : "Enter Accrual"
                   : isIndonesian
                     ? "Lanjutkan"
                     : "Continue"}

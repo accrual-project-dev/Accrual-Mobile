@@ -601,8 +601,8 @@ export function ReceiptScanModal({
             ? "Akses Kamera Diperlukan"
             : "Camera Access Required",
           description: isIndonesian
-            ? "Trouvaille memerlukan akses kamera untuk memindai struk fisik, tagihan, dan bukti transfer secara langsung."
-            : "Trouvaille requires camera access to scan physical receipts, invoices, and payment slips directly.",
+            ? "Accrual memerlukan akses kamera untuk memindai struk fisik, tagihan, dan bukti transfer secara langsung."
+            : "Accrual requires camera access to scan physical receipts, invoices, and payment slips directly.",
         });
       } else {
         console.error("[ReceiptScanModal] Camera capture error:", err);
@@ -633,8 +633,8 @@ export function ReceiptScanModal({
             ? "Akses Galeri Foto Diperlukan"
             : "Photo Library Access Required",
           description: isIndonesian
-            ? "Trouvaille memerlukan akses galeri foto untuk mengimpor struk, tagihan, dan tangkapan layar bukti transfer yang tersimpan."
-            : "Trouvaille requires photo library access to import saved receipts, invoices, and payment screenshots.",
+            ? "Accrual memerlukan akses galeri foto untuk mengimpor struk, tagihan, dan tangkapan layar bukti transfer yang tersimpan."
+            : "Accrual requires photo library access to import saved receipts, invoices, and payment screenshots.",
         });
       } else {
         console.error("[ReceiptScanModal] Gallery pick error:", err);
@@ -1370,8 +1370,8 @@ export function ReceiptScanModal({
                         ? "Izin Media & Kamera"
                         : "Media & Camera Permissions",
                       description: isIndonesian
-                        ? "Trouvaille memerlukan izin untuk mengimpor struk dari galeri foto atau mengambil foto langsung dengan kamera Anda."
-                        : "Trouvaille requires permission to import receipts from your photo gallery or take photos with your camera.",
+                        ? "Accrual memerlukan izin untuk mengimpor struk dari galeri foto atau mengambil foto langsung dengan kamera Anda."
+                        : "Accrual requires permission to import receipts from your photo gallery or take photos with your camera.",
                     });
                   }}
                   className="text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 pt-1 hover:opacity-80 active:scale-95"
@@ -3176,8 +3176,8 @@ export function ReceiptScanModal({
               style={{ color: "var(--text-secondary)" }}
             >
               {isIndonesian
-                ? "Trouvaille memproses semua struk keuangan dan bukti transfer 100% pada perangkat menggunakan pengenalan karakter optik lokal. Foto pribadi Anda tidak pernah meninggalkan perangkat."
-                : "Trouvaille processes all financial receipts and bank slips 100% on-device using local optical character recognition. Your private captures never leave your phone."}
+                ? "Accrual memproses semua struk keuangan dan bukti transfer 100% pada perangkat menggunakan pengenalan karakter optik lokal. Foto pribadi Anda tidak pernah meninggalkan perangkat."
+                : "Accrual processes all financial receipts and bank slips 100% on-device using local optical character recognition. Your private captures never leave your phone."}
             </p>
           </div>
 

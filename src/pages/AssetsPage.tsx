@@ -971,7 +971,7 @@ export function AssetsPage() {
           user?.user_metadata?.full_name ||
           user?.user_metadata?.name ||
           user?.email?.split("@")[0] ||
-          (isIndonesian ? "Anggota Trouvaille" : "Trouvaille Member")
+          (isIndonesian ? "Anggota Accrual" : "Accrual Member")
         }
       />
 

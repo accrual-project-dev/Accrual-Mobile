@@ -60,8 +60,8 @@ export function MediaPermissionsSheet({
       } else {
         showToast(
           isIndonesian
-            ? "Harap izinkan Foto di Pengaturan iPhone > Trouvaille"
-            : "Please allow Photos in iPhone Settings > Trouvaille",
+            ? "Harap izinkan Foto di Pengaturan iPhone > Accrual"
+            : "Please allow Photos in iPhone Settings > Accrual",
           "delete",
           () => {},
         );
@@ -90,8 +90,8 @@ export function MediaPermissionsSheet({
       } else {
         showToast(
           isIndonesian
-            ? "Harap izinkan Kamera di Pengaturan iPhone > Trouvaille"
-            : "Please allow Camera in iPhone Settings > Trouvaille",
+            ? "Harap izinkan Kamera di Pengaturan iPhone > Accrual"
+            : "Please allow Camera in iPhone Settings > Accrual",
           "delete",
           () => {},
         );
@@ -136,8 +136,8 @@ export function MediaPermissionsSheet({
             </h4>
             <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
               {isIndonesian
-                ? "Trouvaille memproses semua foto struk secara lokal di perangkat tanpa telemetri cloud."
-                : "Trouvaille processes all receipt images on-device with zero cloud telemetry."}
+                ? "Accrual memproses semua foto struk secara lokal di perangkat tanpa telemetri cloud."
+                : "Accrual processes all receipt images on-device with zero cloud telemetry."}
             </p>
           </div>
         </div>
@@ -232,7 +232,7 @@ export function MediaPermissionsSheet({
               Jika akses sebelumnya ditolak, iOS mengharuskan izin diaktifkan
               kembali melalui{" "}
               <span className="font-semibold text-[var(--text-primary)]">
-                Pengaturan &gt; Trouvaille &gt; Foto &amp; Kamera
+                Pengaturan &gt; Accrual &gt; Foto &amp; Kamera
               </span>
               .
             </>
@@ -241,7 +241,7 @@ export function MediaPermissionsSheet({
               If access was previously denied, iOS requires permissions to be
               re-enabled under{" "}
               <span className="font-semibold text-[var(--text-primary)]">
-                Settings &gt; Trouvaille &gt; Photos &amp; Camera
+                Settings &gt; Accrual &gt; Photos &amp; Camera
               </span>
               .
             </>

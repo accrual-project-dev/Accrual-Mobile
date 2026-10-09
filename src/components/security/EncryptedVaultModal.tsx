@@ -112,8 +112,8 @@ export function EncryptedVaultModal({
       setRestoreError(
         err.message ||
           (isIndonesian
-            ? "Berkas brankas tidak valid atau rusak. Pilih berkas cadangan .trouvaille yang sah."
-            : "Invalid or corrupt vault file. Please select a valid .trouvaille backup."),
+            ? "Berkas brankas tidak valid atau rusak. Pilih berkas cadangan .accrual atau .trouvaille yang sah."
+            : "Invalid or corrupt vault file. Please select a valid .accrual or .trouvaille backup."),
       );
       setSelectedFile(null);
       setParsedPayload(null);
@@ -180,7 +180,7 @@ export function EncryptedVaultModal({
 
       // 4. Download file
       const dateStr = format(new Date(), "yyyyMMdd_HHmm");
-      downloadVaultFile(encrypted, `trouvaille_vault_${dateStr}.trouvaille`);
+      downloadVaultFile(encrypted, `accrual_vault_${dateStr}.accrual`);
 
       triggerSuccessHaptic();
       showToast(
@@ -593,8 +593,8 @@ export function EncryptedVaultModal({
                   <Download size={16} strokeWidth={1.75} />
                   <span>
                     {isIndonesian
-                      ? "Unduh Brankas Terenkripsi (.trouvaille)"
-                      : "Download Encrypted Vault (.trouvaille)"}
+                      ? "Unduh Brankas Terenkripsi (.accrual)"
+                      : "Download Encrypted Vault (.accrual)"}
                   </span>
                 </>
               )}
@@ -611,7 +611,7 @@ export function EncryptedVaultModal({
             <input
               type="file"
               ref={fileInputRef}
-              accept=".trouvaille,.json"
+              accept=".accrual,.trouvaille,.json"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -710,8 +710,8 @@ export function EncryptedVaultModal({
                     style={{ color: "var(--text-primary)" }}
                   >
                     {isIndonesian
-                      ? "Pilih Berkas Brankas (.trouvaille)"
-                      : "Select Vault File (.trouvaille)"}
+                      ? "Pilih Berkas Brankas (.accrual)"
+                      : "Select Vault File (.accrual)"}
                   </p>
                   <p
                     className="text-[11px]"

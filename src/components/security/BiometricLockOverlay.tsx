@@ -93,7 +93,7 @@ export function BiometricLockOverlay() {
             className="text-[24px] font-semibold tracking-tight mt-2"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? "Trouvaille Terkunci" : "Trouvaille Locked"}
+            {isIndonesian ? "Accrual Terkunci" : "Accrual Locked"}
           </h2>
           <p
             className="text-[12px] font-medium max-w-[260px] leading-relaxed"
