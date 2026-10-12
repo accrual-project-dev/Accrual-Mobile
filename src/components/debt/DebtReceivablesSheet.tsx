@@ -545,7 +545,7 @@ export function DebtReceivablesSheet({
                 }}
               >
                 <ArrowUpRight size={13} strokeWidth={2} />
-                <span>{isIndonesian ? "Piutang (Dipinjamkan)" : "Receivable"}</span>
+                <span>{isIndonesian ? "Piutang" : "Receivables"}</span>
               </button>
 
               <button
@@ -569,7 +569,7 @@ export function DebtReceivablesSheet({
                 }}
               >
                 <ArrowDownLeft size={13} strokeWidth={2} />
-                <span>{isIndonesian ? "Utang (Dipinjam)" : "Debt / Payable"}</span>
+                <span>{isIndonesian ? "Utang" : "Debts"}</span>
               </button>
             </div>
 
@@ -659,7 +659,14 @@ export function DebtReceivablesSheet({
                 }}
               >
                 {wallets.map((w) => (
-                  <option key={w.id} value={w.id} className="bg-zinc-900 text-white">
+                  <option
+                    key={w.id}
+                    value={w.id}
+                    style={{
+                      backgroundColor: isDark ? "#18181b" : "#ffffff",
+                      color: isDark ? "#ffffff" : "#18181b",
+                    }}
+                  >
                     {w.name}
                   </option>
                 ))}
@@ -706,6 +713,7 @@ export function DebtReceivablesSheet({
                     border: isDark
                       ? "1px solid rgba(255, 255, 255, 0.08)"
                       : "1px solid rgba(0, 0, 0, 0.06)",
+                    colorScheme: isDark ? "dark" : "light",
                   }}
                 />
               </div>
@@ -894,7 +902,14 @@ export function DebtReceivablesSheet({
                 }}
               >
                 {wallets.map((w) => (
-                  <option key={w.id} value={w.id} className="bg-zinc-900 text-white">
+                  <option
+                    key={w.id}
+                    value={w.id}
+                    style={{
+                      backgroundColor: isDark ? "#18181b" : "#ffffff",
+                      color: isDark ? "#ffffff" : "#18181b",
+                    }}
+                  >
                     {w.name}
                   </option>
                 ))}
@@ -936,6 +951,7 @@ export function DebtReceivablesSheet({
                     border: isDark
                       ? "1px solid rgba(255, 255, 255, 0.08)"
                       : "1px solid rgba(0, 0, 0, 0.06)",
+                    colorScheme: isDark ? "dark" : "light",
                   }}
                 />
               </div>
@@ -1097,12 +1113,12 @@ export function DebtReceivablesSheet({
                           )}
                           {record.isAdministrativeOnly && (
                             <span className="italic">
-                              • {isIndonesian ? "Administratif" : "Admin Only"}
+                              • {isIndonesian ? "Catatan Administratif" : "Administrative"}
                             </span>
                           )}
                           {record.dueDate && (
                             <span>
-                              • {isIndonesian ? "Tempo" : "Due"}:{" "}
+                              • {isIndonesian ? "Jatuh Tempo: " : "Due: "}
                               {record.dueDate}
                             </span>
                           )}
@@ -1229,7 +1245,7 @@ export function DebtReceivablesSheet({
                     <button
                       type="button"
                       onClick={() => handleDeleteRecord(record)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-400 active:scale-90 transition-all cursor-pointer"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
                       title={isIndonesian ? "Hapus catatan" : "Delete record"}
                     >
                       <Trash2 size={12.5} strokeWidth={1.8} />
@@ -1286,7 +1302,7 @@ export function DebtReceivablesSheet({
                                 );
                               }
                             }}
-                            className="text-[var(--text-tertiary)] hover:text-red-400 p-1 cursor-pointer"
+                            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
                           >
                             <Trash2 size={11} strokeWidth={1.8} />
                           </button>

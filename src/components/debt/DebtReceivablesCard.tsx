@@ -90,8 +90,17 @@ export function DebtReceivablesCard({
 
         <div className="flex items-center justify-between text-[10px] text-[var(--text-secondary)] pt-1 border-t border-[var(--glass-border)]">
           <span>
-            {summary.activeReceivablesCount + summary.activeDebtsCount}{" "}
-            {isIndonesian ? "Pihak Aktif" : "Active"}
+            {summary.activeReceivablesCount + summary.activeDebtsCount === 0
+              ? summary.settledReceivablesCount + summary.settledDebtsCount > 0
+                ? isIndonesian
+                  ? "Semua Lunas"
+                  : "All Settled"
+                : isIndonesian
+                  ? "Mulai Catat"
+                  : "Get Started"
+              : `${summary.activeReceivablesCount + summary.activeDebtsCount} ${
+                  isIndonesian ? "Pihak Aktif" : "Active"
+                }`}
           </span>
           <ChevronRight size={12} strokeWidth={2} className="text-[var(--text-tertiary)]" />
         </div>
@@ -141,9 +150,13 @@ export function DebtReceivablesCard({
             </span>
             <span className="text-[10px] text-[var(--text-tertiary)] block">
               {summary.activeReceivablesCount + summary.activeDebtsCount === 0
-                ? isIndonesian
-                  ? "Semua kewajiban telah lunas"
-                  : "All debts and receivables settled"
+                ? summary.settledReceivablesCount + summary.settledDebtsCount > 0
+                  ? isIndonesian
+                    ? "Semua kewajiban telah lunas"
+                    : "All debts and receivables settled"
+                  : isIndonesian
+                    ? "Ketuk untuk mencatat utang atau piutang"
+                    : "Tap to track debts and receivables"
                 : isIndonesian
                   ? `${summary.activeReceivablesCount} piutang aktif, ${summary.activeDebtsCount} utang aktif`
                   : `${summary.activeReceivablesCount} active receivables, ${summary.activeDebtsCount} active debts`}
