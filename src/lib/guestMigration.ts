@@ -115,7 +115,7 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
       transactionsMigrated = nextMutations.length;
 
       // Flush to Supabase
-      await flushPendingMutations();
+      await flushPendingMutations({ force: true });
     }
 
     // 3. Migrate USDT & Investment Holdings to Cloud User

@@ -729,7 +729,7 @@ function AppShell() {
   useEffect(() => {
     const handleOnline = () => {
       if (user?.id) {
-        flushPendingMutations()
+        flushPendingMutations({ force: true })
           .then((res) => {
             if (res.flushedCount > 0) {
               queryClient.invalidateQueries({ queryKey: ["transactions"] });

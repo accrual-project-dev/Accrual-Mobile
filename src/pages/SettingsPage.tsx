@@ -645,7 +645,7 @@ export function SettingsPage({
 
     try {
       try {
-        await flushPendingMutations().catch(() => {});
+        await flushPendingMutations({ force: true }).catch(() => {});
       } catch {}
 
       const userId = session?.user?.id;
