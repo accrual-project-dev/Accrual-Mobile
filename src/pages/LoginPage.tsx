@@ -30,6 +30,7 @@ import {
 } from "../components/auth/loginAuthHelpers";
 import { DynamicShowcaseCapsule } from "../components/auth/DynamicShowcaseCapsule";
 import { VaultPinLoginModal } from "../components/auth/VaultPinLoginModal";
+import { LegalModal } from "../components/legal/LegalModal";
 import { cn } from "../lib/utils";
 
 export function LoginPage() {
@@ -41,6 +42,10 @@ export function LoginPage() {
 
   const [activeSlide, setActiveSlide] = useState(0);
   const [viewMode, setViewMode] = useState<"welcome" | "login">("welcome");
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [legalTab, setLegalTab] = useState<"privacy" | "terms" | "security">(
+    "privacy",
+  );
 
   // Inline email form state
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -868,6 +873,47 @@ export function LoginPage() {
                     {isIndonesian ? "Daftar" : "Sign up"}
                   </button>
                 </p>
+
+                {/* Legal & Privacy Policy Link */}
+                <p
+                  className={cn(
+                    "text-[10px] leading-relaxed mt-2.5",
+                    isDark ? "text-zinc-500" : "text-zinc-500",
+                  )}
+                >
+                  {isIndonesian
+                    ? "Dengan melanjutkan, Anda menyetujui "
+                    : "By continuing, you agree to our "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLegalTab("terms");
+                      setShowLegalModal(true);
+                    }}
+                    className={cn(
+                      "underline underline-offset-2 transition-colors cursor-pointer",
+                      isDark ? "hover:text-zinc-300" : "hover:text-zinc-800",
+                    )}
+                  >
+                    {isIndonesian ? "Ketentuan Layanan" : "Terms of Service"}
+                  </button>
+                  {isIndonesian ? " & " : " & "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLegalTab("privacy");
+                      setShowLegalModal(true);
+                    }}
+                    className={cn(
+                      "underline underline-offset-2 transition-colors cursor-pointer",
+                      isDark ? "hover:text-zinc-300" : "hover:text-zinc-800",
+                    )}
+                  >
+                    {isIndonesian ? "Kebijakan Privasi" : "Privacy Policy"}
+                  </button>
+                </p>
               </div>
             </motion.div>
           ) : (
@@ -1229,6 +1275,47 @@ export function LoginPage() {
                     {isIndonesian ? "Daftar" : "Sign up"}
                   </button>
                 </p>
+
+                {/* Legal & Privacy Policy Link */}
+                <p
+                  className={cn(
+                    "text-[10px] leading-relaxed mt-2.5",
+                    isDark ? "text-zinc-500" : "text-zinc-500",
+                  )}
+                >
+                  {isIndonesian
+                    ? "Dengan melanjutkan, Anda menyetujui "
+                    : "By continuing, you agree to our "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLegalTab("terms");
+                      setShowLegalModal(true);
+                    }}
+                    className={cn(
+                      "underline underline-offset-2 transition-colors cursor-pointer",
+                      isDark ? "hover:text-zinc-300" : "hover:text-zinc-800",
+                    )}
+                  >
+                    {isIndonesian ? "Ketentuan Layanan" : "Terms of Service"}
+                  </button>
+                  {isIndonesian ? " & " : " & "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLegalTab("privacy");
+                      setShowLegalModal(true);
+                    }}
+                    className={cn(
+                      "underline underline-offset-2 transition-colors cursor-pointer",
+                      isDark ? "hover:text-zinc-300" : "hover:text-zinc-800",
+                    )}
+                  >
+                    {isIndonesian ? "Kebijakan Privasi" : "Privacy Policy"}
+                  </button>
+                </p>
               </div>
             </motion.div>
           )}
@@ -1251,6 +1338,13 @@ export function LoginPage() {
         onClear={() => setPinInput("")}
         onDigit={handlePinDigit}
         onDelete={handlePinDelete}
+      />
+
+      {/* ── 6. LEGAL & PRIVACY POLICY MODAL ── */}
+      <LegalModal
+        isOpen={showLegalModal}
+        onClose={() => setShowLegalModal(false)}
+        initialTab={legalTab}
       />
     </div>
   );

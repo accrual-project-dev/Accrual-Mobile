@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   BookOpen,
   Sparkles,
+  Scale,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -189,6 +190,11 @@ const AppUpdateModal = lazy(() =>
 const ShortcutManagementSheet = lazy(() =>
   import("../components/settings/ShortcutManagementSheet").then((m) => ({
     default: m.ShortcutManagementSheet,
+  })),
+);
+const LegalModal = lazy(() =>
+  import("../components/legal/LegalModal").then((m) => ({
+    default: m.LegalModal,
   })),
 );
 
@@ -380,6 +386,7 @@ export function SettingsPage({
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [webDashboardModalOpen, setWebDashboardModalOpen] = useState(false);
   const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
   const { shortcuts } = useShortcuts();
   const navigate = useNavigate();
   const [appUpdateOpen, setAppUpdateOpen] = useState(false);
@@ -906,12 +913,17 @@ export function SettingsPage({
     "Camera & Photos Access",
     "permissions receipt scanner gallery",
   );
+  const showLegal = matches(
+    "Legal & Privacy Policy Syarat Ketentuan",
+    "legal privacy terms policy hukum privasi aturan ketentuan",
+  );
   const hasSecurity =
     showPrivacyShield ||
     showPinLock ||
     showTimeout ||
     showPinConfig ||
-    showMedia;
+    showMedia ||
+    showLegal;
 
   // Section 6: Data & Vault
   const showCloudSync = matches(
@@ -2265,6 +2277,47 @@ export function SettingsPage({
                 </button>
               </>
             )}
+
+            {/* Legal & Privacy Policy */}
+            {showLegal && (
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setLegalOpen(true);
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Scale size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Legal & Kebijakan Privasi"
+                        : "Legal & Privacy Policy"}
+                    </span>
+                  </div>
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </button>
+              </>
+            )}
           </div>
         </section>
       )}
@@ -2464,6 +2517,11 @@ export function SettingsPage({
         <ShortcutManagementSheet
           isOpen={shortcutSheetOpen}
           onClose={() => setShortcutSheetOpen(false)}
+        />
+
+        <LegalModal
+          isOpen={legalOpen}
+          onClose={() => setLegalOpen(false)}
         />
       </Suspense>
     </div>
