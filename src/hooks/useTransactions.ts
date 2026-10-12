@@ -104,8 +104,8 @@ function matchesTransactionFilters(
     return false;
   }
   if (filters.categoryId && tx.category_id !== filters.categoryId) return false;
-  if (filters.startDate && tx.occurred_on < filters.startDate) return false;
-  if (filters.endDate && tx.occurred_on > filters.endDate) return false;
+  if (filters.startDate && tx.occurred_on.slice(0, 10) < filters.startDate.slice(0, 10)) return false;
+  if (filters.endDate && tx.occurred_on.slice(0, 10) > filters.endDate.slice(0, 10)) return false;
   if (filters.search) {
     const search = filters.search.toLowerCase();
     if (!tx.note?.toLowerCase().includes(search)) return false;
@@ -125,6 +125,102 @@ function restoreTransactionQueries(
 ) {
   snapshots.forEach(([key, data]) => {
     qc.setQueryData(key, data);
+  });
+}
+
+export function batchUpsertTransactionsAcrossCaches(
+  qc: ReturnType<typeof useQueryClient>,
+  txs: Transaction[],
+) {
+  if (!txs || txs.length === 0) return;
+  const newMap = new Map<string, Transaction>();
+  txs.forEach((t) => newMap.set(t.id, t));
+
+  // 1. Immediately update in-memory snapshot and offline vault backup in a single batch
+  try {
+    const current = inMemoryTransactionsSnapshot || [];
+    const kept = current.filter((item) => !newMap.has(item.id));
+    inMemoryTransactionsSnapshot = sortTransactionsDesc([...txs, ...kept]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(inMemoryTransactionsSnapshot));
+      } catch {}
+      setVaultItem(TX_BACKUP_STORAGE_KEY, inMemoryTransactionsSnapshot).catch(() => {});
+    }
+  } catch {}
+
+  // 2. Update active React Query caches
+  const queries = qc.getQueryCache().findAll({ queryKey: ["transactions"] });
+  queries.forEach((query) => {
+    const data = query.state.data;
+    if (!isTransactionList(data)) return;
+
+    const key = query.queryKey as unknown as any[];
+    const mode = key[1];
+    const kept = data.filter((item) => !newMap.has(item.id));
+
+    if (mode === "all") {
+      const filters = (key[3] ?? null) as TransactionFilters | null;
+      const matched = txs.filter((t) => matchesTransactionFilters(t, filters));
+      qc.setQueryData(query.queryKey, sortTransactionsDesc([...matched, ...kept]));
+      return;
+    }
+
+    if (mode === "month") {
+      const year = Number(key[3]);
+      const month = Number(key[4]);
+      const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+      const matched = txs.filter((t) => t.occurred_on?.startsWith(monthKey));
+      qc.setQueryData(query.queryKey, sortTransactionsDesc([...matched, ...kept]));
+      return;
+    }
+
+    if (mode === "day") {
+      const date = String(key[3] ?? "");
+      const matched = txs.filter((t) => t.occurred_on === date);
+      qc.setQueryData(query.queryKey, sortTransactionsDesc([...matched, ...kept]));
+      return;
+    }
+
+    if (mode === "recent") {
+      const limit = Number(key[3]) || 10;
+      qc.setQueryData(
+        query.queryKey,
+        sortTransactionsDesc([...txs, ...kept]).slice(0, limit),
+      );
+    }
+  });
+}
+
+export function batchRemoveTransactionsFromCaches(
+  qc: ReturnType<typeof useQueryClient>,
+  ids: string[],
+) {
+  if (!ids || ids.length === 0) return;
+  const idSet = new Set(ids);
+
+  // 1. Single-pass in-memory snapshot and offline vault backup update
+  try {
+    if (inMemoryTransactionsSnapshot) {
+      inMemoryTransactionsSnapshot = inMemoryTransactionsSnapshot.filter((item) => !idSet.has(item.id));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(inMemoryTransactionsSnapshot));
+        } catch {}
+        setVaultItem(TX_BACKUP_STORAGE_KEY, inMemoryTransactionsSnapshot).catch(() => {});
+      }
+    }
+  } catch {}
+
+  // 2. Single-pass React Query cache update
+  const queries = qc.getQueryCache().findAll({ queryKey: ["transactions"] });
+  queries.forEach((query) => {
+    const data = query.state.data;
+    if (!isTransactionList(data)) return;
+    qc.setQueryData(
+      query.queryKey,
+      data.filter((item) => !idSet.has(item.id)),
+    );
   });
 }
 
@@ -510,9 +606,15 @@ export async function fetchAllTransactionsFromSupabase(
       } else if (filters?.filterByUserIdOnly && filters?.userId) {
         query = query.eq("user_id", filters.userId);
       }
+      const queryEndDate = filters?.endDate
+        ? filters.endDate.length === 10
+          ? `${filters.endDate}T23:59:59.999Z`
+          : filters.endDate
+        : undefined;
+
       if (filters?.categoryId) query = query.eq("category_id", filters.categoryId);
       if (filters?.startDate) query = query.gte("occurred_on", filters.startDate);
-      if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
+      if (queryEndDate) query = query.lte("occurred_on", queryEndDate);
 
       let { data, error, count } = await withTimeout(query, 15000);
       if (error) {
@@ -532,7 +634,7 @@ export async function fetchAllTransactionsFromSupabase(
         }
         if (filters?.categoryId) fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
         if (filters?.startDate) fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate);
-        if (filters?.endDate) fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
+        if (queryEndDate) fallbackQuery = fallbackQuery.lte("occurred_on", queryEndDate);
 
         const fallbackRes = await withTimeout(fallbackQuery, 15000);
         if (fallbackRes.error) {
@@ -551,7 +653,7 @@ export async function fetchAllTransactionsFromSupabase(
           }
           if (filters?.categoryId) starQuery = starQuery.eq("category_id", filters.categoryId);
           if (filters?.startDate) starQuery = starQuery.gte("occurred_on", filters.startDate);
-          if (filters?.endDate) starQuery = starQuery.lte("occurred_on", filters.endDate);
+          if (queryEndDate) starQuery = starQuery.lte("occurred_on", queryEndDate);
 
           const starRes = await withTimeout(starQuery, 15000);
           if (starRes.error) throw starRes.error;
@@ -593,10 +695,12 @@ export async function fetchAllTransactionsFromSupabase(
             restored = restored.filter((t) => t.category_id === filters.categoryId);
           }
           if (filters?.startDate) {
-            restored = restored.filter((t) => t.occurred_on >= filters.startDate!);
+            const startDay = filters.startDate.slice(0, 10);
+            restored = restored.filter((t) => t.occurred_on.slice(0, 10) >= startDay);
           }
           if (filters?.endDate) {
-            restored = restored.filter((t) => t.occurred_on <= filters.endDate!);
+            const endDay = filters.endDate.slice(0, 10);
+            restored = restored.filter((t) => t.occurred_on.slice(0, 10) <= endDay);
           }
           if (filters?.search) {
             const s = filters.search.toLowerCase();
@@ -987,7 +1091,7 @@ export function useAddTransaction() {
         allCategories?.find((c) => c.id === input.category_id) || null;
 
       const assignedLedger = input.ledger_id || input.space_id || "personal";
-      const cleanCatId = input.category_id && isUUID(input.category_id) ? input.category_id : null;
+      const cleanCatId = input.type === "transfer" ? null : (input.category_id && isUUID(input.category_id) ? input.category_id : null);
       const cleanWalletId = input.wallet_id && isUUID(input.wallet_id) ? input.wallet_id : null;
       const cleanToWalletId = input.type === "transfer" && input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null;
 
@@ -1023,7 +1127,7 @@ export function useAddTransaction() {
         note: input.note || null,
         occurred_on: cleanOccurredOn,
         created_at: cleanCreatedAt,
-        categories: categoryObj,
+        categories: input.type === "transfer" ? null : categoryObj,
         ledger_id: assignedLedger,
         space_id: assignedLedger,
         created_by_name: createdByName,
@@ -1102,7 +1206,7 @@ export function useAddTransaction() {
       const categoryObj =
         allCategories?.find((c) => c.id === newTx.category_id) || null;
 
-      const cleanCatId = newTx.category_id && isUUID(newTx.category_id) ? newTx.category_id : null;
+      const cleanCatId = newTx.type === "transfer" ? null : (newTx.category_id && isUUID(newTx.category_id) ? newTx.category_id : null);
       const cleanWalletId = newTx.wallet_id && isUUID(newTx.wallet_id) ? newTx.wallet_id : null;
       const cleanToWalletId = newTx.type === "transfer" && newTx.to_wallet_id && isUUID(newTx.to_wallet_id) ? newTx.to_wallet_id : null;
       const assignedLedger = newTx.ledger_id || newTx.space_id || "personal";
@@ -1133,7 +1237,7 @@ export function useAddTransaction() {
         note: newTx.note || null,
         occurred_on: cleanOccurredOn,
         created_at: cleanCreatedAt,
-        categories: categoryObj,
+        categories: newTx.type === "transfer" ? null : categoryObj,
         ledger_id: assignedLedger,
         space_id: assignedLedger,
       };
@@ -1184,7 +1288,12 @@ export function useBatchAddTransactions() {
         categoryKeys.all(currentUser?.id || userId),
       );
 
-      const createdList: Transaction[] = [];
+      const prepared: Array<{
+        fullTx: Transaction;
+        dbPayload: any;
+        mutationId: string;
+        categoryObj: Category | null;
+      }> = [];
 
       for (const input of inputs) {
         const effectiveId = input.id || generateUUID();
@@ -1195,7 +1304,7 @@ export function useBatchAddTransactions() {
 
         const assignedLedger = input.ledger_id || input.space_id || "personal";
 
-        const cleanCatId = input.category_id && isUUID(input.category_id) ? input.category_id : null;
+        const cleanCatId = input.type === "transfer" ? null : (input.category_id && isUUID(input.category_id) ? input.category_id : null);
         const cleanWalletId = input.wallet_id && isUUID(input.wallet_id) ? input.wallet_id : null;
         const cleanToWalletId = input.type === "transfer" && input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null;
 
@@ -1210,7 +1319,7 @@ export function useBatchAddTransactions() {
           note: input.note || null,
           occurred_on: input.occurred_on,
           created_at: input.created_at || new Date().toISOString(),
-          categories: categoryObj,
+          categories: input.type === "transfer" ? null : categoryObj,
           ledger_id: assignedLedger,
           space_id: assignedLedger,
           created_by_name: input.created_by_name || null,
@@ -1219,44 +1328,69 @@ export function useBatchAddTransactions() {
 
         const mutation = enqueuePendingMutation("insert", fullTx);
 
-        if (currentUser?.id) {
-          try {
-            const dbPayload: any = {
-              id: effectiveId,
-              user_id: currentUser.id,
-              amount: Number(input.amount),
-              type: input.type,
-              category_id: cleanCatId,
-              wallet_id: cleanWalletId,
-              to_wallet_id: cleanToWalletId,
-              note: input.note || null,
-              occurred_on: input.occurred_on,
-              created_at: input.created_at || new Date().toISOString(),
-              ledger_id: assignedLedger,
-            };
-            let query = supabase
-              .from("transactions")
-              .upsert(dbPayload)
-              .select("*, categories(*)");
+        const dbPayload: any = {
+          id: effectiveId,
+          user_id: currentUser?.id || userId || "",
+          amount: Number(input.amount),
+          type: input.type,
+          category_id: cleanCatId,
+          wallet_id: cleanWalletId,
+          to_wallet_id: cleanToWalletId,
+          note: input.note || null,
+          occurred_on: input.occurred_on,
+          created_at: input.created_at || new Date().toISOString(),
+          ledger_id: assignedLedger,
+        };
 
-            let res = await withTimeout(query, 7000);
+        prepared.push({
+          fullTx,
+          dbPayload,
+          mutationId: mutation.id,
+          categoryObj: input.type === "transfer" ? null : categoryObj,
+        });
+      }
+
+      const createdList: Transaction[] = [];
+
+      if (currentUser?.id) {
+        const chunkSize = 50;
+        for (let i = 0; i < prepared.length; i += chunkSize) {
+          const chunk = prepared.slice(i, i + chunkSize);
+          const chunkPayloads = chunk.map((c) => c.dbPayload);
+          try {
+            let res = await withTimeout(
+              supabase
+                .from("transactions")
+                .upsert(chunkPayloads)
+                .select("*, categories(*)"),
+              10000,
+            );
             if (res.error) {
-              const { ledger_id: _lid, ...fallbackPayload } = dbPayload;
+              const fallbackPayloads = chunkPayloads.map(({ ledger_id: _lid, ...fb }) => fb);
               res = await withTimeout(
                 supabase
                   .from("transactions")
-                  .upsert(fallbackPayload)
+                  .upsert(fallbackPayloads)
                   .select("*"),
-                7000,
+                10000,
               );
             }
 
-            if (!res.error && res.data && res.data[0]) {
-              removePendingMutation(mutation.id);
-              const serverTx = res.data[0] as Transaction;
-              createdList.push({
-                ...serverTx,
-                categories: serverTx.categories || categoryObj,
+            if (!res.error && res.data && Array.isArray(res.data)) {
+              const returnedMap = new Map<string, Transaction>();
+              (res.data as Transaction[]).forEach((sTx) => returnedMap.set(sTx.id, sTx));
+
+              chunk.forEach((c) => {
+                removePendingMutation(c.mutationId);
+                const serverTx = returnedMap.get(c.fullTx.id);
+                if (serverTx) {
+                  createdList.push({
+                    ...serverTx,
+                    categories: serverTx.categories || c.categoryObj,
+                  });
+                } else {
+                  createdList.push(c.fullTx);
+                }
               });
               continue;
             }
@@ -1266,9 +1400,11 @@ export function useBatchAddTransactions() {
               networkErr,
             );
           }
+          // If chunk failed or network dropped, preserve local fullTx and retain in pending queue
+          chunk.forEach((c) => createdList.push(c.fullTx));
         }
-
-        createdList.push(fullTx);
+      } else {
+        prepared.forEach((c) => createdList.push(c.fullTx));
       }
 
       return createdList;
@@ -1294,40 +1430,39 @@ export function useBatchAddTransactions() {
           user_id: userId || "",
           amount: Number(newTx.amount),
           type: newTx.type,
-          category_id: newTx.category_id,
+          category_id: newTx.type === "transfer" ? null : newTx.category_id,
           wallet_id: newTx.wallet_id || null,
           to_wallet_id: newTx.to_wallet_id || null,
           note: newTx.note || null,
           occurred_on: newTx.occurred_on,
           created_at: newTx.created_at || new Date().toISOString(),
-          categories: categoryObj,
+          categories: newTx.type === "transfer" ? null : categoryObj,
           ledger_id: assignedLedger,
           space_id: assignedLedger,
         };
 
-        upsertTransactionAcrossCaches(qc, optimisticItem);
         optimisticItems.push(optimisticItem);
       }
+
+      batchUpsertTransactionsAcrossCaches(qc, optimisticItems);
 
       return { snapshots, optimisticItems };
     },
     onSuccess: (savedList, _vars, context) => {
-      for (const savedTx of savedList) {
+      const enrichedList: Transaction[] = savedList.map((savedTx) => {
         const matchedOptimistic = context?.optimisticItems.find(
           (o) => o.id === savedTx.id,
         );
-        const enriched: Transaction = {
+        return {
           ...savedTx,
           categories: savedTx.categories || matchedOptimistic?.categories || null,
         };
-        upsertTransactionAcrossCaches(qc, enriched);
-      }
+      });
+      batchUpsertTransactionsAcrossCaches(qc, enrichedList);
     },
     onError: (_err, _newTxs, context) => {
       if (context?.optimisticItems) {
-        for (const item of context.optimisticItems) {
-          upsertTransactionAcrossCaches(qc, item);
-        }
+        batchUpsertTransactionsAcrossCaches(qc, context.optimisticItems);
       }
     },
     onSettled: () => {
@@ -1345,7 +1480,10 @@ export function useUpdateTransaction() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
-      const cleanCatId = input.category_id !== undefined ? (input.category_id && isUUID(input.category_id) ? input.category_id : null) : undefined;
+      let cleanCatId = input.category_id !== undefined ? (input.category_id && isUUID(input.category_id) ? input.category_id : null) : undefined;
+      if (input.type === "transfer") {
+        cleanCatId = null;
+      }
       const cleanWalletId = input.wallet_id !== undefined ? (input.wallet_id && isUUID(input.wallet_id) ? input.wallet_id : null) : undefined;
       const cleanToWalletId = input.to_wallet_id !== undefined ? (input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null) : undefined;
 
@@ -1410,9 +1548,9 @@ export function useUpdateTransaction() {
 
       const allCategories = qc.getQueryData<Category[]>(categoryKeys.all(userId));
       const nextCatId =
-        updated.category_id !== undefined ? updated.category_id : existing?.category_id;
+        updated.type === "transfer" ? null : (updated.category_id !== undefined ? updated.category_id : existing?.category_id);
       const categoryObj =
-        allCategories?.find((c) => c.id === nextCatId) || existing?.categories || null;
+        updated.type === "transfer" ? null : (allCategories?.find((c) => c.id === nextCatId) || existing?.categories || null);
 
       if (existing) {
         const assignedLedger =
@@ -1421,6 +1559,7 @@ export function useUpdateTransaction() {
           ...existing,
           ...updated,
           id,
+          category_id: updated.type === "transfer" ? null : (updated.category_id !== undefined ? updated.category_id : existing.category_id),
           ledger_id: assignedLedger,
           space_id: assignedLedger,
           categories: categoryObj,
@@ -1506,13 +1645,21 @@ export function useBatchDeleteTransactions() {
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (!ids || ids.length === 0) return ids;
+      const mutationIds = ids.map((id) => {
+        const m = enqueuePendingMutation("delete", { id });
+        return { id, mutationId: m.id };
+      });
+
       try {
         let q = supabase.from("transactions").delete().in("id", ids);
-        if (userId) q = q.eq("user_id", userId);
+        if (userId && userId !== "guest_local_user") {
+          q = q.eq("user_id", userId);
+        }
         const { error } = await q;
         if (error) throw error;
+        mutationIds.forEach(({ mutationId }) => removePendingMutation(mutationId));
       } catch (err) {
-        console.warn("[useBatchDeleteTransactions] Error batch deleting:", err);
+        console.warn("[useBatchDeleteTransactions] Error batch deleting, preserved in pending mutations:", err);
       }
       return ids;
     },
@@ -1526,12 +1673,12 @@ export function useBatchDeleteTransactions() {
           targetTxs.push(targetTx);
           checkAndDeductGoalFromTx(targetTx);
         }
-        removeTransactionFromCaches(qc, id);
       });
+      batchRemoveTransactionsFromCaches(qc, ids);
       return { snapshots, targetTxs };
     },
     onSuccess: (deletedIds) => {
-      deletedIds.forEach((id) => removeTransactionFromCaches(qc, id));
+      batchRemoveTransactionsFromCaches(qc, deletedIds);
     },
     onError: (_err, _ids, context) => {
       if (context?.snapshots) {

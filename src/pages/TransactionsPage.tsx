@@ -355,30 +355,35 @@ export function TransactionsPage({
     if (timeRange === "this_month") {
       const startStr = format(startOfMonth(now), "yyyy-MM-dd");
       const endStr = format(endOfMonth(now), "yyyy-MM-dd");
-      txs = txs.filter(
-        (t) => t.occurred_on >= startStr && t.occurred_on <= endStr,
-      );
+      txs = txs.filter((t) => {
+        const day = t.occurred_on.slice(0, 10);
+        return day >= startStr && day <= endStr;
+      });
     } else if (timeRange === "last_month") {
       const prev = subMonths(now, 1);
       const startStr = format(startOfMonth(prev), "yyyy-MM-dd");
       const endStr = format(endOfMonth(prev), "yyyy-MM-dd");
-      txs = txs.filter(
-        (t) => t.occurred_on >= startStr && t.occurred_on <= endStr,
-      );
+      txs = txs.filter((t) => {
+        const day = t.occurred_on.slice(0, 10);
+        return day >= startStr && day <= endStr;
+      });
     } else if (timeRange === "last_30") {
       const startStr = format(subDays(now, 29), "yyyy-MM-dd");
       const endStr = format(now, "yyyy-MM-dd");
-      txs = txs.filter(
-        (t) => t.occurred_on >= startStr && t.occurred_on <= endStr,
-      );
+      txs = txs.filter((t) => {
+        const day = t.occurred_on.slice(0, 10);
+        return day >= startStr && day <= endStr;
+      });
     } else if (timeRange === "custom_month") {
       txs = txs.filter((t) => t.occurred_on.startsWith(selectedCustomMonth));
     } else if (timeRange === "custom_range") {
       if (customStartDate) {
-        txs = txs.filter((t) => t.occurred_on >= customStartDate);
+        const startDay = customStartDate.slice(0, 10);
+        txs = txs.filter((t) => t.occurred_on.slice(0, 10) >= startDay);
       }
       if (customEndDate) {
-        txs = txs.filter((t) => t.occurred_on <= customEndDate);
+        const endDay = customEndDate.slice(0, 10);
+        txs = txs.filter((t) => t.occurred_on.slice(0, 10) <= endDay);
       }
     }
 
@@ -441,7 +446,7 @@ export function TransactionsPage({
         const { from, to } = resolveWalletNames(t);
         const catName =
           t.categories?.name ||
-          categories.find((c) => c.id === t.category_id)?.name ||
+          (t.category_id ? categoryMap.get(t.category_id)?.name : "") ||
           "";
         const formattedAmount = formatRupiah(
           Number(t.amount || 0),
@@ -474,7 +479,7 @@ export function TransactionsPage({
     maxAmount,
     deferredSearch,
     resolveWalletNames,
-    categories,
+    categoryMap,
   ]);
 
   // Count matching transactions across all time
@@ -488,7 +493,7 @@ export function TransactionsPage({
       const { from, to } = resolveWalletNames(t);
       const catName =
         t.categories?.name ||
-        categories.find((c) => c.id === t.category_id)?.name ||
+        (t.category_id ? categoryMap.get(t.category_id)?.name : "") ||
         "";
       const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase();
       const amountStr = String(t.amount || "");
@@ -506,7 +511,7 @@ export function TransactionsPage({
 
       return matchesText || matchesAmount;
     }).length;
-  }, [deferredSearch, visibleTxs, resolveWalletNames, categories]);
+  }, [deferredSearch, visibleTxs, resolveWalletNames, categoryMap]);
 
   // Count matching transactions in current period
   const currentPeriodMatchCount = useMemo(() => {
@@ -518,7 +523,7 @@ export function TransactionsPage({
       const { from, to } = resolveWalletNames(t);
       const catName =
         t.categories?.name ||
-        categories.find((c) => c.id === t.category_id)?.name ||
+        (t.category_id ? categoryMap.get(t.category_id)?.name : "") ||
         "";
       const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase();
       const amountStr = String(t.amount || "");
@@ -536,7 +541,7 @@ export function TransactionsPage({
 
       return matchesText || matchesAmount;
     }).length;
-  }, [deferredSearch, scopedTxs, resolveWalletNames, categories]);
+  }, [deferredSearch, scopedTxs, resolveWalletNames, categoryMap]);
 
   const filteredTxsByDay = useMemo(() => {
     const dayMap = new Map<string, Transaction[]>();

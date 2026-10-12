@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import {
   useCurrency as useCurrencyInternal,
   type SupportedCurrency,
@@ -28,12 +28,18 @@ const CurrencyContext = createContext<CurrencyContextValue | null>(null);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const currencyState = useCurrencyInternal();
-  const meta = CURRENCY_METADATA[currencyState.preferredCurrency] || CURRENCY_METADATA.IDR;
+  const meta = useMemo(
+    () => CURRENCY_METADATA[currencyState.preferredCurrency] || CURRENCY_METADATA.IDR,
+    [currencyState.preferredCurrency]
+  );
 
-  const value: CurrencyContextValue = {
-    ...currencyState,
-    currencyMeta: meta,
-  };
+  const value: CurrencyContextValue = useMemo(
+    () => ({
+      ...currencyState,
+      currencyMeta: meta,
+    }),
+    [currencyState, meta]
+  );
 
   return (
     <CurrencyContext.Provider value={value}>

@@ -200,7 +200,7 @@ describe("Luxury Financial Report & Tax/Export Engine Test Suite", () => {
       const html = generateLuxuryPrintableHtml(filtered, summary, mockWallets);
 
       expect(html).toContain("<!DOCTYPE html>");
-      expect(html).toContain("TROUVAILLE");
+      expect(html).toContain("ACCRUAL");
       expect(html).toContain("Executive Statement");
       expect(html).toContain("TOTAL INFLOW");
       expect(html).toContain("TOTAL OUTFLOW");

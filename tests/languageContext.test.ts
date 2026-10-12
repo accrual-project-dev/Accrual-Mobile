@@ -54,8 +54,8 @@ describe("Internationalization & Language System", () => {
     expect(translations.en.onboarding.presetDefaultTitle).toBe("Default Curated Preset");
     expect(translations.id.onboarding.presetDefaultTitle).toBe("Preset Kurasi Default");
 
-    expect(translations.en.onboarding.completeButton).toBe("Enter Trouvaille");
-    expect(translations.id.onboarding.completeButton).toBe("Masuk ke Trouvaille");
+    expect(translations.en.onboarding.completeButton).toBe("Enter Accrual");
+    expect(translations.id.onboarding.completeButton).toBe("Masuk ke Accrual");
   });
 
   it("contains settings translations for App Language and sections", () => {

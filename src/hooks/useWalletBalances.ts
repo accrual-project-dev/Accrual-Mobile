@@ -40,11 +40,12 @@ export function useWalletBalances(targetSpaceId?: string) {
   }, [wallets, allTxs, user?.id, holdingsTick]);
 
   const activeSpaceId = targetSpaceId || spaceCtx?.activeSpaceId || "personal";
+  const filterTransactionsBySpace = spaceCtx?.filterTransactionsBySpace;
 
   return useMemo(() => {
     // 1. Filter transactions according to active space
-    const scopedTxs = spaceCtx
-      ? spaceCtx.filterTransactionsBySpace(allTxs, activeSpaceId)
+    const scopedTxs = filterTransactionsBySpace
+      ? filterTransactionsBySpace(allTxs, activeSpaceId)
       : allTxs;
 
     // 2. In custom ledgers (not 'personal' and not 'all'), wallets start cleanly from Rp 0
@@ -154,7 +155,7 @@ export function useWalletBalances(targetSpaceId?: string) {
       wallets: scopedWallets,
       allTxs: scopedTxs,
     };
-  }, [wallets, allTxs, activeSpaceId, spaceCtx, user?.id, holdingsTick, prefTick]);
+  }, [wallets, allTxs, activeSpaceId, filterTransactionsBySpace, user?.id, holdingsTick, prefTick]);
 }
 
 

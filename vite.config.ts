@@ -15,6 +15,16 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        globIgnores: [
+          "**/xlsx-*.js",
+          "**/pdf-*.js",
+          "**/LuxuryReportExportSheet-*.js",
+          "**/html2canvas-*.js",
+          "**/jsqr-*.js",
+        ],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
       includeAssets: [
         "favicon.ico",
         "apple-touch-icon.png",

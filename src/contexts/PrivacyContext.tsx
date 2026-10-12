@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { triggerHaptic } from "../lib/haptics";
 import { App as CapApp } from "@capacitor/app";
 
@@ -207,20 +207,33 @@ export function PrivacyProvider({ children }: { children: React.ReactNode }) {
     };
   }, [togglePrivacyShield]);
 
+  const value = useMemo<PrivacyContextType>(
+    () => ({
+      isStealthMode,
+      toggleStealthMode,
+      setStealthMode,
+      isPrivacyShieldEnabled,
+      togglePrivacyShield,
+      setPrivacyShieldEnabled,
+      isPrivacyShieldActive: isPrivacyShieldEnabled && isPrivacyShieldActive,
+      setIsPrivacyShieldActive,
+      maskAmount,
+    }),
+    [
+      isStealthMode,
+      toggleStealthMode,
+      setStealthMode,
+      isPrivacyShieldEnabled,
+      togglePrivacyShield,
+      setPrivacyShieldEnabled,
+      isPrivacyShieldActive,
+      setIsPrivacyShieldActive,
+      maskAmount,
+    ],
+  );
+
   return (
-    <PrivacyContext.Provider
-      value={{
-        isStealthMode,
-        toggleStealthMode,
-        setStealthMode,
-        isPrivacyShieldEnabled,
-        togglePrivacyShield,
-        setPrivacyShieldEnabled,
-        isPrivacyShieldActive: isPrivacyShieldEnabled && isPrivacyShieldActive,
-        setIsPrivacyShieldActive,
-        maskAmount,
-      }}
-    >
+    <PrivacyContext.Provider value={value}>
       {children}
     </PrivacyContext.Provider>
   );

@@ -142,15 +142,11 @@ export function TransactionSheet({
   useEffect(() => {
     if (isOpen) {
       if (useCustomKeypad) {
-        const timer = setTimeout(() => {
-          setIsKeypadOpen(true);
-        }, 120);
-        return () => clearTimeout(timer);
+        setIsKeypadOpen(true);
       } else {
-        const timer = setTimeout(() => {
+        requestAnimationFrame(() => {
           amountInputRef.current?.focus();
-        }, 180);
-        return () => clearTimeout(timer);
+        });
       }
     } else {
       setIsKeypadOpen(false);
@@ -369,6 +365,38 @@ export function TransactionSheet({
     if (!merchantPrediction?.walletId) return null;
     return wallets.find((w) => w.id === merchantPrediction.walletId) || null;
   }, [merchantPrediction, wallets]);
+
+  const userExplicitlySelectedCategoryRef = useRef(false);
+  const userExplicitlySelectedWalletRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen && !transaction) {
+      userExplicitlySelectedCategoryRef.current = false;
+      userExplicitlySelectedWalletRef.current = false;
+    }
+  }, [isOpen, transaction]);
+
+  // Real-time automatic category & wallet inference based on typed note
+  useEffect(() => {
+    if (
+      !userExplicitlySelectedCategoryRef.current &&
+      !transaction &&
+      type !== "transfer" &&
+      predictedCategory
+    ) {
+      setCategoryId(predictedCategory.id);
+    }
+  }, [predictedCategory, transaction, type]);
+
+  useEffect(() => {
+    if (
+      !userExplicitlySelectedWalletRef.current &&
+      !transaction &&
+      predictedWallet
+    ) {
+      setWalletId(predictedWallet.id);
+    }
+  }, [predictedWallet, transaction]);
 
   const isDuplicateDetected = useMemo(() => {
     const currentValRaw = evaluateMathSafe(amountInput);
@@ -942,12 +970,18 @@ export function TransactionSheet({
           : null,
     };
 
+    triggerSuccessHaptic();
     if (!transaction) {
       showToast(
-        isIndonesian ? "Menyimpan transaksi..." : "Saving transaction...",
-        "info",
-        null,
-        1600,
+        isIndonesian ? "Transaksi ditambahkan" : "Transaction added",
+        "add",
+        () => {},
+      );
+    } else {
+      showToast(
+        isIndonesian ? "Transaksi diperbarui" : "Transaction updated",
+        "update",
+        () => {},
       );
     }
 
@@ -978,12 +1012,6 @@ export function TransactionSheet({
           onSuccess: () => {
             isSavingRef.current = false;
             setIsSaving(false);
-            triggerSuccessHaptic();
-            showToast(
-              isIndonesian ? "Transaksi diperbarui" : "Transaction updated",
-              "update",
-              () => {},
-            );
           },
           onError: (err) => {
             isSavingRef.current = false;
@@ -1013,12 +1041,6 @@ export function TransactionSheet({
           setDuplicateWarningAcknowledged(false);
           isSavingRef.current = false;
           setIsSaving(false);
-          triggerSuccessHaptic();
-          showToast(
-            isIndonesian ? "Transaksi ditambahkan" : "Transaction added",
-            "add",
-            () => {},
-          );
         },
         onError: () => {
           isSavingRef.current = false;
@@ -1545,7 +1567,10 @@ export function TransactionSheet({
           <CategorySelectorRibbon
             categories={displayCategories}
             selectedCategoryId={categoryId}
-            onSelectCategory={(id) => setCategoryId(id)}
+            onSelectCategory={(id) => {
+              userExplicitlySelectedCategoryRef.current = true;
+              setCategoryId(id);
+            }}
             onOpenMore={() => setMoreCatOpen(true)}
           />
         )}
@@ -1557,7 +1582,10 @@ export function TransactionSheet({
           displayToWallets={displayToWallets}
           walletId={walletId}
           toWalletId={toWalletId}
-          onSelectWallet={(id) => setWalletId(id)}
+          onSelectWallet={(id) => {
+            userExplicitlySelectedWalletRef.current = true;
+            setWalletId(id);
+          }}
           onSelectToWallet={(id) => setToWalletId(id)}
           onOpenMore={(target) => {
             setWalletTarget(target);
@@ -2006,6 +2034,7 @@ export function TransactionSheet({
                     key={cat.id}
                     type="button"
                     onClick={() => {
+                      userExplicitlySelectedCategoryRef.current = true;
                       setCategoryId(cat.id);
                       setMoreCatOpen(false);
                       setSearchCatQuery("");
@@ -2147,6 +2176,7 @@ export function TransactionSheet({
                     type="button"
                     onClick={() => {
                       if (walletTarget === "from") {
+                        userExplicitlySelectedWalletRef.current = true;
                         setWalletId(w.id);
                       } else {
                         setToWalletId(w.id);

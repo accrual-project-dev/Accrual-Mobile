@@ -153,7 +153,11 @@ export async function flushPendingMutations(): Promise<{
     const sanitizePayload = (p: any) => {
       if (!p || typeof p !== "object") return p;
       const { categories, wallet, to_wallet, space_id, created_by_name, created_by_user_id, ...clean } = p;
-      if (clean.category_id && !isUUID(clean.category_id)) clean.category_id = null;
+      if (clean.type === "transfer") {
+        clean.category_id = null;
+      } else if (clean.category_id && !isUUID(clean.category_id)) {
+        clean.category_id = null;
+      }
       if (clean.wallet_id && !isUUID(clean.wallet_id)) clean.wallet_id = null;
       if (clean.to_wallet_id && !isUUID(clean.to_wallet_id)) clean.to_wallet_id = null;
       return clean;

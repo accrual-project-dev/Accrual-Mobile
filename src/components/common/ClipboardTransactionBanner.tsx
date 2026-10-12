@@ -1,24 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X, ArrowRight, Layers } from "lucide-react";
 import type { Category, Wallet, Transaction } from "../../lib/types";
-import {
-  parseBankNotification,
-  type DetectedBankNotification,
-} from "../../lib/bankNotificationParser";
-import { parseSlipText } from "../../lib/slipParser";
-import {
-  isMultiTransactionHistoryText,
-  parseScreenshotHistory,
-} from "../../lib/screenshotHistoryParser";
+import type { DetectedBankNotification } from "../../lib/bankNotificationParser";
 import type { ParsedStatementItem } from "../../lib/statementParser";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 
 interface ClipboardTransactionBannerProps {
-  categories: Category[];
-  wallets: Wallet[];
+  categories?: Category[];
+  wallets?: Wallet[];
   existingTransactions?: Transaction[];
   onAddTransaction: (detected: DetectedBankNotification) => void;
   onReviewBatch?: (items: ParsedStatementItem[], appName: string) => void;
@@ -31,113 +23,20 @@ interface DetectedBatch {
 }
 
 export function ClipboardTransactionBanner({
-  categories,
-  wallets,
-  existingTransactions = [],
+  categories: _categories,
+  wallets: _wallets,
+  existingTransactions: _existingTransactions = [],
   onAddTransaction,
   onReviewBatch,
 }: ClipboardTransactionBannerProps) {
   const { isIndonesian } = useLanguage();
   const [detectedSingle, setDetectedSingle] = useState<DetectedBankNotification | null>(null);
   const [detectedBatch, setDetectedBatch] = useState<DetectedBatch | null>(null);
-  const lastCheckedText = useRef<string>("");
 
-  const checkClipboard = useCallback(async () => {
-    if (!navigator.clipboard || !navigator.clipboard.readText) return;
+  // Passive background clipboard sniffing was permanently disabled to eliminate
+  // the intrusive iOS native "Paste" floating capsule and prevent execution blocking
+  // on mobile WebKit and Android WebViews when transactions are saved or categories are edited.
 
-    try {
-      // Avoid querying clipboard if page is hidden
-      if (document.visibilityState !== "visible") return;
-
-      const text = await navigator.clipboard.readText();
-      if (!text || text === lastCheckedText.current) return;
-
-      // Check if already dismissed in this session
-      const dismissed = sessionStorage.getItem(`dismissed_clip_${text.slice(0, 30)}`);
-      if (dismissed) {
-        lastCheckedText.current = text;
-        return;
-      }
-
-      const trimmed = text.trim();
-
-      // 1. Check for multi-transaction screenshot history first
-      if (isMultiTransactionHistoryText(trimmed)) {
-        const batchItems = parseScreenshotHistory(trimmed, existingTransactions, categories, wallets);
-        if (batchItems && batchItems.length >= 2) {
-          lastCheckedText.current = text;
-          let appName = "Riwayat";
-          const low = trimmed.toLowerCase();
-          if (low.includes("gopay")) appName = "GoPay";
-          else if (low.includes("shopee")) appName = "Shopee";
-          else if (low.includes("bca")) appName = "BCA";
-          else if (low.includes("mandiri") || low.includes("livin")) appName = "Mandiri";
-
-          setDetectedBatch({
-            appName,
-            items: batchItems,
-            rawText: trimmed,
-          });
-          setDetectedSingle(null);
-          triggerHaptic("light");
-          return;
-        }
-      }
-
-      // 2. Check for bank notification
-      const bankRes = parseBankNotification(trimmed, categories, wallets);
-      if (bankRes && bankRes.amount > 0) {
-        lastCheckedText.current = text;
-        setDetectedSingle(bankRes);
-        setDetectedBatch(null);
-        triggerHaptic("light");
-        return;
-      }
-
-      // 3. Fallback: Check for single transfer slip / receipt
-      if (trimmed.length > 30) {
-        const slipRes = parseSlipText(trimmed, wallets, categories);
-        if (slipRes && slipRes.amount && slipRes.amount > 0) {
-          lastCheckedText.current = text;
-          setDetectedSingle({
-            rawText: trimmed,
-            sourceApp: slipRes.detectedInstitution || (isIndonesian ? "Resi Pembayaran" : "Payment Slip"),
-            amount: slipRes.amount,
-            merchantOrNote: slipRes.merchantOrRecipient || "",
-            type: slipRes.type,
-            suggestedWalletId: slipRes.sourceWalletId || undefined,
-            suggestedWalletName: slipRes.sourceWalletName || undefined,
-            suggestedToWalletId: slipRes.destinationWalletId || undefined,
-            suggestedToWalletName: slipRes.destinationWalletName || undefined,
-            suggestedCategoryId: slipRes.categoryId || undefined,
-            suggestedCategoryName: slipRes.categoryName || undefined,
-          });
-          setDetectedBatch(null);
-          triggerHaptic("light");
-          return;
-        }
-      }
-    } catch {
-      // Clipboard permission might be denied or unsupported in current context
-    }
-  }, [categories, wallets, existingTransactions, isIndonesian]);
-
-  useEffect(() => {
-    checkClipboard();
-
-    const handleFocus = () => checkClipboard();
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") checkClipboard();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [checkClipboard]);
 
   const handleDismiss = () => {
     const rawToDismiss = detectedBatch?.rawText || detectedSingle?.rawText;

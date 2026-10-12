@@ -162,8 +162,8 @@ export async function joinLedgerWithCode(
       return {
         success: false,
         message: isId
-          ? "Silakan masuk ke akun Trouvaille terlebih dahulu untuk bergabung ke space bersama."
-          : "Please sign in to your Trouvaille account first to join a shared space.",
+          ? "Silakan masuk ke akun Accrual terlebih dahulu untuk bergabung ke space bersama."
+          : "Please sign in to your Accrual account first to join a shared space.",
       };
     }
 

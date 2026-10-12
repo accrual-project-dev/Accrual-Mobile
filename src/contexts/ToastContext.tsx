@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -219,8 +219,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     </AnimatePresence>
   );
 
+  const value = useMemo(
+    () => ({ showToast, isToastActive: !!toast }),
+    [showToast, toast]
+  );
+
   return (
-    <ToastContext.Provider value={{ showToast, isToastActive: !!toast }}>
+    <ToastContext.Provider value={value}>
       {children}
       {typeof document !== "undefined" ? createPortal(toastContent, document.body) : toastContent}
     </ToastContext.Provider>

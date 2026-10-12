@@ -8,11 +8,14 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ArrowLeftRight,
+  ArrowRight,
   CheckSquare,
   Square,
   Bookmark,
   ChevronRight,
   X,
+  Search,
+  CreditCard,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -62,6 +65,14 @@ export function BatchTransactionReviewSheet({
   const [activeItemForCategory, setActiveItemForCategory] = useState<
     string | null
   >(null);
+  const [searchCategoryQuery, setSearchCategoryQuery] = useState("");
+
+  // Wallet picker sheet state
+  const [activeItemForWallet, setActiveItemForWallet] = useState<{
+    itemId: string;
+    field: "walletId" | "destinationWalletId";
+  } | null>(null);
+  const [searchWalletQuery, setSearchWalletQuery] = useState("");
 
   // Sync state when initialItems change or sheet opens
   useEffect(() => {
@@ -186,7 +197,59 @@ export function BatchTransactionReviewSheet({
       ),
     );
     setActiveItemForCategory(null);
+    setSearchCategoryQuery("");
   };
+
+  const handleSelectWallet = (selectedWallet: Wallet) => {
+    if (!activeItemForWallet) return;
+    triggerHaptic("light");
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== activeItemForWallet.itemId) return it;
+        if (activeItemForWallet.field === "walletId") {
+          return {
+            ...it,
+            walletId: selectedWallet.id,
+            walletName: selectedWallet.name,
+          };
+        } else {
+          return {
+            ...it,
+            destinationWalletId: selectedWallet.id,
+            destinationWalletName: selectedWallet.name,
+          };
+        }
+      }),
+    );
+    setActiveItemForWallet(null);
+    setSearchWalletQuery("");
+  };
+
+  const activeCategoryItem = useMemo(() => {
+    return items.find((it) => it.id === activeItemForCategory);
+  }, [items, activeItemForCategory]);
+
+  const filteredCategories = useMemo(() => {
+    if (!activeCategoryItem) return categories;
+    const isIncome = activeCategoryItem.type === "income";
+    const typeCats = categories.filter((c) =>
+      isIncome ? c.type === "income" : c.type !== "income",
+    );
+    const pool = typeCats.length > 0 ? typeCats : categories;
+    if (!searchCategoryQuery.trim()) return pool;
+    const q = searchCategoryQuery.trim().toLowerCase();
+    return pool.filter((c) => c.name.toLowerCase().includes(q));
+  }, [categories, activeCategoryItem, searchCategoryQuery]);
+
+  const activeWalletItem = useMemo(() => {
+    return items.find((it) => it.id === activeItemForWallet?.itemId);
+  }, [items, activeItemForWallet]);
+
+  const filteredWallets = useMemo(() => {
+    if (!searchWalletQuery.trim()) return wallets;
+    const q = searchWalletQuery.trim().toLowerCase();
+    return wallets.filter((w) => w.name.toLowerCase().includes(q));
+  }, [wallets, searchWalletQuery]);
 
   const handleApprove = async () => {
     const selectedItems = items.filter((it) => selectedMap[it.id]);
@@ -341,7 +404,7 @@ export function BatchTransactionReviewSheet({
         </div>
 
         {/* ── 3. Transaction List Cards (Clean Studio Glass, Zero Glow) ── */}
-        <div className="space-y-2 mb-3.5 max-h-[56vh] overflow-y-auto no-scrollbar">
+        <div className="space-y-2 mb-3.5 flex-1 min-h-0">
           {items.map((it) => {
             const isSelected = Boolean(selectedMap[it.id]);
             const isOutflow = it.type === "expense";
@@ -484,21 +547,75 @@ export function BatchTransactionReviewSheet({
                         </span>
                       </button>
 
-                      {/* Wallet Pill */}
+                      {/* Wallet Pill(s) */}
                       {wallets.length > 0 && (
-                        <div
-                          className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1"
-                          style={{
-                            background: buttonGlassBg,
-                            border: buttonGlassBorder,
-                            color: "var(--text-tertiary)",
-                          }}
-                        >
-                          <span className="truncate max-w-[75px]">
-                            {wallets.find((w) => w.id === it.walletId)?.name ||
-                              it.walletName ||
-                              wallets[0].name}
-                          </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveItemForWallet({
+                                itemId: it.id,
+                                field: "walletId",
+                              });
+                            }}
+                            className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                            style={{
+                              background: buttonGlassBg,
+                              border: buttonGlassBorder,
+                              color: "var(--text-secondary)",
+                            }}
+                            title={isIndonesian ? "Pilih Akun" : "Select Account"}
+                          >
+                            <CreditCard size={9.5} strokeWidth={2} />
+                            <span className="truncate max-w-[80px]">
+                              {wallets.find((w) => w.id === it.walletId)?.name ||
+                                it.walletName ||
+                                wallets[0].name}
+                            </span>
+                          </button>
+
+                          {isTransfer && (
+                            <>
+                              <ArrowRight
+                                size={9}
+                                strokeWidth={2}
+                                className="text-[var(--text-tertiary)]"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveItemForWallet({
+                                    itemId: it.id,
+                                    field: "destinationWalletId",
+                                  });
+                                }}
+                                className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                                style={{
+                                  background: buttonGlassBg,
+                                  border: buttonGlassBorder,
+                                  color: "var(--text-secondary)",
+                                }}
+                                title={
+                                  isIndonesian
+                                    ? "Pilih Akun Tujuan"
+                                    : "Select Destination Account"
+                                }
+                              >
+                                <CreditCard size={9.5} strokeWidth={2} />
+                                <span className="truncate max-w-[80px]">
+                                  {wallets.find(
+                                    (w) => w.id === it.destinationWalletId,
+                                  )?.name ||
+                                    it.destinationWalletName ||
+                                    wallets.find((w) => w.id !== it.walletId)
+                                      ?.name ||
+                                    (isIndonesian ? "Tujuan" : "Destination")}
+                                </span>
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
 
@@ -685,7 +802,10 @@ export function BatchTransactionReviewSheet({
           <div
             className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 backdrop-blur-md"
             style={{ background: "rgba(0, 0, 0, 0.45)" }}
-            onClick={() => setActiveItemForCategory(null)}
+            onClick={() => {
+              setActiveItemForCategory(null);
+              setSearchCategoryQuery("");
+            }}
           >
             <div
               className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[75vh] flex flex-col"
@@ -704,42 +824,270 @@ export function BatchTransactionReviewSheet({
               onClick={(e) => e.stopPropagation()}
             >
               <div
-                className="flex items-center justify-between pb-2.5 mb-2 border-b"
+                className="flex items-center justify-between pb-2.5 mb-2.5 border-b"
                 style={{ borderColor: hairlineDivider }}
               >
-                <h4 className="text-[13.5px] font-bold">
-                  {isIndonesian ? "Pilih Kategori" : "Select Category"}
-                </h4>
+                <div>
+                  <h4 className="text-[13.5px] font-bold">
+                    {isIndonesian ? "Pilih Kategori" : "Select Category"}
+                  </h4>
+                  {activeCategoryItem && (
+                    <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                      {activeCategoryItem.cleanDescription || activeCategoryItem.description}
+                    </p>
+                  )}
+                </div>
                 <button
                   type="button"
-                  onClick={() => setActiveItemForCategory(null)}
+                  onClick={() => {
+                    setActiveItemForCategory(null);
+                    setSearchCategoryQuery("");
+                  }}
                   className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 >
                   <X size={13} strokeWidth={2} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-0.5 no-scrollbar">
-                {categories.map((c) => (
+              {/* Search Bar */}
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-xl mb-2.5 border"
+                style={{
+                  background: buttonGlassBg,
+                  borderColor: buttonGlassBorder,
+                }}
+              >
+                <Search size={13} strokeWidth={2} className="text-[var(--text-tertiary)] shrink-0" />
+                <input
+                  type="text"
+                  value={searchCategoryQuery}
+                  onChange={(e) => setSearchCategoryQuery(e.target.value)}
+                  placeholder={isIndonesian ? "Cari kategori..." : "Search categories..."}
+                  className="bg-transparent text-[12.5px] font-medium text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none w-full"
+                  autoFocus
+                />
+                {searchCategoryQuery && (
                   <button
-                    key={c.id}
                     type="button"
-                    onClick={() => handleSelectCategory(c)}
-                    className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
+                    onClick={() => setSearchCategoryQuery("")}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <IconRenderer icon={c.emoji} size="w-4 h-4" />
-                      <span className="text-[12.5px] font-medium">
-                        {c.name}
-                      </span>
-                    </div>
-                    <ChevronRight
-                      size={13}
-                      strokeWidth={2}
-                      className="text-[var(--text-tertiary)]"
-                    />
+                    <X size={12} />
                   </button>
-                ))}
+                )}
+              </div>
+
+              {/* Category List */}
+              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0">
+                {filteredCategories.length > 0 ? (
+                  filteredCategories.map((c) => {
+                    const isSelected = activeCategoryItem?.suggestedCategoryId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelectCategory(c)}
+                        className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
+                        style={{
+                          background: isSelected
+                            ? isDark
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : "rgba(0, 0, 0, 0.04)"
+                            : "transparent",
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <IconRenderer icon={c.emoji} size="w-4 h-4" />
+                          <span
+                            className="text-[12.5px] font-medium truncate"
+                            style={{
+                              color: isSelected
+                                ? "var(--text-primary)"
+                                : "var(--text-secondary)",
+                            }}
+                          >
+                            {c.name}
+                          </span>
+                        </div>
+                        {isSelected ? (
+                          <Check size={13} strokeWidth={2.5} className="text-[var(--text-primary)] shrink-0" />
+                        ) : (
+                          <ChevronRight
+                            size={13}
+                            strokeWidth={2}
+                            className="text-[var(--text-tertiary)] shrink-0"
+                          />
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="py-6 text-center text-[11.5px] text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Kategori tidak ditemukan" : "No category found"}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 6. Account / Wallet Picker Popover Sheet ── */}
+        {activeItemForWallet && (
+          <div
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 backdrop-blur-md"
+            style={{ background: "rgba(0, 0, 0, 0.45)" }}
+            onClick={() => {
+              setActiveItemForWallet(null);
+              setSearchWalletQuery("");
+            }}
+          >
+            <div
+              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[75vh] flex flex-col"
+              style={{
+                background: isDark
+                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
+                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
+                borderColor: buttonGlassBorder,
+                color: "var(--text-primary)",
+                boxShadow: isDark
+                  ? "0 18px 48px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+                  : "0 14px 36px rgba(0, 0, 0, 0.1), inset 0 1px 0 #ffffff",
+                backdropFilter: "blur(24px) saturate(180%)",
+                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="flex items-center justify-between pb-2.5 mb-2.5 border-b"
+                style={{ borderColor: hairlineDivider }}
+              >
+                <div>
+                  <h4 className="text-[13.5px] font-bold">
+                    {activeItemForWallet.field === "destinationWalletId"
+                      ? isIndonesian
+                        ? "Pilih Akun Tujuan"
+                        : "Select Destination Account"
+                      : isIndonesian
+                        ? "Pilih Akun Sumber"
+                        : "Select Source Account"}
+                  </h4>
+                  {activeWalletItem && (
+                    <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                      {activeWalletItem.cleanDescription || activeWalletItem.description}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveItemForWallet(null);
+                    setSearchWalletQuery("");
+                  }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                >
+                  <X size={13} strokeWidth={2} />
+                </button>
+              </div>
+
+              {/* Search Bar (if more than 3 wallets) */}
+              {wallets.length > 3 && (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl mb-2.5 border"
+                  style={{
+                    background: buttonGlassBg,
+                    borderColor: buttonGlassBorder,
+                  }}
+                >
+                  <Search size={13} strokeWidth={2} className="text-[var(--text-tertiary)] shrink-0" />
+                  <input
+                    type="text"
+                    value={searchWalletQuery}
+                    onChange={(e) => setSearchWalletQuery(e.target.value)}
+                    placeholder={isIndonesian ? "Cari akun..." : "Search account..."}
+                    className="bg-transparent text-[12.5px] font-medium text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none w-full"
+                    autoFocus
+                  />
+                  {searchWalletQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchWalletQuery("")}
+                      className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Wallet List */}
+              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0">
+                {filteredWallets.length > 0 ? (
+                  filteredWallets.map((w) => {
+                    const currentId =
+                      activeItemForWallet.field === "destinationWalletId"
+                        ? activeWalletItem?.destinationWalletId
+                        : (activeWalletItem?.walletId || wallets[0]?.id);
+                    const isSelected = currentId === w.id;
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => handleSelectWallet(w)}
+                        className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
+                        style={{
+                          background: isSelected
+                            ? isDark
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : "rgba(0, 0, 0, 0.04)"
+                            : "transparent",
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            style={{
+                              background: buttonGlassBg,
+                              border: buttonGlassBorder,
+                              color: "var(--text-primary)",
+                            }}
+                          >
+                            <CreditCard size={13} strokeWidth={2} />
+                          </div>
+                          <div className="min-w-0">
+                            <span
+                              className="text-[12.5px] font-medium truncate block"
+                              style={{
+                                color: isSelected
+                                  ? "var(--text-primary)"
+                                  : "var(--text-secondary)",
+                              }}
+                            >
+                              {w.name}
+                            </span>
+                            {w.balance !== undefined && (
+                              <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums block">
+                                {formatRupiah(w.balance)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected ? (
+                          <Check size={13} strokeWidth={2.5} className="text-[var(--text-primary)] shrink-0" />
+                        ) : (
+                          <ChevronRight
+                            size={13}
+                            strokeWidth={2}
+                            className="text-[var(--text-tertiary)] shrink-0"
+                          />
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="py-6 text-center text-[11.5px] text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Akun tidak ditemukan" : "No account found"}
+                  </div>
+                )}
               </div>
             </div>
           </div>

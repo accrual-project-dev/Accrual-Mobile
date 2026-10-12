@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 export type SupportedCurrency =
   | "IDR"
@@ -343,16 +343,30 @@ export function useCurrency() {
     [preferredCurrency, ratesData.rates]
   );
 
-  return {
-    preferredCurrency,
-    setPreferredCurrency,
-    rates: ratesData.rates,
-    lastUpdated: ratesData.timestamp,
-    isLoading,
-    refreshRates,
-    convertFromIdr,
-    convertToIdr,
-    formatWithPreferred,
-    formatCompactWithPreferred,
-  };
+  return useMemo(
+    () => ({
+      preferredCurrency,
+      setPreferredCurrency,
+      rates: ratesData.rates,
+      lastUpdated: ratesData.timestamp,
+      isLoading,
+      refreshRates,
+      convertFromIdr,
+      convertToIdr,
+      formatWithPreferred,
+      formatCompactWithPreferred,
+    }),
+    [
+      preferredCurrency,
+      setPreferredCurrency,
+      ratesData.rates,
+      ratesData.timestamp,
+      isLoading,
+      refreshRates,
+      convertFromIdr,
+      convertToIdr,
+      formatWithPreferred,
+      formatCompactWithPreferred,
+    ]
+  );
 }

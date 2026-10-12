@@ -170,6 +170,36 @@ describe("Indonesian NLP Stemming & Conversational Voice Test Suite", () => {
       expect(normalizeSpokenIndonesianNumbers("bensin seratus ribu")).toBe("bensin 100000");
       expect(normalizeSpokenIndonesianNumbers("gaji lima juta")).toBe("gaji 5000000");
       expect(normalizeSpokenIndonesianNumbers("beli makan 50 ribu")).toBe("beli makan 50000");
+      expect(normalizeSpokenIndonesianNumbers("servis motor 1,5 juta")).toBe("servis motor 1500000");
+      expect(normalizeSpokenIndonesianNumbers("laptop dua koma lima juta")).toBe("laptop 2500000");
+    });
+
+    it("parses transaction with fractional and decimal millions: 'gaji 1.5 juta bca'", () => {
+      const result = parseNaturalTransaction("gaji 1.5 juta bca", mockCategories, mockWallets, refDate);
+      expect(result.amount).toBe(1500000);
+      expect(result.type).toBe("income");
+      expect(result.walletName).toBe("BCA");
+    });
+
+    it("parses spoken fractional million: 'gaji satu koma lima juta bca'", () => {
+      const result = parseNaturalTransaction("gaji satu koma lima juta bca", mockCategories, mockWallets, refDate);
+      expect(result.amount).toBe(1500000);
+      expect(result.type).toBe("income");
+      expect(result.walletName).toBe("BCA");
+    });
+
+    it("parses vernacular slang numerals: 'goban', 'noban', 'nopek', 'pego'", () => {
+      const rGoban = parseNaturalTransaction("kopi goban bca", mockCategories, mockWallets, refDate);
+      expect(rGoban.amount).toBe(50000);
+
+      const rNoban = parseNaturalTransaction("bensin noban cash", mockCategories, mockWallets, refDate);
+      expect(rNoban.amount).toBe(20000);
+
+      const rNopek = parseNaturalTransaction("baju nopek bca", mockCategories, mockWallets, refDate);
+      expect(rNopek.amount).toBe(200000);
+
+      const rPego = parseNaturalTransaction("sepatu pego bca", mockCategories, mockWallets, refDate);
+      expect(rPego.amount).toBe(150000);
     });
 
     it("parses transaction with spoken Indonesian numbers: 'makan lima puluh ribu jago'", () => {

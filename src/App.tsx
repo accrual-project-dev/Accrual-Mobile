@@ -32,9 +32,7 @@ import { useLanguage } from "./contexts/LanguageContext";
 import { useToast } from "./contexts/ToastContext";
 import { triggerSuccessHaptic, triggerHaptic } from "./lib/haptics";
 import { format } from "date-fns";
-import { formatRupiah } from "./lib/utils";
 import {
-  showNativeLocalNotification,
   syncWeeklyDigestNotification,
   syncMonthEndReviewNotification,
   checkBudgetThresholdAlerts,
@@ -355,7 +353,7 @@ function AppShell() {
       }
 
       if (res.action === "transaction") {
-        if (res.autoSave && res.prefilledValues?.amount && res.prefilledValues.amount > 0) {
+        if (res.prefilledValues?.amount && res.prefilledValues.amount > 0) {
           const isUUID = (val?: string | null) =>
             Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
 
@@ -394,7 +392,6 @@ function AppShell() {
           const txDate = res.prefilledValues.date || new Date();
           const occurred_on = format(txDate, "yyyy-MM-dd");
           const note = res.prefilledValues.note || "";
-          const targetSpaceId = activeSpaceId && activeSpaceId !== "all" ? activeSpaceId : "personal";
 
           const catObj = categories.find((c) => c.id === targetCatId);
           const walObj = wallets.find((w) => w.id === targetWalletId);
@@ -407,62 +404,34 @@ function AppShell() {
           const toWalName =
             toWalObj?.name || res.matchedToWalletName || "";
 
-          // 1. In-App Dynamic Island HUD (Instant optimistic visual feedback)
-          setRecordedShortcutTx({
+          // All automated transactions via Shortcuts/deep links route to the Review sheet first
+          const reviewItem: ParsedStatementItem = {
+            id: `shortcut-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            date: occurred_on,
+            time: res.prefilledValues.time || format(txDate, "HH:mm"),
+            description: note || (isIndonesian ? "Pintasan Transaksi" : "Shortcut Transaction"),
+            cleanDescription: note || (isIndonesian ? "Pintasan Transaksi" : "Shortcut Transaction"),
             amount: targetAmount,
             type: targetType,
-            categoryName:
-              targetType === "transfer"
-                ? (isIndonesian ? "Transfer" : "Transfer")
-                : catName,
-            walletName:
-              targetType === "transfer"
-                ? `${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
-                : walName,
-            date: format(txDate, "d MMM yyyy"),
-            note: note,
-          });
+            walletId: targetWalletId,
+            walletName: walName,
+            destinationWalletId: targetToWalletId,
+            destinationWalletName: toWalName,
+            suggestedCategoryId: targetType === "transfer" ? null : targetCatId,
+            suggestedCategoryName: targetType === "transfer" ? null : catName,
+            suggestedCategoryEmoji: catObj?.emoji || null,
+            isDuplicate: false,
+            selected: true,
+            raw: rawUrl,
+            confidence: 0.9,
+            needsReview: !res.prefilledValues.category_id && targetType !== "transfer",
+          };
 
-          // 2. Native iOS Local Notification (Instant local banner on lock screen / banner)
-          const notifTitle = isIndonesian ? "Transaksi Berhasil Dicatat" : "Transaction Recorded";
-          const notifBody =
-            targetType === "transfer"
-              ? `${formatRupiah(targetAmount)} • ${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
-              : `${formatRupiah(targetAmount)} • ${catName} • ${walName}`;
-          showNativeLocalNotification({
-            title: notifTitle,
-            body: notifBody,
-          }).catch(() => {});
-          triggerSuccessHaptic();
-
-          // 3. Mutate transaction in background with sanitized payload
-          addTxMutation.mutate(
-            {
-              amount: targetAmount,
-              type: targetType,
-              category_id: targetType === "transfer" ? null : targetCatId,
-              wallet_id: targetWalletId,
-              to_wallet_id: targetToWalletId,
-              occurred_on,
-              created_at: txDate.toISOString(),
-              note: note || undefined,
-              ledger_id: targetSpaceId,
-              space_id: targetSpaceId,
-            } as any,
-            {
-              onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: ["transactions"] });
-                queryClient.invalidateQueries({ queryKey: ["wallets"] });
-              },
-              onError: (err) => {
-                console.error("Auto-save failed, fallback to modal:", err);
-                if (res.prefilledValues) {
-                  setPrefilledValues(res.prefilledValues);
-                }
-                setAddSheetOpen(true);
-              },
-            }
-          );
+          triggerHaptic("medium");
+          setBatchReviewItems([reviewItem]);
+          setBatchSourceTitle(isIndonesian ? "Pintasan Apple / Shortcuts" : "Apple Shortcuts");
+          setBatchReviewOpen(true);
+          return;
         } else {
           if (res.prefilledValues) {
             setPrefilledValues(res.prefilledValues);
@@ -791,7 +760,7 @@ function AppShell() {
         setSyncProgress(75);
         await new Promise((r) => setTimeout(r, 280));
 
-        setSyncStatusText("Vault ready. Welcome to Trouvaille.");
+        setSyncStatusText("Vault ready. Welcome to Accrual.");
         setSyncProgress(100);
         await new Promise((r) => setTimeout(r, 300));
 
@@ -922,7 +891,7 @@ function AppShell() {
           setSyncProgress(100);
           setSyncStatusText(
             transactionsReady
-              ? "Ready! Welcome to Trouvaille..."
+              ? "Ready! Welcome to Accrual..."
               : "Opening with limited data...",
           );
           await new Promise((r) => setTimeout(r, 500));

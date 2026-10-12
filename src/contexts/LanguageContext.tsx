@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import {
   type SupportedLanguage,
   type LanguageMeta,
@@ -41,13 +41,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return "en"; // Default is English
   });
 
-  const setLanguage = (newLang: SupportedLanguage) => {
+  const setLanguage = useCallback((newLang: SupportedLanguage) => {
     setLanguageState(newLang);
     try {
       localStorage.setItem(LANGUAGE_STORAGE_KEY, newLang);
       document.documentElement.lang = newLang;
     } catch {}
-  };
+  }, []);
 
   useEffect(() => {
     try {
@@ -55,24 +55,24 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [language]);
 
-  const t = (path: string, fallback?: string): string => {
+  const t = useCallback((path: string, fallback?: string): string => {
     const val = resolveTranslation(language, path);
     if (val !== undefined) return val;
     const enVal = resolveTranslation("en", path);
     if (enVal !== undefined) return enVal;
     return fallback !== undefined ? fallback : path;
-  };
+  }, [language]);
 
-  const meta = SUPPORTED_LANGUAGES[language] || SUPPORTED_LANGUAGES.en;
+  const meta = useMemo(() => SUPPORTED_LANGUAGES[language] || SUPPORTED_LANGUAGES.en, [language]);
 
-  const value: LanguageContextValue = {
+  const value = useMemo<LanguageContextValue>(() => ({
     language,
     setLanguage,
     meta,
     isIndonesian: language === "id",
     isEnglish: language === "en",
     t,
-  };
+  }), [language, setLanguage, meta, t]);
 
   return (
     <LanguageContext.Provider value={value}>

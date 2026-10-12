@@ -221,14 +221,22 @@ export function ReceiptScanModal({
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: false,
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
+          },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+      }
 
       streamRef.current = stream;
       if (videoRef.current) {
@@ -370,56 +378,6 @@ export function ReceiptScanModal({
     return wallets.filter((w) => w.name.toLowerCase().includes(q));
   }, [wallets, searchToWalletQuery]);
 
-  /**
-   * Downsamples large camera/gallery photos (e.g. 12-48MP) to max 1600px
-   * on an offscreen HTML5 canvas to prevent webview OOM and speed up OCR by ~60%.
-   */
-  const downsampleImageIfNeeded = async (
-    fileOrBlob: Blob | File,
-    maxDim = 1600,
-  ): Promise<Blob> => {
-    return new Promise((resolve) => {
-      if (fileOrBlob.type && !fileOrBlob.type.startsWith("image/")) {
-        resolve(fileOrBlob);
-        return;
-      }
-      const img = new Image();
-      const url = URL.createObjectURL(fileOrBlob);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const { naturalWidth: width, naturalHeight: height } = img;
-        if (width <= maxDim && height <= maxDim) {
-          resolve(fileOrBlob);
-          return;
-        }
-        const scale = Math.min(maxDim / width, maxDim / height);
-        const targetW = Math.round(width * scale);
-        const targetH = Math.round(height * scale);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = targetW;
-        canvas.height = targetH;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(fileOrBlob);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, targetW, targetH);
-        canvas.toBlob(
-          (blob) => {
-            resolve(blob || fileOrBlob);
-          },
-          "image/jpeg",
-          0.88,
-        );
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        resolve(fileOrBlob);
-      };
-      img.src = url;
-    });
-  };
 
   const handleProcessMedia = async (
     fileOrBlob: Blob | File,
@@ -439,13 +397,12 @@ export function ReceiptScanModal({
       setProgressPct(8);
       setProgressStatus(
         isIndonesian
-          ? "Mengoptimalkan resolusi struk..."
-          : "Optimizing receipt resolution...",
+          ? "Menganalisis teks struk..."
+          : "Analyzing receipt text...",
       );
-      const optimizedBlob = await downsampleImageIfNeeded(fileOrBlob, 1600);
 
       const result: OCRScanResult = await scanReceiptOrSlip(
-        optimizedBlob,
+        fileOrBlob,
         wallets,
         categories,
         (pct, status) => {
@@ -524,8 +481,9 @@ export function ReceiptScanModal({
       } else {
         setTime(format(result.slip.date || new Date(), "HH:mm"));
       }
-      setMerchant(result.slip.merchantOrRecipient || "");
-      setNote("");
+      const extractedMerchant = result.slip.merchantOrRecipient || "";
+      setMerchant(extractedMerchant);
+      setNote(extractedMerchant);
       setType(result.slip.type || "expense");
       setToWalletId(result.slip.destinationWalletId || null);
       if (result.slip.adminFee && result.slip.adminFee > 0) {
@@ -800,7 +758,11 @@ export function ReceiptScanModal({
       return;
     }
 
-    const finalDescription = note.trim() ? note.trim() : null;
+    const finalDescription = note.trim()
+      ? note.trim()
+      : merchant.trim()
+        ? merchant.trim()
+        : null;
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -866,6 +828,26 @@ export function ReceiptScanModal({
       saveMerchantMemory(finalDescription, effectiveCatId, effectiveCategory.name);
     }
 
+    if (includeAdminFee && adminFeeAmount > 0 && effectiveWalletId) {
+      saveAdminFeeIfRequested();
+      showToast(
+        isIndonesian
+          ? "2 transaksi dicatat (pokok & biaya admin)"
+          : "2 transactions recorded (principal & admin fee)",
+        "add",
+        () => {},
+      );
+    } else {
+      showToast(
+        isIndonesian
+          ? "Transaksi berhasil disimpan"
+          : "Transaction saved successfully",
+        "add",
+        () => {},
+      );
+    }
+    onClose();
+
     addTx.mutate(
       {
         type,
@@ -878,27 +860,6 @@ export function ReceiptScanModal({
         created_at: txDate.toISOString(),
       },
       {
-        onSuccess: () => {
-          if (includeAdminFee && adminFeeAmount > 0 && effectiveWalletId) {
-            saveAdminFeeIfRequested();
-            showToast(
-              isIndonesian
-                ? "2 transaksi dicatat (pokok & biaya admin)"
-                : "2 transactions recorded (principal & admin fee)",
-              "add",
-              () => {},
-            );
-          } else {
-            showToast(
-              isIndonesian
-                ? "Transaksi berhasil disimpan"
-                : "Transaction saved successfully",
-              "add",
-              () => {},
-            );
-          }
-          onClose();
-        },
         onError: () => {
           showToast(
             isIndonesian
@@ -915,13 +876,16 @@ export function ReceiptScanModal({
   const handleOpenInFullForm = () => {
     triggerHaptic("light");
     const finalDescription = note.trim()
-      ? merchant.trim()
+      ? merchant.trim() &&
+        merchant.trim().toLowerCase() !== note.trim().toLowerCase()
         ? `${merchant.trim()} • ${note.trim()}`
         : note.trim()
       : merchant.trim() ||
         (type === "transfer"
-          ? (isIndonesian ? "Transfer" : "Transfer")
-          : (isIndonesian ? "Struk Hasil Pindai" : "Scanned Receipt"));
+          ? "Transfer"
+          : isIndonesian
+            ? "Struk Hasil Pindai"
+            : "Scanned Receipt");
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);

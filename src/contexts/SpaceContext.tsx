@@ -840,31 +840,51 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     [activeSpaceId, setActiveSpaceId, syncFromCloud],
   );
 
+  const contextValue = useMemo<SpaceContextValue>(
+    () => ({
+      activeSpaceId,
+      activeSpace,
+      spaces,
+      ledgers: spaces,
+      isSharedSpace,
+      currentUserRole,
+      defaultSpaceId,
+      setActiveSpaceId,
+      setDefaultLedger,
+      addCustomSpace,
+      updateCustomSpace,
+      deleteCustomSpace,
+      createLedger: addCustomSpace,
+      updateLedger: updateCustomSpace,
+      deleteLedger: deleteCustomSpace,
+      joinSharedSpace,
+      leaveSharedSpace,
+      refreshLedgers: syncFromCloud,
+      filterTransactionsBySpace,
+      calculateSpaceCashflow,
+    }),
+    [
+      activeSpaceId,
+      activeSpace,
+      spaces,
+      isSharedSpace,
+      currentUserRole,
+      defaultSpaceId,
+      setActiveSpaceId,
+      setDefaultLedger,
+      addCustomSpace,
+      updateCustomSpace,
+      deleteCustomSpace,
+      joinSharedSpace,
+      leaveSharedSpace,
+      syncFromCloud,
+      filterTransactionsBySpace,
+      calculateSpaceCashflow,
+    ],
+  );
+
   return (
-    <SpaceContext.Provider
-      value={{
-        activeSpaceId,
-        activeSpace,
-        spaces,
-        ledgers: spaces,
-        isSharedSpace,
-        currentUserRole,
-        defaultSpaceId,
-        setActiveSpaceId,
-        setDefaultLedger,
-        addCustomSpace,
-        updateCustomSpace,
-        deleteCustomSpace,
-        createLedger: addCustomSpace,
-        updateLedger: updateCustomSpace,
-        deleteLedger: deleteCustomSpace,
-        joinSharedSpace,
-        leaveSharedSpace,
-        refreshLedgers: syncFromCloud,
-        filterTransactionsBySpace,
-        calculateSpaceCashflow,
-      }}
-    >
+    <SpaceContext.Provider value={contextValue}>
       {children}
     </SpaceContext.Provider>
   );

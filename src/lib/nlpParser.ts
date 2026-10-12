@@ -72,8 +72,55 @@ export function normalizeSpokenIndonesianNumbers(input: string): string {
   // Common STT mishearings for "makan"
   s = s.replace(/\b(?:bahkan|makam|makann|mkn)\b/gi, "makan");
 
-  // Multi-word million phrases: e.g. "satu juta", "dua juta", "setengah juta", "sejuta"
+  // Pre-normalize common slang / STT number suffixes & brands
+  s = s.replace(/\brebu\b/gi, "ribu");
+  s = s.replace(/\b(?:kris|chris|keris)\b/gi, "qris");
+  s = s.replace(/\bgo\s+pay\b/gi, "gopay");
+  s = s.replace(/\bshopee\s+pay\b/gi, "shopeepay");
+  s = s.replace(/\bspay\b/gi, "shopeepay");
+  s = s.replace(/\bb\s+c\s+a\b/gi, "bca");
+
+  // Multi-word million phrases with fractions:
+  s = s.replace(/\b(?:satu|1)\s+setengah\s+juta\b/gi, "1500000");
+  s = s.replace(/\bdua\s+setengah\s+juta\b/gi, "2500000");
+  s = s.replace(/\btiga\s+setengah\s+juta\b/gi, "3500000");
+  s = s.replace(/\bempat\s+setengah\s+juta\b/gi, "4500000");
+  s = s.replace(/\blima\s+setengah\s+juta\b/gi, "5500000");
   s = s.replace(/\bsetengah\s+juta\b/gi, "500000");
+  s = s.replace(/\b(?:sejuta|satu\s+juta)\s+lima\s+ratus\b/gi, "1500000");
+  s = s.replace(/\bdua\s+juta\s+lima\s+ratus\b/gi, "2500000");
+
+  // Decimal / comma millions (e.g. "1.5 juta", "1,5 juta", "2.5 jt", "0.5 juta")
+  s = s.replace(/\b(\d+)[.,](\d+)\s*(?:juta|jt)\b/gi, (_, whole, frac) => {
+    const val = parseFloat(`${whole}.${frac}`) * 1000000;
+    return `${Math.round(val)}`;
+  });
+
+  const digits: Record<string, number> = {
+    satu: 1,
+    dua: 2,
+    tiga: 3,
+    empat: 4,
+    lima: 5,
+    enam: 6,
+    tujuh: 7,
+    delapan: 8,
+    sembilan: 9,
+  };
+
+  // Spoken fractional millions: e.g. "satu koma lima juta", "dua koma lima juta"
+  s = s.replace(
+    /\b(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\s+koma\s+(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|\d+)\s*(?:juta|jt)\b/gi,
+    (_, whole, frac) => {
+      const wVal = digits[whole.toLowerCase()] || 0;
+      const isWord = digits[frac.toLowerCase()] !== undefined;
+      const fVal = digits[frac.toLowerCase()] || parseInt(frac, 10) || 0;
+      const fracNum = isWord ? fVal / 10 : fVal / Math.pow(10, frac.length);
+      const val = (wVal + fracNum) * 1000000;
+      return `${Math.round(val)}`;
+    },
+  );
+
   s = s.replace(/\b(?:satu\s+juta|sejuta)\b/gi, "1000000");
   s = s.replace(/\bdua\s+juta\b/gi, "2000000");
   s = s.replace(/\btiga\s+juta\b/gi, "3000000");
@@ -90,7 +137,13 @@ export function normalizeSpokenIndonesianNumbers(input: string): string {
   s = s.replace(/\bseratus\s+dua\s+puluh\s+ribu\b/gi, "120000");
   s = s.replace(/\bseratus\s+tujuh\s+puluh\s+lima\s+ribu\b/gi, "175000");
   s = s.replace(/\bseratus\s+ribu\b/gi, "100000");
-  s = s.replace(/\bdua\s+ratus\s+lima\s+puluh\s+ribu\b/gi, "250000");
+  s = s.replace(
+    /\b(dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\s+ratus\s+lima\s+puluh\s+ribu\b/gi,
+    (_, hundreds) => {
+      const hVal = digits[hundreds.toLowerCase()] || 0;
+      return `${hVal * 100000 + 50000}`;
+    },
+  );
   s = s.replace(/\bdua\s+ratus\s+ribu\b/gi, "200000");
   s = s.replace(/\btiga\s+ratus\s+ribu\b/gi, "300000");
   s = s.replace(/\bempat\s+ratus\s+ribu\b/gi, "400000");
@@ -99,18 +152,6 @@ export function normalizeSpokenIndonesianNumbers(input: string): string {
   s = s.replace(/\btujuh\s+ratus\s+ribu\b/gi, "700000");
   s = s.replace(/\bdelapan\s+ratus\s+ribu\b/gi, "800000");
   s = s.replace(/\bsembilan\s+ratus\s+ribu\b/gi, "900000");
-
-  const digits: Record<string, number> = {
-    satu: 1,
-    dua: 2,
-    tiga: 3,
-    empat: 4,
-    lima: 5,
-    enam: 6,
-    tujuh: 7,
-    delapan: 8,
-    sembilan: 9,
-  };
 
   // Pattern: "(dua|tiga|empat|lima|enam|tujuh|delapan|sembilan) puluh (satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan) ribu"
   s = s.replace(
@@ -154,7 +195,7 @@ export function normalizeSpokenIndonesianNumbers(input: string): string {
   );
 
   // Numeric + "ribu" (e.g. "50 ribu" -> "50000", "25 ribu" -> "25000")
-  s = s.replace(/\b(\d+)\s+ribu\b/gi, "$1000");
+  s = s.replace(/\b(\d+)\s+ribu\b/gi, (_, n) => `${n}000`);
 
   return s;
 }
@@ -497,9 +538,9 @@ const INDONESIAN_SLANG_AMOUNTS: Array<{
     tokenName: "cepek ceng",
   },
   {
-    pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(pego\s+ceng|pego\s+ribu)\b/i,
+    pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(pego(?:an)?(?:\s+ceng|\s+ribu)?)\b/i,
     baseValue: 150000,
-    tokenName: "pego ceng",
+    tokenName: "pego",
   },
   {
     pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(sejutaan|sejuta|satu\s+juta)\b/i,
@@ -507,12 +548,17 @@ const INDONESIAN_SLANG_AMOUNTS: Array<{
     tokenName: "sejuta",
   },
   {
-    pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(gocap(?:an)?)\b/i,
+    pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(nopek(?:an)?)\b/i,
+    baseValue: 200000,
+    tokenName: "nopek",
+  },
+  {
+    pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(gocap(?:an)?|goban(?:an)?)\b/i,
     baseValue: 50000,
     tokenName: "gocap",
   },
   {
-    pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(nocap)\b/i,
+    pattern: /\b(?:(\d+|se|satu|dua|tiga|empat|lima)\s+)?(nocap|noban(?:an)?)\b/i,
     baseValue: 20000,
     tokenName: "nocap",
   },

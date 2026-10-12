@@ -74,6 +74,9 @@ interface FinancialIntelligenceOptions {
   activeMonthDate?: Date;
 }
 
+const EMPTY_CATEGORIES: Category[] = [];
+const EMPTY_CATEGORY_OVERRIDES: Record<string, ExpenseClassification> = {};
+
 export function useFinancialIntelligence({
   transactions,
   budgetTarget,
@@ -82,16 +85,17 @@ export function useFinancialIntelligence({
   liquidAssets,
   liquidAccounts,
   bills,
-  categories = [],
-  categoryOverrides = {},
-  activeMonthDate = new Date(),
+  categories = EMPTY_CATEGORIES,
+  categoryOverrides = EMPTY_CATEGORY_OVERRIDES,
+  activeMonthDate,
 }: FinancialIntelligenceOptions) {
   const { language } = useLanguage();
   const isIndonesian = language === "id";
+  const activeMonthTimestamp = activeMonthDate ? activeMonthDate.getTime() : null;
 
   return useMemo(() => {
     const now = new Date();
-    const referenceDate = activeMonthDate;
+    const referenceDate = activeMonthDate ?? now;
     const isCurrentReferenceMonth = isSameMonth(referenceDate, now);
     const currentYear = referenceDate.getFullYear();
     const currentMonth = referenceDate.getMonth() + 1;
@@ -245,10 +249,10 @@ export function useFinancialIntelligence({
     // 10. Monthly Financial Review (for Statistics Page)
     const activeReviewTxs = getMonthTransactions(
       transactions,
-      activeMonthDate.getFullYear(),
-      activeMonthDate.getMonth() + 1,
+      referenceDate.getFullYear(),
+      referenceDate.getMonth() + 1,
     );
-    const activePrevReviewDate = subMonths(activeMonthDate, 1);
+    const activePrevReviewDate = subMonths(referenceDate, 1);
     const activePrevReviewTxs = getMonthTransactions(
       transactions,
       activePrevReviewDate.getFullYear(),
@@ -260,7 +264,7 @@ export function useFinancialIntelligence({
       activePrevReviewTxs,
       categories,
       budget,
-      activeMonthDate,
+      referenceDate,
       language,
     );
 
@@ -456,7 +460,7 @@ export function useFinancialIntelligence({
     bills,
     categories,
     categoryOverrides,
-    activeMonthDate,
+    activeMonthTimestamp,
     language,
     isIndonesian,
   ]);

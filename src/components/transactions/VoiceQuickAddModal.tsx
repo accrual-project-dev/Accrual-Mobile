@@ -22,6 +22,7 @@ import {
 } from "../../hooks/useTransactions";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import {
@@ -302,6 +303,7 @@ export function VoiceQuickAddModal({
   onOpenForm,
 }: VoiceQuickAddModalProps) {
   const { theme } = useTheme();
+  const { isIndonesian } = useLanguage();
   const isDark = theme !== "light";
 
   const { data: categories = [] } = useCategories();
@@ -317,6 +319,12 @@ export function VoiceQuickAddModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const recognitionRef = useRef<any>(null);
+  const userExplicitlyStoppedRef = useRef(false);
+  const isOpenRef = useRef(isOpen);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   // Track virtual keyboard visibility via visualViewport
   useEffect(() => {
@@ -364,6 +372,7 @@ export function VoiceQuickAddModal({
 
   const startRecognition = useCallback(() => {
     stopRecognition();
+    userExplicitlyStoppedRef.current = false;
 
     const SpeechRec =
       (window as any).SpeechRecognition ||
@@ -372,7 +381,9 @@ export function VoiceQuickAddModal({
     if (!SpeechRec) {
       setSpeechSupported(false);
       showToast(
-        "Speech recognition is not supported on this browser. You can type directly.",
+        isIndonesian
+          ? "Pengenalan suara tidak didukung di browser ini. Anda dapat mengetik langsung."
+          : "Speech recognition is not supported on this browser. You can type directly.",
         "info",
         null,
         2500,
@@ -386,7 +397,7 @@ export function VoiceQuickAddModal({
       const rec = new SpeechRec();
       rec.continuous = true;
       rec.interimResults = true;
-      rec.lang = "id-ID";
+      rec.lang = isIndonesian ? "id-ID" : "en-US";
 
       rec.onstart = () => {
         setIsListening(true);
@@ -398,25 +409,40 @@ export function VoiceQuickAddModal({
         for (let i = 0; i < event.results.length; i++) {
           current += event.results[i][0].transcript + " ";
         }
-        setTranscript(current.trim());
+        const cleaned = current.trim();
+        if (cleaned) {
+          setTranscript(cleaned);
+        }
       };
 
       rec.onerror = (e: any) => {
         console.warn("[VoiceQuickAdd] speech error:", e?.error || e);
         if (e?.error === "not-allowed" || e?.error === "service-not-allowed") {
+          userExplicitlyStoppedRef.current = true;
           showToast(
-            "Microphone permission is required. Please allow access in browser or app settings.",
+            isIndonesian
+              ? "Izin mikrofon diperlukan. Harap izinkan akses di pengaturan perangkat."
+              : "Microphone permission is required. Please allow access in browser or app settings.",
             "delete",
             null,
             3000,
           );
-        }
-        if (e?.error !== "no-speech") {
           setIsListening(false);
+        } else if (e?.error === "no-speech") {
+          // Keep listening; silence is normal during user pauses
+        } else if (e?.error !== "aborted") {
+          // Gracefully let onend recover if still open
         }
       };
 
       rec.onend = () => {
+        if (isOpenRef.current && !userExplicitlyStoppedRef.current) {
+          // Auto-restart if mobile browser closed speech due to silence pause
+          try {
+            rec.start();
+            return;
+          } catch {}
+        }
         setIsListening(false);
         recognitionRef.current = null;
       };
@@ -428,29 +454,34 @@ export function VoiceQuickAddModal({
       console.warn("[VoiceQuickAdd] Failed to start speech recognition:", err);
       stopRecognition();
     }
-  }, [stopRecognition, showToast]);
+  }, [stopRecognition, showToast, isIndonesian]);
 
   // Speech Recognition lifecycle
   useEffect(() => {
     if (!isOpen) {
+      userExplicitlyStoppedRef.current = true;
       stopRecognition();
       setTranscript("");
       return;
     }
 
+    userExplicitlyStoppedRef.current = false;
     // Automatically initiate listening with fresh instance when opened
     startRecognition();
 
     return () => {
+      userExplicitlyStoppedRef.current = true;
       stopRecognition();
     };
   }, [isOpen, startRecognition, stopRecognition]);
 
   const toggleListening = () => {
     if (isListening) {
+      userExplicitlyStoppedRef.current = true;
       stopRecognition();
       triggerHaptic("light");
     } else {
+      userExplicitlyStoppedRef.current = false;
       startRecognition();
     }
   };
@@ -458,6 +489,7 @@ export function VoiceQuickAddModal({
   // User requested: Cancel button that cancels/stops speech WITHOUT closing the modal/page
   const handleCancelVoice = () => {
     triggerHaptic("light");
+    userExplicitlyStoppedRef.current = true;
     stopRecognition();
     setTranscript("");
   };
@@ -528,6 +560,8 @@ export function VoiceQuickAddModal({
     if (!hasAmount || !parsed.amount || isSubmitting) return;
 
     setIsSubmitting(true);
+    userExplicitlyStoppedRef.current = true;
+    stopRecognition();
     triggerSuccessHaptic();
 
     const txDate = parsed.date || new Date();
@@ -544,16 +578,22 @@ export function VoiceQuickAddModal({
         resolvedType === "transfer" ? resolvedToWallet?.id || null : null,
     };
 
+    showToast(
+      isIndonesian
+        ? "Transaksi berhasil dicatat via suara"
+        : "Transaction recorded via voice",
+      "add",
+      () => {},
+    );
+    onClose();
+
     addTx.mutate(payload, {
-      onSuccess: () => {
-        setIsSubmitting(false);
-        showToast("Transaction recorded via voice", "add", () => {});
-        onClose();
-      },
       onError: (err: any) => {
-        setIsSubmitting(false);
         showToast(
-          err?.message || "Failed to save transaction",
+          err?.message ||
+            (isIndonesian
+              ? "Gagal menyimpan transaksi"
+              : "Failed to save transaction"),
           "delete",
           () => {},
         );
@@ -565,6 +605,8 @@ export function VoiceQuickAddModal({
     if (parsedList.length === 0 || isSubmitting) return;
 
     setIsSubmitting(true);
+    userExplicitlyStoppedRef.current = true;
+    stopRecognition();
     triggerSuccessHaptic();
 
     const payloads = parsedList.map((item) => {
@@ -588,7 +630,10 @@ export function VoiceQuickAddModal({
       return {
         type: itemType,
         amount: item.amount || 0,
-        note: item.note || (transcript.trim() ? transcript.trim() : null),
+        note:
+          item.note ||
+          item.categoryName ||
+          (transcript.trim() ? transcript.trim() : null),
         occurred_on: format(txDate, "yyyy-MM-dd"),
         created_at: txDate.toISOString(),
         category_id: itemType === "transfer" ? null : itemCat?.id || null,
@@ -597,20 +642,22 @@ export function VoiceQuickAddModal({
       };
     });
 
+    showToast(
+      isIndonesian
+        ? `${payloads.length} transaksi berhasil dicatat via suara`
+        : `${payloads.length} transactions recorded via voice`,
+      "add",
+      () => {},
+    );
+    onClose();
+
     batchAddTx.mutate(payloads, {
-      onSuccess: () => {
-        setIsSubmitting(false);
-        showToast(
-          `${parsedList.length} transactions recorded via voice`,
-          "add",
-          () => {},
-        );
-        onClose();
-      },
       onError: (err: any) => {
-        setIsSubmitting(false);
         showToast(
-          err?.message || "Failed to save transactions",
+          err?.message ||
+            (isIndonesian
+              ? "Gagal menyimpan transaksi"
+              : "Failed to save transactions"),
           "delete",
           () => {},
         );
