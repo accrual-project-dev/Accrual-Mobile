@@ -22,7 +22,9 @@ import {
   Camera,
   Coffee,
   Calendar,
+  Smartphone,
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -86,6 +88,9 @@ export function AppleShortcutsGuideModal({
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
 
+  const [platform, setPlatform] = useState<"ios" | "android">(() =>
+    Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" ? "android" : "ios"
+  );
   const [activeTab, setActiveTab] = useState<InternalTab>(() => mapTab(initialTab));
   const [currentSlide, setCurrentSlide] = useState(0);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -100,6 +105,12 @@ export function AppleShortcutsGuideModal({
       setCurrentSlide(0);
     }
   }, [initialTab]);
+
+  const handlePlatformChange = (p: "ios" | "android") => {
+    triggerHaptic("light");
+    setPlatform(p);
+    setCurrentSlide(0);
+  };
 
   const handleTabChange = (tab: InternalTab) => {
     triggerHaptic("light");
@@ -168,8 +179,8 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pindai Layar Resi & Riwayat" : "Auto Screen & History Scanner (Back Tap)",
         desc: isIndonesian
-          ? "Saat berada di layar bukti pembayaran tunggal atau layar riwayat transaksi (GoPay, Shopee, BCA, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis membaca layar via Live Text OCR. Jika terdeteksi banyak transaksi, Trouvaille otomatis membuka lembar daftar periksa cerdas untuk Anda tinjau sebelum disimpan."
-          : "While viewing any payment receipt or transaction history list (GoPay, Shopee, BCA, etc.), double tap the back of your iPhone. Shortcuts reads the screen via Live Text. If multiple transactions are detected, Trouvaille automatically opens an interactive checklist review sheet before saving.",
+          ? "Saat berada di layar bukti pembayaran tunggal atau layar riwayat transaksi (GoPay, Shopee, BCA, dll.), ketuk 2x bodi belakang iPhone Anda. Pintasan otomatis membaca layar via Live Text OCR. Jika terdeteksi banyak transaksi, Accrual otomatis membuka lembar daftar periksa cerdas untuk Anda tinjau sebelum disimpan."
+          : "While viewing any payment receipt or transaction history list (GoPay, Shopee, BCA, etc.), double tap the back of your iPhone. Shortcuts reads the screen via Live Text. If multiple transactions are detected, Accrual automatically opens an interactive checklist review sheet before saving.",
         actionType: "test_hud",
         btnText: isIndonesian ? "Uji Kapsul Notifikasi" : "Test Dynamic Island HUD",
       },
@@ -186,14 +197,14 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 2,
-        title: isIndonesian ? "Langkah 2: Enkode URL & Buka Trouvaille" : "Step 2: URL Encode & Open Trouvaille",
+        title: isIndonesian ? "Langkah 2: Enkode URL & Buka Accrual" : "Step 2: URL Encode & Open Accrual",
         desc: isIndonesian
           ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Teks dari Gambar'.\n2. Tambah tindakan 'Buka URL' dan tempel skema di bawah, lalu ganti [Teks Terenkode] dengan variabel biru:"
           : "1. Add 'URL Encode' action for 'Text from Image' variable.\n2. Add 'Open URLs' action and paste the scheme below, replacing [URL Encoded Text] with the blue variable token:",
         actionType: "copy",
         copyText: isIndonesian
-          ? "trouvaille://capture?text=[Teks Terenkode]&autosave=true"
-          : "trouvaille://capture?text=[URL Encoded Text]&autosave=true",
+          ? "accrual://capture?text=[Teks Terenkode]&autosave=true"
+          : "accrual://capture?text=[URL Encoded Text]&autosave=true",
         copyLabel: isIndonesian ? "Skema Pindai Layar" : "Screen Scan Scheme",
         btnText: isIndonesian ? "Salin Skema Pindai Layar" : "Copy Screen Scan Scheme",
       },
@@ -214,8 +225,8 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pembaca Notifikasi Bank Otomatis" : "Auto Bank Notification Reader",
         desc: isIndonesian
-          ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, dll.), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Trouvaille di latar belakang tanpa sentuhan manual."
-          : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, etc.), your iPhone automatically reads the notification text and saves it directly to Trouvaille in the background without manual touch.",
+          ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, dll.), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Accrual di latar belakang tanpa sentuhan manual."
+          : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, etc.), your iPhone automatically reads the notification text and saves it directly to Accrual in the background without manual touch.",
         actionType: "test_hud",
         btnText: isIndonesian ? "Uji Kapsul Notifikasi" : "Test Dynamic Island HUD",
       },
@@ -232,14 +243,14 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 2,
-        title: isIndonesian ? "Langkah 2: Sambungkan Teks ke Trouvaille" : "Step 2: Connect Text to Trouvaille",
+        title: isIndonesian ? "Langkah 2: Sambungkan Teks ke Accrual" : "Step 2: Connect Text to Accrual",
         desc: isIndonesian
           ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Masukan Pintasan'.\n2. Tambah tindakan 'Buka URL' dan masukkan skema di bawah, lalu ganti [Teks Terenkode] dengan variabel biru:"
           : "1. Add 'URL Encode' action for 'Shortcut Input' variable.\n2. Add 'Open URLs' action and paste the scheme below, replacing [URL Encoded Text] with the blue variable token:",
         actionType: "copy",
         copyText: isIndonesian
-          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
-          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+          ? "accrual://add?text=[Teks Terenkode]&autosave=true"
+          : "accrual://add?text=[URL Encoded Text]&autosave=true",
         copyLabel: isIndonesian ? "Skema Automasi" : "Automation Scheme",
         btnText: isIndonesian ? "Salin Skema Automasi" : "Copy Automation Scheme",
       },
@@ -251,8 +262,8 @@ export function AppleShortcutsGuideModal({
           : "Make sure 'Notify When Run' is toggled OFF. Now, whenever you pay at a merchant or receive a transfer, the transaction is automatically recorded!",
         actionType: "info",
         noteText: isIndonesian
-          ? "Pengurai pintar Trouvaille otomatis memisahkan nominal, toko, dan akun pembayaran."
-          : "Trouvaille's smart parser automatically extracts amount, merchant, and payment account.",
+          ? "Pengurai pintar Accrual otomatis memisahkan nominal, toko, dan akun pembayaran."
+          : "Accrual's smart parser automatically extracts amount, merchant, and payment account.",
       },
     ],
     instan: [
@@ -260,10 +271,10 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pencatatan 1-Ketukan Instan" : "Instant 1-Tap Logging",
         desc: isIndonesian
-          ? "Ketuk 2x bodi belakang iPhone Anda untuk langsung membuka lembar masukan nominal Trouvaille secara instan dari aplikasi apa pun tanpa jeda."
-          : "Double tap the back of your iPhone (Back Tap) to instantly open the Trouvaille amount sheet from anywhere without opening the full app.",
+          ? "Ketuk 2x bodi belakang iPhone Anda untuk langsung membuka lembar masukan nominal Accrual secara instan dari aplikasi apa pun tanpa jeda."
+          : "Double tap the back of your iPhone (Back Tap) to instantly open the Accrual amount sheet from anywhere without opening the full app.",
         actionType: "test_url",
-        scheme: "trouvaille://add",
+        scheme: "accrual://add",
         btnText: isIndonesian ? "Uji Buka URL Sekarang" : "Test Open URL Now",
       },
       {
@@ -273,7 +284,7 @@ export function AppleShortcutsGuideModal({
           ? "Buka aplikasi Pintasan > Ketuk tanda (+) > Ganti nama pintasan menjadi 'Catat Pengeluaran' > Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
           : "Open Shortcuts > Tap (+) > Rename shortcut to 'Log Expense' > Add 'Open URLs' action and paste the scheme below:",
         actionType: "copy",
-        copyText: "trouvaille://add",
+        copyText: "accrual://add",
         copyLabel: isIndonesian ? "Skema URL" : "URL Scheme",
         btnText: isIndonesian ? "Salin Skema URL" : "Copy URL Scheme",
       },
@@ -294,10 +305,10 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pencatatan Suara 1-Ketukan" : "Instant 1-Tap Voice Logging",
         desc: isIndonesian
-          ? "Buka perekam suara cerdas Trouvaille secara instan dengan satu ketukan tombol atau pintasan. Cukup ucapkan transaksi Anda (contoh: \"Kopi susu 25 ribu bayar pakai BCA\") tanpa perlu mengetik manual."
-          : "Open Trouvaille's intelligent voice recorder instantly with a single button tap or shortcut. Speak your transaction naturally (e.g. \"Iced coffee 25 thousand paid with BCA\") without manual typing.",
+          ? "Buka perekam suara cerdas Accrual secara instan dengan satu ketukan tombol atau pintasan. Cukup ucapkan transaksi Anda (contoh: \"Kopi susu 25 ribu bayar pakai BCA\") tanpa perlu mengetik manual."
+          : "Open Accrual's intelligent voice recorder instantly with a single button tap or shortcut. Speak your transaction naturally (e.g. \"Iced coffee 25 thousand paid with BCA\") without manual typing.",
         actionType: "test_url",
-        scheme: "trouvaille://voice",
+        scheme: "accrual://voice",
         btnText: isIndonesian ? "Uji Buka Suara Sekarang" : "Test Open Voice Now",
       },
       {
@@ -307,7 +318,7 @@ export function AppleShortcutsGuideModal({
           ? "Buka aplikasi Pintasan › Ketuk (+) › Ganti nama menjadi 'Catat Suara' › Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
           : "Open Shortcuts › Tap (+) › Rename shortcut to 'Log Voice' › Add 'Open URLs' action and paste the scheme below:",
         actionType: "copy",
-        copyText: "trouvaille://voice",
+        copyText: "accrual://voice",
         copyLabel: isIndonesian ? "Skema URL Suara" : "Voice URL Scheme",
         btnText: isIndonesian ? "Salin Skema Suara" : "Copy Voice Scheme",
       },
@@ -315,8 +326,8 @@ export function AppleShortcutsGuideModal({
         stepNum: 2,
         title: isIndonesian ? "Langkah 2: Tautkan ke Tombol Tindakan / Ketuk Belakang" : "Step 2: Link to Action Button / Back Tap",
         desc: isIndonesian
-          ? "Buka Pengaturan iOS › Tombol Tindakan (atau Aksesibilitas › Sentuh › Ketuk Bagian Belakang) › Pilih Pintasan 'Catat Suara'. Saat ditekan, modal perekam suara Trouvaille langsung aktif mendengarkan ucapan Anda!"
-          : "Open iOS Settings › Action Button (or Accessibility › Touch › Back Tap) › Select 'Log Voice' shortcut. When pressed, Trouvaille's voice modal immediately starts listening!",
+          ? "Buka Pengaturan iOS › Tombol Tindakan (atau Aksesibilitas › Sentuh › Ketuk Bagian Belakang) › Pilih Pintasan 'Catat Suara'. Saat ditekan, modal perekam suara Accrual langsung aktif mendengarkan ucapan Anda!"
+          : "Open iOS Settings › Action Button (or Accessibility › Touch › Back Tap) › Select 'Log Voice' shortcut. When pressed, Accrual's voice modal immediately starts listening!",
         actionType: "info",
         noteText: isIndonesian
           ? "Mikrofon langsung aktif otomatis mendengarkan pengucapan Anda."
@@ -328,8 +339,8 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pencatatan Dialog Pop-up Asli iOS" : "Native iOS Dialog Logging",
         desc: isIndonesian
-          ? "Input transaksi melalui rentetan pop-up dialog resmi iOS satu demi satu. Seluruh data terkirim hening dan tersimpan rapi ke cloud Trouvaille tanpa perlu berpindah aplikasi."
-          : "Log expenses through sequential native iOS dialog pop-ups. All data is silently transmitted and saved to your Trouvaille cloud without opening the app.",
+          ? "Input transaksi melalui rentetan pop-up dialog resmi iOS satu demi satu. Seluruh data terkirim hening dan tersimpan rapi ke cloud Accrual tanpa perlu berpindah aplikasi."
+          : "Log expenses through sequential native iOS dialog pop-ups. All data is silently transmitted and saved to your Accrual cloud without opening the app.",
         actionType: "copy",
         copyText: userIdText,
         copyLabel: isIndonesian ? "ID Pengguna" : "User ID",
@@ -394,21 +405,71 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 6,
-        title: isIndonesian ? "Langkah 6: Enkode URL & Buka Trouvaille" : "Step 6: URL Encode & Open Trouvaille",
+        title: isIndonesian ? "Langkah 6: Enkode URL & Buka Accrual" : "Step 6: URL Encode & Open Accrual",
         desc: isIndonesian
           ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Teks' dari Langkah 5.\n2. Tambah tindakan 'Buka URL' di urutan paling akhir dan tempel templat di bawah, lalu ganti [Teks Terenkode] dengan variabel biru 'Teks Terenkode URL':"
           : "1. Add 'URL Encode' action for the 'Text' variable from Step 5.\n2. Add 'Open URLs' action at the end and paste the template below, replacing [URL Encoded Text] with the blue 'URL Encoded Text' variable:",
         actionType: "copy",
         copyText: isIndonesian
-          ? "trouvaille://add?text=[Teks Terenkode]&autosave=true"
-          : "trouvaille://add?text=[URL Encoded Text]&autosave=true",
+          ? "accrual://add?text=[Teks Terenkode]&autosave=true"
+          : "accrual://add?text=[URL Encoded Text]&autosave=true",
         copyLabel: isIndonesian ? "Skema Buka URL" : "Open URLs Scheme",
         btnText: isIndonesian ? "Salin Skema Buka URL" : "Copy Open URLs Scheme",
       },
     ],
   };
 
-  const currentTabSlides = slides[activeTab] || slides.pindai;
+  const androidSlides: SlideData[] = [
+    {
+      isHero: true,
+      title: isIndonesian ? "Pembaca Notifikasi Bank Android" : "Android Bank Notification Reader",
+      desc: isIndonesian
+        ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, BRImo, Bank Jago, wondr by BNI, SeaBank, Superbank, GoPay, ShopeePay, DANA, dll.), aplikasi MacroDroid atau Tasker otomatis menangkap teks notifikasi dan membukanya ke Accrual via tautan langsung tanpa sentuhan manual."
+        : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, BRImo, Bank Jago, wondr by BNI, SeaBank, Superbank, GoPay, ShopeePay, DANA, etc.), MacroDroid or Tasker automatically captures the notification text and opens it in Accrual via deep link without manual touch.",
+      actionType: "test_hud",
+      btnText: isIndonesian ? "Uji Kapsul Notifikasi" : "Test Notification HUD",
+    },
+    {
+      stepNum: 1,
+      title: isIndonesian ? "Langkah 1: Pasang MacroDroid & Buat Pemicu" : "Step 1: Install MacroDroid & Add Trigger",
+      desc: isIndonesian
+        ? "1. Unduh aplikasi MacroDroid (atau Tasker) dari Google Play Store.\n2. Buat Makro Baru › Tambah Pemicu (Trigger) › 'Perangkat & Notifikasi' › 'Notifikasi Diterima'.\n3. Centang 'Pilih Aplikasi' dan pilih bank/dompet digital Anda (BCA, Livin, BRImo, Jago, wondr, GoPay, ShopeePay, dll.)."
+        : "1. Install MacroDroid (or Tasker) from Google Play Store.\n2. Create New Macro › Add Trigger › 'Device & Notifications' › 'Notification Received'.\n3. Check 'Select Applications' and pick your bank or e-wallet apps (BCA, Livin, BRImo, Jago, wondr, GoPay, ShopeePay, etc.).",
+      actionType: "info",
+      noteText: isIndonesian
+        ? "MacroDroid berjalan lokal di perangkat Android Anda tanpa memerlukan akses root."
+        : "MacroDroid runs 100% on-device without requiring root permissions.",
+    },
+    {
+      stepNum: 2,
+      title: isIndonesian ? "Langkah 2: Tambahkan Tindakan Buka URL" : "Step 2: Add Open URL Action",
+      desc: isIndonesian
+        ? "1. Tambah Tindakan (Action) › 'Aplikasi' › 'Buka Situs Web / URL'.\n2. Masukkan skema di bawah, lalu ganti [teks_notifikasi] dengan token variabel teks notifikasi MacroDroid ({not_body}):"
+        : "1. Add Action › 'Applications' › 'Open Website / URL'.\n2. Enter the scheme below, replacing [notification_text] with MacroDroid's notification body token ({not_body}):",
+      actionType: "copy",
+      copyText: isIndonesian
+        ? "accrual://add?text=[teks_notifikasi]&autosave=true"
+        : "accrual://add?text=[notification_text]&autosave=true",
+      copyLabel: isIndonesian ? "Skema Otomasi Android" : "Android Automation Scheme",
+      btnText: isIndonesian ? "Salin Skema Otomasi Android" : "Copy Android Automation Scheme",
+    },
+    {
+      stepNum: 3,
+      title: isIndonesian ? "Langkah 3: Berikan Izin Akses Notifikasi" : "Step 3: Grant Notification Access",
+      desc: isIndonesian
+        ? "Buka Pengaturan Android › Aplikasi › Akses Khusus › Akses Notifikasi › Aktifkan untuk MacroDroid. Simpan makro Anda. Setiap notifikasi bank masuk, transaksi otomatis dibuka di lembar tinjau Accrual untuk dikonfirmasi dengan 1 ketukan!"
+        : "Open Android Settings › Apps › Special App Access › Notification Access › Enable for MacroDroid. Save your macro. Every incoming bank notification will automatically open in Accrual's review sheet for instant 1-tap confirmation!",
+      actionType: "info",
+      noteText: isIndonesian
+        ? "Pencatatan siap bekerja otomatis di latar belakang ponsel Android Anda."
+        : "Automations are now ready to run in the background on your Android device.",
+    },
+  ];
+
+  const currentTabSlides =
+    platform === "android"
+      ? androidSlides
+      : slides[activeTab] || slides.pindai;
   const activeSlide = currentTabSlides[currentSlide] || currentTabSlides[0];
 
   const handleNextSlide = () => {
@@ -471,12 +532,12 @@ export function AppleShortcutsGuideModal({
       <div className="px-4 pt-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] max-w-[392px] mx-auto select-none font-sans">
         
         {/* Header Title with proper top clearance */}
-        <div className="text-center mt-1 mb-3.5">
+        <div className="text-center mt-1 mb-3">
           <p
             className="text-[10px] font-semibold tracking-wider uppercase mb-1"
             style={{ color: "var(--text-tertiary)" }}
           >
-            {isIndonesian ? "INTEGRASI APPLE IOS" : "APPLE IOS INTEGRATION"}
+            {isIndonesian ? "INTEGRASI OTOMASI SISTEM" : "SYSTEM AUTOMATION INTEGRATION"}
           </p>
           <h3
             className="text-[17px] font-semibold tracking-tight"
@@ -486,46 +547,127 @@ export function AppleShortcutsGuideModal({
           </h3>
         </div>
 
-        {/* Apple Segmented Control - Light & Dark adaptive */}
+        {/* Platform Selector Pill (iOS vs Android) */}
         <div
-          className="w-full flex items-center gap-1 p-1 rounded-full mb-3.5 border transition-colors overflow-x-auto no-scrollbar"
+          className="w-full flex items-center gap-1 p-1 rounded-full mb-3 border transition-colors"
           style={{
             background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
             borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
           }}
         >
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id)}
-                className="flex-1 min-w-[58px] py-1.5 px-2 rounded-full text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap"
-                style={{
-                  background: isActive
-                    ? isDark
-                      ? "rgba(255, 255, 255, 0.14)"
-                      : "#ffffff"
-                    : "transparent",
-                  color: isActive
-                    ? "var(--text-primary)"
-                    : isDark
-                    ? "rgba(255, 255, 255, 0.45)"
-                    : "rgba(0, 0, 0, 0.45)",
-                  boxShadow: isActive
-                    ? isDark
-                      ? "0 2px 8px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.2)"
-                      : "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)"
-                    : "none",
-                }}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => handlePlatformChange("ios")}
+            className="flex-1 py-1.5 px-3 rounded-full text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+            style={{
+              background:
+                platform === "ios"
+                  ? isDark
+                    ? "rgba(255, 255, 255, 0.14)"
+                    : "#ffffff"
+                  : "transparent",
+              color:
+                platform === "ios"
+                  ? "var(--text-primary)"
+                  : isDark
+                  ? "rgba(255, 255, 255, 0.45)"
+                  : "rgba(0, 0, 0, 0.45)",
+              boxShadow:
+                platform === "ios"
+                  ? isDark
+                    ? "0 2px 8px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.2)"
+                    : "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)"
+                  : "none",
+            }}
+          >
+            <Smartphone size={12} strokeWidth={2} />
+            <span>{isIndonesian ? "iOS (Pintasan Apple)" : "iOS (Apple Shortcuts)"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePlatformChange("android")}
+            className="flex-1 py-1.5 px-3 rounded-full text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+            style={{
+              background:
+                platform === "android"
+                  ? isDark
+                    ? "rgba(255, 255, 255, 0.14)"
+                    : "#ffffff"
+                  : "transparent",
+              color:
+                platform === "android"
+                  ? "var(--text-primary)"
+                  : isDark
+                  ? "rgba(255, 255, 255, 0.45)"
+                  : "rgba(0, 0, 0, 0.45)",
+              boxShadow:
+                platform === "android"
+                  ? isDark
+                    ? "0 2px 8px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.2)"
+                    : "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)"
+                  : "none",
+            }}
+          >
+            <Zap size={12} strokeWidth={2} />
+            <span>{isIndonesian ? "Android (MacroDroid)" : "Android (MacroDroid)"}</span>
+          </button>
         </div>
+
+        {/* iOS Sub-modes Segmented Control */}
+        {platform === "ios" ? (
+          <div
+            className="w-full flex items-center gap-1 p-1 rounded-full mb-3.5 border transition-colors overflow-x-auto no-scrollbar"
+            style={{
+              background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+              borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+            }}
+          >
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className="flex-1 min-w-[58px] py-1.5 px-2 rounded-full text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                  style={{
+                    background: isActive
+                      ? isDark
+                        ? "rgba(255, 255, 255, 0.14)"
+                        : "#ffffff"
+                      : "transparent",
+                    color: isActive
+                      ? "var(--text-primary)"
+                      : isDark
+                      ? "rgba(255, 255, 255, 0.45)"
+                      : "rgba(0, 0, 0, 0.45)",
+                    boxShadow: isActive
+                      ? isDark
+                        ? "0 2px 8px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.2)"
+                        : "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)"
+                      : "none",
+                  }}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            className="w-full py-1.5 px-3 rounded-full mb-3.5 border text-center text-[11px] font-medium transition-colors"
+            style={{
+              background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
+              borderColor: isDark ? "rgba(255, 255, 255, 0.07)" : "rgba(0, 0, 0, 0.05)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            {isIndonesian
+              ? "Pembaca Notifikasi m-Banking & E-Wallet Otomatis"
+              : "Automated Bank & E-Wallet Notification Reader"}
+          </div>
+        )}
 
         {/* 1. Apple Studio Stage (Luxury Phone Carousel - Light & Dark adaptive) */}
         <div
@@ -595,32 +737,54 @@ export function AppleShortcutsGuideModal({
                 transform: "translateZ(0)",
               }}
             >
-              {/* Dynamic Island */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 72,
-                  height: 20,
-                  borderRadius: 999,
-                  background: "#000000",
-                  border: "0.5px solid rgba(255,255,255,0.08)",
-                  zIndex: 35,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "0 6px",
-                }}
-              >
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#08080a" }} />
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#090e1c", border: "0.5px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#020408" }} />
+              {/* Dynamic Island / Android Punch Hole */}
+              {platform === "ios" ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: 72,
+                    height: 20,
+                    borderRadius: 999,
+                    background: "#000000",
+                    border: "0.5px solid rgba(255,255,255,0.08)",
+                    zIndex: 35,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0 6px",
+                  }}
+                >
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#08080a" }} />
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#090e1c", border: "0.5px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 3, height: 3, borderRadius: "50%", background: "#020408" }} />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 7,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: "#050508",
+                    border: "0.5px solid rgba(255,255,255,0.12)",
+                    zIndex: 35,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#000000" }} />
+                </div>
+              )}
 
-              {/* iOS Native Status Bar */}
+              {/* Status Bar */}
               <div
                 style={{
                   position: "absolute",
@@ -657,6 +821,8 @@ export function AppleShortcutsGuideModal({
               </div>
 
               {/* ================= SLIDE SCREENS ================= */}
+              {platform === "ios" ? (
+                <>
 
               {/* --- TAB 1: PINDAI LAYAR (SCREEN SCANNER OCR) --- */}
 
@@ -1389,7 +1555,7 @@ export function AppleShortcutsGuideModal({
                     </div>
                     <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>Open</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
-                      trouvaille://add
+                      accrual://add
                     </span>
                     <div style={{ marginLeft: "auto", width: 13, height: 13, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "rgba(255,255,255,0.5)" }}>
                       ✕
@@ -2062,21 +2228,280 @@ export function AppleShortcutsGuideModal({
                   </div>
                 </div>
               </div>
-
-              {/* iOS Home Indicator Bar */}
+            </>
+          ) : (
+            <>
+              {/* --- ANDROID SLIDE SCREENS --- */}
+              {/* ANDROID - SLIDE 0: HERO BANK NOTIFICATION SHOWCASE */}
               <div
                 style={{
                   position: "absolute",
-                  bottom: 5,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 60,
-                  height: 3,
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.35)",
-                  zIndex: 40,
+                  inset: 0,
+                  padding: "36px 9px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  background: "radial-gradient(circle at 50% 20%, #151a24 0%, #090b10 80%)",
+                  opacity: currentSlide === 0 ? 1 : 0,
+                  pointerEvents: currentSlide === 0 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: currentSlide === 0 ? "scale(1)" : "scale(0.97)",
                 }}
-              />
+              >
+                {/* MacroDroid Trigger Badge */}
+                <div
+                  style={{
+                    padding: "4.5px 8px",
+                    borderRadius: 12,
+                    background: "rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(16px)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 13, height: 13, borderRadius: "50%", background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Zap size={7.5} className="text-black fill-black" />
+                    </div>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "MacroDroid • Otomasi Aktif" : "MacroDroid • Active"}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>Android Intent</span>
+                </div>
+
+                {/* Realistic Android Bank Notification Card */}
+                <div
+                  style={{
+                    background: "rgba(24,26,32,0.92)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 16,
+                    padding: "10px 10px 8px",
+                    textAlign: "left",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <div style={{ width: 14, height: 14, borderRadius: 3, background: "#0056b3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 7, fontWeight: 800, color: "white" }}>B</span>
+                      </div>
+                      <span style={{ fontSize: 8, fontWeight: 700, color: "white" }}>m-BCA</span>
+                    </div>
+                    <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>09:33</span>
+                  </div>
+                  <p style={{ fontSize: 7.5, color: "rgba(255,255,255,0.9)", lineHeight: 1.4, marginBottom: 6 }}>
+                    {isIndonesian
+                      ? "Transfer berhasil ke REK 123456 Rp 50.000 untuk Kopi Kenangan"
+                      : "Transfer Rp 50,000 to REK 123456 for Kopi Kenangan successful"}
+                  </p>
+                  <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 6, padding: "3px 6px", fontSize: 6.5, color: "rgba(255,255,255,0.7)" }}>
+                    {isIndonesian ? "Pemicu MacroDroid: Notifikasi Diterima" : "MacroDroid Trigger: Notification Received"}
+                  </div>
+                </div>
+
+                {/* Accrual Auto-Review Banner */}
+                <div
+                  style={{
+                    background: "rgba(18,18,22,0.96)",
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    borderRadius: 14,
+                    padding: "6px 8px",
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.6)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                    <Sparkles size={8} className="text-white" />
+                    <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
+                      Accrual • {isIndonesian ? "Siap Ditinjau 1-Ketukan ✓" : "1-Tap Review Ready ✓"}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.6)" }}>
+                    Rp 50.000 • {isIndonesian ? "Kopi Kenangan • BCA" : "Kopi Kenangan • BCA"}
+                  </p>
+                </div>
+              </div>
+
+              {/* ANDROID - SLIDE 1: STEP 1 TRIGGER */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: currentSlide === 1 ? 1 : 0,
+                  pointerEvents: currentSlide === 1 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: currentSlide === 1 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
+                  <span style={{ fontSize: 8, color: "#38bdf8", fontWeight: 500 }}>‹ MacroDroid</span>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, color: "white", marginLeft: "auto", marginRight: "auto" }}>
+                    {isIndonesian ? "Makro Baru" : "New Macro"}
+                  </span>
+                </div>
+
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", padding: "7px 8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, background: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Bell size={10} className="text-white" />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                        {isIndonesian ? "Pemicu: Notifikasi Diterima" : "Trigger: Notification Received"}
+                      </p>
+                      <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
+                        BCA, Livin, BRImo, Jago, wondr, GoPay
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: "#1c1c1e", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", padding: "6px 8px" }}>
+                  <p style={{ fontSize: 7, color: "rgba(255,255,255,0.7)", lineHeight: 1.4 }}>
+                    {isIndonesian
+                      ? "Pilih aplikasi perbankan atau dompet digital yang ingin dipantau transaksinya."
+                      : "Select the banking or e-wallet apps you want to monitor transactions from."}
+                  </p>
+                </div>
+              </div>
+
+              {/* ANDROID - SLIDE 2: STEP 2 OPEN URL ACTION */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: currentSlide === 2 ? 1 : 0,
+                  pointerEvents: currentSlide === 2 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: currentSlide === 2 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1c1c1e", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <ChevronLeft size={10} strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Tindakan Buka URL" : "Open URL Action"}
+                  </span>
+                </div>
+
+                {/* Preceding Trigger (Dimmed Chain) */}
+                <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "4px 7px", opacity: 0.45 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3.5 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Bell size={6.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Notifikasi Diterima" : "Notification Received"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>➔ Input</span>
+                  </div>
+                </div>
+
+                {/* Connection Line */}
+                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+
+                {/* Action Block */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
+                    <div style={{ width: 13, height: 13, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ExternalLink size={7} strokeWidth={2.5} className="text-white" />
+                    </div>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open Website / URL</span>
+                  </div>
+                  <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
+                    <span style={{ color: "#2997ff" }}>accrual://add?text=</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
+                      {`{not_body}`}
+                    </span>
+                    <span style={{ color: "#2997ff" }}>&autosave=true</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ANDROID - SLIDE 3: STEP 3 ACTIVE */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  padding: "34px 8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  borderRadius: 37,
+                  overflow: "hidden",
+                  opacity: currentSlide === 3 ? 1 : 0,
+                  pointerEvents: currentSlide === 3 ? "auto" : "none",
+                  transition: "opacity 0.28s ease, transform 0.28s ease",
+                  transform: currentSlide === 3 ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 4 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "white" }}>
+                    {isIndonesian ? "Otomasi Siap" : "Automation Ready"}
+                  </span>
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#22c55e", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Check size={8} className="text-black" strokeWidth={3} />
+                  </div>
+                </div>
+
+                <div style={{ background: "#1c1c1e", borderRadius: 13, border: "1px solid rgba(255,255,255,0.08)", padding: "8px 9px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, background: "#22c55e", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Zap size={10} className="text-black fill-black" />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 8, fontWeight: 700, color: "white" }}>
+                        {isIndonesian ? "Makro Berjalan Aktif" : "Macro Active & Running"}
+                      </p>
+                      <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.45)" }}>
+                        {isIndonesian ? "Akses Notifikasi Diizinkan" : "Notification Access Granted"}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "0.5px solid rgba(255,255,255,0.18)" }}>
+                    <Check size={7} className="text-white" />
+                    <span style={{ fontSize: 6.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "1-Ketukan Tinjau Aktif" : "1-Tap Review Ready"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+              {/* Home Indicator Bar */}
+              {platform === "ios" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 5,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: 60,
+                    height: 3,
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.35)",
+                    zIndex: 40,
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>

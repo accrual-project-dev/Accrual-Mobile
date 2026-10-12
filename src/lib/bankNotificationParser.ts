@@ -1,6 +1,6 @@
 import type { Category, Wallet, TransactionType } from "./types";
 import { parseNaturalTransaction } from "./nlpParser";
-import { BANK_ALIASES } from "./slipParser";
+import { BANK_ALIASES, KNOWN_MERCHANT_PATTERNS } from "./slipParser";
 
 export interface DetectedBankNotification {
   rawText: string;
@@ -34,6 +34,9 @@ export function parseBankNotification(
   // 1. Check for banking / e-wallet signal keywords
   const bankSignals = [
     "bca",
+    "m-transfer",
+    "mybca",
+    "klikbca",
     "livin",
     "mandiri",
     "brimo",
@@ -41,12 +44,24 @@ export function parseBankNotification(
     "bni",
     "wondr",
     "cimb",
+    "octo",
     "jago",
+    "kantong",
     "seabank",
     "sea bank",
+    "superbank",
+    "blu",
+    "jenius",
+    "krom",
+    "line bank",
+    "linebank",
+    "danamon",
+    "bsi",
     "gopay",
+    "gojek",
     "ovo",
     "shopeepay",
+    "spay",
     "shopee",
     "dana",
     "qris",
@@ -60,8 +75,12 @@ export function parseBankNotification(
     "top-up",
     "isi saldo",
     "dana masuk",
+    "transfer masuk",
+    "uang masuk",
     "debit",
+    "kredit",
     "kamu telah bayar",
+    "kamu berhasil bayar",
     "berhasil bayar",
   ];
 
@@ -125,26 +144,35 @@ export function parseBankNotification(
 
   if (lower.includes("wondr")) {
     sourceApp = "wondr by BNI";
-    matchedSourceWallet = findWalletByKeyword("bni") || findWalletByKeyword("wondr");
+    matchedSourceWallet = findWalletByKeyword("wondr") || findWalletByKeyword("bni");
   } else if (lower.includes("seabank") || lower.includes("sea bank")) {
     sourceApp = "SeaBank";
     matchedSourceWallet = findWalletByKeyword("seabank");
-  } else if (lower.includes("bca")) {
+  } else if (lower.includes("superbank") || lower.includes("super bank")) {
+    sourceApp = "Superbank";
+    matchedSourceWallet = findWalletByKeyword("superbank");
+  } else if (lower.includes("blu")) {
+    sourceApp = "blu by BCA Digital";
+    matchedSourceWallet = findWalletByKeyword("blu");
+  } else if (lower.includes("bca") || lower.includes("m-transfer") || lower.includes("mybca")) {
     sourceApp = "BCA";
     matchedSourceWallet = findWalletByKeyword("bca");
   } else if (lower.includes("livin") || lower.includes("mandiri")) {
     sourceApp = "Mandiri Livin";
     matchedSourceWallet = findWalletByKeyword("mandiri");
   } else if (lower.includes("brimo") || lower.includes("bri")) {
-    sourceApp = "BRI";
-    matchedSourceWallet = findWalletByKeyword("bri");
+    sourceApp = lower.includes("brimo") ? "BRImo" : "BRI";
+    matchedSourceWallet = findWalletByKeyword("brimo") || findWalletByKeyword("bri");
   } else if (lower.includes("bni")) {
     sourceApp = "BNI";
     matchedSourceWallet = findWalletByKeyword("bni");
-  } else if (lower.includes("jago")) {
+  } else if (lower.includes("jago") || lower.includes("kantong")) {
     sourceApp = "Bank Jago";
     matchedSourceWallet = findWalletByKeyword("jago");
-  } else if (lower.includes("shopeepay") || lower.includes("shopee")) {
+  } else if (lower.includes("cimb") || lower.includes("octo")) {
+    sourceApp = "CIMB Niaga";
+    matchedSourceWallet = findWalletByKeyword("cimb");
+  } else if (lower.includes("shopeepay") || lower.includes("spay")) {
     sourceApp = "ShopeePay";
     matchedSourceWallet = findWalletByKeyword("shopeepay");
   } else if (lower.includes("gopay") || lower.includes("gojek")) {
@@ -171,6 +199,7 @@ export function parseBankNotification(
     lower.includes("top up") ||
     lower.includes("top-up") ||
     lower.includes("isi saldo") ||
+    lower.includes("kirim uang") ||
     lower.includes("kirim dana");
 
   let matchedDestinationWallet: Wallet | undefined;
@@ -180,7 +209,9 @@ export function parseBankNotification(
     // Check patterns like:
     // "ke ShopeePay ...", "ke BCA ...", "ke rek BCA ...", "ke rek ...", "ke [Target]"
     // "Top Up ShopeePay ...", "Top up GoPay ..."
-    const keMatch = clean.match(/(?:ke\s+rek|ke|tujuan|top\s*up|isi\s+saldo)\s+([A-Za-z0-9\s&@_.-]+?)(?:\s+(?:berhasil|sebesar|senilai|rp|\d+|\(|\.|\n|$))/i);
+    const keMatch = clean.match(
+      /(?:ke\s+(?:bank\s+|rek(?:ening)?\s+)?|tujuan\s+|top\s*up\s+|isi\s+saldo\s+)([A-Za-z0-9\s&@_.-]+?)(?:\s+(?:berhasil|sukses|sebesar|senilai|rp|\d{3,}|\(|\.|\n|$))/i,
+    );
     if (keMatch && keMatch[1]) {
       destinationCandidate = keMatch[1].trim();
     }
@@ -193,7 +224,7 @@ export function parseBankNotification(
         const wLower = w.name.toLowerCase();
         const aliases = BANK_ALIASES[wLower] || [wLower];
         const isMatch = aliases.some(
-          (a) => destLower.includes(a) || a.includes(destLower)
+          (a) => destLower.includes(a) || a.includes(destLower),
         );
         if (isMatch) {
           matchedDestinationWallet = w;
@@ -210,7 +241,8 @@ export function parseBankNotification(
     lower.includes("menerima transfer") ||
     lower.includes("uang masuk") ||
     lower.includes("diterima dari") ||
-    lower.includes("kredit");
+    lower.includes("kredit") ||
+    lower.includes("kamu menerima");
 
   let type: TransactionType = "expense";
   if (isIncome) {
@@ -228,18 +260,46 @@ export function parseBankNotification(
   if (type === "transfer" && matchedDestinationWallet) {
     merchantOrNote = ""; // Clean note for transfers
   } else {
-    const targetMatch = clean.match(/(?:ke|di|pada)\s+([A-Za-z0-9\s&'-]+?)(?:\s+(?:berhasil|sebesar|senilai|rp|tanggal|\.|\n|$))/i);
-    if (targetMatch && targetMatch[1]) {
-      merchantOrNote = targetMatch[1].trim();
+    // Check known merchants first!
+    for (const km of KNOWN_MERCHANT_PATTERNS) {
+      if (km.match(clean)) {
+        merchantOrNote = km.name;
+        break;
+      }
+    }
+
+    if (!merchantOrNote) {
+      const targetMatch = clean.match(
+        /(?:ke|di|pada)\s+([A-Za-z0-9\s&'.-]+?)(?:\s+(?:berhasil|sukses|sebesar|senilai|rp|tanggal|\.|\n|$))/i,
+      );
+      if (targetMatch && targetMatch[1]) {
+        let extracted = targetMatch[1].trim();
+        // Strip trailing app/wallet clauses e.g. "via GoPay", "pake GoPay", "di Livin", "dari Kantong Utama"
+        extracted = extracted
+          .replace(/\s+(?:via|pake|pakai|lewat|dari|di)\s+[A-Za-z0-9\s'.-]+$/i, "")
+          .trim();
+        // Strip leading recipient tokens e.g. "rek 1234567890 an ", "an ", "a/n "
+        extracted = extracted
+          .replace(/^(?:rek(?:ening)?\s+)?(?:\d+\s+)?(?:an\s+|a\/n\s+)/i, "")
+          .trim();
+        if (extracted.length >= 2) {
+          merchantOrNote = extracted;
+        }
+      }
     }
 
     if (!merchantOrNote || merchantOrNote.length < 2) {
       let remaining = clean
-        .replace(/(?:sebesar|senilai|rp\.?|idr)\s*[\d.,]+/gi, "")
-        .replace(/transfer|berhasil|sukses|pembayaran|sebesar|transaksi|debit|rekening|kamu telah bayar|kamu berhasil/gi, "")
+        .replace(/(?:sebesar\s+rp\.?|senilai\s+rp\.?|rp\.?|idr)\s*[\d.,]+/gi, "")
+        .replace(
+          /transfer|berhasil|sukses|pembayaran|sebesar|senilai|transaksi|debit|kredit|rekening|kamu telah bayar|kamu berhasil bayar|kamu berhasil/gi,
+          "",
+        )
         .replace(/[0-9]{6,}/g, "") // remove account numbers
         .trim();
-      merchantOrNote = remaining.slice(0, 35) || (type === "income" ? "Dana Masuk" : `${sourceApp} Payment`);
+      merchantOrNote =
+        remaining.slice(0, 35) ||
+        (type === "income" ? "Dana Masuk" : `${sourceApp} Payment`);
     }
   }
 
@@ -256,7 +316,7 @@ export function parseBankNotification(
     suggestedWalletName: matchedSourceWallet?.name || undefined,
     suggestedToWalletId: matchedDestinationWallet?.id || undefined,
     suggestedToWalletName: matchedDestinationWallet?.name || undefined,
-    suggestedCategoryId: nlpResult.categoryId || undefined,
-    suggestedCategoryName: nlpResult.categoryName || undefined,
+    suggestedCategoryId: type === "transfer" ? undefined : nlpResult.categoryId || undefined,
+    suggestedCategoryName: type === "transfer" ? undefined : nlpResult.categoryName || undefined,
   };
 }

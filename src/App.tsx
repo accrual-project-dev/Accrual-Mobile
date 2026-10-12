@@ -325,7 +325,7 @@ function AppShell() {
 
       if (rawUrl.includes("join") || rawUrl.includes("code=")) {
         try {
-          const urlObj = new URL(rawUrl.replace("trouvaille://", "https://trouvaille.app/"));
+          const urlObj = new URL(rawUrl.replace(/^(?:accrual|trouvaille):\/\//i, "https://accrual.internal/"));
           const code = urlObj.searchParams.get("code") || urlObj.searchParams.get("join");
           if (code) {
             setJoinLedgerCode(code);
@@ -429,7 +429,7 @@ function AppShell() {
 
           triggerHaptic("medium");
           setBatchReviewItems([reviewItem]);
-          setBatchSourceTitle(isIndonesian ? "Pintasan Apple / Shortcuts" : "Apple Shortcuts");
+          setBatchSourceTitle(isIndonesian ? "Pintasan & Otomasi" : "Shortcuts & Automations");
           setBatchReviewOpen(true);
           return;
         } else {
