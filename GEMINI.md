@@ -1,4 +1,8 @@
-# Default Behavior
+# Karpathy Behavioral Guidelines (MANDATORY)
+
+> [!IMPORTANT]
+> **MANDATORY PRE-EXECUTION INVARIANT**  
+> Before executing any task, user request, or touching any code, ALWAYS read, internalize, and strictly follow these 4 Karpathy behavioral principles.
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
@@ -64,6 +68,12 @@ For multi-step tasks, state a brief plan:
 ```
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
 
 # Accrual (formerly Trouvaille) Architectural & Design Rules
 
