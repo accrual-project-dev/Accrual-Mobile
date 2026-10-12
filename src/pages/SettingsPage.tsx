@@ -44,6 +44,7 @@ import { useCategories, categoryKeys } from "../hooks/useCategories";
 import { useWallets, walletKeys } from "../hooks/useWallets";
 import { useGoals } from "../hooks/useGoals";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
+import { useDebtReceivables } from "../hooks/useDebtReceivables";
 import { formatRupiah } from "../lib/utils";
 import { format, isToday } from "date-fns";
 import { supabase } from "../lib/supabase";
@@ -124,6 +125,11 @@ const CategoryManagementSheets = lazy(() =>
 const WalletManagementSheets = lazy(() =>
   import("../components/settings/WalletManagementSheets").then((m) => ({
     default: m.WalletManagementSheets,
+  })),
+);
+const DebtReceivablesSheet = lazy(() =>
+  import("../components/debt/DebtReceivablesSheet").then((m) => ({
+    default: m.DebtReceivablesSheet,
   })),
 );
 const GoalManagementSheets = lazy(() =>
@@ -359,6 +365,8 @@ export function SettingsPage({
   const [profileOpen, setProfileOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
   const [walletsOpen, setWalletsOpen] = useState(false);
+  const { summary: debtSummary } = useDebtReceivables();
+  const [debtReceivablesOpen, setDebtReceivablesOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [billListOpen, setBillListOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -795,6 +803,10 @@ export function SettingsPage({
     "Manage Accounts",
     "bank cash balance cards wallets dompet accounts akun rekening",
   );
+  const showDebtReceivables = matches(
+    "Debt and Receivables",
+    "utang piutang pinjaman cicilan pelunasan lending loan payable receivable buku",
+  );
   const showBudget = matches(
     "Monthly Spending Budget",
     "spending limit monthly budget anggaran belanja",
@@ -822,6 +834,7 @@ export function SettingsPage({
   const hasArchitecture =
     showCategories ||
     showWallets ||
+    showDebtReceivables ||
     showBudget ||
     showBills ||
     showGoals ||
@@ -1208,6 +1221,53 @@ export function SettingsPage({
                       style={{ color: "var(--text-secondary)" }}
                     >
                       {wallets.length}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
+            )}
+
+            {/* Smart Debt & Receivables Hub */}
+            {showDebtReceivables && (
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setDebtReceivablesOpen(true);
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <BookOpen size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Buku Utang & Piutang" : "Debt & Receivables Hub"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[11.5px] font-medium tabular-nums"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {debtSummary.activeReceivablesCount + debtSummary.activeDebtsCount}
                     </span>
                     <ChevronRight
                       size={14}
@@ -2402,6 +2462,11 @@ export function SettingsPage({
         <WalletManagementSheets
           isOpen={walletsOpen}
           onClose={() => setWalletsOpen(false)}
+        />
+
+        <DebtReceivablesSheet
+          isOpen={debtReceivablesOpen}
+          onClose={() => setDebtReceivablesOpen(false)}
         />
 
         <AppleShortcutsGuideModal

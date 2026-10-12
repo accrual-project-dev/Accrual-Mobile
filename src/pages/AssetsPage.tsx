@@ -75,6 +75,8 @@ import {
   type PresetAsset,
   type PresetCategory,
 } from "../lib/assetPresets";
+import { DebtReceivablesCard, DebtReceivablesSheet } from "../components/debt";
+import { useDebtReceivables } from "../hooks/useDebtReceivables";
 
 export type { PresetCategory, PresetAsset, BalanceSheetRange };
 
@@ -108,6 +110,8 @@ export function AssetsPage() {
   const [selectedCashWallet, setSelectedCashWallet] = useState<Wallet | null>(null);
   const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { summary: debtSummary } = useDebtReceivables();
+  const [isDebtSheetOpen, setIsDebtSheetOpen] = useState(false);
   const [dismissedReconciliation, setDismissedReconciliation] = useState(() => {
     try {
       const stored =
@@ -1189,6 +1193,17 @@ export function AssetsPage() {
         </div>
       )}
 
+      {/* ── 3.5. Smart Debt & Receivables Hub Bento Card ── */}
+      <DebtReceivablesCard
+        summary={debtSummary}
+        isDark={isDark}
+        isIndonesian={isIndonesian}
+        onClick={() => {
+          triggerHaptic("light");
+          setIsDebtSheetOpen(true);
+        }}
+      />
+
       {/* ── 4. Unified Capital Allocation & Balance Sheet Bento Card (With Bar Chart, Legend & Axis) ── */}
       <UnifiedCapitalAllocationCard
         liquidAssetsTotal={liquidAssetsTotal}
@@ -1329,6 +1344,12 @@ export function AssetsPage() {
           setEditingWallet(null);
         }}
         initialWalletToEdit={editingWallet}
+      />
+
+      {/* ── 11. Smart Debt & Receivables Bottom Sheet ── */}
+      <DebtReceivablesSheet
+        isOpen={isDebtSheetOpen}
+        onClose={() => setIsDebtSheetOpen(false)}
       />
     </div>
   );

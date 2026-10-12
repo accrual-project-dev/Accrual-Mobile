@@ -108,6 +108,17 @@ export const DEFAULT_HOME_WIDGETS: CardWidgetConfig[] = [
     isVisible: true,
   },
   {
+    id: "debt_receivables",
+    title: "Debt & Receivables",
+    subtitle: "Loans, receivables & due date tracking",
+    page: "home",
+    category: "ledger",
+    size: "full",
+    supportedSizes: ["full", "half"],
+    order: 9,
+    isVisible: true,
+  },
+  {
     id: "category_budgets",
     title: "Category Budgets",
     subtitle: "Monthly category envelopes & spending limits",
@@ -276,6 +287,10 @@ export const WIDGET_LOCALIZED_META: Record<
   upcoming_bills: {
     en: { title: "Upcoming Bills", subtitle: "Subscriptions & recurring bill schedule" },
     id: { title: "Tagihan Mendatang", subtitle: "Langganan & jadwal tagihan berulang" },
+  },
+  debt_receivables: {
+    en: { title: "Debt & Receivables", subtitle: "Loans, receivables & due date tracking" },
+    id: { title: "Buku Utang & Piutang", subtitle: "Pelacakan pinjaman, pelunasan & jatuh tempo" },
   },
   category_budgets: {
     en: { title: "Category Budgets", subtitle: "Monthly category envelopes & spending limits" },

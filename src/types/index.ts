@@ -183,3 +183,5 @@ export interface UserShortcut {
   note?: string | null;
   created_at?: string;
 }
+
+export * from "./debt";

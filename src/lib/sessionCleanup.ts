@@ -59,6 +59,8 @@ export const USER_SESSION_STORAGE_KEYS = [
   "trouvaille_usdt_valuation_v1",
   "trouvaille_usdt_valuation_v2",
   "trouvaille_market_quotes_cache_v2",
+  "trouvaille_debt_receivables_v1",
+  "trouvaille_debt_receivables_guest_v1",
 ] as const;
 
 const PRESERVED_SETTINGS_KEYS = new Set([

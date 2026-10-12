@@ -56,6 +56,8 @@ import {
   HomeModalsContainer,
   type StockRange,
 } from "../components/home";
+import { DebtReceivablesSheet } from "../components/debt/DebtReceivablesSheet";
+import { useDebtReceivables } from "../hooks/useDebtReceivables";
 
 interface HomePageProps {
   onOpenAdd?: () => void;
@@ -148,6 +150,8 @@ export function HomePage({
   const markBillPaid = useMarkBillPaid();
   const upcomingBills = useUpcomingBills();
   const { budgetTarget, budgetPeriodStart } = useBudgetTarget();
+  const { summary: debtSummary } = useDebtReceivables();
+  const [debtSheetOpen, setDebtSheetOpen] = useState(false);
 
   const {
     data: rawAllTxs = [],
@@ -754,6 +758,8 @@ export function HomePage({
         onOpenBillManagement={() => setBillManagementOpen(true)}
         onOpenPayBill={setPayingBill}
         onOpenCategoryManagement={() => setCategoryManagementOpen(true)}
+        onOpenDebtReceivables={() => setDebtSheetOpen(true)}
+        debtSummary={debtSummary}
         navigate={navigate}
       />
     );
@@ -1019,6 +1025,11 @@ export function HomePage({
         onCloseWebDashboard={() => setWebDashboardOpen(false)}
         isTourOpen={isTourOpen}
         onCloseTour={() => setIsTourOpen(false)}
+      />
+
+      <DebtReceivablesSheet
+        isOpen={debtSheetOpen}
+        onClose={() => setDebtSheetOpen(false)}
       />
     </div>
   );

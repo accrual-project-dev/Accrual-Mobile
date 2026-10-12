@@ -37,6 +37,8 @@ import {
   LiquidRunwayCard,
   CalendarCard,
 } from "./CompactHomeCards";
+import { DebtReceivablesCard } from "../debt/DebtReceivablesCard";
+import type { DebtReceivableSummary } from "../../types/debt";
 
 export interface HomeWidgetRendererProps {
   cardId: string;
@@ -81,6 +83,8 @@ export interface HomeWidgetRendererProps {
   onToggleHideBalance: () => void;
   isColdLoading?: boolean;
   onOpenCategoryManagement: () => void;
+  onOpenDebtReceivables?: () => void;
+  debtSummary?: DebtReceivableSummary;
   navigate: (to: string) => void;
 }
 
@@ -127,6 +131,8 @@ export function HomeWidgetRenderer({
   onOpenBillManagement,
   onOpenPayBill,
   onOpenCategoryManagement,
+  onOpenDebtReceivables,
+  debtSummary,
   navigate,
 }: HomeWidgetRendererProps) {
   switch (cardId) {
@@ -754,6 +760,25 @@ export function HomeWidgetRenderer({
             </div>
           </div>
         </section>
+      );
+
+    case "debt_receivables":
+      if (!debtSummary) return null;
+      return (
+        <DebtReceivablesCard
+          summary={debtSummary}
+          isDark={isDark}
+          isIndonesian={isIndonesian}
+          size={size === "half" ? "half" : "full"}
+          onClick={() => {
+            triggerHaptic("light");
+            if (onOpenDebtReceivables) {
+              onOpenDebtReceivables();
+            } else {
+              navigate("/assets");
+            }
+          }}
+        />
       );
 
     case "category_budgets": {

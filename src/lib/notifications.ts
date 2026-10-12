@@ -1,5 +1,5 @@
 import { LocalNotifications } from '@capacitor/local-notifications'
-import type { Bill, Category, Transaction } from './types'
+import type { Bill, Category, Transaction, DebtReceivableRecord } from './types'
 import { parseISO, subDays, endOfMonth, addMonths, startOfMonth, format } from 'date-fns'
 import { formatRupiah } from './utils'
 
@@ -547,6 +547,114 @@ export async function checkBudgetThresholdAlerts(
     }
   } catch (e) {
     console.warn("Failed to check budget threshold alerts:", e);
+  }
+}
+
+export const DEBT_NOTIFICATION_BASE_ID = 50000;
+
+export async function cancelDebtReceivableNotifications(): Promise<void> {
+  try {
+    const pending = await LocalNotifications.getPending();
+    const toCancel = pending.notifications.filter(
+      (n) => n.id >= DEBT_NOTIFICATION_BASE_ID && n.id < DEBT_NOTIFICATION_BASE_ID + 10000,
+    );
+    if (toCancel.length > 0) {
+      await LocalNotifications.cancel({ notifications: toCancel });
+    }
+  } catch (e) {
+    console.warn("Failed to cancel debt notifications:", e);
+  }
+}
+
+export async function syncDebtReceivableNotifications(
+  records: DebtReceivableRecord[],
+  isIndonesian: boolean = true,
+): Promise<void> {
+  try {
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
+
+    await cancelDebtReceivableNotifications();
+
+    const notificationsToSchedule = [];
+    const now = new Date();
+
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      if (record.status === "settled" || !record.dueDate) continue;
+
+      const dueDate = parseISO(record.dueDate);
+      if (isNaN(dueDate.getTime())) continue;
+
+      const amtFormatted = formatRupiah(record.remainingAmount);
+      const isReceivable = record.type === "receivable";
+
+      // 1. Advance notification (1 day before) at 09:00 AM
+      const advanceDate = subDays(dueDate, 1);
+      advanceDate.setHours(9, 0, 0, 0);
+      if (advanceDate > now) {
+        const leadTitle = isIndonesian
+          ? isReceivable
+            ? `Pengingat Jatuh Tempo Piutang: ${record.personName}`
+            : `Pengingat Jatuh Tempo Utang: ${record.personName}`
+          : isReceivable
+            ? `Receivable Due Tomorrow: ${record.personName}`
+            : `Debt Due Tomorrow: ${record.personName}`;
+
+        const leadBody = isIndonesian
+          ? isReceivable
+            ? `Piutang kepada ${record.personName} (${amtFormatted}) jatuh tempo besok.`
+            : `Kewajiban utang kepada ${record.personName} (${amtFormatted}) jatuh tempo besok.`
+          : isReceivable
+            ? `Receivable from ${record.personName} (${amtFormatted}) is due tomorrow.`
+            : `Debt to ${record.personName} (${amtFormatted}) is due tomorrow.`;
+
+        notificationsToSchedule.push({
+          id: DEBT_NOTIFICATION_BASE_ID + i * 2 + 1,
+          title: leadTitle,
+          body: leadBody,
+          schedule: { at: advanceDate },
+          sound: "default",
+        });
+      }
+
+      // 2. Notification on the Due Date at 09:00 AM
+      const onDueDate = parseISO(record.dueDate);
+      onDueDate.setHours(9, 0, 0, 0);
+      if (onDueDate > now) {
+        const dueTitle = isIndonesian
+          ? isReceivable
+            ? `Piutang Jatuh Tempo Hari Ini: ${record.personName}`
+            : `Utang Jatuh Tempo Hari Ini: ${record.personName}`
+          : isReceivable
+            ? `Receivable Due Today: ${record.personName}`
+            : `Debt Due Today: ${record.personName}`;
+
+        const dueBody = isIndonesian
+          ? isReceivable
+            ? `Tagihan piutang dari ${record.personName} (${amtFormatted}) jatuh tempo hari ini.`
+            : `Kewajiban pelunasan utang kepada ${record.personName} (${amtFormatted}) jatuh tempo hari ini.`
+          : isReceivable
+            ? `Receivable payment from ${record.personName} (${amtFormatted}) is due today.`
+            : `Debt repayment to ${record.personName} (${amtFormatted}) is due today.`;
+
+        notificationsToSchedule.push({
+          id: DEBT_NOTIFICATION_BASE_ID + i * 2 + 2,
+          title: dueTitle,
+          body: dueBody,
+          schedule: { at: onDueDate },
+          sound: "default",
+        });
+      }
+    }
+
+    if (notificationsToSchedule.length > 0) {
+      await LocalNotifications.schedule({
+        notifications: notificationsToSchedule,
+      });
+    }
+  } catch (e) {
+    console.warn("Failed to sync debt notifications:", e);
   }
 }
 
