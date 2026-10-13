@@ -535,14 +535,12 @@ describe("Smart Debt & Receivables Hub Engine Suite", () => {
       expect(fs.existsSync(cardPath)).toBe(true);
     });
 
-    it("AssetsPage mounts DebtReceivablesCard and DebtReceivablesSheet", () => {
+    it("AssetsPage does not mount DebtReceivablesCard (isolated to HomePage only)", () => {
       const assetsPath = path.resolve(__dirname, "../src/pages/AssetsPage.tsx");
       const content = fs.readFileSync(assetsPath, "utf-8");
 
-      expect(content).toContain("DebtReceivablesCard");
-      expect(content).toContain("DebtReceivablesSheet");
-      expect(content).toContain("useDebtReceivables");
-      expect(content).toContain("isDebtSheetOpen");
+      expect(content).not.toContain("DebtReceivablesCard");
+      expect(content).not.toContain("DebtReceivablesSheet");
     });
 
     it("SettingsPage mounts Debt & Receivables hub under Account Management", () => {

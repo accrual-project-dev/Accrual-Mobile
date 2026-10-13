@@ -25,6 +25,8 @@ import {
   Trash2,
   X,
   User,
+  Calendar,
+  FileText,
 } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -267,19 +269,23 @@ export function DebtReceivablesSheet({
       >
         {/* ── 1. Top Executive Summary Bento Card ── */}
         <div
-          className="p-3.5 rounded-2xl transition-all"
+          className="p-3.5 rounded-[22px] transition-all relative overflow-hidden"
           style={{
-            background: isDark
-              ? "linear-gradient(160deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.015) 100%)"
-              : "linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(246, 247, 250, 0.90) 100%)",
-            border: isDark
-              ? "1px solid rgba(255, 255, 255, 0.08)"
-              : "1px solid rgba(0, 0, 0, 0.06)",
-            boxShadow: isDark
-              ? "0 10px 25px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
-              : "0 6px 18px -6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #ffffff",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow-card)",
           }}
         >
+          {/* Specular Rim Light Reflection */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-[12%] right-[12%] top-[1px] h-[1.5px] rounded-full"
+            style={{
+              background: isDark
+                ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.45), rgba(255,255,255,0.25), transparent)"
+                : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
+            }}
+          />
           <div className="grid grid-cols-3 gap-2 text-center">
             {/* Piutang (Receivables to receive) */}
             <div className="space-y-1">
@@ -499,14 +505,11 @@ export function DebtReceivablesSheet({
         {/* ── 3. Add New Record Form ── */}
         {isAddingRecord && (
           <div
-            className="p-4 rounded-2xl space-y-3.5 transition-all animate-in fade-in"
+            className="p-4 rounded-[22px] space-y-3.5 transition-all animate-in fade-in"
             style={{
-              background: isDark
-                ? "rgba(255, 255, 255, 0.03)"
-                : "rgba(0, 0, 0, 0.02)",
-              border: isDark
-                ? "1px solid rgba(255, 255, 255, 0.08)"
-                : "1px solid rgba(0, 0, 0, 0.06)",
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center justify-between pb-1">
@@ -695,47 +698,60 @@ export function DebtReceivablesSheet({
               </div>
             </label>
 
-            {/* Due Date & Note in 2 columns */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-                  {isIndonesian ? "Jatuh Tempo (Opsional)" : "Due Date (Optional)"}
-                </label>
+            {/* Due Date (Optional) */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                {isIndonesian ? "Jatuh Tempo (Opsional)" : "Due Date (Optional)"}
+              </label>
+              <div
+                className="h-10 px-3 rounded-xl flex items-center gap-2"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.03)"
+                    : "rgba(0, 0, 0, 0.02)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                }}
+              >
+                <Calendar size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
                 <input
                   type="date"
                   value={formDueDate}
                   onChange={(e) => setFormDueDate(e.target.value)}
-                  className="w-full h-10 px-2.5 rounded-xl text-[11.5px] text-[var(--text-primary)] outline-none"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.03)"
-                      : "rgba(0, 0, 0, 0.02)",
-                    border: isDark
-                      ? "1px solid rgba(255, 255, 255, 0.08)"
-                      : "1px solid rgba(0, 0, 0, 0.06)",
-                    colorScheme: isDark ? "dark" : "light",
-                  }}
+                  className="w-full bg-transparent text-[12px] text-[var(--text-primary)] outline-none cursor-pointer"
+                  style={{ colorScheme: isDark ? "dark" : "light" }}
                 />
               </div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-                  {isIndonesian ? "Catatan Tambahan" : "Note (Optional)"}
-                </label>
+            {/* Note (Optional) */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                {isIndonesian ? "Catatan Tambahan (Opsional)" : "Note (Optional)"}
+              </label>
+              <div
+                className="h-10 px-3 rounded-xl flex items-center gap-2"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.03)"
+                    : "rgba(0, 0, 0, 0.02)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                }}
+              >
+                <FileText size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
                 <input
                   type="text"
                   value={formNote}
                   onChange={(e) => setFormNote(e.target.value)}
-                  placeholder={isIndonesian ? "Keterangan..." : "Details..."}
-                  className="w-full h-10 px-2.5 rounded-xl text-[11.5px] text-[var(--text-primary)] outline-none placeholder-[var(--text-tertiary)]"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.03)"
-                      : "rgba(0, 0, 0, 0.02)",
-                    border: isDark
-                      ? "1px solid rgba(255, 255, 255, 0.08)"
-                      : "1px solid rgba(0, 0, 0, 0.06)",
-                  }}
+                  placeholder={
+                    isIndonesian
+                      ? "Keterangan atau alasan pinjaman..."
+                      : "Details or purpose..."
+                  }
+                  className="w-full bg-transparent text-[12px] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none"
                 />
               </div>
             </div>
@@ -745,7 +761,7 @@ export function DebtReceivablesSheet({
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="flex-1 h-10 rounded-xl text-[11.5px] font-semibold text-[var(--text-secondary)] active:scale-95 transition-all cursor-pointer"
+                className="flex-1 h-11 rounded-xl text-[12px] font-semibold text-[var(--text-secondary)] active:scale-95 transition-all cursor-pointer"
                 style={{
                   background: isDark
                     ? "rgba(255, 255, 255, 0.05)"
@@ -760,7 +776,7 @@ export function DebtReceivablesSheet({
               <button
                 type="button"
                 onClick={handleSaveNewRecord}
-                className="flex-1 h-10 rounded-xl text-[11.5px] font-semibold active:scale-95 transition-all cursor-pointer shadow-xs"
+                className="flex-1 h-11 rounded-xl text-[12px] font-semibold active:scale-95 transition-all cursor-pointer shadow-xs"
                 style={{
                   background: isDark ? "#ffffff" : "#18181b",
                   color: isDark ? "#000000" : "#ffffff",
@@ -775,14 +791,11 @@ export function DebtReceivablesSheet({
         {/* ── 4. Repayment Sub-Form ── */}
         {repayingRecord && (
           <div
-            className="p-4 rounded-2xl space-y-3.5 transition-all animate-in fade-in"
+            className="p-4 rounded-[22px] space-y-3.5 transition-all animate-in fade-in"
             style={{
-              background: isDark
-                ? "rgba(255, 255, 255, 0.03)"
-                : "rgba(0, 0, 0, 0.02)",
-              border: isDark
-                ? "1px solid rgba(255, 255, 255, 0.08)"
-                : "1px solid rgba(0, 0, 0, 0.06)",
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center justify-between pb-1">
@@ -933,47 +946,56 @@ export function DebtReceivablesSheet({
               </div>
             </label>
 
-            {/* Date & Note in 2 columns */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-                  {isIndonesian ? "Tanggal" : "Date"}
-                </label>
+            {/* Payment Date */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                {isIndonesian ? "Tanggal Pembayaran" : "Payment Date"}
+              </label>
+              <div
+                className="h-10 px-3 rounded-xl flex items-center gap-2"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.03)"
+                    : "rgba(0, 0, 0, 0.02)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                }}
+              >
+                <Calendar size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
                 <input
                   type="date"
                   value={repayDate}
                   onChange={(e) => setRepayDate(e.target.value)}
-                  className="w-full h-10 px-2.5 rounded-xl text-[11.5px] text-[var(--text-primary)] outline-none"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.03)"
-                      : "rgba(0, 0, 0, 0.02)",
-                    border: isDark
-                      ? "1px solid rgba(255, 255, 255, 0.08)"
-                      : "1px solid rgba(0, 0, 0, 0.06)",
-                    colorScheme: isDark ? "dark" : "light",
-                  }}
+                  className="w-full bg-transparent text-[12px] text-[var(--text-primary)] outline-none cursor-pointer"
+                  style={{ colorScheme: isDark ? "dark" : "light" }}
                 />
               </div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-                  {isIndonesian ? "Catatan" : "Note"}
-                </label>
+            {/* Payment Note */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                {isIndonesian ? "Catatan Cicilan (Opsional)" : "Payment Note (Optional)"}
+              </label>
+              <div
+                className="h-10 px-3 rounded-xl flex items-center gap-2"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.03)"
+                    : "rgba(0, 0, 0, 0.02)",
+                  border: isDark
+                    ? "1px solid rgba(255, 255, 255, 0.08)"
+                    : "1px solid rgba(0, 0, 0, 0.06)",
+                }}
+              >
+                <FileText size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
                 <input
                   type="text"
                   value={repayNote}
                   onChange={(e) => setRepayNote(e.target.value)}
                   placeholder={isIndonesian ? "Cicilan 1..." : "Installment 1..."}
-                  className="w-full h-10 px-2.5 rounded-xl text-[11.5px] text-[var(--text-primary)] outline-none placeholder-[var(--text-tertiary)]"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.03)"
-                      : "rgba(0, 0, 0, 0.02)",
-                    border: isDark
-                      ? "1px solid rgba(255, 255, 255, 0.08)"
-                      : "1px solid rgba(0, 0, 0, 0.06)",
-                  }}
+                  className="w-full bg-transparent text-[12px] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none"
                 />
               </div>
             </div>
@@ -983,7 +1005,7 @@ export function DebtReceivablesSheet({
               <button
                 type="button"
                 onClick={() => setRepayingRecord(null)}
-                className="flex-1 h-10 rounded-xl text-[11.5px] font-semibold text-[var(--text-secondary)] active:scale-95 transition-all cursor-pointer"
+                className="flex-1 h-11 rounded-xl text-[12px] font-semibold text-[var(--text-secondary)] active:scale-95 transition-all cursor-pointer"
                 style={{
                   background: isDark
                     ? "rgba(255, 255, 255, 0.05)"
@@ -998,7 +1020,7 @@ export function DebtReceivablesSheet({
               <button
                 type="button"
                 onClick={handleConfirmRepayment}
-                className="flex-1 h-10 rounded-xl text-[11.5px] font-semibold active:scale-95 transition-all cursor-pointer shadow-xs"
+                className="flex-1 h-11 rounded-xl text-[12px] font-semibold active:scale-95 transition-all cursor-pointer shadow-xs"
                 style={{
                   background: isDark ? "#ffffff" : "#18181b",
                   color: isDark ? "#000000" : "#ffffff",
