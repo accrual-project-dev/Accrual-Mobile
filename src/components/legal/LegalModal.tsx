@@ -47,7 +47,7 @@ export function LegalModal({
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title={modalTitle}>
       <div
-        className="space-y-4 text-left"
+        className="px-5 space-y-4 text-left max-w-lg mx-auto"
         style={{
           paddingBottom:
             "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
