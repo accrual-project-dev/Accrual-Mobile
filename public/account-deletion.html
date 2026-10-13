@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accrual — Permintaan Penghapusan Akun & Data / Account Deletion</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card-bg: rgba(255, 255, 255, 0.035);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-primary: #f4f4f6;
+      --text-secondary: #a1a1aa;
+      --text-tertiary: #71717a;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      padding: 32px 20px 80px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 720px;
+      width: 100%;
+    }
+    header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand img {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: #18181b;
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .lang-toggle {
+      display: inline-flex;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 4px;
+    }
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-tertiary);
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .lang-btn.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-primary);
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+    .steps {
+      margin: 12px 0 0 18px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .steps li {
+      margin-bottom: 8px;
+    }
+    .request-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .input-group {
+      margin-bottom: 14px;
+    }
+    .input-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+      margin-bottom: 6px;
+    }
+    .input-field {
+      width: 100%;
+      height: 42px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0 14px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+    }
+    .btn-submit {
+      width: 100%;
+      height: 44px;
+      background: #ffffff;
+      color: #09090b;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-submit:hover {
+      opacity: 0.9;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 24px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    .back-link:hover {
+      color: var(--text-primary);
+    }
+    footer {
+      margin-top: 48px;
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      border-top: 1px solid var(--card-border);
+      padding-top: 24px;
+    }
+    .lang-en { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <img src="favicon.png" alt="Accrual App Logo">
+        <div>
+          <div class="brand-title">Accrual</div>
+          <div class="brand-subtitle lang-id">Portal Resmi Penghapusan Akun & Data Pengguna</div>
+          <div class="brand-subtitle lang-en">Official Account & Data Deletion Portal</div>
+        </div>
+      </div>
+      <div class="lang-toggle">
+        <button type="button" class="lang-btn active" onclick="setLang('id')">Bahasa Indonesia</button>
+        <button type="button" class="lang-btn" onclick="setLang('en')">English</button>
+      </div>
+    </header>
+
+    <!-- BAHASA INDONESIA -->
+    <div id="content-id" class="lang-id">
+      <div class="card">
+        <div class="card-title">Metode 1: Hapus Akun Langsung dari Aplikasi (Instan)</div>
+        <div class="card-desc">
+          Cara tercepat untuk menghapus akun dan seluruh data keuangan Anda adalah langsung dari dalam aplikasi Accrual:
+          <ol class="steps">
+            <li>Buka aplikasi <strong>Accrual</strong> pada perangkat Anda.</li>
+            <li>Navigasikan ke menu <strong>Pengaturan (Settings)</strong> &rarr; <strong>Manajemen Akun</strong>.</li>
+            <li>Pilih opsi <strong>Hapus Akun (Delete Account)</strong>.</li>
+            <li>Ketik kata konfirmasi <code>HAPUS</code> dan tekan tombol konfirmasi merah.</li>
+            <li>Seluruh data cloud dan sesi lokal Anda akan langsung terhapus secara permanen seketika.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Metode 2: Permintaan Penghapusan dari Web (Jika Aplikasi Terhapus)</div>
+        <div class="card-desc">
+          Jika Anda sudah menghapus aplikasi dari perangkat atau kehilangan akses ke akun, Anda dapat mengajukan permintaan penghapusan akun melalui email resmi verifikasi kami:
+        </div>
+        <div class="request-box">
+          <form onsubmit="handleFormSubmit(event, 'id')">
+            <div class="input-group">
+              <label class="input-label">Alamat Surel Terdaftar (Registered Email)</label>
+              <input type="email" id="email-id" class="input-field" placeholder="nama@email.com" required>
+            </div>
+            <div class="input-group">
+              <label class="input-label">Alasan Penghapusan (Opsional)</label>
+              <input type="text" id="reason-id" class="input-field" placeholder="Contoh: Tidak lagi menggunakan layanan">
+            </div>
+            <button type="submit" class="btn-submit">Kirim Permintaan Penghapusan Akun</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Rincian Data yang Dihapus & Masa Retensi</div>
+        <div class="card-desc">
+          • <strong>Data yang Dihapus Bersih</strong>: Akun autentikasi, seluruh riwayat transaksi, saldo dompet, anggaran, catatan utang & piutang, tujuan tabungan, keanggotaan buku bersama, dan gambar nota struk.<br>
+          • <strong>Masa Retensi</strong>: 0 hari (penghapusan segera setelah verifikasi kepemilikan email selesai; pembersihan penuh diselesaikan dalam waktu 24-48 jam kerja).<br>
+          • <strong>Data yang Disimpan</strong>: Nol. Tidak ada salinan cadangan data finansial yang disimpan setelah akun terhapus.
+        </div>
+      </div>
+
+      <a href="privacy.html" class="back-link">&larr; Kembali ke Kebijakan Privasi</a>
+    </div>
+
+    <!-- ENGLISH -->
+    <div id="content-en" class="lang-en">
+      <div class="card">
+        <div class="card-title">Method 1: In-App Instant Account Deletion (Recommended)</div>
+        <div class="card-desc">
+          The fastest way to permanently erase your account and all financial records is directly inside the Accrual application:
+          <ol class="steps">
+            <li>Open the <strong>Accrual</strong> app on your device.</li>
+            <li>Navigate to <strong>Settings</strong> &rarr; <strong>Account Management</strong>.</li>
+            <li>Select <strong>Delete Account</strong>.</li>
+            <li>Type the confirmation word <code>DELETE</code> and confirm.</li>
+            <li>All records in our database and device local vaults are immediately wiped permanently.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Method 2: External Web Deletion Request (If App is Uninstalled)</div>
+        <div class="card-desc">
+          If you no longer have access to the app or have uninstalled it from your smartphone, you can submit an external account deletion request using the form below:
+        </div>
+        <div class="request-box">
+          <form onsubmit="handleFormSubmit(event, 'en')">
+            <div class="input-group">
+              <label class="input-label">Registered Account Email</label>
+              <input type="email" id="email-en" class="input-field" placeholder="user@example.com" required>
+            </div>
+            <div class="input-group">
+              <label class="input-label">Reason for Deletion (Optional)</label>
+              <input type="text" id="reason-en" class="input-field" placeholder="e.g. Closing financial portfolio">
+            </div>
+            <button type="submit" class="btn-submit">Submit Account Deletion Request</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Data Categories Erased & Retention Window</div>
+        <div class="card-desc">
+          • <strong>Data Categories Permanently Erased</strong>: Account login credentials, all recorded income/expense transactions, wallet accounts, debt/receivable balances, budgets, financial targets, and receipt images.<br>
+          • <strong>Retention Window</strong>: 0 days retention upon ownership confirmation; total database deletion is finalized within 24 to 48 hours.<br>
+          • <strong>Residual Backups</strong>: None. We retain zero residual financial records once deletion is processed.
+        </div>
+      </div>
+
+      <a href="privacy.html" class="back-link">&larr; Back to Privacy Policy</a>
+    </div>
+
+    <footer>
+      &copy; <span id="year"></span> Accrual. Compliant with Apple App Store Guideline 5.1.1(v) & Google Play Account Deletion Policy.
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    function setLang(lang) {
+      const isId = lang === 'id';
+      document.querySelectorAll('.lang-id').forEach(el => el.style.display = isId ? 'block' : 'none');
+      document.querySelectorAll('.lang-en').forEach(el => el.style.display = isId ? 'none' : 'block');
+      document.querySelectorAll('.lang-btn')[0].classList.toggle('active', isId);
+      document.querySelectorAll('.lang-btn')[1].classList.toggle('active', !isId);
+      document.documentElement.lang = lang;
+    }
+
+    function handleFormSubmit(e, lang) {
+      e.preventDefault();
+      const email = document.getElementById('email-' + lang).value;
+      const reason = document.getElementById('reason-' + lang).value;
+      const subject = encodeURIComponent(lang === 'id' ? 'Permintaan Penghapusan Akun Accrual: ' + email : 'Accrual Account Deletion Request: ' + email);
+      const body = encodeURIComponent(
+        (lang === 'id' 
+          ? 'Halo Tim Dukungan Accrual,\n\nSaya ingin mengajukan penghapusan akun dan seluruh data terkait secara permanen untuk alamat email berikut:\n' + email + '\n\nAlasan: ' + (reason || '-') + '\n\nMohon konfirmasi setelah proses penghapusan selesai.'
+          : 'Dear Accrual Support Team,\n\nI request the permanent deletion of my account and all associated financial records for the following registered email:\n' + email + '\n\nReason: ' + (reason || '-') + '\n\nPlease confirm once my data has been purged.')
+      );
+      window.location.href = 'mailto:support@accrual.app?cc=alhafidz.dev@gmail.com&subject=' + subject + '&body=' + body;
+    }
+  </script>
+</body>
+</html>

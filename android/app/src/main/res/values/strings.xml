@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Trouvaille</string>
-    <string name="title_activity_main">Trouvaille</string>
+    <string name="app_name">Accrual</string>
+    <string name="title_activity_main">Accrual</string>
     <string name="package_name">com.alhafidz.trouvaille</string>
     <string name="custom_url_scheme">com.alhafidz.trouvaille</string>
 </resources>
