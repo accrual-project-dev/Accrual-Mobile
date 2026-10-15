@@ -52,8 +52,8 @@ export function VaultPinLoginModal({
             }`}
             style={{
               boxShadow: isDark
-                ? "0 24px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.2)"
-                : "0 20px 50px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,1)",
+                ? "0 20px 48px -12px rgba(0,0,0,0.5)"
+                : "0 20px 40px -12px rgba(0,0,0,0.1)",
             }}
           >
             <button

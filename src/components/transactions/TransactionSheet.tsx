@@ -1155,12 +1155,12 @@ export function TransactionSheet({
     : "linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.72) 100%)";
 
   const controlBorder = isDark
-    ? "1px solid rgba(255, 255, 255, 0.085)"
-    : "1px solid rgba(0, 0, 0, 0.065)";
+    ? "1px solid rgba(255, 255, 255, 0.06)"
+    : "1px solid rgba(0, 0, 0, 0.05)";
 
   const controlShadow = isDark
-    ? "inset 0 1px 0 rgba(255, 255, 255, 0.085), 0 2px 6px rgba(0, 0, 0, 0.22)"
-    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
+    ? "0 2px 8px rgba(0, 0, 0, 0.22)"
+    : "0 1px 4px rgba(30, 35, 50, 0.04)";
 
   return (
     <BottomSheet
@@ -1691,16 +1691,8 @@ export function TransactionSheet({
           className="rounded-2xl p-2.5 px-3.5 mb-3 flex items-center gap-2.5 transition-all"
           style={{
             background: controlBg,
-            border: isNoteFocused
-              ? isDark
-                ? "1px solid rgba(255, 255, 255, 0.3)"
-                : "1px solid rgba(0, 0, 0, 0.25)"
-              : controlBorder,
-            boxShadow: isNoteFocused
-              ? isDark
-                ? "0 4px 14px rgba(0, 0, 0, 0.35)"
-                : "0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 0 #ffffff"
-              : controlShadow,
+            border: "none",
+            boxShadow: controlShadow,
           }}
         >
           <PenLine
@@ -1726,8 +1718,14 @@ export function TransactionSheet({
             aria-label={
               isIndonesian ? "Catatan transaksi" : "Transaction note"
             }
-            className="bg-transparent text-[16px] sm:text-[12.5px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-65 font-normal flex-1 outline-none min-w-0"
-            style={{ color: "var(--text-primary)" }}
+            className="bg-transparent border-0 border-none outline-none appearance-none [box-shadow:none] text-[16px] sm:text-[12.5px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-65 font-normal flex-1 min-w-0"
+            style={{
+              color: "var(--text-primary)",
+              border: "none",
+              outline: "none",
+              WebkitAppearance: "none",
+              boxShadow: "none",
+            }}
           />
 
           <AnimatePresence>
@@ -2054,7 +2052,7 @@ export function TransactionSheet({
             className="flex items-center gap-2 px-3.5 h-10 rounded-2xl mb-3.5 transition-all"
             style={{
               background: controlBg,
-              border: controlBorder,
+              border: "none",
               boxShadow: controlShadow,
             }}
           >
@@ -2069,7 +2067,7 @@ export function TransactionSheet({
               placeholder={
                 isIndonesian ? "Cari kategori..." : "Search category..."
               }
-              className="flex-1 bg-transparent text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
+              className="flex-1 bg-transparent border-0 border-none outline-none appearance-none text-[12.5px] font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
             />
             {searchCatQuery && (
               <button
@@ -2196,7 +2194,7 @@ export function TransactionSheet({
             className="flex items-center gap-2 px-3.5 h-10 rounded-2xl mb-3.5 transition-all"
             style={{
               background: controlBg,
-              border: controlBorder,
+              border: "none",
               boxShadow: controlShadow,
             }}
           >
@@ -2209,7 +2207,7 @@ export function TransactionSheet({
               value={searchWalletQuery}
               onChange={(e) => setSearchWalletQuery(e.target.value)}
               placeholder={isIndonesian ? "Cari akun..." : "Search account..."}
-              className="flex-1 bg-transparent text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
+              className="flex-1 bg-transparent border-0 border-none outline-none appearance-none text-[12.5px] font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
             />
             {searchWalletQuery && (
               <button
@@ -2326,7 +2324,7 @@ export function TransactionSheet({
             className="p-4 rounded-3xl w-full max-w-[260px] flex items-center justify-center gap-3"
             style={{
               background: controlBg,
-              border: controlBorder,
+              border: "none",
               boxShadow: controlShadow,
             }}
           >
@@ -2334,7 +2332,7 @@ export function TransactionSheet({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="bg-transparent text-3xl font-semibold amount text-center outline-none cursor-pointer"
+              className="bg-transparent text-3xl font-semibold amount text-center border-0 border-none outline-none appearance-none cursor-pointer"
               style={{
                 color: "var(--text-primary)",
                 colorScheme: isDark ? "dark" : "light",

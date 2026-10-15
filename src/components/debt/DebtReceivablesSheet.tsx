@@ -429,11 +429,8 @@ export function DebtReceivablesSheet({
                 className="flex-1 h-9 px-3 rounded-xl flex items-center gap-2 transition-all"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.07)"
-                    : "1px solid rgba(0, 0, 0, 0.05)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
                 }}
               >
                 <Search
@@ -605,11 +602,9 @@ export function DebtReceivablesSheet({
                 className="h-10 px-3 rounded-xl flex items-center gap-2"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <User size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)]" />
@@ -636,11 +631,9 @@ export function DebtReceivablesSheet({
                 className="h-10 px-3 rounded-xl flex items-center gap-2"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <span className="text-[12px] font-semibold text-[var(--text-secondary)]">
@@ -673,11 +666,9 @@ export function DebtReceivablesSheet({
                 className="w-full h-10 px-3 rounded-xl text-[12px] text-[var(--text-primary)] outline-none cursor-pointer"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                   opacity: formIsAdminOnly ? 0.5 : 1,
                 }}
               >
@@ -727,11 +718,9 @@ export function DebtReceivablesSheet({
                 className="h-10 px-3 rounded-xl flex items-center gap-2"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <Calendar size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
@@ -754,11 +743,9 @@ export function DebtReceivablesSheet({
                 className="h-10 px-3 rounded-xl flex items-center gap-2"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <FileText size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
@@ -885,11 +872,9 @@ export function DebtReceivablesSheet({
                 className="h-10 px-3 rounded-xl flex items-center gap-2"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <span className="text-[12px] font-semibold text-[var(--text-secondary)]">
@@ -926,11 +911,9 @@ export function DebtReceivablesSheet({
                 className="w-full h-10 px-3 rounded-xl text-[12px] text-[var(--text-primary)] outline-none cursor-pointer"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                   opacity: repayIsAdminOnly ? 0.5 : 1,
                 }}
               >
@@ -975,11 +958,9 @@ export function DebtReceivablesSheet({
                 className="h-10 px-3 rounded-xl flex items-center gap-2"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <Calendar size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
@@ -1002,11 +983,9 @@ export function DebtReceivablesSheet({
                 className="h-10 px-3 rounded-xl flex items-center gap-2"
                 style={{
                   background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(0, 0, 0, 0.02)",
-                  border: isDark
-                    ? "1px solid rgba(255, 255, 255, 0.08)"
-                    : "1px solid rgba(0, 0, 0, 0.06)",
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <FileText size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />

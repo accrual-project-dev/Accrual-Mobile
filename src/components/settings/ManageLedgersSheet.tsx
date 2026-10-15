@@ -147,8 +147,13 @@ export function ManageLedgersSheet({
   const { data: transactions = [] } = useAllTransactions();
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
-  const { checkLedgerAndPrompt } = useQuota();
+  const { checkLedgerAndPrompt, canCreateLedger } = useQuota();
   const { isPremium } = useSubscription();
+
+  const userLedgersCount = useMemo(
+    () => spaces.filter((s) => s.id !== "all").length,
+    [spaces],
+  );
 
   const [viewState, setViewState] = useState<
     "list" | "create" | "edit" | "delete_confirm" | "join"
@@ -198,7 +203,7 @@ export function ManageLedgersSheet({
 
   const handleOpenCreate = () => {
     triggerHaptic("light");
-    if (!checkLedgerAndPrompt(spaces.length)) {
+    if (!checkLedgerAndPrompt(userLedgersCount)) {
       return;
     }
     setFormName("");
@@ -386,8 +391,8 @@ export function ManageLedgersSheet({
     : "1px solid rgba(0, 0, 0, 0.065)";
 
   const controlShadow = isDark
-    ? "inset 0 1px 0 rgba(255, 255, 255, 0.085), 0 2px 6px rgba(0, 0, 0, 0.22)"
-    : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
+    ? "0 2px 8px rgba(0, 0, 0, 0.22)"
+    : "0 1px 4px rgba(30, 35, 50, 0.04)";
 
   return (
     <>
@@ -707,7 +712,7 @@ export function ManageLedgersSheet({
                 >
                   <Plus size={14} strokeWidth={2} />
                   <span>{isIndonesian ? "Space Baru" : "New Space"}</span>
-                  {!isPremium && spaces.length >= 1 && (
+                  {!isPremium && !canCreateLedger(userLedgersCount) && (
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/[0.08] border border-white/10 text-[var(--text-secondary)] uppercase tracking-wider">
                       PRO
                     </span>
@@ -759,11 +764,11 @@ export function ManageLedgersSheet({
                       ? "Misal: Bisnis Kopi, Freelance, Tabungan..."
                       : "e.g. Business, Side Project, Vacation..."
                   }
-                  className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold outline-none transition-all placeholder:text-[var(--text-tertiary)]"
+                  className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold border-0 border-none outline-none focus:outline-none appearance-none transition-all placeholder:text-[var(--text-tertiary)]"
                   style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    boxShadow: controlShadow,
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.05)"
+                      : "rgba(0, 0, 0, 0.035)",
                     color: "var(--text-primary)",
                   }}
                 />
@@ -785,11 +790,11 @@ export function ManageLedgersSheet({
                       ? "Tujuan atau lingkup pencatatan space"
                       : "Scope or purpose of this space"
                   }
-                  className="w-full h-11 px-3.5 rounded-2xl text-[12.5px] font-medium outline-none transition-all placeholder:text-[var(--text-tertiary)]"
+                  className="w-full h-11 px-3.5 rounded-2xl text-[12.5px] font-medium border-0 border-none outline-none focus:outline-none appearance-none transition-all placeholder:text-[var(--text-tertiary)]"
                   style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    boxShadow: controlShadow,
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.05)"
+                      : "rgba(0, 0, 0, 0.035)",
                     color: "var(--text-primary)",
                   }}
                 />

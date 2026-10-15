@@ -32,8 +32,8 @@
 
   --glass-fill: rgba(255, 255, 255, 0.055);
   --glass-fill-strong: rgba(255, 255, 255, 0.095);
-  --glass-border: rgba(255, 255, 255, 0.095);
-  --glass-highlight: rgba(255, 255, 255, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.1);
 
   --text-primary: #ffffff;
   --text-secondary: #d4d4d8;
@@ -256,11 +256,20 @@ a:focus-visible,
   outline-offset: 2px;
 }
 
+input,
+textarea,
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  border-color: transparent;
+}
+
 input:focus,
 input:focus-visible,
 textarea:focus,
 textarea:focus-visible {
   outline: none !important;
+  box-shadow: none !important;
 }
 
 input:-webkit-autofill,

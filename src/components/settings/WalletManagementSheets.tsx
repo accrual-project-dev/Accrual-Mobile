@@ -394,12 +394,11 @@ export function WalletManagementSheets({
 
           {/* Minimalist Search & Floating Filter Strip */}
           <div className="space-y-2.5">
-            {/* Quick Search - Whisper-thin Frosted Glass Bar */}
+            {/* Quick Search - Frameless Ambient Bar */}
             <div
               className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl transition-all"
               style={{
-                background: isDark ? "rgba(255, 255, 255, 0.035)" : "rgba(0, 0, 0, 0.03)",
-                border: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.05)",
+                background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.035)",
               }}
             >
               <Search size={14} style={{ color: "var(--text-tertiary)" }} />
@@ -769,7 +768,7 @@ export function WalletManagementSheets({
               className="w-full p-3.5 rounded-2xl flex items-center gap-2.5"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
               }}
             >
               <span
@@ -807,7 +806,7 @@ export function WalletManagementSheets({
               className="p-3.5 rounded-2xl flex items-center justify-between"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
               }}
             >
               <span
@@ -856,7 +855,7 @@ export function WalletManagementSheets({
               className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
                 color: "var(--text-primary)",
               }}
             />
@@ -885,7 +884,7 @@ export function WalletManagementSheets({
               className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
                 color: "var(--text-primary)",
               }}
             />
@@ -959,7 +958,7 @@ export function WalletManagementSheets({
               className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[14px]"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
                 color: "var(--text-primary)",
               }}
             />
@@ -1016,7 +1015,7 @@ export function WalletManagementSheets({
                     }}
                     className={`p-2.5 rounded-xl text-left transition-all active:scale-98 cursor-pointer flex items-center justify-between border ${
                       isSelected
-                        ? "bg-black/[0.04] dark:bg-white/[0.08] border-black/30 dark:border-white/30"
+                        ? "bg-black/[0.04] dark:bg-white/[0.08] border-black/15 dark:border-white/15"
                         : "bg-[var(--glass-fill)] border-[var(--glass-border)] hover:border-black/15 dark:hover:border-white/15"
                     }`}
                   >
@@ -1294,7 +1293,7 @@ export function WalletManagementSheets({
               className="flex items-center gap-3 p-3 rounded-2xl"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
               }}
             >
               <button
@@ -1335,7 +1334,7 @@ export function WalletManagementSheets({
               className="flex items-center gap-2.5 px-3.5 py-3 rounded-2xl"
               style={{
                 background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
               }}
             >
               <span

@@ -413,8 +413,8 @@ export function LoginPage() {
             ? "radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.015) 38%, transparent 68%)"
             : "radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(230, 233, 242, 0.45) 32%, transparent 65%)",
           boxShadow: isDark
-            ? "inset 0 1px 1px 0 rgba(255, 255, 255, 0.25), 0 -10px 40px -10px rgba(0, 0, 0, 0.6)"
-            : "inset 0 1.5px 1px 0 #ffffff, 0 -12px 36px -8px rgba(20, 25, 45, 0.04)",
+            ? "0 -10px 30px -10px rgba(0, 0, 0, 0.45)"
+            : "0 -12px 28px -10px rgba(20, 25, 45, 0.04)",
         }}
       />
 
@@ -508,14 +508,14 @@ export function LoginPage() {
           backdropFilter: "blur(40px) saturate(190%)",
           WebkitBackdropFilter: "blur(40px) saturate(190%)",
           boxShadow: isDark
-            ? "inset 0 1px 0 0 rgba(255, 255, 255, 0.22), 0 -16px 40px -10px rgba(0, 0, 0, 0.7)"
-            : "inset 0 1.5px 0 0 #ffffff, inset 0 -1px 0 0 rgba(0, 0, 0, 0.03), 0 -16px 36px -12px rgba(25, 30, 50, 0.08)",
+            ? "0 -10px 30px -10px rgba(0, 0, 0, 0.45)"
+            : "0 -12px 28px -10px rgba(25, 30, 50, 0.05)",
           paddingBottom:
             "max(calc(env(safe-area-inset-bottom, 0px) + 14px), 22px)",
         }}
       >
         {/* Specular Highlight Rim at the top edge */}
-        <div className="absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent pointer-events-none" />
 
         <AnimatePresence mode="wait">
           {/* ========================================================== */}
@@ -585,10 +585,10 @@ export function LoginPage() {
                         required
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
+                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
                           isDark
-                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
+                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
                         )}
                       />
                     </div>
@@ -633,10 +633,10 @@ export function LoginPage() {
                         minLength={6}
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
                           isDark
-                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
+                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
                         )}
                       />
                       <button
@@ -763,10 +763,10 @@ export function LoginPage() {
                         minLength={6}
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
                           isDark
-                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
+                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
                         )}
                       />
                       <button
@@ -862,10 +862,10 @@ export function LoginPage() {
                       disabled={loading}
                       onMouseDown={(e) => e.preventDefault()}
                       className={cn(
-                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border",
+                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)]",
                         isDark
-                          ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
-                          : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
+                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
+                          : "bg-zinc-950 text-white hover:bg-zinc-900",
                       )}
                     >
                       {loading ? (
@@ -943,10 +943,10 @@ export function LoginPage() {
                       disabled={loading}
                       onClick={handleToggleEmailForm}
                       className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border select-none",
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)] select-none",
                         isDark
-                          ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
-                          : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]",
+                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
+                          : "bg-zinc-950 text-white hover:bg-zinc-900",
                       )}
                     >
                       <div className="flex items-center gap-2.5">
@@ -973,8 +973,8 @@ export function LoginPage() {
                         className={cn(
                           "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
                           isDark
-                            ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                            : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
+                            ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] text-white"
+                            : "bg-black/[0.03] hover:bg-black/[0.05] border-black/[0.06] text-zinc-950 shadow-[0_1px_3px_rgba(0,0,0,0.03)]",
                         )}
                       >
                         <div className="flex items-center gap-2.5">
@@ -1018,8 +1018,8 @@ export function LoginPage() {
                       className={cn(
                         "w-full flex items-center justify-between py-3 px-4 rounded-xl font-medium text-[13px] transition-all cursor-pointer border select-none",
                         isDark
-                          ? "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.07] text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                          : "bg-black/[0.02] hover:bg-black/[0.04] border-black/[0.06] text-zinc-700 shadow-[inset_0_1px_0_#ffffff]",
+                          ? "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] text-zinc-300"
+                          : "bg-black/[0.02] hover:bg-black/[0.04] border-black/[0.05] text-zinc-700",
                       )}
                     >
                       <div className="flex items-center gap-2.5">
@@ -1218,10 +1218,10 @@ export function LoginPage() {
                         required
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
+                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
                           isDark
-                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
+                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
                         )}
                       />
                     </div>
@@ -1255,10 +1255,10 @@ export function LoginPage() {
                         required
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
                           isDark
-                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
+                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
                         )}
                       />
                       <button
@@ -1307,10 +1307,10 @@ export function LoginPage() {
                       disabled={loading}
                       onMouseDown={(e) => e.preventDefault()}
                       className={cn(
-                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border",
+                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)]",
                         isDark
-                          ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
-                          : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
+                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
+                          : "bg-zinc-950 text-white hover:bg-zinc-900",
                       )}
                     >
                       {loading ? (
@@ -1404,10 +1404,10 @@ export function LoginPage() {
                           triggerHaptic("light");
                         }}
                         className={cn(
-                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border select-none",
+                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)] select-none",
                           isDark
-                            ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
-                            : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]",
+                            ? "bg-white text-zinc-950 hover:bg-zinc-100"
+                            : "bg-zinc-950 text-white hover:bg-zinc-900",
                         )}
                       >
                         <div className="flex items-center gap-2.5">
@@ -1432,14 +1432,14 @@ export function LoginPage() {
                       disabled={loading}
                       onClick={handleToggleEmailForm}
                       className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border select-none",
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none",
                         !hasVaultPin
                           ? isDark
-                            ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
-                            : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]"
+                            ? "bg-white text-zinc-950 hover:bg-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.18)] border-0 border-none"
+                            : "bg-zinc-950 text-white hover:bg-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.18)] border-0 border-none"
                           : isDark
-                            ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                            : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
+                            ? "bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] text-white"
+                            : "bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.06] text-zinc-950",
                       )}
                     >
                       <div className="flex items-center gap-2.5">
@@ -1466,8 +1466,8 @@ export function LoginPage() {
                         className={cn(
                           "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
                           isDark
-                            ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                            : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
+                            ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] text-white"
+                            : "bg-black/[0.03] hover:bg-black/[0.05] border-black/[0.06] text-zinc-950 shadow-[0_1px_3px_rgba(0,0,0,0.03)]",
                         )}
                       >
                         <div className="flex items-center gap-2.5">

@@ -171,7 +171,7 @@ export function ResetPasswordModal({ isOpen, onClose }: ResetPasswordModalProps)
               className="relative flex items-center rounded-2xl transition-all"
               style={{
                 background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
               }}
             >
               <div className="pl-3.5 pointer-events-none" style={{ color: "var(--text-tertiary)" }}>
@@ -239,7 +239,7 @@ export function ResetPasswordModal({ isOpen, onClose }: ResetPasswordModalProps)
               className="relative flex items-center rounded-2xl transition-all"
               style={{
                 background: "var(--glass-fill)",
-                border: "1px solid var(--glass-border)",
+                border: "none",
               }}
             >
               <div className="pl-3.5 pointer-events-none" style={{ color: "var(--text-tertiary)" }}>

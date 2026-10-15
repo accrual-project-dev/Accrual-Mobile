@@ -296,6 +296,8 @@ function GradientLineWave({
   );
 }
 
+const VOICE_LANG_STORAGE_KEY = "trouvaille_voice_lang";
+
 export function VoiceQuickAddModal({
   isOpen,
   onClose,
@@ -312,6 +314,18 @@ export function VoiceQuickAddModal({
   const addTx = useAddTransaction();
   const batchAddTx = useBatchAddTransactions();
   const { showToast } = useToast();
+
+  const [voiceLang, setVoiceLang] = useState<"id" | "en">(() => {
+    try {
+      const saved = localStorage.getItem(VOICE_LANG_STORAGE_KEY);
+      if (saved === "id" || saved === "en") return saved;
+    } catch {}
+    return isIndonesian ? "id" : "en";
+  });
+  const voiceLangRef = useRef(voiceLang);
+  useEffect(() => {
+    voiceLangRef.current = voiceLang;
+  }, [voiceLang]);
 
   const [transcript, setTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -370,91 +384,118 @@ export function VoiceQuickAddModal({
     setIsListening(false);
   }, []);
 
-  const startRecognition = useCallback(() => {
-    stopRecognition();
-    userExplicitlyStoppedRef.current = false;
-
-    const SpeechRec =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRec) {
-      setSpeechSupported(false);
-      showToast(
-        isIndonesian
-          ? "Pengenalan suara tidak didukung di browser ini. Anda dapat mengetik langsung."
-          : "Speech recognition is not supported on this browser. You can type directly.",
-        "info",
-        null,
-        2500,
-      );
-      return;
-    }
-
-    setSpeechSupported(true);
-
-    try {
-      const rec = new SpeechRec();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = isIndonesian ? "id-ID" : "en-US";
-
-      rec.onstart = () => {
-        setIsListening(true);
-        triggerHaptic("medium");
-      };
-
-      rec.onresult = (event: any) => {
-        let current = "";
-        for (let i = 0; i < event.results.length; i++) {
-          current += event.results[i][0].transcript + " ";
-        }
-        const cleaned = current.trim();
-        if (cleaned) {
-          setTranscript(cleaned);
-        }
-      };
-
-      rec.onerror = (e: any) => {
-        console.warn("[VoiceQuickAdd] speech error:", e?.error || e);
-        if (e?.error === "not-allowed" || e?.error === "service-not-allowed") {
-          userExplicitlyStoppedRef.current = true;
-          showToast(
-            isIndonesian
-              ? "Izin mikrofon diperlukan. Harap izinkan akses di pengaturan perangkat."
-              : "Microphone permission is required. Please allow access in browser or app settings.",
-            "delete",
-            null,
-            3000,
-          );
-          setIsListening(false);
-        } else if (e?.error === "no-speech") {
-          // Keep listening; silence is normal during user pauses
-        } else if (e?.error !== "aborted") {
-          // Gracefully let onend recover if still open
-        }
-      };
-
-      rec.onend = () => {
-        if (isOpenRef.current && !userExplicitlyStoppedRef.current) {
-          // Auto-restart if mobile browser closed speech due to silence pause
-          try {
-            rec.start();
-            return;
-          } catch {}
-        }
-        setIsListening(false);
-        recognitionRef.current = null;
-      };
-
-      recognitionRef.current = rec;
-      rec.start();
-      setIsListening(true);
-    } catch (err) {
-      console.warn("[VoiceQuickAdd] Failed to start speech recognition:", err);
+  const startRecognition = useCallback(
+    (overrideLang?: "id" | "en") => {
       stopRecognition();
+      userExplicitlyStoppedRef.current = false;
+
+      const SpeechRec =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+
+      if (!SpeechRec) {
+        setSpeechSupported(false);
+        showToast(
+          isIndonesian
+            ? "Pengenalan suara tidak didukung di browser ini. Anda dapat mengetik langsung."
+            : "Speech recognition is not supported on this browser. You can type directly.",
+          "info",
+          null,
+          2500,
+        );
+        return;
+      }
+
+      setSpeechSupported(true);
+
+      try {
+        const rec = new SpeechRec();
+        rec.continuous = true;
+        rec.interimResults = true;
+        const targetLang = overrideLang || voiceLangRef.current;
+        rec.lang = targetLang === "id" ? "id-ID" : "en-US";
+
+        rec.onstart = () => {
+          setIsListening(true);
+          triggerHaptic("medium");
+        };
+
+        rec.onresult = (event: any) => {
+          let current = "";
+          for (let i = 0; i < event.results.length; i++) {
+            current += event.results[i][0].transcript + " ";
+          }
+          const cleaned = current.trim();
+          if (cleaned) {
+            setTranscript(cleaned);
+          }
+        };
+
+        rec.onerror = (e: any) => {
+          console.warn("[VoiceQuickAdd] speech error:", e?.error || e);
+          if (e?.error === "not-allowed" || e?.error === "service-not-allowed") {
+            userExplicitlyStoppedRef.current = true;
+            showToast(
+              isIndonesian
+                ? "Izin mikrofon diperlukan. Harap izinkan akses di pengaturan perangkat."
+                : "Microphone permission is required. Please allow access in browser or app settings.",
+              "delete",
+              null,
+              3000,
+            );
+            setIsListening(false);
+          } else if (e?.error === "no-speech") {
+            // Keep listening; silence is normal during user pauses
+          } else if (e?.error !== "aborted") {
+            // Gracefully let onend recover if still open
+          }
+        };
+
+        rec.onend = () => {
+          if (isOpenRef.current && !userExplicitlyStoppedRef.current) {
+            // Auto-restart if mobile browser closed speech due to silence pause
+            try {
+              rec.start();
+              return;
+            } catch {}
+          }
+          setIsListening(false);
+          recognitionRef.current = null;
+        };
+
+        recognitionRef.current = rec;
+        rec.start();
+        setIsListening(true);
+      } catch (err) {
+        console.warn("[VoiceQuickAdd] Failed to start speech recognition:", err);
+        stopRecognition();
+      }
+    },
+    [stopRecognition, showToast, isIndonesian],
+  );
+
+  const handleSelectVoiceLang = (lang: "id" | "en") => {
+    if (lang === voiceLang) return;
+    triggerHaptic("light");
+    setVoiceLang(lang);
+    voiceLangRef.current = lang;
+    try {
+      localStorage.setItem(VOICE_LANG_STORAGE_KEY, lang);
+    } catch {}
+
+    showToast(
+      isIndonesian
+        ? `Bahasa input: ${lang === "id" ? "Indonesia" : "Inggris"}`
+        : `Voice input: ${lang === "id" ? "Indonesian" : "English"}`,
+      "update",
+      null,
+      1800,
+    );
+
+    if (isOpenRef.current) {
+      startRecognition(lang);
     }
-  }, [stopRecognition, showToast, isIndonesian]);
+  };
 
   // Speech Recognition lifecycle
   useEffect(() => {
@@ -739,27 +780,77 @@ export function VoiceQuickAddModal({
               className="text-[12px] font-semibold tracking-wider uppercase"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isListening ? "Listening..." : "Voice Quick Add"}
+              {isListening
+                ? isIndonesian
+                  ? "Mendengarkan..."
+                  : "Listening..."
+                : isIndonesian
+                  ? "Pencatatan Suara"
+                  : "Voice Quick Add"}
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-            style={{
-              background: isDark
-                ? "rgba(255, 255, 255, 0.08)"
-                : "rgba(0, 0, 0, 0.05)",
-              color: "var(--text-secondary)",
-              border: isDark
-                ? "1px solid rgba(255, 255, 255, 0.12)"
-                : "1px solid rgba(0, 0, 0, 0.06)",
-            }}
-          >
-            <X size={17} strokeWidth={1.8} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Quick Voice Language Switcher [ ID | EN ] */}
+            <div
+              className="flex items-center p-0.5 rounded-full"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.12)"
+                  : "1px solid rgba(0, 0, 0, 0.06)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => handleSelectVoiceLang("id")}
+                aria-label="Bahasa Indonesia"
+                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold font-mono transition-all cursor-pointer ${
+                  voiceLang === "id"
+                    ? isDark
+                      ? "bg-white text-black shadow-sm"
+                      : "bg-zinc-900 text-white shadow-sm"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                }`}
+              >
+                ID
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectVoiceLang("en")}
+                aria-label="English"
+                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold font-mono transition-all cursor-pointer ${
+                  voiceLang === "en"
+                    ? isDark
+                      ? "bg-white text-black shadow-sm"
+                      : "bg-zinc-900 text-white shadow-sm"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={isIndonesian ? "Tutup" : "Close"}
+              className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
+                color: "var(--text-secondary)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.12)"
+                  : "1px solid rgba(0, 0, 0, 0.06)",
+              }}
+            >
+              <X size={17} strokeWidth={1.8} />
+            </button>
+          </div>
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════════
@@ -781,7 +872,11 @@ export function VoiceQuickAddModal({
                   onChange={(e) => setTranscript(e.target.value)}
                   className="w-full bg-transparent border-none outline-none text-[20px] sm:text-[23px] font-medium text-center tracking-tight leading-snug resize-none"
                   style={{ color: "var(--text-primary)" }}
-                  placeholder="Type or speak your transaction..."
+                  placeholder={
+                    isIndonesian
+                      ? "Ketik atau ucapkan transaksi..."
+                      : "Type or speak your transaction..."
+                  }
                 />
                 {/* Live Recognized Token Badges */}
                 {hasMatches && (
@@ -844,10 +939,20 @@ export function VoiceQuickAddModal({
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {!speechSupported
-                  ? "Speech is not supported in this browser. Tap to type directly."
+                  ? isIndonesian
+                    ? "Pengenalan suara tidak didukung di browser ini. Ketuk untuk mengetik langsung."
+                    : "Speech is not supported in this browser. Tap to type directly."
                   : isListening
-                    ? "Speak naturally, e.g. 'Coffee 25k BCA, then Fuel 50k Cash'..."
-                    : "Tap the microphone below to start speaking..."}
+                    ? voiceLang === "id"
+                      ? isIndonesian
+                        ? "Bicaralah wajar, misal 'Kopi 25 ribu BCA, lalu Bensin 50 ribu Tunai'..."
+                        : "Speak in Indonesian, e.g. 'Kopi 25 ribu BCA, lalu Bensin 50 ribu Tunai'..."
+                      : isIndonesian
+                        ? "Bicaralah dalam bahasa Inggris, misal 'Coffee 25k BCA, then Fuel 50k Cash'..."
+                        : "Speak naturally, e.g. 'Coffee 25k BCA, then Fuel 50k Cash'..."
+                    : isIndonesian
+                      ? "Ketuk mikrofon di bawah untuk mulai berbicara..."
+                      : "Tap the microphone below to start speaking..."}
               </p>
             )}
           </div>
@@ -869,7 +974,9 @@ export function VoiceQuickAddModal({
                         className="text-[12px] font-bold tracking-tight"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {parsedList.length} Transactions Detected
+                        {isIndonesian
+                          ? `${parsedList.length} Transaksi Terdeteksi`
+                          : `${parsedList.length} Transactions Detected`}
                       </span>
                     </div>
                     <span
@@ -1095,7 +1202,11 @@ export function VoiceQuickAddModal({
               }}
             >
               <AlertCircle size={14} className="shrink-0" strokeWidth={2} />
-              <span>A similar transaction was recorded in the last 15 minutes</span>
+              <span>
+                {isIndonesian
+                  ? "Transaksi serupa tercatat dalam 15 menit terakhir"
+                  : "A similar transaction was recorded in the last 15 minutes"}
+              </span>
             </motion.div>
           )}
 
@@ -1115,10 +1226,10 @@ export function VoiceQuickAddModal({
                     ? "1px solid rgba(255, 255, 255, 0.14)"
                     : "1px solid rgba(0, 0, 0, 0.08)",
                 }}
-                title="Edit in form"
+                title={isIndonesian ? "Ubah formulir" : "Edit in form"}
               >
                 <Pen size={14} strokeWidth={1.8} />
-                Edit
+                {isIndonesian ? "Ubah" : "Edit"}
               </button>
 
               {isMulti ? (
@@ -1134,8 +1245,12 @@ export function VoiceQuickAddModal({
                 >
                   <Check size={16} strokeWidth={2.5} />
                   {isSubmitting
-                    ? "Saving All..."
-                    : `Save All (${formatRupiah(totalBatchAmount)})`}
+                    ? isIndonesian
+                      ? "Menyimpan Semua..."
+                      : "Saving All..."
+                    : isIndonesian
+                      ? `Simpan Semua (${formatRupiah(totalBatchAmount)})`
+                      : `Save All (${formatRupiah(totalBatchAmount)})`}
                 </button>
               ) : hasAmount ? (
                 <button
@@ -1150,8 +1265,12 @@ export function VoiceQuickAddModal({
                 >
                   <Check size={16} strokeWidth={2.5} />
                   {isSubmitting
-                    ? "Saving..."
-                    : `Save (${formatRupiah(parsed.amount!)})`}
+                    ? isIndonesian
+                      ? "Menyimpan..."
+                      : "Saving..."
+                    : isIndonesian
+                      ? `Simpan (${formatRupiah(parsed.amount!)})`
+                      : `Save (${formatRupiah(parsed.amount!)})`}
                 </button>
               ) : null}
             </div>
@@ -1170,7 +1289,7 @@ export function VoiceQuickAddModal({
             <button
               type="button"
               onClick={handleScanClick}
-              aria-label="Scan Receipt"
+              aria-label={isIndonesian ? "Pindai Struk" : "Scan Receipt"}
               className="w-13 h-13 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
               style={{
                 background: isDark
@@ -1184,7 +1303,7 @@ export function VoiceQuickAddModal({
                   ? "0 4px 16px rgba(0,0,0,0.3)"
                   : "0 4px 16px rgba(0,0,0,0.06)",
               }}
-              title="Scan Receipt"
+              title={isIndonesian ? "Pindai Struk" : "Scan Receipt"}
             >
               <ScanLine size={21} strokeWidth={1.75} />
             </button>
@@ -1192,7 +1311,7 @@ export function VoiceQuickAddModal({
               className="text-[11px] font-medium tracking-tight"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Scan
+              {isIndonesian ? "Pindai" : "Scan"}
             </span>
           </div>
 
@@ -1213,8 +1332,8 @@ export function VoiceQuickAddModal({
                 className="absolute inset-0 rounded-full pointer-events-none -m-2"
                 style={{
                   border: isDark
-                    ? "2px solid rgba(255, 255, 255, 0.45)"
-                    : "2px solid rgba(0, 0, 0, 0.25)",
+                    ? "1px solid rgba(255, 255, 255, 0.12)"
+                    : "1px solid rgba(0, 0, 0, 0.08)",
                 }}
               />
             )}
@@ -1223,9 +1342,15 @@ export function VoiceQuickAddModal({
               type="button"
               onClick={toggleListening}
               aria-label={
-                isListening ? "Stop listening" : "Start voice recognition"
+                isListening
+                  ? isIndonesian
+                    ? "Berhenti mendengarkan"
+                    : "Stop listening"
+                  : isIndonesian
+                    ? "Mulai bicara"
+                    : "Start voice recognition"
               }
-              className="w-17 h-17 rounded-full flex items-center justify-center active:scale-92 transition-all cursor-pointer relative shadow-2xl"
+              className="w-17 h-17 rounded-full flex items-center justify-center active:scale-92 transition-all cursor-pointer relative"
               style={{
                 background: isListening
                   ? isDark
@@ -1240,17 +1365,25 @@ export function VoiceQuickAddModal({
                     : "#ffffff"
                   : "#ffffff",
                 border: isDark
-                  ? "1px solid rgba(255, 255, 255, 0.28)"
-                  : "1px solid rgba(0, 0, 0, 0.12)",
+                  ? "1px solid rgba(255, 255, 255, 0.10)"
+                  : "1px solid rgba(0, 0, 0, 0.06)",
                 boxShadow: isListening
                   ? isDark
-                    ? "0 0 32px rgba(255, 255, 255, 0.35)"
-                    : "0 0 32px rgba(0, 0, 0, 0.2)"
+                    ? "0 8px 24px rgba(0, 0, 0, 0.35)"
+                    : "0 4px 16px rgba(0, 0, 0, 0.08)"
                   : isDark
-                    ? "0 8px 24px rgba(0,0,0,0.5)"
-                    : "0 8px 24px rgba(0,0,0,0.15)",
+                    ? "0 4px 16px rgba(0, 0, 0, 0.25)"
+                    : "0 2px 8px rgba(0, 0, 0, 0.05)",
               }}
-              title={isListening ? "Stop listening" : "Tap to speak"}
+              title={
+                isListening
+                  ? isIndonesian
+                    ? "Berhenti mendengarkan"
+                    : "Stop listening"
+                  : isIndonesian
+                    ? "Ketuk untuk bicara"
+                    : "Tap to speak"
+              }
             >
               <Mic size={27} strokeWidth={isListening ? 2.2 : 1.9} />
             </button>
@@ -1262,18 +1395,24 @@ export function VoiceQuickAddModal({
                   : "var(--text-tertiary)",
               }}
             >
-              {isListening ? "Listening..." : "Tap to speak"}
+              {isListening
+                ? isIndonesian
+                  ? "Mendengarkan..."
+                  : "Listening..."
+                : isIndonesian
+                  ? "Ketuk untuk bicara"
+                  : "Tap to speak"}
             </span>
           </div>
 
-          {/* Right: Manual Form Button (remains as requested) or Cancel when listening/transcript active */}
+          {/* Right: Manual Form Button or Cancel when listening/transcript active */}
           <div className="flex flex-col items-center gap-1.5">
             {isListening || transcript.length > 0 ? (
               /* Cancel button: stops speaking and clears voice WITHOUT leaving the modal */
               <button
                 type="button"
                 onClick={handleCancelVoice}
-                aria-label="Cancel speaking"
+                aria-label={isIndonesian ? "Batal bicara" : "Cancel speaking"}
                 className="w-13 h-13 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                 style={{
                   background: isDark
@@ -1287,16 +1426,18 @@ export function VoiceQuickAddModal({
                     ? "0 4px 16px rgba(0,0,0,0.3)"
                     : "0 4px 16px rgba(0,0,0,0.06)",
                 }}
-                title="Cancel voice recording"
+                title={
+                  isIndonesian ? "Batal rekaman suara" : "Cancel voice recording"
+                }
               >
                 <X size={21} strokeWidth={2} />
               </button>
             ) : (
-              /* Manual Form Edit button (kept as requested by user) */
+              /* Manual Form Edit button */
               <button
                 type="button"
                 onClick={() => handleOpenForm(0)}
-                aria-label="Manual Form"
+                aria-label={isIndonesian ? "Formulir Manual" : "Manual Form"}
                 className="w-13 h-13 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
                 style={{
                   background: isDark
@@ -1310,7 +1451,11 @@ export function VoiceQuickAddModal({
                     ? "0 4px 16px rgba(0,0,0,0.3)"
                     : "0 4px 16px rgba(0,0,0,0.06)",
                 }}
-                title="Open Manual Form"
+                title={
+                  isIndonesian
+                    ? "Buka Formulir Manual"
+                    : "Open Manual Form"
+                }
               >
                 <SlidersHorizontal size={20} strokeWidth={1.75} />
               </button>
@@ -1319,7 +1464,11 @@ export function VoiceQuickAddModal({
               className="text-[11px] font-medium tracking-tight"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isListening || transcript.length > 0 ? "Cancel" : "Manual"}
+              {isListening || transcript.length > 0
+                ? isIndonesian
+                  ? "Batal"
+                  : "Cancel"
+                : "Manual"}
             </span>
           </div>
         </div>

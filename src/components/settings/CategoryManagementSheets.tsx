@@ -321,7 +321,7 @@ export function CategoryManagementSheets({
             <div className="space-y-3.5">
               {/* Quick Search */}
               <div
-                className="flex items-center gap-2 px-3.5 py-2 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] shadow-sm"
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-[var(--bg-elevated)]"
               >
                 <Search size={15} style={{ color: "var(--text-tertiary)" }} />
                 <input
@@ -599,7 +599,7 @@ export function CategoryManagementSheets({
                           )
                         }
                         placeholder={isIndonesian ? "Nama Kategori" : "Category Name"}
-                        className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
+                        className="w-full min-w-0 px-3.5 py-2.5 rounded-xl border-0 border-none outline-none focus:outline-none appearance-none font-medium text-[13px] bg-[var(--glass-fill)] transition-all"
                         style={{ color: "var(--text-primary)" }}
                       />
                     </div>
@@ -630,7 +630,7 @@ export function CategoryManagementSheets({
                         setEditCategoryBudget(e.target.value.replace(/\D/g, ""))
                       }
                       placeholder={isIndonesian ? "cth. Rp 1.000.000 (kosongkan jika tanpa batas)" : "e.g. Rp 1.000.000 (leave blank for no limit)"}
-                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
+                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl border-0 border-none outline-none focus:outline-none appearance-none font-medium text-[13px] bg-[var(--glass-fill)] transition-all"
                       style={{ color: "var(--text-primary)" }}
                     />
                   </div>
@@ -729,7 +729,7 @@ export function CategoryManagementSheets({
                           }
                         }}
                         placeholder={isIndonesian ? "cth. Kopi, Langganan, Belanja" : "e.g. Coffee, Streaming, Groceries"}
-                        className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
+                        className="w-full min-w-0 px-3.5 py-2.5 rounded-xl border-0 border-none outline-none focus:outline-none appearance-none font-medium text-[13px] bg-[var(--glass-fill)] transition-all"
                         style={{ color: "var(--text-primary)" }}
                       />
                     </div>
@@ -757,7 +757,7 @@ export function CategoryManagementSheets({
                         setCatBudget(e.target.value.replace(/\D/g, ""))
                       }
                       placeholder={isIndonesian ? "cth. Rp 1.000.000 (kosongkan jika tanpa batas)" : "e.g. Rp 1.000.000 (leave blank for no limit)"}
-                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl outline-none font-medium text-[13px] border border-[var(--glass-border)] bg-[var(--glass-fill)] focus:border-black/30 dark:focus:border-white/25 transition-colors"
+                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl border-0 border-none outline-none focus:outline-none appearance-none font-medium text-[13px] bg-[var(--glass-fill)] transition-all"
                       style={{ color: "var(--text-primary)" }}
                     />
                   </div>
@@ -862,8 +862,8 @@ export function CategoryManagementSheets({
                 : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.88) 48%, rgba(244,245,247,0.94) 100%)",
               borderColor: "var(--glass-border)",
               boxShadow: isDark
-                ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.18)"
-                : "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(15,23,42,0.05)",
+                ? "0 2px 8px rgba(0,0,0,0.22)"
+                : "0 1px 4px rgba(15,23,42,0.04)",
             }}
           >
             <label
@@ -872,7 +872,7 @@ export function CategoryManagementSheets({
             >
               {isIndonesian ? "Nominal Batas Bulanan" : "Monthly Limit Amount"}
             </label>
-            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)]">
+            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--glass-fill)]">
               <span className="text-[12px]  font-semibold text-[var(--text-tertiary)]">
                 Rp
               </span>

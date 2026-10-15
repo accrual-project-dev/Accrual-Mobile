@@ -728,7 +728,7 @@ export function GoalDetailModal({
                   className="w-full p-3 rounded-2xl outline-none font-semibold text-[13px]"
                   style={{
                     background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
+                    border: "none",
                     color: "var(--text-primary)",
                   }}
                 />
@@ -877,7 +877,7 @@ export function GoalDetailModal({
                   className="flex-1 px-4 py-3 rounded-2xl text-[13px] outline-none font-semibold"
                   style={{
                     background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    border: "none",
                     color: "var(--text-primary)",
                   }}
                 />
@@ -912,7 +912,7 @@ export function GoalDetailModal({
                 className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[13px]"
                 style={{
                   background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
+                  border: "none",
                   color: "var(--text-primary)",
                 }}
               />
@@ -934,7 +934,7 @@ export function GoalDetailModal({
                 className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[13px]"
                 style={{
                   background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
+                  border: "none",
                   color: "var(--text-primary)",
                 }}
               />
@@ -956,7 +956,7 @@ export function GoalDetailModal({
                 className="w-full p-3.5 rounded-2xl outline-none font-semibold text-[13px]"
                 style={{
                   background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
+                  border: "none",
                   color: "var(--text-primary)",
                 }}
               />
