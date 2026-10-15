@@ -497,10 +497,10 @@ export function LoginPage() {
                         required
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] sm:text-[13px] outline-none transition-colors border",
+                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
                           isDark
-                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
                         )}
                       />
                     </div>
@@ -533,10 +533,10 @@ export function LoginPage() {
                         minLength={6}
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] sm:text-[13px] outline-none transition-colors border",
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
                           isDark
-                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
                         )}
                       />
                       <button
@@ -659,7 +659,7 @@ export function LoginPage() {
                       disabled={loading}
                       onMouseDown={(e) => e.preventDefault()}
                       className={cn(
-                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer select-none mt-1 border",
+                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border",
                         isDark
                           ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
                           : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
@@ -734,7 +734,7 @@ export function LoginPage() {
                       disabled={loading}
                       onClick={handleToggleEmailForm}
                       className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border select-none",
                         isDark
                           ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
                           : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]",
@@ -762,7 +762,7 @@ export function LoginPage() {
                         disabled={loading}
                         onClick={() => handleOAuthLogin("google")}
                         className={cn(
-                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
+                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
                           isDark
                             ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
                             : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
@@ -807,7 +807,7 @@ export function LoginPage() {
                       disabled={loading}
                       onClick={handleContinueAsGuest}
                       className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-medium text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-medium text-[13px] transition-all cursor-pointer border select-none",
                         isDark
                           ? "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.07] text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                           : "bg-black/[0.02] hover:bg-black/[0.04] border-black/[0.06] text-zinc-700 shadow-[inset_0_1px_0_#ffffff]",
@@ -846,58 +846,62 @@ export function LoginPage() {
                 )}
               </div>
 
-              {/* Minimal Divider */}
-              <div className="flex items-center gap-3 my-3">
-                <div
-                  className={cn(
-                    "h-[1px] flex-1",
-                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-[10.5px]",
-                    isDark ? "text-zinc-500" : "text-zinc-400",
-                  )}
-                >
-                  {isIndonesian ? "atau" : "or"}
-                </span>
-                <div
-                  className={cn(
-                    "h-[1px] flex-1",
-                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                  )}
-                />
-              </div>
+              {!showEmailForm && (
+                /* Minimal Divider */
+                <div className="flex items-center gap-3 my-3">
+                  <div
+                    className={cn(
+                      "h-[1px] flex-1",
+                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-[10.5px]",
+                      isDark ? "text-zinc-500" : "text-zinc-400",
+                    )}
+                  >
+                    {isIndonesian ? "atau" : "or"}
+                  </span>
+                  <div
+                    className={cn(
+                      "h-[1px] flex-1",
+                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                    )}
+                  />
+                </div>
+              )}
 
               {/* Footer Switch */}
               <div className="text-center">
-                <p
-                  className={cn(
-                    "text-[11.5px]",
-                    isDark ? "text-zinc-400" : "text-zinc-600",
-                  )}
-                >
-                  {isIndonesian
-                    ? "Belum memiliki akun? "
-                    : "Don't have an account? "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setViewMode("login");
-                      setShowEmailForm(false);
-                      setError(null);
-                      setMessage(null);
-                    }}
+                {!showEmailForm && (
+                  <p
                     className={cn(
-                      "font-semibold hover:underline cursor-pointer",
-                      isDark ? "text-white" : "text-zinc-950",
+                      "text-[11.5px]",
+                      isDark ? "text-zinc-400" : "text-zinc-600",
                     )}
                   >
-                    {isIndonesian ? "Daftar" : "Sign up"}
-                  </button>
-                </p>
+                    {isIndonesian
+                      ? "Sudah memiliki akun? "
+                      : "Already have an account? "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setViewMode("login");
+                        setShowEmailForm(false);
+                        setError(null);
+                        setMessage(null);
+                      }}
+                      className={cn(
+                        "font-semibold hover:underline cursor-pointer",
+                        isDark ? "text-white" : "text-zinc-950",
+                      )}
+                    >
+                      {isIndonesian ? "Masuk" : "Sign in"}
+                    </button>
+                  </p>
+                )}
 
                 {/* Legal & Privacy Policy Link */}
                 <p
@@ -998,10 +1002,10 @@ export function LoginPage() {
                         required
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
+                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
                           isDark
-                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
                         )}
                       />
                     </div>
@@ -1023,10 +1027,10 @@ export function LoginPage() {
                         required
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
                           isDark
-                            ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                            : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
                         )}
                       />
                       <button
@@ -1075,7 +1079,7 @@ export function LoginPage() {
                       disabled={loading}
                       onMouseDown={(e) => e.preventDefault()}
                       className={cn(
-                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer select-none mt-1 border",
+                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border",
                         isDark
                           ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
                           : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]",
@@ -1121,17 +1125,37 @@ export function LoginPage() {
                       >
                         {isIndonesian ? "Batal" : "Cancel"}
                       </button>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={handleForgotPassword}
-                        className={cn(
-                          "hover:underline",
-                          isDark ? "text-zinc-400" : "text-zinc-600",
-                        )}
-                      >
-                        {isIndonesian ? "Lupa kata sandi?" : "Forgot password?"}
-                      </button>
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={handleForgotPassword}
+                          className={cn(
+                            "hover:underline",
+                            isDark ? "text-zinc-400" : "text-zinc-600",
+                          )}
+                        >
+                          {isIndonesian ? "Lupa kata sandi?" : "Forgot password?"}
+                        </button>
+                        <span>·</span>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setViewMode("welcome");
+                            setShowEmailForm(true);
+                            setError(null);
+                            setMessage(null);
+                          }}
+                          className={
+                            isDark
+                              ? "text-white hover:underline"
+                              : "text-zinc-950 hover:underline"
+                          }
+                        >
+                          {isIndonesian ? "Daftar" : "Sign up"}
+                        </button>
+                      </div>
                     </div>
                   </motion.form>
                 ) : (
@@ -1148,7 +1172,7 @@ export function LoginPage() {
                           triggerHaptic("light");
                         }}
                         className={cn(
-                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
+                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border select-none",
                           isDark
                             ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
                             : "bg-zinc-950 text-white border-zinc-950 hover:bg-zinc-900 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.12)]",
@@ -1176,7 +1200,7 @@ export function LoginPage() {
                       disabled={loading}
                       onClick={handleToggleEmailForm}
                       className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
+                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border select-none",
                         !hasVaultPin
                           ? isDark
                             ? "bg-white text-zinc-950 border-white hover:bg-zinc-100 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_16px_rgba(255,255,255,0.08)]"
@@ -1208,7 +1232,7 @@ export function LoginPage() {
                         disabled={loading}
                         onClick={() => handleOAuthLogin("google")}
                         className={cn(
-                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer border select-none",
+                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
                           isDark
                             ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.1] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
                             : "bg-white/75 hover:bg-white border-black/[0.07] text-zinc-950 shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
@@ -1250,58 +1274,62 @@ export function LoginPage() {
                 )}
               </div>
 
-              {/* Minimal Divider */}
-              <div className="flex items-center gap-3 my-3">
-                <div
-                  className={cn(
-                    "h-[1px] flex-1",
-                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-[10.5px]",
-                    isDark ? "text-zinc-500" : "text-zinc-400",
-                  )}
-                >
-                  {isIndonesian ? "atau" : "or"}
-                </span>
-                <div
-                  className={cn(
-                    "h-[1px] flex-1",
-                    isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                  )}
-                />
-              </div>
+              {!showEmailForm && (
+                /* Minimal Divider */
+                <div className="flex items-center gap-3 my-3">
+                  <div
+                    className={cn(
+                      "h-[1px] flex-1",
+                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-[10.5px]",
+                      isDark ? "text-zinc-500" : "text-zinc-400",
+                    )}
+                  >
+                    {isIndonesian ? "atau" : "or"}
+                  </span>
+                  <div
+                    className={cn(
+                      "h-[1px] flex-1",
+                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
+                    )}
+                  />
+                </div>
+              )}
 
               {/* Footer Switch */}
               <div className="text-center">
-                <p
-                  className={cn(
-                    "text-[11.5px]",
-                    isDark ? "text-zinc-400" : "text-zinc-600",
-                  )}
-                >
-                  {isIndonesian
-                    ? "Belum memiliki akun? "
-                    : "Don't have an account? "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setViewMode("welcome");
-                      setShowEmailForm(false);
-                      setError(null);
-                      setMessage(null);
-                    }}
+                {!showEmailForm && (
+                  <p
                     className={cn(
-                      "font-semibold hover:underline cursor-pointer",
-                      isDark ? "text-white" : "text-zinc-950",
+                      "text-[11.5px]",
+                      isDark ? "text-zinc-400" : "text-zinc-600",
                     )}
                   >
-                    {isIndonesian ? "Daftar" : "Sign up"}
-                  </button>
-                </p>
+                    {isIndonesian
+                      ? "Belum memiliki akun? "
+                      : "Don't have an account? "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setViewMode("welcome");
+                        setShowEmailForm(false);
+                        setError(null);
+                        setMessage(null);
+                      }}
+                      className={cn(
+                        "font-semibold hover:underline cursor-pointer",
+                        isDark ? "text-white" : "text-zinc-950",
+                      )}
+                    >
+                      {isIndonesian ? "Daftar" : "Sign up"}
+                    </button>
+                  </p>
+                )}
 
                 {/* Legal & Privacy Policy Link */}
                 <p
