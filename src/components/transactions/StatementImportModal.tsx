@@ -59,6 +59,8 @@ import { useAllTransactions, useBatchAddTransactions } from "../../hooks/useTran
 import { useSpace } from "../../contexts/SpaceContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useSubscription } from "../../contexts/SubscriptionContext";
+import { useQuota } from "../../hooks/useQuota";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { BottomSheet } from "../ui/BottomSheet";
@@ -174,6 +176,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
   const addWallet = useAddWallet();
   const addCategory = useAddCategory();
   const { showToast } = useToast();
+  const { isPremium } = useSubscription();
+  const { checkOcrLimitAndPrompt, recordOcrUsage, ocrRemaining } = useQuota();
 
   // --- Step & Navigation State ---
   const [step, setStep] = useState<ImportStep>("input");
@@ -267,6 +271,12 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+
+      if (!checkOcrLimitAndPrompt()) {
+        e.target.value = "";
+        return;
+      }
+
       triggerHaptic("light");
 
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
@@ -709,6 +719,10 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
       }
     }
 
+    if (imported > 0) {
+      await recordOcrUsage();
+    }
+
     triggerSuccessHaptic();
     showToast(
       isIndonesian
@@ -917,12 +931,26 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               {/* Hidden universal file input */}
               <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
 
+              {!isPremium && (
+                <div className="flex items-center justify-between px-3.5 py-2 rounded-2xl bg-white/[0.04] border border-white/10 text-[11px] text-[var(--text-tertiary)] mb-3">
+                  <span>
+                    {isIndonesian
+                      ? "Kuota Pemindaian Mutasi Bulan Ini"
+                      : "Statement Scans Remaining This Month"}
+                  </span>
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    {ocrRemaining} / 5
+                  </span>
+                </div>
+              )}
+
               {/* TAB 1: UPLOAD FILE */}
               {inputTab === "file" && (
                 <div className="space-y-4">
                   {/* Apple Liquid Dropzone Card */}
                   <div
                     onClick={() => {
+                      if (!checkOcrLimitAndPrompt()) return;
                       if (fileInputRef.current) {
                         fileInputRef.current.accept = ".csv,.txt,.tsv,.xlsx,.xls,.pdf";
                         fileInputRef.current.click();
@@ -1045,6 +1073,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                   <button
                     type="button"
                     onClick={() => {
+                      if (!checkOcrLimitAndPrompt()) return;
                       setImportMethod("paste");
                       processRawText(inputText, "paste");
                     }}

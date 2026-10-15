@@ -188,6 +188,11 @@ export function enqueuePendingMutation(
       } else {
         nextMutations.push(newMutation);
       }
+    } else if (type === "insert") {
+      nextMutations = mutations.filter(
+        (m) => !(m.payload?.id === txId && m.type === "delete"),
+      );
+      nextMutations.push(newMutation);
     } else {
       nextMutations.push(newMutation);
     }

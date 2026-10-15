@@ -13,6 +13,7 @@
 
 import { useState, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import {
   BookOpen,
   Plus,
@@ -80,6 +81,18 @@ export function DebtReceivablesSheet({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   // Form Modes
   const [isAddingRecord, setIsAddingRecord] = useState(false);
@@ -241,18 +254,25 @@ export function DebtReceivablesSheet({
     }
   };
 
-  const handleDeleteRecord = async (record: DebtReceivableRecord) => {
+  const handleDeleteRecord = (record: DebtReceivableRecord) => {
     triggerHaptic("medium");
-    const confirmMsg = isIndonesian
-      ? `Hapus catatan ${record.personName}?`
-      : `Delete record for ${record.personName}?`;
-    if (window.confirm(confirmMsg)) {
-      await deleteRecord(record.id, { cleanLinkedTransactions: false });
-      showToast(
-        isIndonesian ? "Catatan berhasil dihapus" : "Record deleted",
-        "info",
-      );
-    }
+    setConfirmModalConfig({
+      isOpen: true,
+      title: isIndonesian
+        ? `Hapus Catatan ${record.personName}?`
+        : `Delete Record for ${record.personName}?`,
+      description: isIndonesian
+        ? "Catatan ini akan dihapus dari buku utang piutang. Transaksi yang telah tertaut tidak akan terpengaruh."
+        : "This entry will be removed from your debt book. Linked transactions will not be touched.",
+      confirmLabel: isIndonesian ? "Hapus Catatan" : "Delete Record",
+      onConfirm: async () => {
+        await deleteRecord(record.id, { cleanLinkedTransactions: false });
+        showToast(
+          isIndonesian ? "Catatan berhasil dihapus" : "Record deleted",
+          "delete",
+        );
+      },
+    });
   };
 
   const modalTitle = isIndonesian
@@ -1304,25 +1324,31 @@ export function DebtReceivablesSheet({
                           </div>
                           <button
                             type="button"
-                            onClick={async () => {
+                            onClick={() => {
                               triggerHaptic("light");
-                              if (
-                                window.confirm(
-                                  isIndonesian
-                                    ? "Hapus pembayaran cicilan ini?"
-                                    : "Delete this repayment?",
-                                )
-                              ) {
-                                await removeRepayment(record.id, rep.id, {
-                                  cleanLinkedTransactions: false,
-                                });
-                                showToast(
-                                  isIndonesian
-                                    ? "Pembayaran dihapus"
-                                    : "Repayment deleted",
-                                  "info",
-                                );
-                              }
+                              setConfirmModalConfig({
+                                isOpen: true,
+                                title: isIndonesian
+                                  ? "Hapus Pembayaran Cicilan?"
+                                  : "Delete This Repayment?",
+                                description: isIndonesian
+                                  ? "Pembayaran cicilan ini akan dihapus dari riwayat pelunasan."
+                                  : "This repayment will be removed from the installment history.",
+                                confirmLabel: isIndonesian
+                                  ? "Hapus Pembayaran"
+                                  : "Delete Repayment",
+                                onConfirm: async () => {
+                                  await removeRepayment(record.id, rep.id, {
+                                    cleanLinkedTransactions: false,
+                                  });
+                                  showToast(
+                                    isIndonesian
+                                      ? "Pembayaran dihapus"
+                                      : "Repayment deleted",
+                                    "delete",
+                                  );
+                                },
+                              });
                             }}
                             className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
                           >
@@ -1353,6 +1379,19 @@ export function DebtReceivablesSheet({
           </button>
         </div>
       </div>
+
+      <GlassConfirmationModal
+        isOpen={confirmModalConfig.isOpen}
+        onClose={() =>
+          setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))
+        }
+        onConfirm={confirmModalConfig.onConfirm}
+        title={confirmModalConfig.title}
+        description={confirmModalConfig.description}
+        confirmLabel={confirmModalConfig.confirmLabel}
+        isIndonesian={isIndonesian}
+        isDark={isDark}
+      />
     </BottomSheet>
   );
 }

@@ -22,7 +22,23 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Custom URL Scheme for deep linking (trouvaille://) -->
+            <!-- Custom URL Scheme for deep linking (accrual://) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="accrual" />
+            </intent-filter>
+
+            <!-- Custom URL Scheme for deep linking (com.syntheticae.accrual://) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.syntheticae.accrual" />
+            </intent-filter>
+
+            <!-- Legacy fallback URL Scheme for deep linking (trouvaille://) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -30,13 +46,7 @@
                 <data android:scheme="trouvaille" />
             </intent-filter>
 
-            <!-- Custom URL Scheme for deep linking (com.alhafidz.trouvaille://) -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.alhafidz.trouvaille" />
-            </intent-filter>
+
 
         </activity>
 

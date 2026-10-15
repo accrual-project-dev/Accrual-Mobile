@@ -844,7 +844,7 @@ export function AssetsPage() {
 
   return (
     <div
-      className="min-h-screen select-none pb-28 pt-[calc(env(safe-area-inset-top,0px)+12px)] px-4 max-w-lg mx-auto space-y-4"
+      className="min-h-screen select-none pb-36 pt-[calc(env(safe-area-inset-top,0px)+12px)] px-4 max-w-lg sm:max-w-xl mx-auto space-y-4"
       style={{
         background: "var(--bg-base)",
         color: "var(--text-primary)",

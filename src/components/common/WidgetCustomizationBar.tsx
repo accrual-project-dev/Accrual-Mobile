@@ -17,8 +17,10 @@ import { Check, RotateCcw, Plus, Sparkles } from "lucide-react";
 import type { CardWidgetConfig } from "../../lib/widgetLayoutTypes";
 import { getLocalizedWidgetMeta } from "../../lib/widgetLayoutTypes";
 import { BottomSheet } from "../ui/BottomSheet";
+import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useQuota } from "../../hooks/useQuota";
 
 interface WidgetCustomizationBarProps {
   isEditMode: boolean;
@@ -26,6 +28,7 @@ interface WidgetCustomizationBarProps {
   onReset: () => void;
   hiddenCards: CardWidgetConfig[];
   onUnhideCard: (id: string) => void;
+  activeCardsCount?: number;
 }
 
 export function WidgetCustomizationBar({
@@ -34,9 +37,12 @@ export function WidgetCustomizationBar({
   onReset,
   hiddenCards,
   onUnhideCard,
+  activeCardsCount,
 }: WidgetCustomizationBarProps) {
   const { isIndonesian } = useLanguage();
+  const { isWidgetProOnly, checkWidgetAndPrompt } = useQuota();
   const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   return (
     <>
@@ -182,16 +188,8 @@ export function WidgetCustomizationBar({
               <button
                 type="button"
                 onClick={() => {
-                  if (
-                    confirm(
-                      isIndonesian
-                        ? "Atur ulang tata letak dan ukuran kartu ke bawaan?"
-                        : "Reset card layout and sizes to default?",
-                    )
-                  ) {
-                    triggerHaptic("medium");
-                    onReset();
-                  }
+                  triggerHaptic("medium");
+                  setIsResetConfirmOpen(true);
                 }}
                 className="
                   w-8
@@ -331,19 +329,26 @@ export function WidgetCustomizationBar({
                     CARD INFORMATION
                 ======================================================= */}
                 <div className="min-w-0 flex-1">
-                  <h4
-                    className="
-                      text-[13px]
-                      font-semibold
-                      leading-snug
-                      truncate
-                    "
-                    style={{
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {meta.title}
-                  </h4>
+                  <div className="flex items-center gap-1.5">
+                    <h4
+                      className="
+                        text-[13px]
+                        font-semibold
+                        leading-snug
+                        truncate
+                      "
+                      style={{
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      {meta.title}
+                    </h4>
+                    {isWidgetProOnly(card.id) && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/[0.08] border border-white/10 text-[var(--text-secondary)] uppercase tracking-wider shrink-0">
+                        PRO
+                      </span>
+                    )}
+                  </div>
 
                   <p
                     className="
@@ -367,6 +372,11 @@ export function WidgetCustomizationBar({
                   type="button"
                   onClick={() => {
                     triggerHaptic("light");
+                    const allowed = checkWidgetAndPrompt(card.id, activeCardsCount ?? 0);
+                    if (!allowed) {
+                      setAddSheetOpen(false);
+                      return;
+                    }
 
                     onUnhideCard(card.id);
 
@@ -405,6 +415,27 @@ export function WidgetCustomizationBar({
           })}
         </div>
       </BottomSheet>
+
+      <GlassConfirmationModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={() => {
+          onReset();
+          setIsResetConfirmOpen(false);
+        }}
+        title={
+          isIndonesian
+            ? "Atur Ulang Tata Letak Kartu?"
+            : "Reset Card Layout?"
+        }
+        description={
+          isIndonesian
+            ? "Tata letak, urutan, dan ukuran kartu beranda akan dikembalikan ke pengaturan bawaan."
+            : "Card layouts, orders, and sizes will be restored to their default state."
+        }
+        confirmLabel={isIndonesian ? "Atur Ulang" : "Reset Layout"}
+        isIndonesian={isIndonesian}
+      />
     </>
   );
 }

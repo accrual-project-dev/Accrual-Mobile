@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
 import { autoSuggestIcon } from "../../lib/iconRegistry";
@@ -81,6 +82,10 @@ export function CategoryManagementSheets({
     budget_amount?: number | null;
   } | null>(null);
   const [quickBudgetValue, setQuickBudgetValue] = useState("");
+  const [categoryToDelete, setCategoryToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const handleCloseAll = () => {
     setViewMode("list");
@@ -183,10 +188,10 @@ export function CategoryManagementSheets({
 
   const handleDeleteCategory = (id: string, name: string) => {
     triggerHaptic("medium");
-    const confirmMsg = isIndonesian
-      ? `Hapus "${name}"? Transaksi yang menggunakan kategori ini akan menjadi tanpa kategori.`
-      : `Delete "${name}"? Transactions assigned to this category will become uncategorized.`;
-    if (!confirm(confirmMsg)) return;
+    setCategoryToDelete({ id, name });
+  };
+
+  const executeDeleteCategory = (id: string) => {
     deleteCategory.mutate(id, {
       onSuccess: () => {
         if (editCategory?.id === id) {
@@ -196,14 +201,23 @@ export function CategoryManagementSheets({
         if (quickBudgetCategory?.id === id) {
           setQuickBudgetCategory(null);
         }
-        showToast(isIndonesian ? "Kategori dihapus" : "Category deleted", "delete", () => {});
-      },
-      onError: (error: any) => {
         showToast(
-          error?.message || (isIndonesian ? "Gagal menghapus kategori" : "Failed to delete category"),
+          isIndonesian ? "Kategori dihapus" : "Category deleted",
           "delete",
           () => {},
         );
+        setCategoryToDelete(null);
+      },
+      onError: (error: any) => {
+        showToast(
+          error?.message ||
+            (isIndonesian
+              ? "Gagal menghapus kategori"
+              : "Failed to delete category"),
+          "error",
+          () => {},
+        );
+        setCategoryToDelete(null);
       },
     });
   };
@@ -961,6 +975,29 @@ export function CategoryManagementSheets({
             ? (isIndonesian ? "Pilih Ikon Kategori" : "Choose Category Icon")
             : (isIndonesian ? "Edit Ikon Kategori" : "Edit Category Icon")
         }
+      />
+
+      <GlassConfirmationModal
+        isOpen={categoryToDelete !== null}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={() => {
+          if (categoryToDelete) {
+            executeDeleteCategory(categoryToDelete.id);
+          }
+        }}
+        title={
+          isIndonesian
+            ? `Hapus Kategori "${categoryToDelete?.name}"?`
+            : `Delete Category "${categoryToDelete?.name}"?`
+        }
+        description={
+          isIndonesian
+            ? "Transaksi yang menggunakan kategori ini akan beralih menjadi tanpa kategori. Anda dapat mengubah kategori transaksi tersebut kapan saja."
+            : "Transactions assigned to this category will become uncategorized. You can reassign them at any time."
+        }
+        confirmLabel={isIndonesian ? "Hapus Kategori" : "Delete Category"}
+        isIndonesian={isIndonesian}
+        isDark={isDark}
       />
     </>
   );

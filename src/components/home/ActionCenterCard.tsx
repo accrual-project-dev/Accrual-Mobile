@@ -80,11 +80,20 @@ export function ActionCenterCard({
   return (
     <>
       <section
+        role="button"
+        tabIndex={0}
         onClick={() => {
           setDetailOpen(true);
           triggerHaptic("light");
         }}
-        className="p-4 rounded-[24px] relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer select-none mb-3"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setDetailOpen(true);
+            triggerHaptic("light");
+          }
+        }}
+        className="p-4 rounded-[24px] relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer select-none mb-3 outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         style={{
           background: cardBg,
           border: cardBorder,

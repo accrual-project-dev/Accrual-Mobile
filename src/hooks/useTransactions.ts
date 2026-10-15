@@ -1101,10 +1101,12 @@ export function useAddTransaction() {
         session?.user?.email?.split("@")[0] ||
         null;
 
-      // Sanitize occurred_on: must be YYYY-MM-DD with year between 2000 and 2100
+      // Sanitize occurred_on: must be YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss with year between 2000 and 2100
       let cleanOccurredOn = input.occurred_on;
-      if (!cleanOccurredOn || !/^20\d{2}-\d{2}-\d{2}$/.test(cleanOccurredOn)) {
+      if (!cleanOccurredOn || !/^(?:20\d{2}|2100)-\d{2}-\d{2}($|[T ]\d{2}:\d{2}(:\d{2})?)/.test(cleanOccurredOn)) {
         cleanOccurredOn = format(new Date(), "yyyy-MM-dd");
+      } else {
+        cleanOccurredOn = cleanOccurredOn.replace(" ", "T");
       }
       let cleanCreatedAt = input.created_at;
       if (cleanCreatedAt) {
@@ -1211,10 +1213,12 @@ export function useAddTransaction() {
       const cleanToWalletId = newTx.type === "transfer" && newTx.to_wallet_id && isUUID(newTx.to_wallet_id) ? newTx.to_wallet_id : null;
       const assignedLedger = newTx.ledger_id || newTx.space_id || "personal";
 
-      // Sanitize occurred_on: must be YYYY-MM-DD with year between 2000 and 2100
+      // Sanitize occurred_on: must be YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss with year between 2000 and 2100
       let cleanOccurredOn = newTx.occurred_on;
-      if (!cleanOccurredOn || !/^20\d{2}-\d{2}-\d{2}$/.test(cleanOccurredOn)) {
+      if (!cleanOccurredOn || !/^(?:20\d{2}|2100)-\d{2}-\d{2}($|[T ]\d{2}:\d{2}(:\d{2})?)/.test(cleanOccurredOn)) {
         cleanOccurredOn = format(new Date(), "yyyy-MM-dd");
+      } else {
+        cleanOccurredOn = cleanOccurredOn.replace(" ", "T");
       }
       let cleanCreatedAt = newTx.created_at;
       if (cleanCreatedAt) {

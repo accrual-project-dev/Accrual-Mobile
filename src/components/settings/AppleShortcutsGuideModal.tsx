@@ -433,7 +433,7 @@ export function AppleShortcutsGuideModal({
       stepNum: 1,
       title: isIndonesian ? "Langkah 1: Pasang MacroDroid & Buat Pemicu" : "Step 1: Install MacroDroid & Add Trigger",
       desc: isIndonesian
-        ? "1. Unduh aplikasi MacroDroid (atau Tasker) dari Google Play Store.\n2. Buat Makro Baru › Tambah Pemicu (Trigger) › 'Perangkat & Notifikasi' › 'Notifikasi Diterima'.\n3. Centang 'Pilih Aplikasi' dan pilih bank/dompet digital Anda (BCA, Livin, BRImo, Jago, wondr, GoPay, ShopeePay, dll.)."
+        ? "1. Unduh aplikasi MacroDroid (atau Tasker) dari Google Play Store.\n2. Buat Makro Baru › Tambah Pemicu › 'Perangkat & Notifikasi' › 'Notifikasi Diterima'.\n3. Centang 'Pilih Aplikasi' dan pilih bank/dompet digital Anda (BCA, Livin, BRImo, Jago, wondr, GoPay, ShopeePay, dll.)."
         : "1. Install MacroDroid (or Tasker) from Google Play Store.\n2. Create New Macro › Add Trigger › 'Device & Notifications' › 'Notification Received'.\n3. Check 'Select Applications' and pick your bank or e-wallet apps (BCA, Livin, BRImo, Jago, wondr, GoPay, ShopeePay, etc.).",
       actionType: "info",
       noteText: isIndonesian
@@ -444,7 +444,7 @@ export function AppleShortcutsGuideModal({
       stepNum: 2,
       title: isIndonesian ? "Langkah 2: Tambahkan Tindakan Buka URL" : "Step 2: Add Open URL Action",
       desc: isIndonesian
-        ? "1. Tambah Tindakan (Action) › 'Aplikasi' › 'Buka Situs Web / URL'.\n2. Masukkan skema di bawah, lalu ganti [teks_notifikasi] dengan token variabel teks notifikasi MacroDroid ({not_body}):"
+        ? "1. Tambah Tindakan › 'Aplikasi' › 'Buka Situs Web / URL'.\n2. Masukkan skema di bawah, lalu ganti [teks_notifikasi] dengan token variabel teks notifikasi MacroDroid ({not_body}):"
         : "1. Add Action › 'Applications' › 'Open Website / URL'.\n2. Enter the scheme below, replacing [notification_text] with MacroDroid's notification body token ({not_body}):",
       actionType: "copy",
       copyText: isIndonesian
@@ -989,7 +989,7 @@ export function AppleShortcutsGuideModal({
                 {/* Shortcuts Bottom Search Dock */}
                 <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 8 }}>
                   <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Cari Tindakan" : "Search Actions"}</span>
                     <Search size={8} strokeWidth={2} className="text-white/45" />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>
@@ -1077,7 +1077,7 @@ export function AppleShortcutsGuideModal({
                 {/* Shortcuts Bottom Search Dock */}
                 <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 8 }}>
                   <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Cari Tindakan" : "Search Actions"}</span>
                     <Search size={8} strokeWidth={2} className="text-white/45" />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>
@@ -1565,7 +1565,7 @@ export function AppleShortcutsGuideModal({
 
                 <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 10 }}>
                   <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Cari Tindakan" : "Search Actions"}</span>
                     <Search size={8} strokeWidth={2} className="text-white/45" />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>
@@ -1732,7 +1732,7 @@ export function AppleShortcutsGuideModal({
 
                 <div style={{ marginTop: "auto", background: "rgba(28,28,32,0.95)", borderRadius: 18, padding: "6px 9px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: 10 }}>
                   <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>Search Actions</span>
+                    <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Cari Tindakan" : "Search Actions"}</span>
                     <Search size={8} strokeWidth={2} className="text-white/45" />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-around", fontSize: 8, color: "rgba(255,255,255,0.65)" }}>

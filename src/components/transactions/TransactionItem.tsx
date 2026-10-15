@@ -8,8 +8,8 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { format } from "date-fns";
-import { formatRupiah } from "../../lib/utils";
+import { format, parseISO } from "date-fns";
+import { formatCurrency } from "../../lib/utils";
 import { IconRenderer } from "../ui/IconRenderer";
 import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { triggerHaptic } from "../../lib/haptics";
@@ -18,6 +18,7 @@ import { isCorrectionTx } from "../../lib/financialMath";
 import { usePrivacy } from "../../contexts/PrivacyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface TransactionItemProps {
   tx: Transaction;
@@ -52,6 +53,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
 }) => {
   const { isStealthMode } = usePrivacy();
   const { isIndonesian } = useLanguage();
+  const { preferredCurrency, currencyMeta } = useCurrency();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const isIncome = tx.type === "income";
@@ -59,9 +61,23 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   const isCorrection = isCorrectionTx(tx);
   const isPositiveCorrection =
     isCorrection && (tx.note?.includes("(+)") || tx.type === "income");
-  const timeLabel = tx.created_at
-    ? format(new Date(tx.created_at), "HH:mm")
-    : "";
+  const timeLabel = useMemo(() => {
+    if (tx.occurred_on && /[T ]\d{2}:\d{2}/.test(tx.occurred_on)) {
+      try {
+        return format(parseISO(tx.occurred_on.replace(" ", "T")), "HH:mm");
+      } catch {
+        // fallback to created_at
+      }
+    }
+    if (tx.created_at) {
+      try {
+        return format(new Date(tx.created_at), "HH:mm");
+      } catch {
+        return "";
+      }
+    }
+    return "";
+  }, [tx.occurred_on, tx.created_at]);
 
   const resolvedCategory = useMemo(() => {
     return resolveTransactionCategory(tx, categoryMap || categories);
@@ -390,7 +406,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
             }}
           >
             {isStealthMode ? (
-              "Rp ••••••••"
+              `${currencyMeta.symbol} ••••••••`
             ) : (
               <>
                 {isTransfer
@@ -402,7 +418,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
                     : isIncome
                       ? "+"
                       : "-"}
-                {formatRupiah(Number(tx.amount))}
+                {formatCurrency(Number(tx.amount), preferredCurrency)}
               </>
             )}
           </div>

@@ -50,6 +50,8 @@ import { useAddTransaction } from "../../hooks/useTransactions";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useSubscription } from "../../contexts/SubscriptionContext";
+import { useQuota } from "../../hooks/useQuota";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { format } from "date-fns";
@@ -94,6 +96,8 @@ export function ReceiptScanModal({
   const addCategoryMutation = useAddCategory();
   const addTx = useAddTransaction();
   const { showToast } = useToast();
+  const { isPremium } = useSubscription();
+  const { checkOcrLimitAndPrompt, recordOcrUsage, ocrRemaining } = useQuota();
 
   const [step, setStep] = useState<"idle" | "processing" | "result">("idle");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -383,6 +387,9 @@ export function ReceiptScanModal({
     fileOrBlob: Blob | File,
     customPreviewUrl?: string,
   ) => {
+    if (!checkOcrLimitAndPrompt()) {
+      return;
+    }
     triggerHaptic("medium");
     setErrorText(null);
     setUnregisteredWalletName(null);
@@ -412,6 +419,7 @@ export function ReceiptScanModal({
         isIndonesian ? "id" : "en",
       );
 
+      await recordOcrUsage();
       triggerSuccessHaptic();
       setParsedSlip(result.slip);
       setAmount(result.slip.amount || 0);
@@ -1075,6 +1083,18 @@ export function ReceiptScanModal({
             ============================================================ */}
             {step === "idle" && (
               <div className="flex-1 flex flex-col items-center justify-start pt-1 pb-2 space-y-3">
+                {!isPremium && (
+                  <div className="w-full max-w-sm flex items-center justify-between px-3.5 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-[11px] text-[var(--text-tertiary)] mb-1">
+                    <span>
+                      {isIndonesian
+                        ? "Sisa Pemindaian Bulan Ini"
+                        : "Scans Remaining This Month"}
+                    </span>
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {ocrRemaining} / 5
+                    </span>
+                  </div>
+                )}
                 {/* Viewfinder */}
                 <div
                   onClick={

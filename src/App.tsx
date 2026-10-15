@@ -55,6 +55,8 @@ import { autoDeduplicateCategories, autoDeduplicateWallets } from "./lib/dedupli
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
 import { useSpace } from "./contexts/SpaceContext";
+import { useSubscription } from "./contexts/SubscriptionContext";
+import { AccrualPaywallModal } from "./components/paywall/AccrualPaywallModal";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
@@ -214,9 +216,23 @@ function AppShell() {
   const [batchSourceTitle, setBatchSourceTitle] = useState("");
   const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
+  const { isPaywallOpen, closePaywall, openPaywall } = useSubscription();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
   const [joinLedgerOpen, setJoinLedgerOpen] = useState(false);
   const [joinLedgerCode, setJoinLedgerCode] = useState("");
+
+  // Auto-resume paywall if guest user signed in/registered from paywall modal
+  useEffect(() => {
+    if (user && !isGuest) {
+      try {
+        const shouldResume = sessionStorage.getItem("accrual_resume_paywall");
+        if (shouldResume === "true") {
+          sessionStorage.removeItem("accrual_resume_paywall");
+          openPaywall();
+        }
+      } catch {}
+    }
+  }, [user, isGuest, openPaywall]);
 
   const handleConfirmBatchReview = async (selectedItems: ParsedStatementItem[]) => {
     const payload = selectedItems.map((item) => ({
@@ -1331,6 +1347,12 @@ function AppShell() {
           onClose={() => setIsTourOpen(false)}
         />
       </Suspense>
+
+      {/* Accrual Pro Membership Paywall Modal */}
+      <AccrualPaywallModal
+        isOpen={isPaywallOpen}
+        onClose={closePaywall}
+      />
 
 
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}

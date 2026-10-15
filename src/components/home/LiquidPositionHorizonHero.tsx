@@ -60,6 +60,7 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 };
 
 function formatAxisY(val: number): string {
+  if (val === 0) return "0";
   const abs = Math.abs(val);
   if (abs >= 1000000000)
     return (abs / 1000000000).toFixed(1).replace(/\.0$/, "") + "B";
@@ -307,7 +308,12 @@ export function LiquidPositionHorizonHero({
               <YAxis
                 orientation="right"
                 width={34}
-                domain={["auto", "auto"]}
+                domain={
+                  assetData.currentBalance === 0
+                    ? [0, 100000]
+                    : ["auto", "auto"]
+                }
+                ticks={assetData.currentBalance === 0 ? [0] : undefined}
                 tick={{
                   fontSize: 9,
                   fill: isDark ? "rgba(255,255,255,0.38)" : "#71717a",

@@ -71,10 +71,11 @@ export function LanguageSwitcherSheet({ isOpen, onClose }: LanguageSwitcherSheet
           {languageOptions.map((item) => {
             const isSelected = language === item.code;
             return (
-              <div
+              <button
+                type="button"
                 key={item.code}
                 onClick={() => handleSelect(item.code)}
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between select-none ${
+                className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between select-none ${
                   isSelected
                     ? "bg-black/[0.04] dark:bg-white/[0.08] border-black/15 dark:border-white/20 shadow-sm"
                     : "bg-black/[0.02] dark:bg-white/[0.02] border-black/5 dark:border-white/5 opacity-70 hover:opacity-100"
@@ -130,7 +131,7 @@ export function LanguageSwitcherSheet({ isOpen, onClose }: LanguageSwitcherSheet
                 >
                   {isSelected && <Check size={11} strokeWidth={3} />}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

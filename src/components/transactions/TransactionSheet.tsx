@@ -42,7 +42,7 @@ import { useWalletSuggestions } from "../../hooks/useWalletSuggestions";
 import { useMerchantMemory } from "../../hooks/useMerchantMemory";
 import { useBudgetTarget } from "../../hooks/useBudgetTarget";
 import { useToast } from "../../contexts/ToastContext";
-import { formatRupiah, formatLiveAmountInput } from "../../lib/utils";
+import { formatCurrency, formatLiveAmountInput } from "../../lib/utils";
 import { format, isToday, parseISO } from "date-fns";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassDatePicker } from "../ui/GlassDatePicker";
@@ -158,10 +158,13 @@ export function TransactionSheet({
     transaction?.occurred_on ? parseISO(transaction.occurred_on) : new Date(),
   );
   const [time, setTime] = useState<string>(
-    transaction?.created_at
-      ? format(new Date(transaction.created_at), "HH:mm")
-      : format(new Date(), "HH:mm"),
+    transaction?.occurred_on && transaction.occurred_on.includes("T")
+      ? format(parseISO(transaction.occurred_on), "HH:mm")
+      : transaction?.created_at
+        ? format(new Date(transaction.created_at), "HH:mm")
+        : format(new Date(), "HH:mm"),
   );
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
   const lastSavedTimestampRef = useRef<number>(0);
@@ -628,13 +631,19 @@ export function TransactionSheet({
         setNote(transaction.note || "");
         setDate(
           transaction.occurred_on
-            ? parseISO(transaction.occurred_on)
+            ? parseISO(transaction.occurred_on.replace(" ", "T"))
             : new Date(),
         );
         setTime(
-          transaction.created_at
-            ? format(new Date(transaction.created_at), "HH:mm")
-            : format(new Date(), "HH:mm"),
+          transaction.occurred_on &&
+            /[T ]\d{2}:\d{2}/.test(transaction.occurred_on)
+            ? format(
+                parseISO(transaction.occurred_on.replace(" ", "T")),
+                "HH:mm",
+              )
+            : transaction.created_at
+              ? format(new Date(transaction.created_at), "HH:mm")
+              : format(new Date(), "HH:mm"),
         );
 
         if (transaction.category_id) {
@@ -856,23 +865,35 @@ export function TransactionSheet({
 
     const isUUID = (id?: string | null) => !!id && id.trim().length > 0;
 
-    const evaluatedFromInput = evaluateMathSafe(amountInput);
-    const rawDisplayAmount =
-      evaluatedFromInput > 0 ? evaluatedFromInput : Number(amount) || 0;
+    const evaluatedFromInput =
+      amountInput.trim() !== ""
+        ? evaluateMathSafe(amountInput)
+        : Number(amount) || 0;
+    const rawDisplayAmount = evaluatedFromInput;
 
     const numAmount =
       preferredCurrency === "IDR"
         ? Math.round(rawDisplayAmount)
         : Math.round(convertToIdr(rawDisplayAmount, preferredCurrency));
     if (
-      rawDisplayAmount <= 0 ||
-      numAmount <= 0 ||
       isSavingRef.current ||
       isSaving ||
       addTx.isPending ||
       updateTx.isPending
-    )
+    ) {
       return;
+    }
+
+    if (rawDisplayAmount <= 0 || numAmount <= 0) {
+      triggerHaptic("medium");
+      showToast(
+        isIndonesian
+          ? "Nominal transaksi harus lebih besar dari 0"
+          : "Amount must be greater than 0",
+        "error",
+      );
+      return;
+    }
 
     const matchedFromWallet =
       wallets.find((w) => w.id === walletId) || wallets[0];
@@ -897,7 +918,7 @@ export function TransactionSheet({
         isIndonesian
           ? "Pilih akun yang valid sebelum menyimpan"
           : "Choose a valid account before saving",
-        "delete",
+        "error",
         () => {},
       );
       return;
@@ -911,7 +932,7 @@ export function TransactionSheet({
           isIndonesian
             ? "Pilih akun asal dan akun tujuan"
             : "Choose both source and destination accounts",
-          "delete",
+          "error",
           () => {},
         );
         return;
@@ -923,7 +944,7 @@ export function TransactionSheet({
           isIndonesian
             ? "Akun transfer harus berbeda"
             : "Transfer accounts must be different",
-          "delete",
+          "error",
           () => {},
         );
         return;
@@ -937,7 +958,7 @@ export function TransactionSheet({
         isIndonesian
           ? "Pilih kategori yang valid sebelum menyimpan"
           : "Choose a valid category before saving",
-        "delete",
+        "error",
         () => {},
       );
       return;
@@ -955,7 +976,7 @@ export function TransactionSheet({
       note: note || null,
       space_id: selectedSpaceId === "personal" ? null : selectedSpaceId,
       ledger_id: selectedSpaceId || "personal",
-      occurred_on: format(date, "yyyy-MM-dd"),
+      occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
       created_at: txDate.toISOString(),
       category_id:
         type === "transfer"
@@ -993,7 +1014,7 @@ export function TransactionSheet({
           amount: numAmount,
           wallet_id: effectiveWalletId,
           to_wallet_id: effectiveToWalletId,
-          occurred_on: format(date, "yyyy-MM-dd"),
+          occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
           note,
           customUnits: effectiveUnits,
           customPrice: cryptoRate,
@@ -1021,7 +1042,7 @@ export function TransactionSheet({
               isIndonesian
                 ? "Gagal memperbarui transaksi"
                 : "Failed to update transaction",
-              "delete",
+              "error",
               () => {},
             );
           },
@@ -1049,7 +1070,7 @@ export function TransactionSheet({
             isIndonesian
               ? "Gagal menyimpan transaksi"
               : "Failed to save transaction",
-            "delete",
+            "error",
             () => {},
           );
         },
@@ -1059,6 +1080,7 @@ export function TransactionSheet({
 
   const handleDelete = () => {
     if (!transaction) return;
+    const deletedTx = { ...transaction };
     if (isCryptoInvolved) {
       reverseTransactionWithHolding(
         {
@@ -1078,7 +1100,49 @@ export function TransactionSheet({
         showToast(
           isIndonesian ? "Transaksi dihapus" : "Transaction deleted",
           "delete",
-          () => {},
+          () => {
+            if (isCryptoInvolved) {
+              syncTransactionWithHolding(
+                {
+                  type: deletedTx.type,
+                  amount: Number(deletedTx.amount),
+                  wallet_id: deletedTx.wallet_id,
+                  to_wallet_id: deletedTx.to_wallet_id,
+                  occurred_on: deletedTx.occurred_on,
+                  note: deletedTx.note,
+                },
+                wallets,
+                user?.id,
+              );
+            }
+            addTx.mutate(
+              {
+                id: deletedTx.id,
+                amount: Number(deletedTx.amount),
+                type: deletedTx.type,
+                category_id: deletedTx.category_id,
+                wallet_id: deletedTx.wallet_id,
+                to_wallet_id: deletedTx.to_wallet_id,
+                note: deletedTx.note,
+                occurred_on: deletedTx.occurred_on,
+                created_at: deletedTx.created_at,
+                space_id: deletedTx.space_id,
+                ledger_id: deletedTx.ledger_id,
+                created_by_name: deletedTx.created_by_name,
+              },
+              {
+                onSuccess: () => {
+                  showToast(
+                    isIndonesian
+                      ? "Transaksi dipulihkan"
+                      : "Transaction restored",
+                    "add",
+                  );
+                },
+              },
+            );
+          },
+          5000,
         );
         onClose();
       },
@@ -1543,14 +1607,14 @@ export function TransactionSheet({
                   {budgetImpact.hasBudget
                     ? budgetImpact.isOver
                       ? isIndonesian
-                        ? `Melebihi: +${formatRupiah(budgetImpact.diff)}`
-                        : `Over Budget: +${formatRupiah(budgetImpact.diff)}`
+                        ? `Melebihi: +${formatCurrency(budgetImpact.diff, preferredCurrency)}`
+                        : `Over Budget: +${formatCurrency(budgetImpact.diff, preferredCurrency)}`
                       : isIndonesian
-                        ? `Sisa: ${formatRupiah(budgetImpact.remaining)}`
-                        : `Remaining: ${formatRupiah(budgetImpact.remaining)}`
+                        ? `Sisa: ${formatCurrency(budgetImpact.remaining, preferredCurrency)}`
+                        : `Remaining: ${formatCurrency(budgetImpact.remaining, preferredCurrency)}`
                     : isIndonesian
-                      ? `Total Bulan: ${formatRupiah(budgetImpact.projectedSpent)}`
-                      : `MTD: ${formatRupiah(budgetImpact.projectedSpent)}`}
+                      ? `Total Bulan: ${formatCurrency(budgetImpact.projectedSpent, preferredCurrency)}`
+                      : `MTD: ${formatCurrency(budgetImpact.projectedSpent, preferredCurrency)}`}
                 </span>
               </div>
               {budgetImpact.hasBudget && (
@@ -1615,8 +1679,8 @@ export function TransactionSheet({
               />
               <span className="leading-snug text-[11px] text-[var(--text-secondary)]">
                 {isIndonesian
-                  ? `Nominal melebihi saldo akun saat ini (${formatRupiah(effectiveSourceBalance)})`
-                  : `Amount exceeds current account balance (${formatRupiah(effectiveSourceBalance)})`}
+                  ? `Nominal melebihi saldo akun saat ini (${formatCurrency(effectiveSourceBalance, preferredCurrency)})`
+                  : `Amount exceeds current account balance (${formatCurrency(effectiveSourceBalance, preferredCurrency)})`}
               </span>
             </motion.div>
           )}
@@ -1659,7 +1723,10 @@ export function TransactionSheet({
                 ? "Tambah catatan (opsional)..."
                 : "Add note (optional)..."
             }
-            className="bg-transparent text-[12.5px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-65 font-normal flex-1 outline-none min-w-0"
+            aria-label={
+              isIndonesian ? "Catatan transaksi" : "Transaction note"
+            }
+            className="bg-transparent text-[16px] sm:text-[12.5px] placeholder:text-[12px] placeholder:text-[var(--text-tertiary)] placeholder:opacity-65 font-normal flex-1 outline-none min-w-0"
             style={{ color: "var(--text-primary)" }}
           />
 
@@ -1809,7 +1876,10 @@ export function TransactionSheet({
           {transaction ? (
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => {
+                triggerHaptic("medium");
+                setIsDeleteConfirmOpen(true);
+              }}
               className="w-11 h-11 rounded-2xl flex items-center justify-center active:scale-95 shrink-0 transition-all cursor-pointer select-none"
               style={{
                 background: controlBg,
@@ -2333,6 +2403,89 @@ export function TransactionSheet({
         isOpen={shortcutSheetOpen}
         onClose={() => setShortcutSheetOpen(false)}
       />
+
+      {/* Apple Luxury Deletion Confirmation Sheet */}
+      <BottomSheet
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        zIndex={1050}
+        title={isIndonesian ? "Konfirmasi Hapus" : "Delete Confirmation"}
+      >
+        <div
+          className="px-5 sm:px-6 space-y-4 pt-1 select-none max-w-lg mx-auto"
+          style={{
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+          }}
+        >
+          <div
+            className="p-4 rounded-2xl flex items-start gap-3"
+            style={{
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
+            }}
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.05)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Trash2 size={16} strokeWidth={1.8} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-[13.5px] font-semibold text-[var(--text-primary)]">
+                {isIndonesian
+                  ? "Hapus transaksi ini?"
+                  : "Delete this transaction?"}
+              </h4>
+              <p className="text-[11.5px] text-[var(--text-tertiary)] mt-1 leading-relaxed">
+                {isIndonesian
+                  ? "Transaksi akan dihapus dari catatan keuangan Anda. Anda dapat memulihkannya melalui tombol Urungkan pada notifikasi."
+                  : "This transaction will be removed from your financial records. You can restore it using the Undo button on the notification."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setIsDeleteConfirmOpen(false);
+              }}
+              className="flex-1 h-11 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer"
+              style={{
+                background: controlBg,
+                border: controlBorder,
+                boxShadow: controlShadow,
+                color: "var(--text-primary)",
+              }}
+            >
+              {isIndonesian ? "Batal" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsDeleteConfirmOpen(false);
+                handleDelete();
+              }}
+              className="flex-1 h-11 rounded-full font-semibold text-[13px] active:scale-[0.98] transition-all cursor-pointer shadow-sm"
+              style={{
+                background: isDark ? "#ffffff" : "#18181b",
+                color: isDark ? "#000000" : "#ffffff",
+              }}
+            >
+              {isIndonesian ? "Hapus" : "Delete"}
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
     </BottomSheet>
   );
 }

@@ -231,10 +231,7 @@ export function CalendarMonthlyMatrix({
                           "text-[var(--text-secondary)] font-medium";
                     }
                   } else if (forecast.isNoSpendDay) {
-                    subFigure = "0";
-                    if (!isT && !isSel)
-                      subFigureColor =
-                        "text-[var(--text-tertiary)] opacity-60";
+                    subFigure = null;
                   } else if (forecast.billsTotal > 0 && forecast.isFuture) {
                     subFigure = `-${displayCompact(forecast.billsTotal)}`;
                     if (!isT && !isSel)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import type { Goal } from "../../hooks/useGoals";
 import { formatRupiah } from "../../lib/utils";
@@ -37,6 +38,7 @@ export function GoalDetailModal({
 }: GoalDetailModalProps) {
   const [depositAmount, setDepositAmount] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editTarget, setEditTarget] = useState("");
   const [editCurrent, setEditCurrent] = useState("");
@@ -962,22 +964,15 @@ export function GoalDetailModal({
 
             <div className="flex gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => {
-                  if (confirm(isIndonesian ? `Hapus target "${goal.title}"?` : `Delete goal "${goal.title}"?`)) {
-                    onDelete(goal.id);
-                    triggerHaptic("medium");
-                    showToast(
-                      isIndonesian ? "Target finansial dihapus" : "Financial goal deleted",
-                      "delete",
-                      () => {},
-                    );
-                    onClose();
-                  }
+                  triggerHaptic("medium");
+                  setIsDeleteConfirmOpen(true);
                 }}
-                className="p-3.5 rounded-2xl flex items-center justify-center text-red-400 active:scale-95"
+                className="p-3.5 rounded-2xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
                 style={{
-                  background: "rgba(239, 68, 68, 0.12)",
-                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
                 }}
                 title={isIndonesian ? "Hapus Target" : "Delete Goal"}
               >
@@ -986,7 +981,7 @@ export function GoalDetailModal({
 
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 py-3.5 rounded-2xl font-semibold text-[14px] flex items-center justify-center gap-1.5 active:scale-95"
+                className="flex-1 py-3.5 rounded-2xl font-semibold text-[14px] flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",
@@ -998,6 +993,30 @@ export function GoalDetailModal({
           </div>
         )}
       </div>
+
+      <GlassConfirmationModal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          if (!goal) return;
+          onDelete(goal.id);
+          triggerHaptic("medium");
+          showToast(
+            isIndonesian ? "Target finansial dihapus" : "Financial goal deleted",
+            "delete",
+            () => {},
+          );
+          onClose();
+        }}
+        title={isIndonesian ? `Hapus Target "${goal?.title}"?` : `Delete Goal "${goal?.title}"?`}
+        description={
+          isIndonesian
+            ? "Target finansial ini akan dihapus. Anda dapat membuat target baru kapan saja."
+            : "This financial goal will be removed. You can create a new goal at any time."
+        }
+        confirmLabel={isIndonesian ? "Hapus Target" : "Delete Goal"}
+        isIndonesian={isIndonesian}
+      />
     </BottomSheet>
   );
 }

@@ -148,6 +148,20 @@ export function BottomSheet({
   }, [isOpen]);
 
   /**
+   * Dismiss when user presses the Escape key on physical keyboard.
+   */
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  /**
    * Dismiss when the sheet is pulled down far enough
    * or released with a strong downward velocity.
    */
@@ -214,6 +228,9 @@ export function BottomSheet({
               ========================================================= */}
           <motion.div
             ref={sheetContainerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={title || "Dialog"}
             className="
               fixed
               bottom-0

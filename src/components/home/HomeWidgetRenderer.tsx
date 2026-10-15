@@ -4,7 +4,11 @@ import {
   Check,
   CalendarDays,
   Target,
+  Lock,
+  Sparkles,
 } from "lucide-react";
+import { useSubscription } from "../../contexts/SubscriptionContext";
+import { PRO_WIDGET_IDS } from "../../types/subscription";
 import { format, isToday } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import type { WidgetSize } from "../../lib/widgetLayoutTypes";
@@ -135,6 +139,66 @@ export function HomeWidgetRenderer({
   debtSummary,
   navigate,
 }: HomeWidgetRendererProps) {
+  const { isPremium, openPaywall } = useSubscription();
+
+  if (!isPremium && (PRO_WIDGET_IDS as readonly string[]).includes(cardId)) {
+    const title =
+      cardId === "financial_health_gauge"
+        ? isIndonesian
+          ? "Meter Kesehatan Eksekutif"
+          : "Executive Health Meter"
+        : cardId === "liquid_runway"
+        ? isIndonesian
+          ? "Ketahanan Kas (Runway)"
+          : "Cashflow Runway"
+        : isIndonesian
+        ? "Stabilitas Pengeluaran"
+        : "Spending Stability";
+
+    return (
+      <div
+        onClick={() => openPaywall({ feature: "advanced_widget" })}
+        className="relative p-5 rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all duration-200 border border-white/10"
+        style={{
+          background: isDark
+            ? "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)"
+            : "linear-gradient(135deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.01) 100%)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+        }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-white/[0.08] border border-white/10 flex items-center justify-center">
+              <Lock className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
+            </div>
+            <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+              {title}
+            </span>
+          </div>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/[0.1] border border-white/10 text-[var(--text-primary)] uppercase tracking-wider">
+            PRO
+          </span>
+        </div>
+        <p className="text-[11px] text-[var(--text-tertiary)] mb-4 leading-relaxed">
+          {isIndonesian
+            ? "Analitik eksekutif mendalam ini tersedia secara eksklusif untuk anggota Accrual Pro."
+            : "This executive telemetry card is exclusively available for Accrual Pro members."}
+        </p>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openPaywall({ feature: "advanced_widget" });
+          }}
+          className="w-full py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <Sparkles className="w-3 h-3 text-[var(--text-primary)]" strokeWidth={1.5} />
+          <span>{isIndonesian ? "Buka dengan Accrual Pro" : "Unlock with Accrual Pro"}</span>
+        </button>
+      </div>
+    );
+  }
+
   switch (cardId) {
     case "net_portfolio":
       return (

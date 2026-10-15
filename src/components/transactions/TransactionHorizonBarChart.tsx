@@ -17,9 +17,10 @@ import {
   Tooltip,
   Cell,
 } from "recharts";
-import { formatRupiah } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import type { ParsedStatementItem } from "../../lib/statementParser";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 export type FilterType = "all" | "expense" | "income" | "transfer" | "adjustment";
 export type TimeRangeType =
@@ -41,6 +42,7 @@ export type ChartPoint = {
 };
 
 const GlassTooltip = ({ active, payload, label }: any) => {
+  const { preferredCurrency } = useCurrency();
   if (!active || !payload?.length) return null;
   return (
     <div
@@ -66,7 +68,7 @@ const GlassTooltip = ({ active, payload, label }: any) => {
       <p
         style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 700 }}
       >
-        {formatRupiah(payload[0]?.value ?? 0)}
+        {formatCurrency(payload[0]?.value ?? 0, preferredCurrency)}
       </p>
     </div>
   );
@@ -115,6 +117,7 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
   isDark,
   isIndonesian,
 }: TransactionHorizonBarChartProps) {
+  const { preferredCurrency, currencyMeta } = useCurrency();
   const activityLabel = (() => {
     if (isIndonesian) {
       if (filter === "income") return `${selectedMonthLabel} Pemasukan`;
@@ -168,7 +171,7 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
             className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight amount whitespace-nowrap"
             style={{ color: "var(--text-primary)" }}
           >
-            {isStealthMode ? "Rp ••••••••" : formatRupiah(totalPeriodAmount)}
+            {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatCurrency(totalPeriodAmount, preferredCurrency)}
           </p>
           <p className="text-[11px] font-medium mt-1 text-[var(--text-tertiary)] truncate">
             {dynamicChartData.length} data points · {selectedMonthLabel}

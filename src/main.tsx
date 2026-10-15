@@ -20,8 +20,9 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { PrivacyProvider } from './contexts/PrivacyContext'
 import { SpaceProvider } from './contexts/SpaceContext'
-import { CurrencyProvider } from './contexts/CurrencyContext'
 import { LanguageProvider } from './contexts/LanguageContext'
+import { CurrencyProvider } from './contexts/CurrencyContext'
+import { SubscriptionProvider } from './contexts/SubscriptionContext'
 import App from './App.tsx'
 import './index.css'
 
@@ -327,7 +328,9 @@ createRoot(document.getElementById('root')!).render(
                     <PrivacyProvider>
                       <SpaceProvider>
                         <CurrencyProvider>
-                          <App />
+                          <SubscriptionProvider>
+                            <App />
+                          </SubscriptionProvider>
                         </CurrencyProvider>
                       </SpaceProvider>
                     </PrivacyProvider>

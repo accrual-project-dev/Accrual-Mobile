@@ -10,10 +10,11 @@ import {
   Tag,
 } from "lucide-react";
 import { triggerHaptic } from "../../lib/haptics";
-import { formatRupiah } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import type { Category } from "../../lib/types";
 import type { FilterType, TimeRangeType } from "./TransactionHorizonBarChart";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 export interface TransactionFilterBarProps {
   search: string;
@@ -81,6 +82,7 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
   allTimeScopeCount = 0,
 }: TransactionFilterBarProps) {
   const { theme } = useTheme();
+  const { preferredCurrency } = useCurrency();
   const isDark = theme !== "light";
 
   return (
@@ -433,10 +435,10 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
             >
               <span>
                 {minAmount && maxAmount
-                  ? `${formatRupiah(Number(minAmount))} - ${formatRupiah(Number(maxAmount))}`
+                  ? `${formatCurrency(Number(minAmount), preferredCurrency)} - ${formatCurrency(Number(maxAmount), preferredCurrency)}`
                   : minAmount
-                    ? `≥ ${formatRupiah(Number(minAmount))}`
-                    : `≤ ${formatRupiah(Number(maxAmount))}`}
+                    ? `≥ ${formatCurrency(Number(minAmount), preferredCurrency)}`
+                    : `≤ ${formatCurrency(Number(maxAmount), preferredCurrency)}`}
               </span>
               <button
                 type="button"

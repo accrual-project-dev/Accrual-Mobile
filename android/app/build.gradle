@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.alhafidz.trouvaille"
+    namespace = "com.syntheticae.accrual"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.alhafidz.trouvaille"
+        applicationId "com.syntheticae.accrual"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 120

@@ -89,7 +89,7 @@ export function LoginPage() {
       const isNative =
         typeof window !== "undefined" && Capacitor.isNativePlatform();
       const redirectUri = isNative
-        ? "com.alhafidz.trouvaille://auth-callback"
+        ? "com.syntheticae.accrual://auth-callback"
         : typeof window !== "undefined"
           ? window.location.origin
           : undefined;
@@ -154,7 +154,7 @@ export function LoginPage() {
     try {
       const resetRedirectUri =
         typeof window !== "undefined" && Capacitor.isNativePlatform()
-          ? "com.alhafidz.trouvaille://reset-password"
+          ? "com.syntheticae.accrual://reset-password"
           : typeof window !== "undefined"
             ? `${window.location.origin}/?type=recovery`
             : undefined;
@@ -486,14 +486,18 @@ export function LoginPage() {
                         )}
                       />
                       <input
+                        id="login-email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="your.email@domain.com"
+                        aria-label={
+                          isIndonesian ? "Alamat email" : "Email address"
+                        }
                         required
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
+                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] sm:text-[13px] outline-none transition-colors border",
                           isDark
                             ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                             : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
@@ -511,6 +515,7 @@ export function LoginPage() {
                         )}
                       />
                       <input
+                        id="login-password"
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -519,11 +524,16 @@ export function LoginPage() {
                             ? "Kata sandi (min 6 karakter)"
                             : "Password (min 6 characters)"
                         }
+                        aria-label={
+                          isIndonesian
+                            ? "Kata sandi akun"
+                            : "Account password"
+                        }
                         required
                         minLength={6}
                         disabled={loading}
                         className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[12.5px] outline-none transition-colors border",
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] sm:text-[13px] outline-none transition-colors border",
                           isDark
                             ? "bg-white/[0.04] focus:bg-white/[0.07] border-white/[0.1] focus:border-white/20 text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                             : "bg-white/70 focus:bg-white border-black/[0.08] focus:border-black/20 text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
@@ -531,6 +541,15 @@ export function LoginPage() {
                       />
                       <button
                         type="button"
+                        aria-label={
+                          showPassword
+                            ? isIndonesian
+                              ? "Sembunyikan kata sandi"
+                              : "Hide password"
+                            : isIndonesian
+                              ? "Tampilkan kata sandi"
+                              : "Show password"
+                        }
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => setShowPassword(!showPassword)}
                         className={cn(

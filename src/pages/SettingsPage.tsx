@@ -12,7 +12,6 @@ import {
   Smartphone,
   Clock,
   KeyRound,
-  Camera,
   Search,
   X,
   Coins,
@@ -38,7 +37,9 @@ import { useBills } from "../hooks/useBills";
 import { useToast } from "../contexts/ToastContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { useSubscription } from "../contexts/SubscriptionContext";
 import { ToggleSwitch } from "../components/ui/ToggleSwitch";
+import { GlassConfirmationModal } from "../components/ui/GlassConfirmationModal";
 import { useSecurityLock } from "../contexts/SecurityLockContext";
 import { useCategories, categoryKeys } from "../hooks/useCategories";
 import { useWallets, walletKeys } from "../hooks/useWallets";
@@ -235,6 +236,7 @@ export function SettingsPage({
   const { theme, toggleTheme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
+  const { isPremium, openPaywall } = useSubscription();
   const {
     budgetTarget,
     setBudgetTarget,
@@ -395,6 +397,19 @@ export function SettingsPage({
   const [webDashboardModalOpen, setWebDashboardModalOpen] = useState(false);
   const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
   const { shortcuts } = useShortcuts();
   const navigate = useNavigate();
   const [appUpdateOpen, setAppUpdateOpen] = useState(false);
@@ -751,7 +766,7 @@ export function SettingsPage({
           : isIndonesian
             ? "Sinkronisasi gagal. Data lokal aman."
             : "Sync failed. Local data preserved.",
-        "delete",
+        "error",
         () => {},
       );
       setTimeout(() => {
@@ -762,26 +777,34 @@ export function SettingsPage({
 
   const handleRerunCustomization = () => {
     triggerHaptic("medium");
-    if (
-      confirm(
-        isIndonesian
-          ? "Atur ulang konfigurasi awal? Catatan transaksi Anda akan tetap aman, dan Anda dapat mengonfigurasi ulang preferensi."
-          : "Reset onboarding state? Your existing transaction records will remain safe, and you can re-experience the customization wizard immediately.",
-      )
-    ) {
-      localStorage.removeItem("trouvaille_onboarded");
-      localStorage.removeItem("trouvaille_onboarding_focus");
-      window.location.reload();
-    }
+    setConfirmModalConfig({
+      isOpen: true,
+      title: isIndonesian ? "Atur Ulang Preferensi Awal?" : "Reset Initial Setup?",
+      description: isIndonesian
+        ? "Catatan transaksi Anda akan tetap aman. Anda dapat mengonfigurasi ulang preferensi visual dan kategori."
+        : "Your existing transaction records will remain safe, and you can re-experience the configuration wizard.",
+      confirmLabel: isIndonesian ? "Atur Ulang" : "Reset",
+      onConfirm: () => {
+        localStorage.removeItem("trouvaille_onboarded");
+        localStorage.removeItem("trouvaille_onboarding_focus");
+        window.location.reload();
+      },
+    });
   };
 
-  const handleLogout = async () => {
-    const confirmMsg = isIndonesian
-      ? "Apakah Anda yakin ingin keluar dari akun?"
-      : "Are you sure you want to sign out?";
-    if (confirm(confirmMsg)) {
-      await signOut();
-    }
+  const handleLogout = () => {
+    triggerHaptic("medium");
+    setConfirmModalConfig({
+      isOpen: true,
+      title: isIndonesian ? "Keluar dari Akun?" : "Sign Out?",
+      description: isIndonesian
+        ? "Apakah Anda yakin ingin keluar dari akun? Data yang tersinkronisasi akan tetap tersimpan aman di cloud."
+        : "Are you sure you want to sign out? Your synchronized data remains safely stored in the cloud.",
+      confirmLabel: isIndonesian ? "Keluar" : "Sign Out",
+      onConfirm: async () => {
+        await signOut();
+      },
+    });
   };
 
   // Search filtering
@@ -923,8 +946,8 @@ export function SettingsPage({
     "passcode pin change ubah atur sandi security",
   );
   const showMedia = matches(
-    "Camera & Photos Access",
-    "permissions receipt scanner gallery",
+    "Camera & Photos Access Izin Aplikasi Perangkat",
+    "permissions receipt scanner gallery camera notifikasi suara mic biometrik izin",
   );
   const showLegal = matches(
     "Legal & Privacy Policy Syarat Ketentuan",
@@ -1061,6 +1084,51 @@ export function SettingsPage({
           onOpenProfile={() => setProfileOpen(true)}
           onExitGuestMode={exitGuestMode}
         />
+      )}
+
+      {/* ── 3.1 Accrual Pro Membership Card ── */}
+      {!searchQuery.trim() && (
+        <div
+          onClick={() => {
+            triggerHaptic("light");
+            openPaywall({ feature: "settings_manual" });
+          }}
+          className="p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all duration-200 border border-white/10 relative overflow-hidden"
+          style={{
+            background: isDark
+              ? "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)"
+              : "linear-gradient(135deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.01) 100%)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.1)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-white/[0.08] border border-white/10 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-[var(--text-primary)]" strokeWidth={1.5} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[14px] font-semibold text-[var(--text-primary)]">
+                    Accrual Pro
+                  </span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/[0.1] border border-white/10 text-[var(--text-primary)] uppercase tracking-wider">
+                    {isPremium ? (isIndonesian ? "AKTIF" : "ACTIVE") : (isIndonesian ? "UPGRADE" : "UPGRADE")}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed truncate">
+                  {isPremium
+                    ? isIndonesian
+                      ? "Keanggotaan aktif • Semua fitur eksekutif terbuka"
+                      : "Membership active • All executive features unlocked"
+                    : isIndonesian
+                    ? "Buka kuota OCR tak terbatas, analitik penuh, & multi-space"
+                    : "Unlock unlimited OCR, executive telemetry, & multi-space"}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[var(--text-tertiary)] shrink-0 ml-2" strokeWidth={1.5} />
+          </div>
+        </div>
       )}
 
       {/* Empty Search State */}
@@ -2318,15 +2386,15 @@ export function SettingsPage({
                         color: "var(--text-primary)",
                       }}
                     >
-                      <Camera size={13.5} strokeWidth={1.8} />
+                      <ShieldCheck size={13.5} strokeWidth={1.8} />
                     </div>
                     <span
                       className="text-[12.5px] font-semibold truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Izin Kamera & Media"
-                        : "Camera & Media Permissions"}
+                        ? "Izin Aplikasi & Perangkat"
+                        : "App & Device Permissions"}
                     </span>
                   </div>
                   <ChevronRight
@@ -2587,6 +2655,20 @@ export function SettingsPage({
         <LegalModal
           isOpen={legalOpen}
           onClose={() => setLegalOpen(false)}
+        />
+
+        <GlassConfirmationModal
+          isOpen={confirmModalConfig.isOpen}
+          onClose={() =>
+            setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))
+          }
+          onConfirm={confirmModalConfig.onConfirm}
+          title={confirmModalConfig.title}
+          description={confirmModalConfig.description}
+          confirmLabel={confirmModalConfig.confirmLabel}
+          cancelLabel={confirmModalConfig.cancelLabel}
+          isIndonesian={isIndonesian}
+          isDark={isDark}
         />
       </Suspense>
     </div>

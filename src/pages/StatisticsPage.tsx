@@ -1222,7 +1222,7 @@ export function StatisticsPage() {
 
   return (
     <div
-      className="px-5 py-6 space-y-5 pb-36 max-w-full overflow-x-clip"
+      className="px-4 sm:px-5 py-6 space-y-5 pb-36 max-w-lg sm:max-w-xl mx-auto overflow-x-clip"
       style={{ minHeight: "100dvh" }}
     >
       <StatisticsHeaderBar

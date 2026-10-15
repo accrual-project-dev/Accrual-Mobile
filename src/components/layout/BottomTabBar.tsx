@@ -416,7 +416,10 @@ export function BottomTabBar({
               );
             }
 
-            const isActive = location.pathname === tab.path;
+            const isActive =
+              tab.path === "/"
+                ? location.pathname === "/" || location.pathname === "/calendar"
+                : location.pathname === tab.path;
 
             return (
               <NavLink
@@ -434,6 +437,8 @@ export function BottomTabBar({
                           : undefined
                 }
                 onClick={() => triggerHaptic("light")}
+                title={tab.label}
+                aria-label={tab.label}
                 className="w-10 h-10 flex items-center justify-center relative rounded-full active:scale-95 transition-transform"
               >
                 {isActive && (

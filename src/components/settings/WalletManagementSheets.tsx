@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { Plus, Trash2, Scale, Check, ChevronRight, Search, X, AlertCircle } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { IconRenderer } from "../ui/IconRenderer";
 import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
 import {
@@ -72,6 +73,18 @@ export function WalletManagementSheets({
   const [classificationFilter, setClassificationFilter] = useState<
     "all" | "liquid" | "investment" | "debt"
   >("all");
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   const [editWallet, setEditWallet] = useState<{
     id: string;
@@ -671,22 +684,26 @@ export function WalletManagementSheets({
                 <button
                   type="button"
                   onClick={() => {
-                    if (
-                      !confirm(
-                        isIndonesian
-                          ? `Hapus ${unusedZeroWallets.length} akun bersaldo 0? Akun aktif dengan saldo positif tidak akan terpengaruh.`
-                          : `Delete ${unusedZeroWallets.length} accounts with 0 balance? Active accounts with positive balances will not be touched.`,
-                      )
-                    ) {
-                      return;
-                    }
-                    unusedZeroWallets.forEach((w) => deleteWallet.mutate(w.id));
-                    showToast(
-                      isIndonesian
-                        ? `${unusedZeroWallets.length} akun kosong dihapus`
-                        : `${unusedZeroWallets.length} empty accounts removed`,
-                      "delete",
-                    );
+                    triggerHaptic("medium");
+                    setConfirmModalConfig({
+                      isOpen: true,
+                      title: isIndonesian
+                        ? `Hapus ${unusedZeroWallets.length} Akun Kosong?`
+                        : `Delete ${unusedZeroWallets.length} Empty Accounts?`,
+                      description: isIndonesian
+                        ? "Akun bersaldo 0 akan dihapus dari daftar akun. Akun aktif dengan saldo atau riwayat tidak akan terpengaruh."
+                        : "Accounts with 0 balance will be removed. Active accounts with positive balances will not be touched.",
+                      confirmLabel: isIndonesian ? "Hapus Akun Kosong" : "Delete Empty Accounts",
+                      onConfirm: () => {
+                        unusedZeroWallets.forEach((w) => deleteWallet.mutate(w.id));
+                        showToast(
+                          isIndonesian
+                            ? `${unusedZeroWallets.length} akun kosong dihapus`
+                            : `${unusedZeroWallets.length} empty accounts removed`,
+                          "delete",
+                        );
+                      },
+                    });
                   }}
                   className="font-semibold hover:underline shrink-0 pl-2 transition-all cursor-pointer text-[var(--text-primary)]"
                 >
@@ -1082,33 +1099,36 @@ export function WalletManagementSheets({
               onClick={() => {
                 if (!editWallet) return;
                 triggerHaptic("medium");
-                if (
-                  !confirm(
-                    isIndonesian
-                      ? `Hapus akun "${editWallet.name}"?`
-                      : `Delete account "${editWallet.name}"?`
-                  )
-                ) {
-                  return;
-                }
-                deleteWallet.mutate(editWallet.id, {
-                  onSuccess: () => {
-                    handleCloseEditWallet();
-                    showToast(
-                      isIndonesian ? "Akun dihapus" : "Account deleted",
-                      "delete",
-                      () => {}
-                    );
-                  },
-                  onError: (error: any) => {
-                    showToast(
-                      error?.message ||
-                        (isIndonesian
-                          ? "Gagal menghapus akun"
-                          : "Failed to delete account"),
-                      "delete",
-                      () => {}
-                    );
+                setConfirmModalConfig({
+                  isOpen: true,
+                  title: isIndonesian
+                    ? `Hapus Akun "${editWallet.name}"?`
+                    : `Delete Account "${editWallet.name}"?`,
+                  description: isIndonesian
+                    ? "Akun ini akan dihapus dari daftar akun Anda. Riwayat transaksi yang terkait akan tetap tersimpan."
+                    : "This account will be removed from your accounts list. Associated transaction history remains preserved.",
+                  confirmLabel: isIndonesian ? "Hapus Akun" : "Delete Account",
+                  onConfirm: () => {
+                    deleteWallet.mutate(editWallet.id, {
+                      onSuccess: () => {
+                        handleCloseEditWallet();
+                        showToast(
+                          isIndonesian ? "Akun dihapus" : "Account deleted",
+                          "delete",
+                          () => {},
+                        );
+                      },
+                      onError: (error: any) => {
+                        showToast(
+                          error?.message ||
+                            (isIndonesian
+                              ? "Gagal menghapus akun"
+                              : "Failed to delete account"),
+                          "error",
+                          () => {},
+                        );
+                      },
+                    });
                   },
                 });
               }}
@@ -1397,6 +1417,19 @@ export function WalletManagementSheets({
             ? (isIndonesian ? "Pilih Ikon Akun" : "Choose Account Icon")
             : (isIndonesian ? "Edit Ikon Akun" : "Edit Account Icon")
         }
+      />
+
+      <GlassConfirmationModal
+        isOpen={confirmModalConfig.isOpen}
+        onClose={() =>
+          setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))
+        }
+        onConfirm={confirmModalConfig.onConfirm}
+        title={confirmModalConfig.title}
+        description={confirmModalConfig.description}
+        confirmLabel={confirmModalConfig.confirmLabel}
+        isIndonesian={isIndonesian}
+        isDark={isDark}
       />
     </>
   );

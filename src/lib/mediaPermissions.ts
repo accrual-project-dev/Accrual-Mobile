@@ -1,11 +1,90 @@
 import { Camera, CameraResultType, CameraSource, type PermissionStatus } from "@capacitor/camera";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import { Capacitor } from "@capacitor/core";
 
-export type MediaPermissionType = "camera" | "photos";
+export type MediaPermissionType = "camera" | "photos" | "notifications" | "microphone";
 
 export interface MediaPermissionsState {
   camera: "granted" | "denied" | "prompt" | "prompt-with-rationale" | "limited";
   photos: "granted" | "denied" | "prompt" | "prompt-with-rationale" | "limited";
+}
+
+/**
+ * Checks notification permission status.
+ */
+export async function checkNotificationPermission(): Promise<"granted" | "denied" | "prompt"> {
+  if (!Capacitor.isNativePlatform()) return "granted";
+  try {
+    const status = await LocalNotifications.checkPermissions();
+    if (status.display === "granted") return "granted";
+    if (status.display === "denied") return "denied";
+    return "prompt";
+  } catch (err) {
+    console.warn("[mediaPermissions] checkNotificationPermission failed:", err);
+    return "prompt";
+  }
+}
+
+/**
+ * Requests notification permission.
+ */
+export async function requestAppNotificationPermission(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return true;
+  try {
+    const res = await LocalNotifications.requestPermissions();
+    return res.display === "granted";
+  } catch (err) {
+    console.warn("[mediaPermissions] requestAppNotificationPermission failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Checks microphone permission status.
+ */
+export async function checkMicrophonePermission(): Promise<"granted" | "denied" | "prompt"> {
+  if (!Capacitor.isNativePlatform()) return "granted";
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const status = await navigator.permissions.query({ name: "microphone" as PermissionName });
+      if (status.state === "granted") return "granted";
+      if (status.state === "denied") return "denied";
+      return "prompt";
+    }
+  } catch {
+    // navigator.permissions.query for microphone may fail in some WebViews
+  }
+  return "prompt";
+}
+
+/**
+ * Requests microphone permission via getUserMedia.
+ */
+export async function requestMicrophonePermission(): Promise<boolean> {
+  try {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn("[mediaPermissions] requestMicrophonePermission failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Opens the native iOS or Android system settings page for Accrual.
+ */
+export function openAppSettings(): void {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      window.location.href = "app-settings:";
+    }
+  } catch (err) {
+    console.warn("[mediaPermissions] Failed to open app settings:", err);
+  }
 }
 
 /**

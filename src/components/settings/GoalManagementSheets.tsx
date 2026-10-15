@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Target } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GoalDetailModal } from "../goals/GoalDetailModal";
 import { useGoals } from "../../hooks/useGoals";
@@ -24,6 +25,7 @@ export function GoalManagementSheets({
 
   const [addGoalOpen, setAddGoalOpen] = useState(false);
   const [selectedGoalSetting, setSelectedGoalSetting] = useState<any | null>(null);
+  const [goalToDelete, setGoalToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const [goalTitle, setGoalTitle] = useState("");
   const [goalTarget, setGoalTarget] = useState("");
@@ -116,18 +118,13 @@ export function GoalManagementSheets({
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (
-                      confirm(
-                        isIndonesian
-                          ? `Hapus target ${g.title}?`
-                          : `Delete goal ${g.title}?`,
-                      )
-                    )
-                      deleteGoal(g.id);
+                    triggerHaptic("medium");
+                    setGoalToDelete({ id: g.id, title: g.title });
                   }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer active:scale-95 transition-all"
                   style={{ color: "var(--text-secondary)" }}
                 >
                   <Trash2 size={14} />
@@ -233,6 +230,34 @@ export function GoalManagementSheets({
         onDeposit={depositToGoal}
         onUpdate={updateGoal}
         onDelete={deleteGoal}
+      />
+
+      <GlassConfirmationModal
+        isOpen={goalToDelete !== null}
+        onClose={() => setGoalToDelete(null)}
+        onConfirm={() => {
+          if (goalToDelete) {
+            deleteGoal(goalToDelete.id);
+            showToast(
+              isIndonesian ? "Target finansial dihapus" : "Financial goal deleted",
+              "delete",
+              () => {},
+            );
+            setGoalToDelete(null);
+          }
+        }}
+        title={
+          isIndonesian
+            ? `Hapus Target "${goalToDelete?.title}"?`
+            : `Delete Goal "${goalToDelete?.title}"?`
+        }
+        description={
+          isIndonesian
+            ? "Target finansial ini akan dihapus dari daftar target Anda."
+            : "This financial goal will be removed from your goals list."
+        }
+        confirmLabel={isIndonesian ? "Hapus Target" : "Delete Goal"}
+        isIndonesian={isIndonesian}
       />
     </>
   );

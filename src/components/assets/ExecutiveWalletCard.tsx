@@ -320,7 +320,7 @@ export function ExecutiveWalletCard({
 
   return (
     <div
-      className="relative w-full max-w-[370px] mx-auto select-none pt-20 pb-1 transition-all duration-300"
+      className="relative w-full max-w-[370px] mx-auto select-none pt-24 pb-1 transition-all duration-300"
       onMouseEnter={() => setIsExpanded(true)}
       onClick={() => {
         if (!isExpanded) {
@@ -349,7 +349,7 @@ export function ExecutiveWalletCard({
           <span
             className="text-[8.5px]  font-bold tracking-[0.22em] uppercase"
             style={{
-              color: isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.38)",
+              color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)",
             }}
           >
             {isIndonesian ? "NERACA AKUN EKSEKUTIF" : "EXECUTIVE BALANCE VAULT"}
@@ -403,14 +403,14 @@ export function ExecutiveWalletCard({
               variants={{
                 enter: (dir: number) => ({
                   x: dir > 0 ? 140 : -140,
-                  y: isExpanded ? -92 : 0,
+                  y: isExpanded ? -64 : 0,
                   opacity: 0,
                   scale: 0.95,
                   rotate: dir > 0 ? 2 : -2,
                 }),
                 center: {
                   x: 0,
-                  y: isExpanded ? -92 : 0,
+                  y: isExpanded ? -64 : 0,
                   opacity: 1,
                   scale: 1,
                   rotate: -1,
@@ -423,7 +423,7 @@ export function ExecutiveWalletCard({
                 },
                 exit: (dir: number) => ({
                   x: dir > 0 ? -140 : 140,
-                  y: isExpanded ? -92 : 0,
+                  y: isExpanded ? -64 : 0,
                   opacity: 0,
                   scale: 0.95,
                   rotate: dir > 0 ? -2 : 2,
@@ -437,7 +437,7 @@ export function ExecutiveWalletCard({
               initial="enter"
               animate={{
                 x: 0,
-                y: isExpanded ? -92 : 0,
+                y: isExpanded ? -64 : 0,
                 opacity: 1,
                 scale: 1,
                 rotate: -1,

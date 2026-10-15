@@ -1,4 +1,4 @@
-package com.alhafidz.trouvaille;
+package com.syntheticae.accrual;
 
 import com.getcapacitor.BridgeActivity;
 

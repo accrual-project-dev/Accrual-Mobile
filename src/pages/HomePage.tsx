@@ -766,7 +766,7 @@ export function HomePage({
   };
 
   return (
-    <div className="space-y-3.5 pb-24 px-4 pt-3 max-w-md mx-auto select-none">
+    <div className="space-y-3.5 pb-36 px-4 pt-3 max-w-lg sm:max-w-xl mx-auto select-none">
       <PullToRefreshIndicator
         pullDistance={pullDistance}
         isRefreshing={isRefreshing}

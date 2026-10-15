@@ -9,6 +9,7 @@ import {
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { formatRupiah } from "../../lib/utils";
 
 interface CurrencySwitcherSheetProps {
@@ -31,6 +32,7 @@ export function CurrencySwitcherSheet({
 
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -50,7 +52,13 @@ export function CurrencySwitcherSheet({
   const handleSelect = (code: SupportedCurrency) => {
     triggerHaptic("medium");
     setPreferredCurrency(code);
-    showToast(`Base currency changed to ${code}`, "update", () => {});
+    showToast(
+      isIndonesian
+        ? `Mata uang utama diubah ke ${code}`
+        : `Base currency changed to ${code}`,
+      "update",
+      () => {},
+    );
     onClose();
   };
 
@@ -59,20 +67,28 @@ export function CurrencySwitcherSheet({
     try {
       await refreshRates();
       showToast(
-        "Exchange rates updated to latest market quotes",
+        isIndonesian
+          ? "Kurs nilai tukar berhasil diperbarui"
+          : "Exchange rates updated to latest market quotes",
         "update",
         () => {},
       );
     } catch {
-      showToast("Failed to refresh live exchange rates", "delete", () => {});
+      showToast(
+        isIndonesian
+          ? "Gagal memperbarui kurs nilai tukar"
+          : "Failed to refresh live exchange rates",
+        "error",
+        () => {},
+      );
     }
   };
 
   const formattedLastUpdated = useMemo(() => {
-    if (!lastUpdated) return "Offline";
+    if (!lastUpdated) return isIndonesian ? "Luring" : "Offline";
     const date = new Date(lastUpdated);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }, [lastUpdated]);
+  }, [lastUpdated, isIndonesian]);
 
   // ── Frosted Liquid Glass Materials ───────────────────────────────────────
   const controlBg = isDark
@@ -101,10 +117,12 @@ export function CurrencySwitcherSheet({
           <div className="flex items-center">
             <div>
               <h2 className="text-[22px] font-semibold tracking-tight text-[var(--text-primary)] leading-tight">
-                Valuation Currency
+                {isIndonesian ? "Mata Uang Penilaian" : "Valuation Currency"}
               </h2>
               <span className="text-[12px] text-[var(--text-tertiary)]">
-                Select your preferred base currency
+                {isIndonesian
+                  ? "Pilih mata uang dasar pembukuan Anda"
+                  : "Select your preferred base currency"}
               </span>
             </div>
           </div>
@@ -122,21 +140,33 @@ export function CurrencySwitcherSheet({
                 boxShadow: controlShadow,
                 color: "var(--text-primary)",
               }}
-              title="Perbarui kurs langsung"
+              title={
+                isIndonesian
+                  ? "Perbarui kurs langsung"
+                  : "Refresh live exchange rates"
+              }
             >
               <RefreshCw
                 size={11.5}
                 strokeWidth={1.8}
                 className={isLoading ? "animate-spin" : ""}
               />
-              <span>{isLoading ? "Syncing..." : "Sync FX"}</span>
+              <span>
+                {isLoading
+                  ? isIndonesian
+                    ? "Menyelaraskan..."
+                    : "Syncing..."
+                  : isIndonesian
+                    ? "Perbarui Kurs"
+                    : "Sync FX"}
+              </span>
             </button>
 
             {/* Close Button */}
             <button
               type="button"
               onClick={onClose}
-              aria-label="Tutup"
+              aria-label={isIndonesian ? "Tutup" : "Close"}
               className="w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-90 cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               style={{
                 background: controlBg,
@@ -167,13 +197,23 @@ export function CurrencySwitcherSheet({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search currency code, name, or symbol"
-              className="flex-1 bg-transparent text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
+              placeholder={
+                isIndonesian
+                  ? "Cari kode, nama, atau simbol mata uang"
+                  : "Search currency code, name, or symbol"
+              }
+              aria-label={
+                isIndonesian
+                  ? "Cari mata uang"
+                  : "Search currency"
+              }
+              className="flex-1 bg-transparent text-[16px] sm:text-[13px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
+                aria-label={isIndonesian ? "Hapus pencarian" : "Clear search"}
                 className="cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <X size={13} />
@@ -182,8 +222,12 @@ export function CurrencySwitcherSheet({
           </div>
 
           <div className="flex items-center justify-between px-1 text-[10.5px] text-[var(--text-tertiary)]">
-            <span className="opacity-80">Open Exchange Live Quote</span>
-            <span className="opacity-70">Update: {formattedLastUpdated}</span>
+            <span className="opacity-80">
+              {isIndonesian ? "Harga Pasar Langsung" : "Open Exchange Live Quote"}
+            </span>
+            <span className="opacity-70">
+              {isIndonesian ? "Pembaruan:" : "Update:"} {formattedLastUpdated}
+            </span>
           </div>
         </div>
 
@@ -192,10 +236,14 @@ export function CurrencySwitcherSheet({
           {currenciesList.length === 0 ? (
             <div className="py-12 text-center space-y-1">
               <p className="text-[13px] font-semibold text-[var(--text-secondary)]">
-                Tidak ada mata uang yang cocok
+                {isIndonesian
+                  ? "Tidak ada mata uang yang cocok"
+                  : "No matching currencies found"}
               </p>
               <p className="text-[11px] text-[var(--text-tertiary)]">
-                Coba gunakan simbol atau kode negara lain.
+                {isIndonesian
+                  ? "Coba gunakan simbol atau kode negara lain."
+                  : "Try searching with a different code or symbol."}
               </p>
             </div>
           ) : (

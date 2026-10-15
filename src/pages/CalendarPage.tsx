@@ -304,7 +304,7 @@ export function CalendarPage() {
 
   return (
     <div
-      className="px-4 sm:px-5 min-h-screen space-y-4 pb-28 select-none max-w-md mx-auto"
+      className="px-4 sm:px-5 min-h-screen space-y-4 pb-36 select-none max-w-lg sm:max-w-xl mx-auto"
       style={{
         background: "var(--bg-base)",
         paddingTop: "max(calc(env(safe-area-inset-top, 0px) + 12px), 18px)",

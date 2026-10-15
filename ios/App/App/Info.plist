@@ -28,11 +28,12 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.alhafidz.trouvaille</string>
+			<string>com.syntheticae.accrual</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>accrual</string>
+				<string>com.syntheticae.accrual</string>
 				<string>trouvaille</string>
-				<string>com.alhafidz.trouvaille</string>
 			</array>
 		</dict>
 	</array>
@@ -79,16 +80,16 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Trouvaille requires Face ID to securely authenticate and protect your financial portfolio.</string>
+	<string>Accrual requires Face ID to securely authenticate and protect your financial portfolio.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Trouvaille requires microphone access for voice transaction input.</string>
+	<string>Accrual requires microphone access for voice transaction input.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Trouvaille requires speech recognition to transcribe voice transaction commands.</string>
+	<string>Accrual requires speech recognition to transcribe voice transaction commands.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Trouvaille requires camera access to scan physical receipts, invoices, and bank slips.</string>
+	<string>Accrual requires camera access to scan physical receipts, invoices, and bank slips.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Trouvaille requires photo library access to select and import receipt images and payment proof.</string>
+	<string>Accrual requires photo library access to select and import receipt images and payment proof.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Trouvaille requires permission to save receipt captures to your photo library.</string>
+	<string>Accrual requires permission to save receipt captures to your photo library.</string>
 </dict>
 </plist>

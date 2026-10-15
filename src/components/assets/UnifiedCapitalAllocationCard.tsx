@@ -131,7 +131,7 @@ export function UnifiedCapitalAllocationCard({
         desc: isIndonesian
           ? "Kartu kredit, paylater, pinjaman & kewajiban jatuh tempo"
           : "Credit cards, loans, paylater & obligations",
-        color: isDark ? "rgba(255, 255, 255, 0.22)" : "#a1a1aa",
+        color: isDark ? "rgba(255, 255, 255, 0.48)" : "#71717a",
         onClick: onOpenDebtDetail,
       },
     ];

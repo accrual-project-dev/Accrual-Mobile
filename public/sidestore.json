@@ -1,11 +1,11 @@
 {
-  "name": "Trouvaille Community",
-  "identifier": "com.alhafidz.trouvaille.source",
+  "name": "Accrual Community",
+  "identifier": "com.syntheticae.accrual.source",
   "sourceURL": "https://trouvaille-drab.vercel.app/sidestore.json",
   "apps": [
     {
-      "name": "Trouvaille",
-      "bundleIdentifier": "com.alhafidz.trouvaille",
+      "name": "Accrual",
+      "bundleIdentifier": "com.syntheticae.accrual",
       "developerName": "Syntheticae",
       "version": "1.2.0",
       "versionDate": "2026-09-28T00:00:00Z",

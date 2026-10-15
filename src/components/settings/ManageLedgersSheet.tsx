@@ -36,6 +36,8 @@ import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useQuota } from "../../hooks/useQuota";
+import { useSubscription } from "../../contexts/SubscriptionContext";
 
 interface ManageLedgersSheetProps {
   isOpen: boolean;
@@ -145,6 +147,8 @@ export function ManageLedgersSheet({
   const { data: transactions = [] } = useAllTransactions();
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { checkLedgerAndPrompt } = useQuota();
+  const { isPremium } = useSubscription();
 
   const [viewState, setViewState] = useState<
     "list" | "create" | "edit" | "delete_confirm" | "join"
@@ -194,6 +198,9 @@ export function ManageLedgersSheet({
 
   const handleOpenCreate = () => {
     triggerHaptic("light");
+    if (!checkLedgerAndPrompt(spaces.length)) {
+      return;
+    }
     setFormName("");
     setFormDescription("");
     setFormIcon("Briefcase");
@@ -432,7 +439,7 @@ export function ManageLedgersSheet({
               </p>
 
               {/* Ledgers List */}
-              <div className="space-y-2 max-h-[52vh] overflow-y-auto no-scrollbar pr-0.5">
+              <div className="space-y-2 pr-0.5">
                 {spaces.map((ledger) => {
                   const isActive = ledger.id === activeSpaceId;
                   const isDefault = ledger.id === defaultSpaceId;
@@ -700,6 +707,11 @@ export function ManageLedgersSheet({
                 >
                   <Plus size={14} strokeWidth={2} />
                   <span>{isIndonesian ? "Space Baru" : "New Space"}</span>
+                  {!isPremium && spaces.length >= 1 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/[0.08] border border-white/10 text-[var(--text-secondary)] uppercase tracking-wider">
+                      PRO
+                    </span>
+                  )}
                 </button>
 
                 <button

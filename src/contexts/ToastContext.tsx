@@ -2,11 +2,11 @@ import { createContext, useContext, useState, useCallback, useRef, useEffect, us
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, RotateCcw, Trash2, Plus, Sparkles, X } from "lucide-react";
+import { Check, RotateCcw, Trash2, Plus, Sparkles, X, AlertCircle } from "lucide-react";
 import { useLanguage } from "./LanguageContext";
 import { triggerHaptic } from "../lib/haptics";
 
-export type ToastActionType = "add" | "update" | "delete" | "info";
+export type ToastActionType = "add" | "update" | "delete" | "info" | "error";
 
 interface Toast {
   id: string;
@@ -102,6 +102,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         return <Check size={13} strokeWidth={2.5} />;
       case "delete":
         return <Trash2 size={13} strokeWidth={1.8} />;
+      case "error":
+        return <AlertCircle size={13} strokeWidth={2} />;
       default:
         return <Sparkles size={13} strokeWidth={1.8} />;
     }
@@ -110,6 +112,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const getIconStyles = (type: ToastActionType) => {
     switch (type) {
       case "delete":
+      case "error":
         return {
           background: "rgba(239, 68, 68, 0.16)",
           color: "#f87171",

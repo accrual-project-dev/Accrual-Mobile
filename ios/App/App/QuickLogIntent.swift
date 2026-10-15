@@ -7,7 +7,7 @@ import SwiftUI
 /// Siri, or Action Button without launching the full application.
 @available(iOS 16.0, *)
 struct QuickLogExpenseIntent: AppIntent {
-    static var title: LocalizedStringResource = "Trouvaille Quick Log"
+    static var title: LocalizedStringResource = "Accrual Quick Log"
     static var description = IntentDescription("Log an expense via native iOS frosted glass modal.")
     
     // Crucial: Executes in background without launching the webview
@@ -54,25 +54,25 @@ struct QuickLogExpenseIntent: AppIntent {
         ]
         
         // Save to App Group UserDefaults so the Capacitor app can ingest it upon opening
-        let suiteName = "group.com.alhafidz.trouvaille"
+        let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         var pending = defaults.array(forKey: "pending_backtap_transactions") as? [[String: Any]] ?? []
         pending.append(record)
         defaults.set(pending, forKey: "pending_backtap_transactions")
         
         let formattedAmount = String(format: "%.0f", amount)
-        let displayDialog: LocalizedStringResource = "Logged \(formattedAmount) to Trouvaille."
+        let displayDialog: LocalizedStringResource = "Logged \(formattedAmount) to Accrual."
         return .result(dialog: IntentDialog(displayDialog))
     }
 }
 
-/// Trouvaille Voice / Speak App Intent for iOS 16+
+/// Accrual Voice / Speak App Intent for iOS 16+
 /// Allows users to speak a transaction naturally (e.g. "Coffee 35k with Cash")
-/// and have Trouvaille AI parse it in the background or upon launch.
+/// and have Accrual parse it in the background or upon launch.
 @available(iOS 16.0, *)
 struct VoiceLogExpenseIntent: AppIntent {
-    static var title: LocalizedStringResource = "Trouvaille Voice Log"
-    static var description = IntentDescription("Speak your transaction and Trouvaille AI will parse it.")
+    static var title: LocalizedStringResource = "Accrual Voice Log"
+    static var description = IntentDescription("Speak your transaction and Accrual will parse it.")
 
     static var openAppWhenRun: Bool = false
 
@@ -95,7 +95,7 @@ struct VoiceLogExpenseIntent: AppIntent {
             "createdAt": Date().timeIntervalSince1970
         ]
         
-        let suiteName = "group.com.alhafidz.trouvaille"
+        let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         var pending = defaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
         pending.append(record)
@@ -106,9 +106,9 @@ struct VoiceLogExpenseIntent: AppIntent {
     }
 }
 
-/// Automatically registers Trouvaille Shortcuts into iOS Shortcuts app on app installation
+/// Automatically registers Accrual Shortcuts into iOS Shortcuts app on app installation
 @available(iOS 16.0, *)
-struct TrouvailleShortcutsProvider: AppShortcutsProvider {
+struct AccrualShortcutsProvider: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: QuickLogExpenseIntent(),

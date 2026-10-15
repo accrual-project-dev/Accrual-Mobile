@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.alhafidz.trouvaille',
+  appId: 'com.syntheticae.accrual',
   appName: 'Accrual',
   webDir: 'dist',
   backgroundColor: '#0A0A0B',

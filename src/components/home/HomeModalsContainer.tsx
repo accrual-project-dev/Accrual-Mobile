@@ -542,6 +542,7 @@ export function HomeModalsContainer({
         onReset={resetLayout}
         hiddenCards={hiddenCards}
         onUnhideCard={toggleCardVisibility}
+        activeCardsCount={widgets.filter((w) => w.isVisible).length}
       />
 
       {/* Profile Sheet */}

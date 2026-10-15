@@ -34,7 +34,7 @@ import { useSpace } from "../contexts/SpaceContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
-import { formatRupiah, getDateLabel } from "../lib/utils";
+import { formatCurrency, getDateLabel } from "../lib/utils";
 import { useDeferredRender } from "../hooks/useDeferredRender";
 import { TransactionItem } from "../components/transactions/TransactionItem";
 import { useUnusualSpending } from "../hooks/useUnusualSpending";
@@ -164,7 +164,7 @@ export function TransactionsPage({
   const deleteTx = useDeleteTransaction();
   const batchDeleteTx = useBatchDeleteTransactions();
   const { showToast } = useToast();
-  useCurrency();
+  const { preferredCurrency, currencyMeta } = useCurrency();
   const { t, isIndonesian } = useLanguage();
   const {
     activeSpace,
@@ -448,8 +448,9 @@ export function TransactionsPage({
           t.categories?.name ||
           (t.category_id ? categoryMap.get(t.category_id)?.name : "") ||
           "";
-        const formattedAmount = formatRupiah(
+        const formattedAmount = formatCurrency(
           Number(t.amount || 0),
+          preferredCurrency,
         ).toLowerCase();
         const amountStr = String(t.amount || "");
 
@@ -480,6 +481,7 @@ export function TransactionsPage({
     deferredSearch,
     resolveWalletNames,
     categoryMap,
+    preferredCurrency,
   ]);
 
   // Count matching transactions across all time
@@ -495,7 +497,10 @@ export function TransactionsPage({
         t.categories?.name ||
         (t.category_id ? categoryMap.get(t.category_id)?.name : "") ||
         "";
-      const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase();
+      const formattedAmount = formatCurrency(
+        Number(t.amount || 0),
+        preferredCurrency,
+      ).toLowerCase();
       const amountStr = String(t.amount || "");
 
       const matchesText =
@@ -511,7 +516,7 @@ export function TransactionsPage({
 
       return matchesText || matchesAmount;
     }).length;
-  }, [deferredSearch, visibleTxs, resolveWalletNames, categoryMap]);
+  }, [deferredSearch, visibleTxs, resolveWalletNames, categoryMap, preferredCurrency]);
 
   // Count matching transactions in current period
   const currentPeriodMatchCount = useMemo(() => {
@@ -525,7 +530,10 @@ export function TransactionsPage({
         t.categories?.name ||
         (t.category_id ? categoryMap.get(t.category_id)?.name : "") ||
         "";
-      const formattedAmount = formatRupiah(Number(t.amount || 0)).toLowerCase();
+      const formattedAmount = formatCurrency(
+        Number(t.amount || 0),
+        preferredCurrency,
+      ).toLowerCase();
       const amountStr = String(t.amount || "");
 
       const matchesText =
@@ -541,15 +549,15 @@ export function TransactionsPage({
 
       return matchesText || matchesAmount;
     }).length;
-  }, [deferredSearch, scopedTxs, resolveWalletNames, categoryMap]);
+  }, [deferredSearch, scopedTxs, resolveWalletNames, categoryMap, preferredCurrency]);
 
   const filteredTxsByDay = useMemo(() => {
     const dayMap = new Map<string, Transaction[]>();
     const monthMap = new Map<string, Transaction[]>();
 
     filteredTxs.forEach((tx) => {
-      const dayKey = tx.occurred_on;
-      const monthKey = tx.occurred_on.slice(0, 7);
+      const dayKey = tx.occurred_on ? tx.occurred_on.slice(0, 10) : "";
+      const monthKey = tx.occurred_on ? tx.occurred_on.slice(0, 7) : "";
 
       const dayList = dayMap.get(dayKey);
       if (dayList) dayList.push(tx);
@@ -738,7 +746,9 @@ export function TransactionsPage({
   const { groupKeys, groupedTxs, groupCounts, flatTxs } = useMemo(() => {
     const g: Record<string, Transaction[]> = {};
     filteredTxs.forEach((tx) => {
-      const dateKey = tx.occurred_on || "Unknown";
+      const dateKey = tx.occurred_on
+        ? tx.occurred_on.slice(0, 10)
+        : "Unknown";
       if (!g[dateKey]) g[dateKey] = [];
       g[dateKey].push(tx);
     });
@@ -846,7 +856,7 @@ export function TransactionsPage({
 
   return (
     <div
-      className="min-h-screen relative select-none"
+      className="min-h-screen relative select-none pb-36 max-w-lg sm:max-w-xl mx-auto"
       style={{ background: "var(--bg-base)" }}
     >
       <PullToRefreshIndicator
@@ -1088,8 +1098,14 @@ export function TransactionsPage({
                           : "var(--text-tertiary)",
                     }}
                   >
-                    {dayTotal > 0 ? "+" : ""}
-                    {formatRupiah(dayTotal)}
+                    {isStealthMode ? (
+                      `${currencyMeta.symbol} ••••••••`
+                    ) : (
+                      <>
+                        {dayTotal > 0 ? "+" : ""}
+                        {formatCurrency(dayTotal, preferredCurrency)}
+                      </>
+                    )}
                   </span>
                 </div>
               );

@@ -1373,12 +1373,16 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
               placeholder={
                 isIndonesian ? "Cari mata uang..." : "Search currency..."
               }
-              className="w-full bg-transparent text-[12.5px] outline-none text-white placeholder:text-white/30"
+              aria-label={
+                isIndonesian ? "Cari mata uang" : "Search currency"
+              }
+              className="w-full bg-transparent text-[16px] sm:text-[12.5px] outline-none text-white placeholder:text-white/30"
             />
             {currencySearch && (
               <button
                 type="button"
                 onClick={() => setCurrencySearch("")}
+                aria-label={isIndonesian ? "Hapus pencarian" : "Clear search"}
                 className="text-white/40 hover:text-white"
               >
                 <X size={12} />
@@ -1387,7 +1391,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
           </div>
 
           {/* Currency List */}
-          <div className="divide-y divide-white/[0.06] border-y border-white/[0.08] max-h-[45vh] overflow-y-auto no-scrollbar">
+          <div className="divide-y divide-white/[0.06] border-y border-white/[0.08]">
             {filteredCurrencies.map((curr) => {
               const isSelected = curr.code === selectedCurrency;
               return (
