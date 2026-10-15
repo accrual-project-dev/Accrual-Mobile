@@ -12,7 +12,7 @@ import {
   RotateCcw,
   Sparkles,
   Shield,
-  ShieldCheck,
+  ChevronRight,
   Mail,
   Key,
   X,
@@ -23,6 +23,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useSubscription } from "../../contexts/SubscriptionContext";
 import { triggerHaptic } from "../../lib/haptics";
 
 interface ProfileSheetProps {
@@ -46,12 +47,13 @@ export function ProfileSheet({
   setDisplayName,
   onOpenDeleteAccount,
   onOpenResetTransactions,
-  onReRunCustomization,
+  onReRunCustomization: _onReRunCustomization,
 }: ProfileSheetProps) {
   const { session, isGuest, exitGuestMode } = useAuth();
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
+  const { isPremium, openPaywall } = useSubscription();
   const isDark = theme !== "light";
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -276,76 +278,6 @@ export function ProfileSheet({
                     </div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("medium");
-                      setIsDangerMenuOpen(false);
-                      onClose();
-                      onReRunCustomization?.();
-                    }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl text-left transition-colors cursor-pointer hover:bg-white/[0.06] active:scale-[0.98]"
-                  >
-                    <div
-                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: controlBg,
-                        border: controlBorder,
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      <Sparkles size={13} strokeWidth={1.8} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight">
-                        {isIndonesian
-                          ? "Jalankan Panduan Awal"
-                          : "Re-run Customization"}
-                      </p>
-                      <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                        {isIndonesian
-                          ? "Buka kembali wizard pengaturan"
-                          : "Re-run initial onboarding wizard"}
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("medium");
-                      setIsDangerMenuOpen(false);
-                      onClose();
-                      window.dispatchEvent(
-                        new CustomEvent("trouvaille:preview-initial-sync"),
-                      );
-                    }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl text-left transition-colors cursor-pointer hover:bg-white/[0.06] active:scale-[0.98]"
-                  >
-                    <div
-                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: controlBg,
-                        border: controlBorder,
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      <ShieldCheck size={13} strokeWidth={1.8} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-tight">
-                        {isIndonesian
-                          ? "Pratinjau Layar Sinkronisasi"
-                          : "Preview Sync Screen"}
-                      </p>
-                      <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                        {isIndonesian
-                          ? "Lihat animasi sinkronisasi awal"
-                          : "View initial sync animation"}
-                      </p>
-                    </div>
-                  </button>
-
                   <div className="border-t border-[var(--glass-border)]/40 my-1" />
 
                   <button
@@ -562,6 +494,78 @@ export function ProfileSheet({
               ? "Simpan Perubahan Profil"
               : "Save Profile Changes"}
         </button>
+
+        {/* 3.1 Accrual Pro Membership Card */}
+        <div
+          onClick={() => {
+            triggerHaptic("light");
+            openPaywall({ feature: "settings_manual" });
+          }}
+          className="rounded-2xl p-3.5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all select-none"
+          style={{
+            background: controlBg,
+            border: controlBorder,
+            boxShadow: controlShadow,
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.06)"
+                  : "rgba(0, 0, 0, 0.04)",
+                border: isDark
+                  ? "1px solid rgba(255, 255, 255, 0.08)"
+                  : "1px solid rgba(0, 0, 0, 0.05)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Sparkles size={17} strokeWidth={1.6} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[13.5px] font-semibold text-[var(--text-primary)] tracking-tight">
+                  Accrual Pro
+                </span>
+                <span
+                  className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.1)"
+                      : "rgba(0, 0, 0, 0.06)",
+                    border: isDark
+                      ? "1px solid rgba(255, 255, 255, 0.12)"
+                      : "1px solid rgba(0, 0, 0, 0.08)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {isPremium
+                    ? isIndonesian
+                      ? "AKTIF"
+                      : "ACTIVE"
+                    : isIndonesian
+                      ? "UPGRADE"
+                      : "UPGRADE"}
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug truncate">
+                {isPremium
+                  ? isIndonesian
+                    ? "Keanggotaan aktif • Fitur eksekutif terbuka"
+                    : "Membership active • Executive features unlocked"
+                  : isIndonesian
+                    ? "Buka kuota OCR tak terbatas, analitik penuh, & multi-space"
+                    : "Unlock unlimited OCR, executive telemetry, & multi-space"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight
+            size={15}
+            strokeWidth={1.8}
+            className="text-[var(--text-tertiary)] shrink-0 ml-2"
+          />
+        </div>
 
         {/* 4. Grouped Inset Card: Security & Vault Info */}
         <div

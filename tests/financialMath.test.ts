@@ -12,6 +12,7 @@ import {
   calculateDebtPayoffSchedule,
   getBudgetPeriodInterval,
   filterTransactionsByBudgetPeriod,
+  generateActionCenterInsight,
   type DebtItem,
 } from "../src/lib/financialMath";
 import {
@@ -597,6 +598,118 @@ describe("Financial Math & Analytics Test Suite", () => {
       expect(interval.endDate.getDate()).toBe(24);
       expect(interval.label).toContain("25 Sep");
       expect(interval.label).toContain("24 Oct");
+    });
+  });
+
+  describe("Action Center Insight & Fiduciary Intelligence", () => {
+    it("returns adaptive 'AWAL SIKLUS' baseline when totalExpense is zero", () => {
+      const insight = generateActionCenterInsight({
+        totalExpense: 0,
+        budget: 5000000,
+        projectedMonthEnd: 0,
+        projectedVariance: 0,
+        budgetRisk: "SAFE",
+        isAheadOfPace: false,
+        paceDiff: 0,
+        consumedPct: 0,
+        timePct: 35,
+        categoryShifts: [],
+        safeToSpend: 10000000,
+        unpaidBillsCount: 0,
+        language: "id",
+      });
+
+      expect(insight.badge).toBe("AWAL SIKLUS");
+      expect(insight.actionType).toBe("transactions");
+      expect(insight.title).toContain("siap dicatat");
+      expect(insight.title).not.toMatch(/\bAI\b/i);
+    });
+
+    it("returns English 'NEW CYCLE' baseline when totalExpense is zero with language 'en'", () => {
+      const insight = generateActionCenterInsight({
+        totalExpense: 0,
+        budget: 0,
+        projectedMonthEnd: 0,
+        projectedVariance: 0,
+        budgetRisk: "SAFE",
+        isAheadOfPace: false,
+        paceDiff: 0,
+        consumedPct: 0,
+        timePct: 10,
+        categoryShifts: [],
+        safeToSpend: 5000000,
+        unpaidBillsCount: 0,
+        language: "en",
+      });
+
+      expect(insight.badge).toBe("NEW CYCLE");
+      expect(insight.actionType).toBe("transactions");
+      expect(insight.title).toBe("Expense cycle ready for recording");
+    });
+
+    it("returns 'PANDUAN ANGGARAN' when user has spending but no budget ceiling configured", () => {
+      const insight = generateActionCenterInsight({
+        totalExpense: 750000,
+        budget: 0,
+        projectedMonthEnd: 2500000,
+        projectedVariance: 0,
+        budgetRisk: "SAFE",
+        isAheadOfPace: false,
+        paceDiff: 0,
+        consumedPct: 0,
+        timePct: 25,
+        categoryShifts: [],
+        safeToSpend: 4000000,
+        unpaidBillsCount: 0,
+        language: "id",
+      });
+
+      expect(insight.badge).toBe("PANDUAN ANGGARAN");
+      expect(insight.actionType).toBe("budget");
+      expect(insight.title).toContain("belum memiliki pagu anggaran");
+    });
+
+    it("prioritizes budget overrun risk when budget is set and risk is AT RISK", () => {
+      const insight = generateActionCenterInsight({
+        totalExpense: 4800000,
+        budget: 5000000,
+        projectedMonthEnd: 6200000,
+        projectedVariance: 1200000,
+        budgetRisk: "AT RISK",
+        isAheadOfPace: true,
+        paceDiff: 800000,
+        consumedPct: 96,
+        timePct: 50,
+        categoryShifts: [],
+        safeToSpend: 1500000,
+        unpaidBillsCount: 1,
+        language: "id",
+      });
+
+      expect(insight.type).toBe("projected_overrun");
+      expect(insight.badge).toBe("RISIKO ANGGARAN");
+      expect(insight.actionType).toBe("budget");
+    });
+
+    it("strictly ensures zero occurrences of 'AI' in any copy", () => {
+      const insight = generateActionCenterInsight({
+        totalExpense: 1000000,
+        budget: 5000000,
+        projectedMonthEnd: 4000000,
+        projectedVariance: -1000000,
+        budgetRisk: "SAFE",
+        isAheadOfPace: false,
+        paceDiff: -500000,
+        consumedPct: 20,
+        timePct: 40,
+        categoryShifts: [],
+        safeToSpend: 8000000,
+        unpaidBillsCount: 0,
+        language: "id",
+      });
+
+      const fullText = JSON.stringify(insight);
+      expect(fullText).not.toMatch(/"[^"]*\bAI\b[^"]*"/);
     });
   });
 });

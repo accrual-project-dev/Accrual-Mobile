@@ -3,13 +3,12 @@
 // Premium Floating Full-Width Glass Capsule
 // ======================================================================
 
-import { Bell, Layers, Laptop, X, HardDrive, CloudCheck, Sparkles } from "lucide-react";
+import { Bell, Layers, Laptop, X, HardDrive, CloudCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { useSubscription } from "../../contexts/SubscriptionContext";
 import { useUpcomingBills } from "../../hooks/useBills";
 import { triggerHaptic } from "../../lib/haptics";
 
@@ -38,7 +37,6 @@ export function ProfileMenuModal({
   const { activeSpace } = useSpace();
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
-  const { isPremium, openPaywall } = useSubscription();
 
   const isDark = theme !== "light";
 
@@ -667,53 +665,6 @@ export function ProfileMenuModal({
                   <Laptop size={13} strokeWidth={1.65} />
                 </button>
               )}
-
-              {/* ========================================================
-                  ACCRUAL PRO MEMBERSHIP
-                  ======================================================== */}
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  onClose();
-                  setTimeout(() => {
-                    openPaywall({ feature: "settings_manual" });
-                  }, 80);
-                }}
-                className="
-                  h-[30px]
-                  px-2.5
-                  rounded-full
-                  flex
-                  items-center
-                  gap-1.5
-                  shrink-0
-                  cursor-pointer
-                  transition-all
-                  duration-200
-                  hover:scale-[1.03]
-                  hover:bg-white/[0.075]
-                  active:scale-[0.92]
-                "
-                style={{
-                  background: isDark
-                    ? "rgba(255,255,255,0.055)"
-                    : "rgba(0,0,0,0.035)",
-                  border: isDark
-                    ? "1px solid rgba(255,255,255,0.10)"
-                    : "1px solid rgba(0,0,0,0.075)",
-                  color: "var(--text-primary)",
-                  boxShadow: isDark
-                    ? "inset 0 1px 0 rgba(255,255,255,0.06)"
-                    : "inset 0 1px 0 rgba(255,255,255,0.75)",
-                }}
-                title="Accrual Pro"
-              >
-                <Sparkles size={11} strokeWidth={1.8} className="text-[var(--text-primary)]" />
-                <span className="text-[9px] font-bold tracking-wider uppercase">
-                  {isPremium ? "PRO" : "UPGRADE"}
-                </span>
-              </button>
 
               {/* ========================================================
                   CLOSE

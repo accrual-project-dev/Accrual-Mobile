@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Layers3, ChevronRight, CheckCircle2 } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
 import type { ExpenseStructureResult } from "../../hooks/useFinancialIntelligence";
 import { motion } from "framer-motion";
 import { triggerHaptic } from "../../lib/haptics";
@@ -18,7 +17,7 @@ export function ExpenseStructureCard({
   expenseStructure,
   hideBalance = false,
 }: ExpenseStructureCardProps) {
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -99,9 +98,13 @@ export function ExpenseStructureCard({
               {isIndonesian ? "Anatomi Komitmen & Amplop" : "Committed & Envelope Pacing"}
             </h3>
             <p className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>
-              {isIndonesian
-                ? `${expenseStructure.committedPercentage.toFixed(0)}% beban rutin tak terhindarkan`
-                : `${expenseStructure.committedPercentage.toFixed(0)}% non-discretionary commitments`}
+              {expenseStructure.totalExpense === 0
+                ? (isIndonesian
+                    ? "Belum ada pengeluaran di periode ini"
+                    : "No expenses recorded in this period")
+                : (isIndonesian
+                    ? `${expenseStructure.committedPercentage.toFixed(0)}% beban rutin tak terhindarkan`
+                    : `${expenseStructure.committedPercentage.toFixed(0)}% non-discretionary commitments`)}
             </p>
           </div>
         </div>
@@ -139,7 +142,7 @@ export function ExpenseStructureCard({
             {isIndonesian ? "Distribusi Beban Pengeluaran" : "Expense Distribution"}
           </span>
           <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-            {mask(formatRupiah(expenseStructure.totalExpense))}
+            {mask(formatWithPreferred(expenseStructure.totalExpense))}
           </span>
         </div>
 
@@ -209,7 +212,7 @@ export function ExpenseStructureCard({
                 className="amount text-[12px] font-bold tabular-nums mt-1"
                 style={{ color: "var(--text-primary)" }}
               >
-                {mask(formatRupiah(b.amount))}
+                {mask(formatWithPreferred(b.amount))}
               </p>
             </div>
             <p
@@ -233,9 +236,21 @@ export function ExpenseStructureCard({
         <div className="flex items-center gap-2">
           <CheckCircle2 size={13} className="text-[var(--text-primary)] shrink-0" />
           <span style={{ color: "var(--text-secondary)" }}>
-            {isIndonesian
-              ? `${expenseStructure.flexiblePercentage.toFixed(0)}% adalah ruang fleksibel yang aman dipangkas saat kondisi darurat.`
-              : `${expenseStructure.flexiblePercentage.toFixed(0)}% of outflow is flexible and can be paused immediately during emergencies.`}
+            {expenseStructure.totalExpense === 0
+              ? (isIndonesian
+                  ? "Struktur komitmen akan terpetakan otomatis saat transaksi pengeluaran dicatat."
+                  : "Expense structure will be automatically mapped once transactions are logged.")
+              : expenseStructure.committedPercentage > 70
+                ? (isIndonesian
+                    ? `${expenseStructure.committedPercentage.toFixed(0)}% beban terkunci pada komitmen rutin. Pertimbangkan efisiensi biaya tetap.`
+                    : `${expenseStructure.committedPercentage.toFixed(0)}% locked in fixed commitments. Consider optimizing recurring overhead.`)
+                : expenseStructure.flexiblePercentage >= 50
+                  ? (isIndonesian
+                      ? `${expenseStructure.flexiblePercentage.toFixed(0)}% adalah ruang fleksibel yang lincah dan aman dipangkas saat kondisi darurat.`
+                      : `${expenseStructure.flexiblePercentage.toFixed(0)}% of outflow is flexible and agile to trim down during emergencies.`)
+                  : (isIndonesian
+                      ? `Struktur belanja seimbang: ${expenseStructure.committedPercentage.toFixed(0)}% komitmen dan ${expenseStructure.flexiblePercentage.toFixed(0)}% alokasi fleksibel.`
+                      : `Balanced expense structure: ${expenseStructure.committedPercentage.toFixed(0)}% committed and ${expenseStructure.flexiblePercentage.toFixed(0)}% flexible allocation.`)}
           </span>
         </div>
       </div>
@@ -289,7 +304,7 @@ export function ExpenseStructureCard({
                         className="amount text-[13px] font-bold tabular-nums mt-1"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {mask(formatRupiah(b.amount))}
+                        {mask(formatWithPreferred(b.amount))}
                       </p>
                     </div>
                     <span
@@ -370,7 +385,7 @@ export function ExpenseStructureCard({
 
                         <div className="text-right shrink-0">
                           <span className="tabular-nums font-bold text-[13.5px] text-[var(--text-primary)] block">
-                            {mask(formatRupiah(item.amount))}
+                            {mask(formatWithPreferred(item.amount))}
                           </span>
                         </div>
                       </div>

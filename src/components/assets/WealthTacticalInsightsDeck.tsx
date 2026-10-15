@@ -12,10 +12,11 @@
 
 import { useMemo } from "react";
 import { Sparkles } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import {
   getSavedUsdtPref,
   calculateHoldingValuation,
@@ -36,12 +37,13 @@ export function WealthTacticalInsightsDeck({
   wallets = [],
   netWorth: _netWorth = 0,
   totalLiabilities = 0,
-  monthlyBurnRate = 3500000,
+  monthlyBurnRate = 0,
 }: WealthTacticalInsightsDeckProps) {
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { user } = useAuth();
+  const { preferredCurrency } = useCurrency();
 
   // 1. USDT & Recorded Wallet Balances
   const usdtPref = getSavedUsdtPref(user?.id);
@@ -205,35 +207,70 @@ export function WealthTacticalInsightsDeck({
     }
     const pool: InsightCard[] = [];
 
-    // --- CONDITION 1: LIQUIDITY & EMERGENCY RUNWAY ---
-    if (emergencyRunwayMonths < 2.5 && monthlyBurnRate > 0) {
+    // --- SPECIAL CASE: ZERO GROSS PORTFOLIO ---
+    if (grossPortfolioSum <= 0) {
       pool.push({
-        id: "runway_critical",
-        tag: isIndonesian ? "Peringatan Likuiditas" : "Liquidity Alert",
-        title: isIndonesian ? "Bantalan Kas Operasional Kritis" : "Critical Cash Runway Buffer",
+        id: "portfolio_foundation",
+        tag: isIndonesian ? "Fondasi Modal" : "Capital Foundation",
+        title: isIndonesian ? "Inisialisasi Portofolio Kekayaan" : "Portfolio Asset Initialization",
         description: isIndonesian
-          ? `Cadangan kas defensif hanya menopang ${emergencyRunwayMonths.toFixed(1)} bulan pengeluaran rutin. Dalam krisis tak terduga, Anda rentan terpaksa melikuidasi aset bertumbuh pada valuasi rendah. Prioritaskan ekspansi dana darurat minimal 3–6 bulan.`
-          : `Defensive cash only covers ${emergencyRunwayMonths.toFixed(1)} months of burn. In unexpected crises, you risk forced liquidation of growth assets at market discounts. Prioritize building emergency reserves to 3-6 months.`,
+          ? "Mulai dengan mencatat dompet kas operasional atau kepemilikan aset Anda untuk mengaktifkan telemetri alokasi multi-musim, rasio bantalan likuiditas, dan manajemen solvabilitas otomatis."
+          : "Begin by recording your core liquid wallets or asset holdings to activate multi-asset telemetry, emergency liquidity ratios, and automated solvency management.",
         priority: 100,
       });
-    } else if (emergencyRunwayMonths > 14) {
+      return pool;
+    }
+
+    // --- CONDITION 1: LIQUIDITY & EMERGENCY RUNWAY ---
+    if (liquidCashOnly <= 0 && (growthVolatile + stableFixed) > 0) {
+      pool.push({
+        id: "runway_no_cash",
+        tag: isIndonesian ? "Alokasi Kas" : "Liquidity Allocation",
+        title: isIndonesian ? "Rekonsiliasi Saldo Kas Operasional" : "Operational Cash Reconciliation",
+        description: isIndonesian
+          ? "Portofolio mencatat posisi investasi aktif namun belum memiliki dompet kas likuid. Hubungkan rekening kas operasional harian Anda agar ketahanan dana darurat dapat diukur akurat."
+          : "Your portfolio holds active investments but no liquid cash wallet is recorded. Record your daily operational cash to establish your emergency liquidity runway.",
+        priority: 95,
+      });
+    } else if (monthlyBurnRate <= 0) {
+      pool.push({
+        id: "runway_uncalibrated",
+        tag: isIndonesian ? "Bantalan Kas" : "Cash Buffer",
+        title: isIndonesian ? "Cadangan Kas Siaga Terdeteksi" : "Standby Cash Reserve Detected",
+        description: isIndonesian
+          ? `Tersedia cadangan kas likuid ${formatCurrency(liquidCashOnly, preferredCurrency)}. Mulai catat transaksi pengeluaran rutin Anda untuk mengaktifkan kalkulasi durasi bertahan hidup (runway) yang presisi.`
+          : `Active liquid cash reserves stand at ${formatCurrency(liquidCashOnly, preferredCurrency)}. Begin logging routine expenses to unlock precise survival runway and burn-rate calculations.`,
+        priority: 70,
+      });
+    } else if (emergencyRunwayMonths < 3) {
+      const targetBuffer = monthlyBurnRate * 3;
+      pool.push({
+        id: "runway_critical",
+        tag: isIndonesian ? "Pertahanan Kas" : "Liquidity Defense",
+        title: isIndonesian ? "Penguatan Bantalan Kas Operasional" : "Operational Cash Reinforcement",
+        description: isIndonesian
+          ? `Cadangan kas defensif (${formatCurrency(liquidCashOnly, preferredCurrency)}) menopang ${emergencyRunwayMonths.toFixed(1)} bulan pengeluaran. Sebelum menambah aset berisiko tinggi, prioritaskan akumulasi dana darurat hingga mencapai ambang aman 3–6 bulan (${formatCurrency(targetBuffer, preferredCurrency)}).`
+          : `Liquid cash (${formatCurrency(liquidCashOnly, preferredCurrency)}) covers ${emergencyRunwayMonths.toFixed(1)} months of burn. Prioritize building emergency reserves toward the 3–6 month benchmark (${formatCurrency(targetBuffer, preferredCurrency)}) before expanding volatile asset exposures.`,
+        priority: 92,
+      });
+    } else if (emergencyRunwayMonths > 12) {
       pool.push({
         id: "runway_extended",
-        tag: isIndonesian ? "Benteng Kas" : "Cash Fortress",
-        title: isIndonesian ? "Surplus Landasan Kas Multi-Tahun" : "Multi-Year Survival Fortress",
+        tag: isIndonesian ? "Efisiensi Modal" : "Capital Efficiency",
+        title: isIndonesian ? "Surplus Kas & Mitigasi Inflasi" : "Excess Liquidity & Inflation Optimization",
         description: isIndonesian
-          ? `Dengan ${emergencyRunwayMonths.toFixed(0)} bulan biaya hidup aman di kas likuid, benteng likuiditas Anda sangat kokoh. Surplus kas melebihi 12 bulan dapat dialokasikan bertahap ke instrumen produktif guna mencegah erosi inflasi.`
-          : `Holding ${emergencyRunwayMonths.toFixed(0)} months of expenses in cash grants bulletproof stability. Idle cash beyond 12 months can be opportunistically deployed into productive compounding assets to prevent real inflation drag.`,
+          ? `Cadangan kas likuid mencapai ${emergencyRunwayMonths.toFixed(0)} bulan pengeluaran rutin. Karena batas aman likuiditas telah terpenuhi, surplus kas mengendap dapat dialokasikan bertahap ke instrumen berimbal hasil stabil (seperti emas atau obligasi) guna mencegah penurunan daya beli riil.`
+          : `Liquid cash covers ${emergencyRunwayMonths.toFixed(0)} months of burn. With baseline safety thresholds exceeded, excess idle cash can be systematically deployed into stable compounding assets to prevent purchasing power erosion.`,
         priority: 65,
       });
     } else {
       pool.push({
         id: "runway_optimal",
-        tag: isIndonesian ? "Ketangkasan Modal" : "Capital Agility",
-        title: isIndonesian ? "Landasan Likuiditas Tangguh" : "Resilient Survival Agility",
+        tag: isIndonesian ? "Ketahanan Modal" : "Capital Resilience",
+        title: isIndonesian ? "Bantalan Likuiditas di Zona Sehat" : "Healthy Liquidity Buffer Zone",
         description: isIndonesian
-          ? `Cadangan kas defensif Anda menopang ${emergencyRunwayMonths.toFixed(1)} bulan pengeluaran tanpa perlu mencairkan paksa aset portofolio, memberikan kebebasan waktu bagi tesis investasi Anda untuk matang.`
-          : `Your defensive liquid cash provides ${emergencyRunwayMonths.toFixed(1)} months of burn protection without requiring forced asset sales, allowing your investments time to compound.`,
+          ? `Cadangan kas defensif (${emergencyRunwayMonths.toFixed(1)} bulan biaya hidup) memberikan ketenangan dan fleksibilitas bagi portofolio Anda tanpa risiko penjualan paksa saat pasar mengalami koreksi.`
+          : `Defensive cash reserves (${emergencyRunwayMonths.toFixed(1)} months of expenses) provide resilient shock absorption for your portfolio without forced asset liquidations during market pullbacks.`,
         priority: 60,
       });
     }
@@ -242,44 +279,44 @@ export function WealthTacticalInsightsDeck({
     if (largestAsset && largestAssetShare >= 40 && grossPortfolioSum > 0) {
       pool.push({
         id: "concentration_risk",
-        tag: isIndonesian ? "Konsentrasi" : "Concentration",
-        title: isIndonesian ? "Dominasi Aset Tunggal Signifikan" : "Single Asset Dominance",
+        tag: isIndonesian ? "Konsentrasi Aset" : "Portfolio Concentration",
+        title: isIndonesian ? `Dominasi Aset Tunggal pada ${largestAsset.name}` : `Concentrated Exposure in ${largestAsset.name}`,
         description: isIndonesian
-          ? `Instrumen ${largestAsset.name} menguasai ${largestAssetShare.toFixed(1)}% dari total kekayaan portofolio. Konsentrasi asimetris ini memperbesar risiko volatilitas tunggal; pertimbangkan diversifikasi bertahap ke sektor yang tidak berkorelasi.`
-          : `${largestAsset.name} accounts for ${largestAssetShare.toFixed(1)}% of your total portfolio. This heavy weighting creates asymmetric dependency; consider trimming or diversifying into uncorrelated asset classes.`,
-        priority: 95,
+          ? `Instrumen ${largestAsset.name} menguasai ${largestAssetShare.toFixed(1)}% dari total kekayaan portofolio (${formatCurrency(largestAsset.value, preferredCurrency)}). Dominasi asimetris ini memperbesar sensitivitas terhadap volatilitas instrumen tunggal; pertimbangkan diversifikasi bertahap.`
+          : `${largestAsset.name} accounts for ${largestAssetShare.toFixed(1)}% of your total portfolio (${formatCurrency(largestAsset.value, preferredCurrency)}). This heavy weighting creates asymmetric dependency; consider trimming or diversifying into uncorrelated asset classes.`,
+        priority: 88,
       });
     }
 
     // --- CONDITION 3: DEBT & LEVERAGE SOLVENCY ---
-    if (leverageRatio >= 30) {
+    if (leverageRatio >= 35) {
       pool.push({
         id: "leverage_warning",
-        tag: isIndonesian ? "Peringatan Utang" : "Leverage Warning",
-        title: isIndonesian ? "Rasio Liabilitas Mendekati Batas Risiko" : "Elevated Debt-to-Asset Ratio",
+        tag: isIndonesian ? "Peringatan Liabilitas" : "Leverage Caution",
+        title: isIndonesian ? "Rasio Liabilitas Melampaui 35% Portofolio" : "Elevated Debt-to-Asset Ratio",
         description: isIndonesian
-          ? `Total liabilitas mewakili ${leverageRatio.toFixed(1)}% dari nilai aset kotor (di atas ambang aman konservatif 30%). Prioritaskan akselerasi pelunasan utang sebelum memperbesar posisi spekulatif.`
-          : `Liabilities represent ${leverageRatio.toFixed(1)}% of gross asset valuation (above the conservative 30% ceiling). Prioritize debt amortization to relieve monthly cashflow drag before taking on higher beta risks.`,
+          ? `Total kewajiban utang (${formatCurrency(totalLiabilities, preferredCurrency)}) menyerap ${leverageRatio.toFixed(1)}% dari total aset kotor (di atas ambang aman konservatif 35%). Prioritaskan percepatan amortisasi pokok utang sebelum memperbesar posisi spekulatif.`
+          : `Liabilities (${formatCurrency(totalLiabilities, preferredCurrency)}) represent ${leverageRatio.toFixed(1)}% of gross asset valuation (above the conservative 35% ceiling). Prioritize debt amortization to relieve monthly cashflow drag before taking on higher-beta risks.`,
         priority: 90,
       });
     } else if (totalLiabilities === 0) {
       pool.push({
         id: "debt_free",
-        tag: isIndonesian ? "Struktur Neraca" : "Balance Sheet",
+        tag: isIndonesian ? "Struktur Neraca" : "Balance Sheet Health",
         title: isIndonesian ? "Solvabilitas Ekuitas 100% Bebas Utang" : "Unencumbered Balance Sheet",
         description: isIndonesian
-          ? `Neraca aset Anda beroperasi dengan nol liabilitas utang, memastikan seluruh imbal hasil pertumbuhan modal terakumulasi utuh tanpa tergerus beban bunga pinjaman.`
-          : `Your balance sheet carries zero liabilities, ensuring 100% equity retention and zero recurring interest payments dragging on your monthly capital accumulation.`,
+          ? "Neraca portofolio beroperasi dengan nol liabilitas utang, memastikan seluruh arus kas masuk terakumulasi utuh ke nilai kekayaan bersih tanpa tergerus beban bunga pinjaman."
+          : "Your balance sheet carries zero liabilities, ensuring 100% equity retention and zero recurring interest payments dragging on your monthly capital accumulation.",
         priority: 50,
       });
     } else {
       pool.push({
         id: "leverage_prudent",
         tag: isIndonesian ? "Solvabilitas" : "Solvency",
-        title: isIndonesian ? "Leverage Terkendali & Aman" : "Conservative Leverage Health",
+        title: isIndonesian ? "Struktur Leverage Terkendali & Pruden" : "Conservative Leverage Health",
         description: isIndonesian
-          ? `Rasio utang terhadap aset tercatat ${leverageRatio.toFixed(1)}%, berada jauh di dalam batas aman 30% sehingga ketahanan solvabilitas portofolio tetap prima.`
-          : `Liabilities stand at ${leverageRatio.toFixed(1)}% of gross asset value, comfortably within healthy benchmark thresholds (<30%) and preserving liquidity agility.`,
+          ? `Rasio utang terhadap aset tercatat ${leverageRatio.toFixed(1)}%, berada nyaman di bawah batas aman 35% sehingga kapasitas pembayaran kewajiban tetap terjaga prima.`
+          : `Liabilities stand at ${leverageRatio.toFixed(1)}% of gross asset value, comfortably within healthy benchmark thresholds (<35%) and preserving long-term solvency.`,
         priority: 52,
       });
     }
@@ -288,21 +325,21 @@ export function WealthTacticalInsightsDeck({
     if (totalFloatingPct >= 20 && totalFloatingPnL > 1000000) {
       pool.push({
         id: "pnl_harvest",
-        tag: isIndonesian ? "Ekspansi Modal" : "Capital Gain",
-        title: isIndonesian ? "Peluang Penguncian Keuntungan Siklikal" : "Profit Harvesting Window",
+        tag: isIndonesian ? "Realisasi Modal" : "Profit Harvesting",
+        title: isIndonesian ? `Peluang Penguncian Profit (+${totalFloatingPct.toFixed(1)}%)` : `Profit Harvesting Window (+${totalFloatingPct.toFixed(1)}%)`,
         description: isIndonesian
-          ? `Keuntungan modal mengambang portofolio mencapai +${totalFloatingPct.toFixed(1)}% (+${formatRupiah(totalFloatingPnL)}). Pertimbangkan mengunci sebagian profit siklikal ke brankas defensif atau emas fisik guna memproteksi nilai kekayaan bersih.`
-          : `Floating returns stand at +${totalFloatingPct.toFixed(1)}% (+${formatRupiah(totalFloatingPnL)}). Consider systematically harvesting a portion of cyclical gains into defensive vaults or gold to lock in baseline net worth.`,
-        priority: 85,
+          ? `Keuntungan modal mengambang portofolio mencapai +${formatCurrency(totalFloatingPnL, preferredCurrency)}. Pertimbangkan penguncian sebagian profit siklikal ke kas defensif atau emas fisik guna memproteksi nilai kekayaan bersih.`
+          : `Floating returns stand at +${totalFloatingPct.toFixed(1)}% (+${formatCurrency(totalFloatingPnL, preferredCurrency)}). Consider systematically harvesting a portion of cyclical gains into defensive vaults or gold to lock in baseline net worth.`,
+        priority: 84,
       });
     } else if (totalFloatingPct <= -12) {
       pool.push({
         id: "pnl_drawdown",
-        tag: isIndonesian ? "Mitigasi Risiko" : "Drawdown Strategy",
-        title: isIndonesian ? "Manajemen Penurunan Modal & Valuasi Diskon" : "Drawdown Defense & Valuation Discount",
+        tag: isIndonesian ? "Evaluasi Diskon" : "Drawdown Valuation",
+        title: isIndonesian ? `Manajemen Penurunan Modal (${totalFloatingPct.toFixed(1)}%)` : `Drawdown Valuation Management (${totalFloatingPct.toFixed(1)}%)`,
         description: isIndonesian
-          ? `Portofolio mencatat kontraksi mengambang ${totalFloatingPct.toFixed(1)}% (${formatRupiah(totalFloatingPnL)}). Hindari panic selling; telaah kembali tesis dasar untuk mempertimbangkan cicil akumulasi (DCA) pada harga diskon.`
-          : `Portfolio reflects an unrealized contraction of ${totalFloatingPct.toFixed(1)}% (${formatRupiah(totalFloatingPnL)}). Avoid panic liquidations; evaluate whether core fundamentals justify selective dollar-cost averaging at discount valuations.`,
+          ? `Portofolio mencatat kontraksi mengambang ${formatCurrency(totalFloatingPnL, preferredCurrency)}. Hindari pelepasan aset secara panik; telaah kembali tesis dasar untuk mempertimbangkan cicil akumulasi (DCA) pada harga diskon.`
+          : `Portfolio reflects an unrealized contraction of ${formatCurrency(totalFloatingPnL, preferredCurrency)} (${totalFloatingPct.toFixed(1)}%). Avoid panic liquidations; evaluate whether core fundamentals justify selective dollar-cost averaging at discount valuations.`,
         priority: 82,
       });
     }
@@ -373,6 +410,8 @@ export function WealthTacticalInsightsDeck({
     return pool.sort((a, b) => b.priority - a.priority).slice(0, 3);
   }, [
     isIndonesian,
+    preferredCurrency,
+    liquidCashOnly,
     emergencyRunwayMonths,
     monthlyBurnRate,
     largestAsset,

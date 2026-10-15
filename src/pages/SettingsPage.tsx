@@ -19,7 +19,6 @@ import {
   Sun,
   Calculator,
   Tag,
-  Paperclip,
   BellRing,
   CalendarClock,
   EyeOff,
@@ -37,7 +36,6 @@ import { useBills } from "../hooks/useBills";
 import { useToast } from "../contexts/ToastContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { useSubscription } from "../contexts/SubscriptionContext";
 import { ToggleSwitch } from "../components/ui/ToggleSwitch";
 import { GlassConfirmationModal } from "../components/ui/GlassConfirmationModal";
 import { useSecurityLock } from "../contexts/SecurityLockContext";
@@ -189,11 +187,6 @@ const PeriodicDigestSettingsSheet = lazy(() =>
     default: m.PeriodicDigestSettingsSheet,
   })),
 );
-const AppUpdateModal = lazy(() =>
-  import("../components/settings/AppUpdateModal").then((m) => ({
-    default: m.AppUpdateModal,
-  })),
-);
 const ShortcutManagementSheet = lazy(() =>
   import("../components/settings/ShortcutManagementSheet").then((m) => ({
     default: m.ShortcutManagementSheet,
@@ -207,10 +200,6 @@ const LegalModal = lazy(() =>
 
 import { useShortcuts } from "../hooks/useShortcuts";
 import { useNavigate } from "react-router-dom";
-import {
-  checkForAppUpdate,
-  type AppReleaseInfo,
-} from "../lib/appUpdateService";
 import {
   SettingsProfileCard,
   SettingsDataVaultSection,
@@ -236,7 +225,6 @@ export function SettingsPage({
   const { theme, toggleTheme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
-  const { isPremium, openPaywall } = useSubscription();
   const {
     budgetTarget,
     setBudgetTarget,
@@ -270,31 +258,6 @@ export function SettingsPage({
         : isIndonesian
           ? "Label transaksi dinonaktifkan"
           : "Transaction tags disabled",
-      "update",
-      () => {},
-    );
-  };
-
-  // Save Attachments toggle
-  const [saveAttachmentsEnabled, setSaveAttachmentsEnabled] = useState<boolean>(
-    () => {
-      const saved = localStorage.getItem("trouvaille_save_attachments");
-      return saved !== null ? saved === "true" : false;
-    },
-  );
-
-  const handleToggleSaveAttachments = () => {
-    const next = !saveAttachmentsEnabled;
-    setSaveAttachmentsEnabled(next);
-    localStorage.setItem("trouvaille_save_attachments", String(next));
-    showToast(
-      next
-        ? isIndonesian
-          ? "Lampiran struk akan disimpan"
-          : "Receipt attachments will be saved"
-        : isIndonesian
-          ? "Lampiran struk tidak akan disimpan"
-          : "Receipt attachments will not be stored",
       "update",
       () => {},
     );
@@ -412,25 +375,6 @@ export function SettingsPage({
   });
   const { shortcuts } = useShortcuts();
   const navigate = useNavigate();
-  const [appUpdateOpen, setAppUpdateOpen] = useState(false);
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [releaseInfo, setReleaseInfo] = useState<AppReleaseInfo | null>(null);
-
-  const handleCheckForUpdate = async (openModal = true) => {
-    setCheckingUpdate(true);
-    triggerHaptic("medium");
-    try {
-      const info = await checkForAppUpdate();
-      setReleaseInfo(info);
-      if (openModal) {
-        setAppUpdateOpen(true);
-      }
-    } catch (err) {
-      console.warn("[Settings] App update check failed:", err);
-    } finally {
-      setCheckingUpdate(false);
-    }
-  };
 
   const { activeSpace, refreshLedgers } = useSpace();
 
@@ -878,10 +822,6 @@ export function SettingsPage({
     "Transaction Tags (#)",
     "tags hashtag work reimburse personal",
   );
-  const showSaveAttachments = matches(
-    "Save Attachment Files",
-    "receipts camera slip images photos",
-  );
   const showReceivableInLiquid = matches(
     "Include Receivables in Liquid Cash",
     "receivable piutang kas liquid cash aset likuid operasional balance",
@@ -890,7 +830,6 @@ export function SettingsPage({
     showTheme ||
     showKeypad ||
     showTags ||
-    showSaveAttachments ||
     showReceivableInLiquid;
 
   // Section 3: Automations & Shortcuts
@@ -1084,51 +1023,6 @@ export function SettingsPage({
           onOpenProfile={() => setProfileOpen(true)}
           onExitGuestMode={exitGuestMode}
         />
-      )}
-
-      {/* ── 3.1 Accrual Pro Membership Card ── */}
-      {!searchQuery.trim() && (
-        <div
-          onClick={() => {
-            triggerHaptic("light");
-            openPaywall({ feature: "settings_manual" });
-          }}
-          className="p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all duration-200 border border-white/10 relative overflow-hidden"
-          style={{
-            background: isDark
-              ? "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)"
-              : "linear-gradient(135deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.01) 100%)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.1)",
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-white/[0.08] border border-white/10 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5 text-[var(--text-primary)]" strokeWidth={1.5} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[var(--text-primary)]">
-                    Accrual Pro
-                  </span>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/[0.1] border border-white/10 text-[var(--text-primary)] uppercase tracking-wider">
-                    {isPremium ? (isIndonesian ? "AKTIF" : "ACTIVE") : (isIndonesian ? "UPGRADE" : "UPGRADE")}
-                  </span>
-                </div>
-                <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed truncate">
-                  {isPremium
-                    ? isIndonesian
-                      ? "Keanggotaan aktif • Semua fitur eksekutif terbuka"
-                      : "Membership active • All executive features unlocked"
-                    : isIndonesian
-                    ? "Buka kuota OCR tak terbatas, analitik penuh, & multi-space"
-                    : "Unlock unlimited OCR, executive telemetry, & multi-space"}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-[var(--text-tertiary)] shrink-0 ml-2" strokeWidth={1.5} />
-          </div>
-        </div>
       )}
 
       {/* Empty Search State */}
@@ -1748,39 +1642,6 @@ export function SettingsPage({
               </>
             )}
 
-            {/* Save Attachment Files Toggle */}
-            {showSaveAttachments && (
-              <>
-                <div style={gradientDivider} />
-                <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <div
-                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                      style={{
-                        background: iconBg,
-                        border: iconBorder,
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      <Paperclip size={13.5} strokeWidth={1.8} />
-                    </div>
-                    <span
-                      className="text-[12.5px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Simpan File Lampiran"
-                        : "Save Attachment Files"}
-                    </span>
-                  </div>
-                  <ToggleSwitch
-                    checked={saveAttachmentsEnabled}
-                    onChange={handleToggleSaveAttachments}
-                    ariaLabel="Toggle save attachments"
-                  />
-                </div>
-              </>
-            )}
 
             {/* Include Receivables in Liquid Cash Toggle */}
             {showReceivableInLiquid && (
@@ -2474,9 +2335,6 @@ export function SettingsPage({
           setDataExportVaultOpen(true);
         }}
         onOpenImport={onOpenImport}
-        checkingUpdate={checkingUpdate}
-        releaseInfo={releaseInfo}
-        onCheckForUpdate={() => handleCheckForUpdate(true)}
         onSignOut={isGuest ? exitGuestMode : handleLogout}
       />
 
@@ -2637,14 +2495,6 @@ export function SettingsPage({
             setWeeklyDigestEnabled(wEnabled);
             setMonthEndReviewEnabled(mEnabled);
           }}
-        />
-
-        <AppUpdateModal
-          isOpen={appUpdateOpen}
-          onClose={() => setAppUpdateOpen(false)}
-          releaseInfo={releaseInfo}
-          checking={checkingUpdate}
-          onCheckAgain={() => handleCheckForUpdate(false)}
         />
 
         <ShortcutManagementSheet

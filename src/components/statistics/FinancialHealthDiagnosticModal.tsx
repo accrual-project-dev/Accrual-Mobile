@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
 import { ShieldCheck, TrendingUp, Compass, Zap, Layers } from "lucide-react";
 import type {
   PersonalBaselineResult,
   CategoryMoMShift,
 } from "../../lib/financialMath";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface FinancialHealthDiagnosticModalProps {
   isOpen: boolean;
@@ -32,8 +32,10 @@ export function FinancialHealthDiagnosticModal({
   categoryShifts = [],
 }: FinancialHealthDiagnosticModalProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
 
   const diagnostic = useMemo(() => {
+    const isZeroData = totalIncome === 0 && totalExpense === 0;
     const netCashflow = totalIncome - totalExpense;
     const operatingRatio =
       totalIncome > 0
@@ -55,7 +57,13 @@ export function FinancialHealthDiagnosticModal({
       ? "Arus kas Anda saat ini menunjukkan operasi yang seimbang dengan pembentukan modal moderat."
       : "Your current cash flow demonstrates balanced operations with moderate capital formation.";
 
-    if (healthScore >= 88 && savingsRate >= 35) {
+    if (isZeroData) {
+      rating = "—";
+      statusTitle = isIndonesian ? "Kalibrasi Metrik Modal" : "Capital Metric Calibration";
+      statusVerdict = isIndonesian
+        ? "Belum ada arus kas atau transaksi tercatat pada periode ini. Catat transaksi pemasukan atau pengeluaran untuk mengaktifkan audit diagnostik komprehensif."
+        : "No cashflow or transactions recorded in this period. Log income or expense transactions to activate comprehensive diagnostic auditing.";
+    } else if (healthScore >= 88 && savingsRate >= 35) {
       rating = "AAA";
       statusTitle = isIndonesian ? "Retensi Modal Luar Biasa" : "Exceptional Capital Retention";
       statusVerdict = isIndonesian
@@ -97,6 +105,7 @@ export function FinancialHealthDiagnosticModal({
     const topShift = categoryShifts.find((s) => s.isIncrease);
 
     return {
+      isZeroData,
       netCashflow,
       operatingRatio,
       operatingMarginText,
@@ -129,14 +138,14 @@ export function FinancialHealthDiagnosticModal({
                   className="text-[10px] font-semibold uppercase tracking-wider"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {isIndonesian ? "Audit Penasihat Eksekutif" : "Executive Advisory Audit"}
+                  {isIndonesian ? "Audit Penasihat Modal" : "Capital Advisory Audit"}
                 </span>
               </div>
               <h3
                 className="font-semibold text-[17px] leading-snug"
                 style={{ color: "var(--text-primary)" }}
               >
-                {isIndonesian ? "Diagnostik Kesehatan Finansial" : "Financial Health Diagnostic"}
+                {isIndonesian ? "Diagnostik Kesehatan Modal" : "Capital Health Diagnostic"}
               </h3>
             </div>
           </div>
@@ -149,7 +158,9 @@ export function FinancialHealthDiagnosticModal({
                 border: "1px solid var(--glass-border)",
               }}
             >
-              {isIndonesian ? "Peringkat" : "Tier"} {diagnostic.rating}
+              {diagnostic.isZeroData
+                ? (isIndonesian ? "Kalibrasi" : "Standby")
+                : `${isIndonesian ? "Peringkat" : "Tier"} ${diagnostic.rating}`}
             </span>
           </div>
         </div>
@@ -173,7 +184,9 @@ export function FinancialHealthDiagnosticModal({
               className="amount text-[12px] font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
-              {healthScore} / 100 {isIndonesian ? "POIN" : "PTS"}
+              {diagnostic.isZeroData
+                ? (isIndonesian ? "FONDASI AWAL" : "FOUNDATION")
+                : `${healthScore} / 100 ${isIndonesian ? "POIN" : "PTS"}`}
             </span>
           </div>
 
@@ -229,7 +242,7 @@ export function FinancialHealthDiagnosticModal({
                       : "var(--text-secondary)",
                 }}
               >
-                {formatRupiah(diagnostic.netCashflow)}
+                {formatWithPreferred(diagnostic.netCashflow)}
               </p>
             </div>
             <div
@@ -296,25 +309,33 @@ export function FinancialHealthDiagnosticModal({
                     className="text-[10px] font-semibold amount"
                     style={{
                       color:
-                        savingsRate >= 20
+                        !diagnostic.isZeroData && savingsRate >= 20
                           ? "var(--text-primary)"
                           : "var(--text-tertiary)",
                     }}
                   >
-                    {savingsRate >= 20 ? "OPTIMAL (≥20%)" : (isIndonesian ? "KETAT (<20%)" : "TIGHT (<20%)")}
+                    {diagnostic.isZeroData
+                      ? (isIndonesian ? "KALIBRASI" : "CALIBRATING")
+                      : savingsRate >= 20
+                        ? "OPTIMAL (≥20%)"
+                        : (isIndonesian ? "KETAT (<20%)" : "TIGHT (<20%)")}
                   </span>
                 </div>
                 <p
                   className="text-[11px] leading-relaxed mt-0.5"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {savingsRate >= 20
+                  {diagnostic.isZeroData
                     ? (isIndonesian
-                        ? `Anda mengonversi ${savingsRate}% pemasukan langsung menjadi ekuitas tersimpan, melampaui ambang batas keberlanjutan institusional.`
-                        : `You convert ${savingsRate}% of inflow directly into retained equity, exceeding standard institutional sustainability thresholds.`)
-                    : (isIndonesian
-                        ? `Menyimpan ${savingsRate}% menyisakan ruang gerak operasional yang terbatas. Memperkuat marjin bersih akan melindungi dari volatilitas pendapatan.`
-                        : `Retaining ${savingsRate}% leaves limited operational leeway. Strengthening net margin will protect against income volatility.`)}
+                        ? "Belum ada transaksi arus masuk atau keluar tercatat di periode ini untuk mengevaluasi efisiensi retensi modal."
+                        : "No inflow or outflow transactions recorded in this period to evaluate capital retention efficiency.")
+                    : savingsRate >= 20
+                      ? (isIndonesian
+                          ? `Anda mengonversi ${savingsRate}% pemasukan langsung menjadi ekuitas tersimpan, melampaui ambang batas keberlanjutan institusional.`
+                          : `You convert ${savingsRate}% of inflow directly into retained equity, exceeding standard institutional sustainability thresholds.`)
+                      : (isIndonesian
+                          ? `Menyimpan ${savingsRate}% menyisakan ruang gerak operasional yang terbatas. Memperkuat marjin bersih akan melindungi dari volatilitas pendapatan.`
+                          : `Retaining ${savingsRate}% leaves limited operational leeway. Strengthening net margin will protect against income volatility.`)}
                 </p>
               </div>
             </div>
@@ -371,8 +392,8 @@ export function FinancialHealthDiagnosticModal({
                         : "Baseline discipline is evaluated most accurately in month view, where the selected period can be compared against completed historical cycles.")
                     : baselines.currentMonthStatus === "above_range"
                       ? (isIndonesian
-                          ? `Pengeluaran berada di atas median historis Anda sebesar ${formatRupiah(baselines.medianExpense)}. Waspadai pengeluaran non-pokok.`
-                          : `Expenditure is tracking above your historical median of ${formatRupiah(baselines.medianExpense)}. Watch non-core outflows.`)
+                          ? `Pengeluaran berada di atas median historis Anda sebesar ${formatWithPreferred(baselines.medianExpense)}. Waspadai pengeluaran non-pokok.`
+                          : `Expenditure is tracking above your historical median of ${formatWithPreferred(baselines.medianExpense)}. Watch non-core outflows.`)
                       : (isIndonesian
                           ? "Pengeluaran disiplin dan tetap berada dalam pita rentang normal historis Anda."
                           : "Spending is disciplined and remains within your proven historical normal bandwidth.")}
@@ -420,8 +441,8 @@ export function FinancialHealthDiagnosticModal({
                 >
                   {diagnostic.topShift
                     ? (isIndonesian
-                        ? `Peningkatan beban tertinggi dipicu oleh ${diagnostic.topShift.name} (+${formatRupiah(diagnostic.topShift.deltaAmount)}).`
-                        : `Highest outflow expansion is driven by ${diagnostic.topShift.name} (+${formatRupiah(diagnostic.topShift.deltaAmount)}).`)
+                        ? `Peningkatan beban tertinggi dipicu oleh ${diagnostic.topShift.name} (+${formatWithPreferred(diagnostic.topShift.deltaAmount)}).`
+                        : `Highest outflow expansion is driven by ${diagnostic.topShift.name} (+${formatWithPreferred(diagnostic.topShift.deltaAmount)}).`)
                     : categoryShifts.length === 0
                       ? (isIndonesian
                           ? "Konsentrasi kategori dirangkum dalam tampilan bulanan, tempat pergeseran bulanan dapat diukur secara akurat."
@@ -462,16 +483,22 @@ export function FinancialHealthDiagnosticModal({
                     className="text-[10px] font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isIndonesian ? "SOLVEN" : "SOLVENT"}
+                    {diagnostic.isZeroData
+                      ? (isIndonesian ? "SIAGA" : "STANDBY")
+                      : (isIndonesian ? "SOLVEN" : "SOLVENT")}
                   </span>
                 </div>
                 <p
                   className="text-[11px] leading-relaxed mt-0.5"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {isIndonesian
-                    ? "Kapasitas surplus historis menyediakan lintasan yang stabil untuk mendanai rencana target dan bantalan darurat tanpa leverage eksternal."
-                    : "Historical surplus capacity provides a stable trajectory to finance planned milestones and emergency buffers without external leverage."}
+                  {diagnostic.isZeroData
+                    ? (isIndonesian
+                        ? "Sistem siap memproyeksikan lintasan pertumbuhan modal begitu transaksi pertama dibukukan."
+                        : "System is ready to project capital growth trajectories as soon as transactions are logged.")
+                    : (isIndonesian
+                        ? "Kapasitas surplus historis menyediakan lintasan yang stabil untuk mendanai rencana target dan bantalan darurat tanpa leverage eksternal."
+                        : "Historical surplus capacity provides a stable trajectory to finance planned milestones and emergency buffers without external leverage.")}
                 </p>
               </div>
             </div>

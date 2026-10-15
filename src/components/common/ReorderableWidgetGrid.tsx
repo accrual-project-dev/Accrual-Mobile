@@ -209,6 +209,7 @@ export function ReorderableWidgetGrid({
           >
             <WidgetCardWrapper
               card={card}
+              effectiveSize={isHalf ? "half" : "full"}
               isEditMode={isEditMode}
               onEnterEditMode={onEnterEditMode}
               onCycleSize={onCycleSize}

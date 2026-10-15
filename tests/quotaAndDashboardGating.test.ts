@@ -195,10 +195,11 @@ describe("Accrual Phase 2: Hybrid Quota Engine & Feature Gating Suite", () => {
       return currentLedgers < MONETIZATION_LIMITS.FREE_MAX_LEDGERS;
     };
 
-    it("restricts Free tier to exactly 1 personal ledger space", () => {
+    it("restricts Free tier to exactly 2 ledger spaces (personal + 1 additional)", () => {
       expect(canCreateLedger(0, false)).toBe(true);
-      expect(canCreateLedger(1, false)).toBe(false);
+      expect(canCreateLedger(1, false)).toBe(true);
       expect(canCreateLedger(2, false)).toBe(false);
+      expect(canCreateLedger(3, false)).toBe(false);
     });
 
     it("permits unlimited ledger spaces for Pro members", () => {

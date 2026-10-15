@@ -3,12 +3,15 @@ import React, { useEffect, useState, useRef } from "react";
 interface EncryptedTextProps {
   text: string;
   isActive?: boolean;
+  isResolved?: boolean;
   isCompleted?: boolean;
   revealDelayMs?: number;
+  scrambleIntervalMs?: number;
   encryptedClassName?: string;
   revealedClassName?: string;
   className?: string;
   glyphs?: string;
+  onRevealComplete?: () => void;
 }
 
 const LUXURY_CIPHER_GLYPHS = "01◈⟡∷█▞⬡_~·/0x";
@@ -16,12 +19,15 @@ const LUXURY_CIPHER_GLYPHS = "01◈⟡∷█▞⬡_~·/0x";
 export const EncryptedText: React.FC<EncryptedTextProps> = ({
   text,
   isActive = false,
+  isResolved = true,
   isCompleted = false,
-  revealDelayMs = 28,
+  revealDelayMs = 24,
+  scrambleIntervalMs = 38,
   encryptedClassName = "opacity-55 font-mono tracking-wide",
   revealedClassName = "font-bold",
   className = "",
   glyphs = LUXURY_CIPHER_GLYPHS,
+  onRevealComplete,
 }) => {
   const [revealedCount, setRevealedCount] = useState<number>(() => {
     return isCompleted ? text.length : 0;
@@ -36,10 +42,14 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
 
   const [scrambleChars, setScrambleChars] = useState<string[]>(generateScramble);
   const intervalRef = useRef<number | null>(null);
+  const onRevealCompleteRef = useRef(onRevealComplete);
+  onRevealCompleteRef.current = onRevealComplete;
+  const hasTriggeredCompleteRef = useRef(false);
 
   useEffect(() => {
     if (isCompleted) {
       setRevealedCount(text.length);
+      hasTriggeredCompleteRef.current = false;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -49,6 +59,7 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
 
     if (!isActive) {
       setRevealedCount(0);
+      hasTriggeredCompleteRef.current = false;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -56,13 +67,35 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
       return;
     }
 
-    // Active state: decrypt character-by-character from left to right
-    setRevealedCount(0);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    // Active state - Case 1: Milestone still running -> continuous scramble glyphs
+    if (!isResolved) {
+      setRevealedCount(0);
+      hasTriggeredCompleteRef.current = false;
+      intervalRef.current = window.setInterval(() => {
+        setScrambleChars(generateScramble());
+      }, scrambleIntervalMs);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    }
+
+    // Active state - Case 2: Milestone completed -> progressive decryption cascade
     let current = 0;
     const total = text.length;
+    setRevealedCount(0);
+    hasTriggeredCompleteRef.current = false;
 
     intervalRef.current = window.setInterval(() => {
-      // Randomize remaining unrevealed characters while preserving spaces
+      // Jitter remaining cipher characters while revealing from left to right
       setScrambleChars(generateScramble());
 
       current += 1;
@@ -73,6 +106,10 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
+        if (!hasTriggeredCompleteRef.current) {
+          hasTriggeredCompleteRef.current = true;
+          onRevealCompleteRef.current?.();
+        }
       }
     }, revealDelayMs);
 
@@ -82,7 +119,7 @@ export const EncryptedText: React.FC<EncryptedTextProps> = ({
         intervalRef.current = null;
       }
     };
-  }, [isActive, isCompleted, text, revealDelayMs]);
+  }, [isActive, isResolved, isCompleted, text, revealDelayMs, scrambleIntervalMs]);
 
   // If pending (not active and not completed), render quiet text
   if (!isActive && !isCompleted) {

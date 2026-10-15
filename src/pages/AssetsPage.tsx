@@ -373,6 +373,24 @@ export function AssetsPage() {
       .reduce((sum, w) => sum + Math.max(0, balancesById[w.id] ?? 0), 0);
   }, [wallets, allCryptoWalletIds, balancesById, receivablePrefTick]);
 
+  // Trailing / current month monthly burn for tactical liquidity calculations
+  const computedMonthlyBurn = useMemo(() => {
+    const now = new Date();
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const thisMonthExpenses = allTxs
+      .filter((t) => t.type === "expense" && t.occurred_on.startsWith(currentMonthPrefix))
+      .reduce((sum, t) => sum + Math.max(0, Number(t.amount || 0)), 0);
+
+    if (thisMonthExpenses > 0) return thisMonthExpenses;
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const trailingExpenses = allTxs
+      .filter((t) => t.type === "expense" && new Date(t.occurred_on) >= thirtyDaysAgo)
+      .reduce((sum, t) => sum + Math.max(0, Number(t.amount || 0)), 0);
+
+    return trailingExpenses;
+  }, [allTxs]);
+
   const liquidUsdtValue = isCryptoClassifiedAsInvestment ? 0 : usdtMarketValue;
   const liquidAssetsTotal = liquidWalletCash + brokerRdnCash + liquidUsdtValue;
 
@@ -1263,6 +1281,7 @@ export function AssetsPage() {
         wallets={wallets}
         netWorth={netWorth}
         totalLiabilities={liabilitiesTotal}
+        monthlyBurnRate={computedMonthlyBurn}
       />
 
       {/* ── 9. Modals, Drawers & Drill-Down Sheets Container ── */}

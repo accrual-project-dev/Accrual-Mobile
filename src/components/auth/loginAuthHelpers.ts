@@ -94,3 +94,7 @@ export function getShowcaseSlides(isIndonesian: boolean): ShowcaseSlide[] {
     },
   ];
 }
+
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}

@@ -1,13 +1,20 @@
 import { useState, useMemo } from "react";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import {
+  calculateSavingsAccelerationLevers,
+  calculateCashBufferRecommendation,
+} from "../../lib/monteCarloEngine";
 import {
   Flame,
   CheckCircle2,
   ShieldCheck,
   RotateCcw,
+  Zap,
+  Shield,
+  TrendingUp,
 } from "lucide-react";
 
 interface FirePlannerSheetProps {
@@ -28,6 +35,7 @@ export function FirePlannerSheet({
   hideBalance = false,
 }: FirePlannerSheetProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const [monthlyBurn, setMonthlyBurn] = useState<number>(
     Math.max(1000000, defaultMonthlyBurnRate || 3500000)
   );
@@ -117,6 +125,24 @@ export function FirePlannerSheet({
     setRealReturn(0.06);
   };
 
+  const accelerationLevers = useMemo(() => {
+    return calculateSavingsAccelerationLevers({
+      initialNetWorth: currentCapital,
+      annualExpenses,
+      monthlyContribution: monthlySavings,
+      safeWithdrawalRate: swr,
+      netRealReturn: realReturn,
+    });
+  }, [currentCapital, annualExpenses, monthlySavings, swr, realReturn]);
+
+  const cashBuffer = useMemo(() => {
+    return calculateCashBufferRecommendation({
+      annualExpenses,
+      currentNetWorth: currentCapital,
+      language: isIndonesian ? "id" : "en",
+    });
+  }, [annualExpenses, currentCapital, isIndonesian]);
+
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="p-5 pb-24 space-y-4 safe-area-bottom select-none">
@@ -192,7 +218,7 @@ export function FirePlannerSheet({
                 {isIndonesian ? "Target Standard FIRE" : "Standard FIRE Goal"}
               </p>
               <p className="text-[26px] font-semibold tracking-tight mt-0.5 text-[var(--text-primary)]">
-                {hideBalance ? "••••••" : formatRupiah(standardFireTarget)}
+                {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(standardFireTarget)}
               </p>
             </div>
             <div className="text-right">
@@ -229,7 +255,7 @@ export function FirePlannerSheet({
           <div className="flex justify-between items-center text-[10px] mt-2 text-[var(--text-secondary)]">
             <span>
               {isIndonesian ? "Kekayaan Bersih:" : "Net Worth:"}{" "}
-              {hideBalance ? "••••••" : formatRupiah(currentCapital)}
+              {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(currentCapital)}
             </span>
             <span className="font-bold text-[var(--text-primary)]">
               {standardProgress}% {isIndonesian ? "Tercapai" : "Funded"}
@@ -256,7 +282,7 @@ export function FirePlannerSheet({
                 {isIndonesian ? "Pengeluaran Hidup Bulanan" : "Monthly Living Expenses"}
               </span>
               <span className="font-bold" style={{ color: "var(--text-primary)" }}>
-                {hideBalance ? "••••••" : formatRupiah(monthlyBurn)}{" "}
+                {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(monthlyBurn)}{" "}
                 {isIndonesian ? "/ bln" : "/ mo"}
               </span>
             </div>
@@ -278,7 +304,7 @@ export function FirePlannerSheet({
                 {isIndonesian ? "Kontribusi Tabungan Bulanan" : "Monthly Savings Contribution"}
               </span>
               <span className="font-bold" style={{ color: "var(--text-primary)" }}>
-                {hideBalance ? "••••••" : formatRupiah(monthlySavings)}{" "}
+                {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(monthlySavings)}{" "}
                 {isIndonesian ? "/ bln" : "/ mo"}
               </span>
             </div>
@@ -353,6 +379,214 @@ export function FirePlannerSheet({
           </div>
         </div>
 
+        {/* Interactive Savings Acceleration Levers */}
+        <div
+          className="p-4 rounded-[22px] space-y-3"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Zap size={13.5} strokeWidth={1.8} />
+              </div>
+              <div>
+                <span className="text-[12px] font-bold text-[var(--text-primary)] block">
+                  {isIndonesian ? "Tuas Akselerasi Tabungan" : "Savings Acceleration Levers"}
+                </span>
+                <span className="text-[10px] text-[var(--text-tertiary)] block">
+                  {isIndonesian
+                    ? "Ketuk tuas untuk mengaplikasikan ke target seketika"
+                    : "Tap any lever to test immediate timeline impact"}
+                </span>
+              </div>
+            </div>
+            <TrendingUp size={14} className="text-[var(--text-tertiary)]" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            {/* Lever 1: +15% Tabungan */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                setMonthlySavings(accelerationLevers.tier15Pct.adjustedMonthlySavings);
+              }}
+              className="p-2.5 rounded-xl text-left border transition-all active:scale-[0.98] cursor-pointer group"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-[var(--text-secondary)]">
+                  +15% {isIndonesian ? "Tabungan" : "Savings"}
+                </span>
+                <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-white/[0.06] text-[var(--text-primary)]">
+                  {accelerationLevers.tier15Pct.yearsSaved > 0
+                    ? isIndonesian
+                      ? `-${accelerationLevers.tier15Pct.yearsSaved} thn`
+                      : `-${accelerationLevers.tier15Pct.yearsSaved} yrs`
+                    : isIndonesian
+                      ? "Akselerasi"
+                      : "Faster"}
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-[var(--text-primary)] truncate tabular-nums">
+                +{formatWithPreferred(accelerationLevers.tier15Pct.monthlySavingsDiff)}
+                <span className="text-[9px] font-normal text-[var(--text-tertiary)]">
+                  {isIndonesian ? "/bln" : "/mo"}
+                </span>
+              </p>
+            </button>
+
+            {/* Lever 2: +30% Tabungan */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                setMonthlySavings(accelerationLevers.tier30Pct.adjustedMonthlySavings);
+              }}
+              className="p-2.5 rounded-xl text-left border transition-all active:scale-[0.98] cursor-pointer group"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-[var(--text-secondary)]">
+                  +30% {isIndonesian ? "Tabungan" : "Savings"}
+                </span>
+                <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-white/[0.06] text-[var(--text-primary)]">
+                  {accelerationLevers.tier30Pct.yearsSaved > 0
+                    ? isIndonesian
+                      ? `-${accelerationLevers.tier30Pct.yearsSaved} thn`
+                      : `-${accelerationLevers.tier30Pct.yearsSaved} yrs`
+                    : isIndonesian
+                      ? "Akselerasi"
+                      : "Faster"}
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-[var(--text-primary)] truncate tabular-nums">
+                +{formatWithPreferred(accelerationLevers.tier30Pct.monthlySavingsDiff)}
+                <span className="text-[9px] font-normal text-[var(--text-tertiary)]">
+                  {isIndonesian ? "/bln" : "/mo"}
+                </span>
+              </p>
+            </button>
+
+            {/* Lever 3: -10% Pengeluaran */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                setMonthlyBurn(accelerationLevers.expenseCut10Pct.reducedMonthlyBurn);
+                setMonthlySavings(accelerationLevers.expenseCut10Pct.adjustedMonthlySavings);
+              }}
+              className="p-2.5 rounded-xl text-left border transition-all active:scale-[0.98] cursor-pointer group"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-[var(--text-secondary)]">
+                  -10% {isIndonesian ? "Biaya Hidup" : "Expenses"}
+                </span>
+                <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-white/[0.06] text-[var(--text-primary)]">
+                  {accelerationLevers.expenseCut10Pct.yearsSaved > 0
+                    ? isIndonesian
+                      ? `-${accelerationLevers.expenseCut10Pct.yearsSaved} thn`
+                      : `-${accelerationLevers.expenseCut10Pct.yearsSaved} yrs`
+                    : isIndonesian
+                      ? "Target Turun"
+                      : "Goal Drop"}
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-[var(--text-primary)] truncate tabular-nums">
+                -{formatWithPreferred(Math.round(monthlyBurn * 0.10))}
+                <span className="text-[9px] font-normal text-[var(--text-tertiary)]">
+                  {isIndonesian ? "/bln" : "/mo"}
+                </span>
+              </p>
+            </button>
+          </div>
+        </div>
+
+        {/* SORR Cash Buffer Playbook Card */}
+        <div
+          className="p-4 rounded-[22px] space-y-2.5"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                  background: "var(--glass-fill-strong)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Shield size={13.5} strokeWidth={1.8} />
+              </div>
+              <div>
+                <span className="text-[12px] font-bold text-[var(--text-primary)] block">
+                  {isIndonesian ? "Mitigasi Risiko Krisis Dini (SORR)" : "Early Downturn Shield (SORR)"}
+                </span>
+                <span className="text-[10px] text-[var(--text-tertiary)] block">
+                  {isIndonesian
+                    ? "Cadangan likuid 18–24 bulan untuk melindungi portofolio"
+                    : "18–24 months liquid cash buffer to protect equity portfolio"}
+                </span>
+              </div>
+            </div>
+            <span
+              className="text-[9.5px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+              style={{
+                background: "var(--glass-fill-strong)",
+                border: "1px solid var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              {isIndonesian
+                ? cashBuffer.adequacyStatus === "Optimal"
+                  ? "Optimal"
+                  : cashBuffer.adequacyStatus === "Adequate"
+                    ? "Cukup"
+                    : "Perlu Ditambah"
+                : cashBuffer.adequacyStatus}
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between pt-1">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+              {isIndonesian ? "Target Cadangan Likuid:" : "Recommended Buffer:"}
+            </span>
+            <span className="text-[13px] font-bold text-[var(--text-primary)] tabular-nums">
+              {hideBalance
+                ? `${currencyMeta?.symbol || "Rp"} ••••••`
+                : `${formatWithPreferred(cashBuffer.amountMin)} – ${formatWithPreferred(cashBuffer.amountMax)}`}
+            </span>
+          </div>
+
+          <p className="text-[10.5px] leading-relaxed text-[var(--text-tertiary)]">
+            {cashBuffer.recommendationText}
+          </p>
+        </div>
+
         {/* 5 Milestones Matrix */}
         <div className="space-y-2.5">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] px-1 block">
@@ -389,7 +623,7 @@ export function FirePlannerSheet({
                     )}
                   </div>
                   <span className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {hideBalance ? "••••••" : formatRupiah(m.target)}
+                    {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(m.target)}
                   </span>
                 </div>
 

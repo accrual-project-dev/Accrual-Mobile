@@ -25,7 +25,10 @@ interface AccrualPaywallModalProps {
   onClose: () => void;
 }
 
-export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProps) {
+export function AccrualPaywallModal({
+  isOpen,
+  onClose,
+}: AccrualPaywallModalProps) {
   const { isIndonesian } = useLanguage();
   const {
     upgradeToPlan,
@@ -36,7 +39,9 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
   const { isGuest, exitGuestMode } = useAuth();
   const { showToast } = useToast();
 
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>("accrual_annual_199k");
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>(
+    "accrual_annual_199k",
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [legalTab, setLegalTab] = useState<"privacy" | "terms" | null>(null);
   const [showGuestLoginPrompt, setShowGuestLoginPrompt] = useState(false);
@@ -69,7 +74,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           isIndonesian
             ? "Selamat! Akun Accrual Pro Anda kini telah aktif."
             : "Welcome to Accrual Pro! Your membership is active.",
-          "update"
+          "update",
         );
         onClose();
       } else {
@@ -77,7 +82,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           isIndonesian
             ? "Gagal memproses transaksi. Silakan coba kembali."
             : "Unable to process transaction. Please try again.",
-          "error"
+          "error",
         );
       }
     } catch {
@@ -85,7 +90,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
         isIndonesian
           ? "Terjadi kendala saat transaksi."
           : "An unexpected error occurred during checkout.",
-        "error"
+        "error",
       );
     } finally {
       setIsProcessing(false);
@@ -106,7 +111,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           isIndonesian
             ? "Status pembelian Anda berhasil diperbarui."
             : "Purchases successfully restored.",
-          "update"
+          "update",
         );
         onClose();
       } else {
@@ -114,7 +119,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           isIndonesian
             ? "Tidak ditemukan riwayat pembelian aktif pada akun ini."
             : "No active purchases found for this account.",
-          "info"
+          "info",
         );
       }
     } finally {
@@ -138,24 +143,46 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
         "Official executive financial report exports in high-res PDF",
       ];
 
+  const getCardSurfaceClass = (isSelected: boolean) =>
+    isSelected
+      ? "bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] border border-[color-mix(in_srgb,var(--text-primary)_10%,transparent)]"
+      : "bg-[color-mix(in_srgb,var(--text-primary)_3.5%,transparent)] border border-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] hover:bg-[color-mix(in_srgb,var(--text-primary)_5%,transparent)]";
+
+  const renderRadioIndicator = (isSelected: boolean) => (
+    <div
+      className={`w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0 transition-colors duration-200 ${
+        isSelected
+          ? "bg-[var(--text-primary)]"
+          : "border border-[color-mix(in_srgb,var(--text-primary)_22%,transparent)] bg-transparent"
+      }`}
+    >
+      {isSelected && (
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] invert" />
+      )}
+    </div>
+  );
+
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} zIndex={110}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} zIndex={1100}>
       <div className="flex flex-col px-5 pt-2 pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),24px)] text-[var(--text-primary)]">
         {/* ==============================================================
             HEADER CAPSULE & TITLE
         =============================================================== */}
-        <div className="flex flex-col items-center text-center mt-2 mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/10 mb-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <Sparkles className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
-            <span className="text-[10px] tracking-wider font-semibold uppercase text-[var(--text-secondary)]">
+        <div className="flex flex-col items-center text-center mt-1.5 mb-6">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[color-mix(in_srgb,var(--text-primary)_5%,transparent)] mb-3">
+            <Sparkles
+              className="w-3 h-3 text-[var(--text-secondary)]"
+              strokeWidth={1.75}
+            />
+            <span className="text-[10px] tracking-[0.1em] font-semibold uppercase text-[var(--text-secondary)]">
               {isIndonesian ? "KEANGGOTAAN EKSKLUSIF" : "EXECUTIVE MEMBERSHIP"}
             </span>
           </div>
 
-          <h2 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+          <h2 className="text-[26px] font-semibold tracking-[-0.025em] text-[var(--text-primary)] leading-tight">
             Accrual Pro
           </h2>
-          <p className="text-[13px] text-[var(--text-tertiary)] max-w-xs mt-1.5 leading-relaxed">
+          <p className="text-[13px] text-[var(--text-tertiary)] max-w-[280px] mt-1.5 leading-relaxed">
             {isIndonesian
               ? "Buka kendali penuh atas portofolio dan otomatisasi keuangan tanpa batas."
               : "Unlock complete control over your portfolio and limitless financial automation."}
@@ -166,42 +193,45 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
             CONTEXTUAL TRIGGER BANNER (IF TRIGGERED BY SPECIFIC LIMIT)
         =============================================================== */}
         {paywallContext && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-start gap-3">
-            <div className="w-7 h-7 rounded-xl bg-white/[0.08] border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Lock className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
+          <div className="mb-5 p-3.5 rounded-2xl bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] flex items-center justify-center shrink-0 mt-0.5">
+              <Lock
+                className="w-3.5 h-3.5 text-[var(--text-primary)]"
+                strokeWidth={1.5}
+              />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-[12px] font-semibold text-[var(--text-primary)]">
+              <h4 className="text-[12.5px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
                 {paywallContext.title ||
                   (paywallContext.feature === "ocr_quota"
                     ? isIndonesian
                       ? "Batas Pemindaian Mutasi Tercapai"
                       : "Statement OCR Limit Reached"
                     : paywallContext.feature === "dashboard_limit"
-                    ? isIndonesian
-                      ? "Batas Slot Widget Tercapai"
-                      : "Widget Slot Limit Reached"
-                    : paywallContext.feature === "advanced_widget"
-                    ? isIndonesian
-                      ? "Widget Analitik Eksekutif"
-                      : "Executive Telemetry Widget"
-                    : isIndonesian
-                    ? "Fitur Eksklusif Accrual Pro"
-                    : "Accrual Pro Feature")}
+                      ? isIndonesian
+                        ? "Batas Slot Widget Tercapai"
+                        : "Widget Slot Limit Reached"
+                      : paywallContext.feature === "advanced_widget"
+                        ? isIndonesian
+                          ? "Widget Analitik Eksekutif"
+                          : "Executive Telemetry Widget"
+                        : isIndonesian
+                          ? "Fitur Eksklusif Accrual Pro"
+                          : "Accrual Pro Feature")}
               </h4>
-              <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
+              <p className="text-[11.5px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
                 {paywallContext.description ||
                   (paywallContext.feature === "ocr_quota"
                     ? isIndonesian
                       ? "Akun standar dibatasi 5x pemindaian per bulan. Beralih ke Pro untuk pemrosesan tanpa batas."
                       : "Standard accounts include 5 scans per month. Upgrade to Pro for unlimited processing."
                     : paywallContext.feature === "dashboard_limit"
-                    ? isIndonesian
-                      ? "Akun standar dibatasi maksimal 4 widget aktif di Home. Pasang widget tanpa batas dengan Pro."
-                      : "Standard accounts can pin up to 4 active widgets on Home. Unlock unlimited widgets with Pro."
-                    : isIndonesian
-                    ? "Fitur ini dirancang khusus untuk anggota Accrual Pro."
-                    : "This feature is exclusively designed for Accrual Pro members.")}
+                      ? isIndonesian
+                        ? "Akun standar dibatasi maksimal 4 widget aktif di Home. Pasang widget tanpa batas dengan Pro."
+                        : "Standard accounts can pin up to 4 active widgets on Home. Unlock unlimited widgets with Pro."
+                      : isIndonesian
+                        ? "Fitur ini dirancang khusus untuk anggota Accrual Pro."
+                        : "This feature is exclusively designed for Accrual Pro members.")}
               </p>
             </div>
           </div>
@@ -215,48 +245,38 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           <button
             type="button"
             onClick={() => handleSelectPlan("accrual_annual_199k")}
-            className={`w-full text-left p-4 rounded-2xl transition-all duration-200 relative ${
-              selectedPlan === "accrual_annual_199k"
-                ? "bg-white/[0.08] border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_8px_20px_rgba(0,0,0,0.3)]"
-                : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] opacity-75"
-            }`}
+            className={`w-full text-left px-4 py-3.5 rounded-2xl transition-colors duration-200 flex items-center justify-between gap-3 ${getCardSurfaceClass(
+              selectedPlan === "accrual_annual_199k",
+            )}`}
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/[0.1] border border-white/10 text-[var(--text-primary)]">
-                {isIndonesian ? "HEMAT 43% • UJI COBA 7 HARI" : "SAVE 43% • 7-DAY TRIAL"}
-              </span>
-              <div
-                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                  selectedPlan === "accrual_annual_199k"
-                    ? "border-[var(--text-primary)] bg-[var(--text-primary)]"
-                    : "border-white/30"
-                }`}
-              >
-                {selectedPlan === "accrual_annual_199k" && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                )}
+            <div className="flex-1 min-w-0">
+              <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] mb-1.5">
+                <span className="text-[9.5px] font-semibold tracking-[0.06em] uppercase text-[var(--text-primary)]">
+                  {isIndonesian
+                    ? "HEMAT 43% • UJI COBA 7 HARI"
+                    : "SAVE 43% • 7-DAY TRIAL"}
+                </span>
+              </div>
+              <div className="text-[14.5px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+                {isIndonesian ? "Paket Tahunan" : "Annual Plan"}
+              </div>
+              <div className="text-[11.5px] text-[var(--text-tertiary)] mt-0.5">
+                {isIndonesian
+                  ? "7 hari gratis, lalu Rp 16.583/bln"
+                  : "7 days free, then ~Rp 16,583/mo"}
               </div>
             </div>
 
-            <div className="flex items-baseline justify-between">
-              <div>
-                <div className="text-[14px] font-semibold text-[var(--text-primary)]">
-                  {isIndonesian ? "Paket Tahunan" : "Annual Plan"}
-                </div>
-                <div className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
-                  {isIndonesian
-                    ? "7 hari gratis, lalu Rp 16.583/bln"
-                    : "7 days free, then ~Rp 16,583/mo"}
-                </div>
-              </div>
+            <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
-                <div className="text-[15px] font-semibold text-[var(--text-primary)]">
+                <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
                   Rp 199.000
                 </div>
-                <div className="text-[10px] text-[var(--text-tertiary)]">
+                <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "/ tahun" : "/ year"}
                 </div>
               </div>
+              {renderRadioIndicator(selectedPlan === "accrual_annual_199k")}
             </div>
           </button>
 
@@ -264,42 +284,31 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           <button
             type="button"
             onClick={() => handleSelectPlan("accrual_monthly_29k")}
-            className={`w-full text-left p-4 rounded-2xl transition-all duration-200 ${
-              selectedPlan === "accrual_monthly_29k"
-                ? "bg-white/[0.08] border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_8px_20px_rgba(0,0,0,0.3)]"
-                : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] opacity-75"
-            }`}
+            className={`w-full text-left px-4 py-3.5 rounded-2xl transition-colors duration-200 flex items-center justify-between gap-3 ${getCardSurfaceClass(
+              selectedPlan === "accrual_monthly_29k",
+            )}`}
           >
-            <div className="flex items-baseline justify-between">
-              <div>
-                <div className="text-[14px] font-semibold text-[var(--text-primary)]">
-                  {isIndonesian ? "Paket Bulanan" : "Monthly Plan"}
+            <div className="flex-1 min-w-0">
+              <div className="text-[14.5px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+                {isIndonesian ? "Paket Bulanan" : "Monthly Plan"}
+              </div>
+              <div className="text-[11.5px] text-[var(--text-tertiary)] mt-0.5">
+                {isIndonesian
+                  ? "Fleksibel, batalkan kapan saja"
+                  : "Flexible, cancel anytime"}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="text-right">
+                <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
+                  Rp 29.000
                 </div>
-                <div className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
-                  {isIndonesian ? "Fleksibel, batalkan kapan saja" : "Flexible, cancel anytime"}
+                <div className="text-[10.5px] text-[var(--text-tertiary)]">
+                  {isIndonesian ? "/ bulan" : "/ month"}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-[15px] font-semibold text-[var(--text-primary)]">
-                    Rp 29.000
-                  </div>
-                  <div className="text-[10px] text-[var(--text-tertiary)]">
-                    {isIndonesian ? "/ bulan" : "/ month"}
-                  </div>
-                </div>
-                <div
-                  className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                    selectedPlan === "accrual_monthly_29k"
-                      ? "border-[var(--text-primary)] bg-[var(--text-primary)]"
-                      : "border-white/30"
-                  }`}
-                >
-                  {selectedPlan === "accrual_monthly_29k" && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                  )}
-                </div>
-              </div>
+              {renderRadioIndicator(selectedPlan === "accrual_monthly_29k")}
             </div>
           </button>
 
@@ -307,48 +316,38 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           <button
             type="button"
             onClick={() => handleSelectPlan("accrual_lifetime_499k")}
-            className={`w-full text-left p-4 rounded-2xl transition-all duration-200 relative ${
-              selectedPlan === "accrual_lifetime_499k"
-                ? "bg-white/[0.08] border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_8px_20px_rgba(0,0,0,0.3)]"
-                : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] opacity-75"
-            }`}
+            className={`w-full text-left px-4 py-3.5 rounded-2xl transition-colors duration-200 flex items-center justify-between gap-3 ${getCardSurfaceClass(
+              selectedPlan === "accrual_lifetime_499k",
+            )}`}
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/[0.1] border border-white/10 text-[var(--text-primary)]">
-                {isIndonesian ? "SEKALI BAYAR • AKSES SELAMANYA" : "ONE-TIME • LIFETIME"}
-              </span>
-              <div
-                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                  selectedPlan === "accrual_lifetime_499k"
-                    ? "border-[var(--text-primary)] bg-[var(--text-primary)]"
-                    : "border-white/30"
-                }`}
-              >
-                {selectedPlan === "accrual_lifetime_499k" && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                )}
+            <div className="flex-1 min-w-0">
+              <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] mb-1.5">
+                <span className="text-[9.5px] font-semibold tracking-[0.06em] uppercase text-[var(--text-primary)]">
+                  {isIndonesian
+                    ? "SEKALI BAYAR • SELAMANYA"
+                    : "ONE-TIME • LIFETIME"}
+                </span>
+              </div>
+              <div className="text-[14.5px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+                {isIndonesian ? "Akses Seumur Hidup" : "Lifetime Access"}
+              </div>
+              <div className="text-[11.5px] text-[var(--text-tertiary)] mt-0.5">
+                {isIndonesian
+                  ? "Satu kali pembayaran tanpa perpanjangan"
+                  : "Pay once, access all updates forever"}
               </div>
             </div>
 
-            <div className="flex items-baseline justify-between">
-              <div>
-                <div className="text-[14px] font-semibold text-[var(--text-primary)]">
-                  {isIndonesian ? "Akses Seumur Hidup" : "Lifetime Access"}
-                </div>
-                <div className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
-                  {isIndonesian
-                    ? "Satu kali pembayaran tanpa perpanjangan"
-                    : "Pay once, access all updates forever"}
-                </div>
-              </div>
+            <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
-                <div className="text-[15px] font-semibold text-[var(--text-primary)]">
+                <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
                   Rp 499.000
                 </div>
-                <div className="text-[10px] text-[var(--text-tertiary)]">
+                <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "sekali bayar" : "one-time"}
                 </div>
               </div>
+              {renderRadioIndicator(selectedPlan === "accrual_lifetime_499k")}
             </div>
           </button>
         </div>
@@ -356,14 +355,22 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
         {/* ==============================================================
             PERKS CHECKLIST MATRIX
         =============================================================== */}
-        <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] mb-6 flex flex-col gap-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-            {isIndonesian ? "SEMUA FITUR PRO MENCAKUP:" : "ALL PRO FEATURES INCLUDE:"}
+        <div className="p-4 rounded-2xl bg-[color-mix(in_srgb,var(--text-primary)_3.5%,transparent)] mb-6 flex flex-col gap-2.5">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)] mb-0.5">
+            {isIndonesian
+              ? "SEMUA FITUR PRO MENCAKUP:"
+              : "ALL PRO FEATURES INCLUDE:"}
           </div>
           {perkList.map((perk, index) => (
-            <div key={index} className="flex items-center gap-2.5 text-[12px] text-[var(--text-secondary)]">
-              <div className="w-4 h-4 rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
-                <Check className="w-2.5 h-2.5 text-[var(--text-primary)]" strokeWidth={2} />
+            <div
+              key={index}
+              className="flex items-start gap-2.5 text-[12px] text-[var(--text-secondary)]"
+            >
+              <div className="w-4 h-4 rounded-full bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] flex items-center justify-center shrink-0 mt-0.5">
+                <Check
+                  className="w-2.5 h-2.5 text-[var(--text-primary)]"
+                  strokeWidth={2}
+                />
               </div>
               <span className="leading-snug">{perk}</span>
             </div>
@@ -377,23 +384,33 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           type="button"
           disabled={isProcessing || isSubLoading}
           onClick={handlePurchase}
-          className="w-full h-12 rounded-2xl bg-[var(--text-primary)] text-black font-semibold text-[14px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
+          className="w-full h-12 rounded-2xl bg-[var(--text-primary)] font-semibold text-[14px] flex items-center justify-center active:scale-[0.985] transition-transform duration-150 disabled:opacity-50"
         >
-          {isProcessing ? (
-            <span className="text-[13px]">
-              {isIndonesian ? "Memproses Transaksi..." : "Processing..."}
-            </span>
-          ) : selectedPlan === "accrual_annual_199k" ? (
-            <>
-              <span>{isIndonesian ? "Mulai Uji Coba Gratis 7 Hari" : "Start 7-Day Free Trial"}</span>
-              <ArrowRight className="w-4 h-4 text-black" strokeWidth={2} />
-            </>
-          ) : (
-            <>
-              <span>{isIndonesian ? "Lanjutkan Pembelian" : "Continue to Purchase"}</span>
-              <ArrowRight className="w-4 h-4 text-black" strokeWidth={2} />
-            </>
-          )}
+          <span className="inline-flex items-center justify-center gap-2 text-[var(--text-primary)] invert">
+            {isProcessing ? (
+              <span className="text-[13px]">
+                {isIndonesian ? "Memproses Transaksi..." : "Processing..."}
+              </span>
+            ) : selectedPlan === "accrual_annual_199k" ? (
+              <>
+                <span>
+                  {isIndonesian
+                    ? "Mulai Uji Coba Gratis 7 Hari"
+                    : "Start 7-Day Free Trial"}
+                </span>
+                <ArrowRight className="w-4 h-4" strokeWidth={2} />
+              </>
+            ) : (
+              <>
+                <span>
+                  {isIndonesian
+                    ? "Lanjutkan Pembelian"
+                    : "Continue to Purchase"}
+                </span>
+                <ArrowRight className="w-4 h-4" strokeWidth={2} />
+              </>
+            )}
+          </span>
         </button>
 
         {/* ==============================================================
@@ -404,10 +421,15 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
             type="button"
             disabled={isProcessing}
             onClick={handleRestore}
-            className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:opacity-75 transition-colors py-1"
+            className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:opacity-75 transition-colors py-1"
           >
-            <RotateCcw className="w-3 h-3 text-[var(--text-tertiary)]" strokeWidth={1.5} />
-            <span>{isIndonesian ? "Pulihkan Pembelian" : "Restore Purchases"}</span>
+            <RotateCcw
+              className="w-3 h-3 text-[var(--text-tertiary)]"
+              strokeWidth={1.5}
+            />
+            <span>
+              {isIndonesian ? "Pulihkan Pembelian" : "Restore Purchases"}
+            </span>
           </button>
 
           <p className="text-[10px] text-[var(--text-tertiary)] max-w-xs leading-relaxed">
@@ -416,7 +438,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
               : "Subscriptions renew automatically via your Apple ID unless canceled at least 24 hours before expiration."}
           </p>
 
-          <div className="flex items-center gap-3 text-[10px] text-[var(--text-tertiary)] mt-1">
+          <div className="flex items-center gap-3 text-[10px] text-[var(--text-tertiary)] mt-0.5">
             <button
               type="button"
               onClick={() => {
@@ -447,6 +469,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
           isOpen={true}
           onClose={() => setLegalTab(null)}
           initialTab={legalTab}
+          zIndex={1250}
         />
       )}
 
@@ -464,7 +487,7 @@ export function AccrualPaywallModal({ isOpen, onClose }: AccrualPaywallModalProp
         cancelLabel={isIndonesian ? "Batal" : "Cancel"}
         icon={Lock}
         isIndonesian={isIndonesian}
-        zIndex={1100}
+        zIndex={1250}
       />
     </BottomSheet>
   );

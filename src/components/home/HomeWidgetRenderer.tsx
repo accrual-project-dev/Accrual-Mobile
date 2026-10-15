@@ -4,11 +4,8 @@ import {
   Check,
   CalendarDays,
   Target,
-  Lock,
-  Sparkles,
 } from "lucide-react";
 import { useSubscription } from "../../contexts/SubscriptionContext";
-import { PRO_WIDGET_IDS } from "../../types/subscription";
 import { format, isToday } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import type { WidgetSize } from "../../lib/widgetLayoutTypes";
@@ -40,6 +37,7 @@ import {
   HealthMeterCard,
   LiquidRunwayCard,
   CalendarCard,
+  WidgetFallbackCard,
 } from "./CompactHomeCards";
 import { DebtReceivablesCard } from "../debt/DebtReceivablesCard";
 import type { DebtReceivableSummary } from "../../types/debt";
@@ -47,6 +45,7 @@ import type { DebtReceivableSummary } from "../../types/debt";
 export interface HomeWidgetRendererProps {
   cardId: string;
   size: WidgetSize;
+  isEditMode?: boolean;
   intel: any;
   hideBalance: boolean;
   isDark: boolean;
@@ -95,6 +94,7 @@ export interface HomeWidgetRendererProps {
 export function HomeWidgetRenderer({
   cardId,
   size,
+  isEditMode = false,
   intel,
   hideBalance,
   isDark,
@@ -141,64 +141,6 @@ export function HomeWidgetRenderer({
 }: HomeWidgetRendererProps) {
   const { isPremium, openPaywall } = useSubscription();
 
-  if (!isPremium && (PRO_WIDGET_IDS as readonly string[]).includes(cardId)) {
-    const title =
-      cardId === "financial_health_gauge"
-        ? isIndonesian
-          ? "Meter Kesehatan Eksekutif"
-          : "Executive Health Meter"
-        : cardId === "liquid_runway"
-        ? isIndonesian
-          ? "Ketahanan Kas (Runway)"
-          : "Cashflow Runway"
-        : isIndonesian
-        ? "Stabilitas Pengeluaran"
-        : "Spending Stability";
-
-    return (
-      <div
-        onClick={() => openPaywall({ feature: "advanced_widget" })}
-        className="relative p-5 rounded-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-all duration-200 border border-white/10"
-        style={{
-          background: isDark
-            ? "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)"
-            : "linear-gradient(135deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.01) 100%)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-        }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-white/[0.08] border border-white/10 flex items-center justify-center">
-              <Lock className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
-            </div>
-            <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-              {title}
-            </span>
-          </div>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/[0.1] border border-white/10 text-[var(--text-primary)] uppercase tracking-wider">
-            PRO
-          </span>
-        </div>
-        <p className="text-[11px] text-[var(--text-tertiary)] mb-4 leading-relaxed">
-          {isIndonesian
-            ? "Analitik eksekutif mendalam ini tersedia secara eksklusif untuk anggota Accrual Pro."
-            : "This executive telemetry card is exclusively available for Accrual Pro members."}
-        </p>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            openPaywall({ feature: "advanced_widget" });
-          }}
-          className="w-full py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-[11px] font-semibold text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <Sparkles className="w-3 h-3 text-[var(--text-primary)]" strokeWidth={1.5} />
-          <span>{isIndonesian ? "Buka dengan Accrual Pro" : "Unlock with Accrual Pro"}</span>
-        </button>
-      </div>
-    );
-  }
-
   switch (cardId) {
     case "net_portfolio":
       return (
@@ -221,7 +163,17 @@ export function HomeWidgetRenderer({
       return <InvestmentPulseCard />;
 
     case "spending_stability":
-      if (!intel.expenseVolatility) return null;
+      if (!intel.expenseVolatility) {
+        return isEditMode ? (
+          <WidgetFallbackCard
+            cardId={cardId}
+            size={size === "half" ? "half" : "full"}
+            isEditMode={isEditMode}
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+          />
+        ) : null;
+      }
       if (size === "half") {
         return (
           <CompactSpendingStabilityHalf
@@ -369,7 +321,17 @@ export function HomeWidgetRenderer({
       );
 
     case "ai_insights":
-      if (!intel.actionCenterInsight) return null;
+      if (!intel.actionCenterInsight) {
+        return isEditMode ? (
+          <WidgetFallbackCard
+            cardId={cardId}
+            size={size === "half" ? "half" : "full"}
+            isEditMode={isEditMode}
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+          />
+        ) : null;
+      }
       if (size === "half") {
         return (
           <CompactAIInsightsHalf
@@ -431,30 +393,32 @@ export function HomeWidgetRenderer({
                   ? "Aktivitas 7 Hari Terakhir"
                   : "Past 7 Days Activity"}
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                setCalendarExpanded((prev) => !prev);
-              }}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95 cursor-pointer select-none flex items-center gap-1"
-              style={{
-                background: "var(--glass-fill)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <CalendarDays size={12} />
-              <span>
-                {calendarExpanded
-                  ? isIndonesian
-                    ? "Ringkas (7H)"
-                    : "Compact (7D)"
-                  : isIndonesian
-                    ? "Bulan Penuh"
-                    : "Full Month"}
-              </span>
-            </button>
+            {!isEditMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setCalendarExpanded((prev) => !prev);
+                }}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full transition-all active:scale-95 cursor-pointer select-none flex items-center gap-1"
+                style={{
+                  background: "var(--glass-fill)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <CalendarDays size={12} />
+                <span>
+                  {calendarExpanded
+                    ? isIndonesian
+                      ? "Ringkas (7H)"
+                      : "Compact (7D)"
+                    : isIndonesian
+                      ? "Bulan Penuh"
+                      : "Full Month"}
+                </span>
+              </button>
+            )}
           </div>
 
           <div
@@ -509,7 +473,17 @@ export function HomeWidgetRenderer({
       );
 
     case "financial_goals":
-      if (goals.length === 0) return null;
+      if (goals.length === 0) {
+        return isEditMode ? (
+          <WidgetFallbackCard
+            cardId={cardId}
+            size={size === "half" ? "half" : "full"}
+            isEditMode={isEditMode}
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+          />
+        ) : null;
+      }
       if (size === "half") {
         const g: any = goals[0];
         const curr = Number(g.currentAmount || g.current_amount || 0);
@@ -536,14 +510,16 @@ export function HomeWidgetRenderer({
             >
               {isIndonesian ? "Target Finansial" : "Financial Goals"}
             </span>
-            <span
-              className="text-[11px] font-bold"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian
-                ? `${goals.length} Target`
-                : `${goals.length} ${goals.length === 1 ? "Goal" : "Goals"}`}
-            </span>
+            {!isEditMode && (
+              <span
+                className="text-[11px] font-bold"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian
+                  ? `${goals.length} Target`
+                  : `${goals.length} ${goals.length === 1 ? "Goal" : "Goals"}`}
+              </span>
+            )}
           </div>
 
           <div className="space-y-2.5">
@@ -650,7 +626,18 @@ export function HomeWidgetRenderer({
       );
 
     case "upcoming_bills":
-      if (upcomingBills.length === 0) return null;
+      if (upcomingBills.length === 0) {
+        return isEditMode ? (
+          <WidgetFallbackCard
+            cardId={cardId}
+            size={size === "half" ? "half" : "full"}
+            isEditMode={isEditMode}
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+            onAction={onOpenBillManagement}
+          />
+        ) : null;
+      }
       if (size === "half") {
         const nextBill: any = upcomingBills[0];
         const days = getDaysUntilDue(nextBill.due_date);
@@ -671,6 +658,7 @@ export function HomeWidgetRenderer({
           <div
             className="flex items-center justify-between px-1 cursor-pointer select-none"
             onClick={() => {
+              if (isEditMode) return;
               triggerHaptic("light");
               onOpenBillManagement();
             }}
@@ -681,12 +669,14 @@ export function HomeWidgetRenderer({
             >
               {isIndonesian ? "Tagihan Mendatang" : "Upcoming Bills"}
             </span>
-            <span
-              className="text-[11px] font-medium hover:underline flex items-center gap-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Kelola Tagihan" : "Manage Bills"}
-            </span>
+            {!isEditMode && (
+              <span
+                className="text-[11px] font-medium hover:underline flex items-center gap-1"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian ? "Kelola Tagihan" : "Manage Bills"}
+              </span>
+            )}
           </div>
           <div className="space-y-2">
             {upcomingBills.slice(0, 3).map((bill: any) => {
@@ -827,13 +817,25 @@ export function HomeWidgetRenderer({
       );
 
     case "debt_receivables":
-      if (!debtSummary) return null;
+      if (!debtSummary) {
+        return isEditMode ? (
+          <WidgetFallbackCard
+            cardId={cardId}
+            size={size === "half" ? "half" : "full"}
+            isEditMode={isEditMode}
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+            onAction={onOpenDebtReceivables}
+          />
+        ) : null;
+      }
       return (
         <DebtReceivablesCard
           summary={debtSummary}
           isDark={isDark}
           isIndonesian={isIndonesian}
           size={size === "half" ? "half" : "full"}
+          isEditMode={isEditMode}
           onClick={() => {
             triggerHaptic("light");
             if (onOpenDebtReceivables) {
@@ -910,12 +912,23 @@ export function HomeWidgetRenderer({
         <CategoryBudgetDeck
           onOpenManageCategories={onOpenCategoryManagement}
           hideBalance={hideBalance}
+          isEditMode={isEditMode}
         />
       );
     }
 
     case "recent_transactions":
-      if (allTxs.length === 0) return null;
+      if (allTxs.length === 0) {
+        return isEditMode ? (
+          <WidgetFallbackCard
+            cardId={cardId}
+            size={size === "half" ? "half" : "full"}
+            isEditMode={isEditMode}
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+          />
+        ) : null;
+      }
       return (
         <section className="space-y-2.5">
           <div className="flex items-center justify-between">
@@ -925,14 +938,16 @@ export function HomeWidgetRenderer({
             >
               {isIndonesian ? "Transaksi Terkini" : "Recent Transactions"}
             </h3>
-            <span
-              className="text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian
-                ? `${size === "half" ? "3" : "5"} Terakhir`
-                : `Latest ${size === "half" ? "3" : "5"}`}
-            </span>
+            {!isEditMode && (
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian
+                  ? `${size === "half" ? "3" : "5"} Terakhir`
+                  : `Latest ${size === "half" ? "3" : "5"}`}
+              </span>
+            )}
           </div>
           <div className="space-y-2">
             {allTxs.slice(0, size === "half" ? 3 : 5).map((tx) => {
@@ -1016,8 +1031,17 @@ export function HomeWidgetRenderer({
       if (
         !currentMonthStats.topExpenseCategories ||
         currentMonthStats.topExpenseCategories.length === 0
-      )
-        return null;
+      ) {
+        return isEditMode ? (
+          <WidgetFallbackCard
+            cardId={cardId}
+            size={size === "half" ? "half" : "full"}
+            isEditMode={isEditMode}
+            isIndonesian={isIndonesian}
+            isDark={isDark}
+          />
+        ) : null;
+      }
       if (size === "half") {
         const topCat = currentMonthStats.topExpenseCategories[0];
         const pct =
@@ -1067,12 +1091,14 @@ export function HomeWidgetRenderer({
                 ? "Kategori Pengeluaran Terbesar"
                 : "Top Spending Categories"}
             </h3>
-            <span
-              className="text-[11px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {isIndonesian ? "Bulan Ini" : "This Month"}
-            </span>
+            {!isEditMode && (
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {isIndonesian ? "Bulan Ini" : "This Month"}
+              </span>
+            )}
           </div>
           <div
             className="p-4 rounded-3xl glass-surface border border-[var(--glass-border)] space-y-3"
@@ -1533,6 +1559,18 @@ export function HomeWidgetRenderer({
           size={size}
           healthScore={healthScore}
           onOpenDetail={() => {
+            if (!isPremium) {
+              openPaywall({
+                feature: "advanced_widget",
+                title: isIndonesian
+                  ? "Audit Diagnostik Kesehatan Modal"
+                  : "Capital Health Diagnostic Audit",
+                description: isIndonesian
+                  ? "Buka rincian lengkap pilar ketahanan modal, simulasi likuiditas, dan rekomendasi solvabilitas dengan Accrual Pro."
+                  : "Unlock full capital health pillar breakdown, liquidity simulations, and solvency advisory with Accrual Pro.",
+              });
+              return;
+            }
             const score = healthScore;
             onOpenMetricDrillDown({
               type: "snapshot",
@@ -1543,15 +1581,15 @@ export function HomeWidgetRenderer({
                 pctChange: 0,
                 displayValue: `${score}/100`,
                 title: isIndonesian
-                  ? "Telemetri Kesehatan Finansial"
-                  : "Executive Health Telemetry",
+                  ? "Telemetri Kesehatan Modal"
+                  : "Capital Health Telemetry",
                 subtitle: isIndonesian
-                  ? `Skor kesehatan finansial Anda dinilai ${score}/100 berdasarkan laju tabungan, pemenuhan kewajiban, dan rasio bantalan likuiditas.`
-                  : `Your financial health score is rated at ${score}/100 based on savings pace, debt servicing, and liquidity buffer ratios.`,
+                  ? `Skor kesehatan modal Anda dinilai ${score}/100 berdasarkan laju tabungan, pemenuhan kewajiban, dan rasio bantalan likuiditas.`
+                  : `Your capital health score is rated at ${score}/100 based on savings pace, debt servicing, and liquidity buffer ratios.`,
                 badge: `${score}/100 ${isIndonesian ? "Skor" : "Score"}`,
                 ctaLabel: isIndonesian
-                  ? "Diagnostik Kesehatan"
-                  : "Health Diagnostics",
+                  ? "Diagnostik Kesehatan Modal"
+                  : "Capital Health Diagnostics",
                 onCta: () => navigate("/statistics"),
               },
             });
@@ -1587,6 +1625,14 @@ export function HomeWidgetRenderer({
       );
 
     default:
-      return null;
+      return isEditMode ? (
+        <WidgetFallbackCard
+          cardId={cardId}
+          size={size === "half" ? "half" : "full"}
+          isEditMode={isEditMode}
+          isIndonesian={isIndonesian}
+          isDark={isDark}
+        />
+      ) : null;
   }
 }

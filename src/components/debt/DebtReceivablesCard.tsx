@@ -18,6 +18,7 @@ export interface DebtReceivablesCardProps {
   isIndonesian: boolean;
   onClick: () => void;
   size?: "full" | "half";
+  isEditMode?: boolean;
 }
 
 export function DebtReceivablesCard({
@@ -26,6 +27,7 @@ export function DebtReceivablesCard({
   isIndonesian,
   onClick,
   size = "full",
+  isEditMode = false,
 }: DebtReceivablesCardProps) {
   if (size === "half") {
     return (
@@ -100,14 +102,16 @@ export function DebtReceivablesCard({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onClick}
-          className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer select-none transition-colors"
-        >
-          <span>{isIndonesian ? "Kelola" : "Manage"}</span>
-          <ChevronRight size={13} strokeWidth={2} />
-        </button>
+        {!isEditMode && (
+          <button
+            type="button"
+            onClick={onClick}
+            className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer select-none transition-colors"
+          >
+            <span>{isIndonesian ? "Kelola" : "Manage"}</span>
+            <ChevronRight size={13} strokeWidth={2} />
+          </button>
+        )}
       </div>
 
       {/* Main Apple Luxury Glass Card */}

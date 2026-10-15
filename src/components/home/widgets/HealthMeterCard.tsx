@@ -1,4 +1,4 @@
-import { Info, Award } from "lucide-react";
+import { Info, ShieldCheck } from "lucide-react";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useLanguage } from "../../../contexts/LanguageContext";
@@ -41,7 +41,7 @@ export function HealthMeterCard({
 
   if (size === "half") {
     return (
-      <CompactShell title={isIndonesian ? "Skor Kesehatan" : "Health Score"} onOpenDetail={onOpenDetail}>
+      <CompactShell title={isIndonesian ? "Kesehatan Modal" : "Capital Health"} onOpenDetail={onOpenDetail}>
         <div className="flex-1 flex flex-col justify-center items-center py-1">
           <div className="text-center">
             <span className="text-[26px] font-semibold amount text-[var(--text-primary)] leading-none">
@@ -89,16 +89,16 @@ export function HealthMeterCard({
               border: "1px solid var(--glass-border)",
             }}
           >
-            <Award size={14} className="text-[var(--text-primary)]" />
+            <ShieldCheck size={14} strokeWidth={1.75} className="text-[var(--text-primary)]" />
           </div>
           <div>
             <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-              {isIndonesian ? "Skor Kesehatan Finansial" : "Financial Health Score"}
+              {isIndonesian ? "Kesehatan Modal" : "Capital Health"}
             </h3>
-            <p className="text-[10px] text-[var(--text-tertiary)]">
+            <p className="text-[10px] text-[var(--text-tertiary)] truncate">
               {isIndonesian
-                ? "Rating komposit berbasis laju tabungan, kewajiban, dan ketahanan likuiditas"
-                : "Composite rating based on savings pace, debt, and liquidity runway"}
+                ? "Peringkat likuiditas & laju retensi modal"
+                : "Liquidity rating & capital retention pace"}
             </p>
           </div>
         </div>
@@ -191,8 +191,8 @@ export function HealthMeterCard({
       <div className="pt-1 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
         <span>
           {isIndonesian
-            ? "Diagnostik kesehatan mengindikasikan arus kas terkendali."
-            : "Overall health diagnostic indicates controlled cashflow."}
+            ? "Diagnostik modal mengindikasikan arus kas terkendali."
+            : "Capital diagnostic indicates controlled cashflow."}
         </span>
         <span className="font-semibold text-[var(--text-secondary)]">
           {healthScore >= 75

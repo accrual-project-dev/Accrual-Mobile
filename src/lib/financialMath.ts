@@ -1253,6 +1253,39 @@ export function generateActionCenterInsight(options: {
 
   const isId = language === "id";
 
+  // Priority 0: Clean Baseline / No Expenses Recorded Yet In Current Cycle
+  if (options.totalExpense === 0) {
+    return {
+      type: "healthy",
+      title: isId
+        ? "Siklus pengeluaran siap dicatat"
+        : "Expense cycle ready for recording",
+      subtitle: isId
+        ? "Belum ada transaksi pengeluaran. Catat pengeluaran harian untuk mengaktifkan telemetri tempo dan batas belanja."
+        : "No expenses recorded yet. Log daily transactions to activate spending pace telemetry and burn projections.",
+      badge: isId ? "AWAL SIKLUS" : "NEW CYCLE",
+      actionLabel: isId ? "Catat transaksi" : "Record transaction",
+      actionType: "transactions",
+      drillDownDetails: {
+        headline: isId ? "Inisialisasi Siklus Berjalan" : "Active Cycle Standby",
+        explanation: isId
+          ? "Sistem pengawasan modal siap memantau laju pembelanjaan harian dan mendeteksi deviasi begitu transaksi pertama Anda dicatat."
+          : "The capital monitoring system is standing by to evaluate daily outflow velocity and anomaly detection upon your first transaction.",
+        bulletPoints: isId
+          ? [
+              "Pengeluaran aktual: Rp 0",
+              budget > 0 ? `Plafon anggaran: ${formatRupiah(budget)}` : "Plafon anggaran: Belum ditentukan",
+              "Status telemetri: Siaga pemantauan",
+            ]
+          : [
+              "Actual spending: Rp 0",
+              budget > 0 ? `Budget limit: ${formatRupiah(budget)}` : "Budget limit: Not configured",
+              "Telemetry status: Standby monitoring",
+            ],
+      },
+    };
+  }
+
   // Priority 1: Critical Budget Risk / Projected Overrun
   if (budget > 0 && budgetRisk === "AT RISK" && projectedVariance > 0) {
     return {
@@ -1379,23 +1412,48 @@ export function generateActionCenterInsight(options: {
     };
   }
 
-  // Priority 5: Calm on-track state
+  // Priority 5: Spending without Budget Ceiling Configured
+  if (budget === 0 && options.totalExpense > 0) {
+    return {
+      type: "healthy",
+      title: isId
+        ? `Pengeluaran ${formatRupiah(options.totalExpense)} belum memiliki pagu anggaran`
+        : `Spending of ${formatRupiah(options.totalExpense)} has no budget limit`,
+      subtitle: isId
+        ? "Tetapkan batas anggaran bulanan untuk mengaktifkan sistem peringatan dini deviasi dan proyeksi akhir bulan."
+        : "Set a monthly budget ceiling to unlock automated deviation alerts and month-end projections.",
+      badge: isId ? "PANDUAN ANGGARAN" : "BUDGET GUIDANCE",
+      actionLabel: isId ? "Atur anggaran" : "Set budget",
+      actionType: "budget",
+      drillDownDetails: {
+        headline: isId ? "Pagu Anggaran Belum Ditetapkan" : "Unbudgeted Outflow Tracking",
+        explanation: isId
+          ? "Menetapkan batas anggaran bulanan melindungi rasio tabungan dan mengaktifkan deteksi dini laju pembengkakan dana."
+          : "Setting a monthly budget ceiling protects your savings rate and unlocks early detection of spending velocity overruns.",
+        bulletPoints: isId
+          ? [
+              `Pengeluaran berjalan: ${formatRupiah(options.totalExpense)}`,
+              "Pagu anggaran aktif: Belum ditentukan",
+              "Perlindungan deviasi: Memerlukan batas anggaran",
+            ]
+          : [
+              `Current spending: ${formatRupiah(options.totalExpense)}`,
+              "Active budget ceiling: Unset",
+              "Deviation protection: Requires active budget",
+            ],
+      },
+    };
+  }
+
+  // Priority 6: Calm on-track state (budget > 0)
   return {
     type: "healthy",
     title: isId
-      ? (budget > 0
-          ? "Pengeluaran Anda terkendali sesuai anggaran bulan ini"
-          : "Pengeluaran bulanan terpantau stabil")
-      : (budget > 0
-          ? "You're on track for this month's budget"
-          : "Monthly spending is steady"),
+      ? "Pengeluaran Anda terkendali sesuai anggaran bulan ini"
+      : "You're on track for this month's budget",
     subtitle: isId
-      ? (budget > 0
-          ? `${consumedPct.toFixed(0)}% terpakai dengan ${timePct.toFixed(0)}% bulan telah berjalan.`
-          : "Arus kas dan tempo belanja berada dalam batas normal.")
-      : (budget > 0
-          ? `${consumedPct.toFixed(0)}% consumed with ${timePct.toFixed(0)}% of the month elapsed.`
-          : "Cashflow and spending pace are within normal parameters."),
+      ? `${consumedPct.toFixed(0)}% terpakai dengan ${timePct.toFixed(0)}% bulan telah berjalan.`
+      : `${consumedPct.toFixed(0)}% consumed with ${timePct.toFixed(0)}% of the month elapsed.`,
     badge: isId ? "SESUAI JALUR" : "ON TRACK",
     actionLabel: isId ? "Lihat statistik" : "View statistics",
     actionType: "statistics",
@@ -1406,12 +1464,12 @@ export function generateActionCenterInsight(options: {
         : "Current spending rate is aligned with your monthly schedule.",
       bulletPoints: isId
         ? [
-            `Arus kas bersih: ${options.totalExpense === 0 ? "Belum ada pengeluaran" : "Terkendali"}`,
-            `Tempo pengeluaran: Seimbang`,
+            "Arus kas bersih: Terkendali",
+            "Tempo pengeluaran: Seimbang",
           ]
         : [
-            `Net cashflow: ${options.totalExpense === 0 ? "No expenses recorded" : "Controlled"}`,
-            `Spending pace: Balanced`,
+            "Net cashflow: Controlled",
+            "Spending pace: Balanced",
           ],
     },
   };

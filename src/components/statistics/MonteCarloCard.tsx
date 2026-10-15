@@ -3,7 +3,7 @@ import {
   runMonteCarloSimulation,
   type MonteCarloSimulationResult,
 } from "../../lib/monteCarloEngine";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -39,6 +39,7 @@ export function MonteCarloCard({
 }: MonteCarloCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const isDark = theme !== "light";
   const isIndonesian = language === "id";
 
@@ -194,7 +195,7 @@ export function MonteCarloCard({
             className="text-[18px] font-semibold tracking-tight truncate tabular-nums"
             style={{ color: "var(--text-primary)" }}
           >
-            {hideBalance ? "••••••" : formatRupiah(terminalValues.p50)}
+            {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(terminalValues.p50)}
           </p>
           <span
             className="text-[10px] font-medium mt-1"
@@ -309,13 +310,13 @@ export function MonteCarloCard({
                         {isIndonesian ? "Horizon:" : "Horizon:"} {label}
                       </p>
                       <p className="text-[var(--text-primary)] font-bold tabular-nums">
-                        Median (P50): {hideBalance ? "••••••" : formatRupiah(data.p50)}
+                        Median (P50): {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(data.p50)}
                       </p>
                       <p className="text-[var(--text-tertiary)] text-[10px] tabular-nums">
-                        {isIndonesian ? "Dasar Bear (P10):" : "Bear Floor (P10):"} {hideBalance ? "••••••" : formatRupiah(data.p10)}
+                        {isIndonesian ? "Dasar Bear (P10):" : "Bear Floor (P10):"} {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(data.p10)}
                       </p>
                       <p className="text-[var(--text-secondary)] text-[10px] tabular-nums">
-                        {isIndonesian ? "Puncak Bull (P90):" : "Bull High (P90):"} {hideBalance ? "••••••" : formatRupiah(data.p90)}
+                        {isIndonesian ? "Puncak Bull (P90):" : "Bull High (P90):"} {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(data.p90)}
                       </p>
                     </div>
                   );
@@ -363,7 +364,7 @@ export function MonteCarloCard({
             {isIndonesian ? "Dasar Pasar Bear (P10)" : "Bear Market Floor (10th %ile)"}
           </span>
           <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate tabular-nums">
-            {hideBalance ? "••••••" : formatRupiah(terminalValues.p10)}
+            {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(terminalValues.p10)}
           </p>
         </div>
         <div
@@ -377,7 +378,7 @@ export function MonteCarloCard({
             {isIndonesian ? "Puncak Pasar Bull (P90)" : "Bull Market Ceiling (90th %ile)"}
           </span>
           <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate tabular-nums">
-            {hideBalance ? "••••••" : formatRupiah(terminalValues.p90)}
+            {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(terminalValues.p90)}
           </p>
         </div>
       </div>

@@ -151,36 +151,13 @@ export function useQuota() {
 
   // Validate widget activation and prompt paywall if restricted
   const checkWidgetAndPrompt = useCallback(
-    (widgetId: string, currentActiveCount: number): boolean => {
-      if (isWidgetProOnly(widgetId) && !isPremium) {
-        openPaywall({
-          feature: "advanced_widget",
-          title: isIndonesian
-            ? "Widget Analitik Eksekutif"
-            : "Executive Telemetry Widget",
-          description: isIndonesian
-            ? "Widget ini menyajikan diagnostik mendalam dan khusus tersedia untuk anggota Accrual Pro."
-            : "This widget provides deep financial telemetry and is exclusively available for Accrual Pro members.",
-        });
-        return false;
-      }
-
-      if (!canAddHomeWidget(currentActiveCount)) {
-        openPaywall({
-          feature: "dashboard_limit",
-          title: isIndonesian
-            ? "Batas Slot Widget Tercapai"
-            : "Widget Slot Limit Reached",
-          description: isIndonesian
-            ? `Akun standar dibatasi maksimal ${MONETIZATION_LIMITS.FREE_DASHBOARD_MAX_SLOTS} widget aktif di Home. Pasang widget tanpa batas dengan Accrual Pro.`
-            : `Standard accounts can pin up to ${MONETIZATION_LIMITS.FREE_DASHBOARD_MAX_SLOTS} active widgets on Home. Unlock unlimited widgets with Accrual Pro.`,
-        });
-        return false;
-      }
-
+    (_widgetId: string, _currentActiveCount: number): boolean => {
+      // Home dashboard widgets are open to all users without inline locks.
+      // Pro monetization is triggered on deep diagnostic drill-downs (e.g. Capital Health audit),
+      // multi-ledger space creation, and luxury financial report exports.
       return true;
     },
-    [isWidgetProOnly, isPremium, canAddHomeWidget, openPaywall, isIndonesian]
+    []
   );
 
   // Check ledger creation limit
@@ -201,8 +178,8 @@ export function useQuota() {
             ? "Batas Ruang Buku Kas Tercapai"
             : "Ledger Space Limit Reached",
           description: isIndonesian
-            ? `Akun standar dapat mengelola ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} ruang buku kas (Personal). Beralih ke Accrual Pro untuk membuat ruang multi-buku tanpa batas.`
-            : `Standard accounts can manage ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} ledger space (Personal). Upgrade to Accrual Pro for unlimited spaces.`,
+            ? `Akun standar dapat mengelola hingga ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} ruang buku kas (Personal & 1 Ruang Tambahan). Beralih ke Accrual Pro untuk membuat ruang multi-buku tanpa batas.`
+            : `Standard accounts can manage up to ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} ledger spaces (Personal & 1 Additional Space). Upgrade to Accrual Pro for unlimited spaces.`,
         });
         return false;
       }

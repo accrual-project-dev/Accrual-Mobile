@@ -26,6 +26,7 @@ import { BottomSheet } from "../ui/BottomSheet";
 interface CategoryBudgetDeckProps {
   onOpenManageCategories?: () => void;
   hideBalance?: boolean;
+  isEditMode?: boolean;
 }
 
 interface EnvelopeItem {
@@ -42,6 +43,7 @@ interface EnvelopeItem {
 export function CategoryBudgetDeck({
   onOpenManageCategories,
   hideBalance = false,
+  isEditMode = false,
 }: CategoryBudgetDeckProps) {
   const { data: categories = [] } = useCategories();
   const { data: allTxs = [] } = useAllTransactions();
@@ -142,34 +144,36 @@ export function CategoryBudgetDeck({
           </p>
         </div>
 
-        {/* Action Controls: Info Modal & Manage Categories */}
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("light");
-              setIsInfoOpen(true);
-            }}
-            className="w-7 h-7 rounded-xl flex items-center justify-center hover:bg-[var(--glass-fill)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-            title={isIndonesian ? "Info Detail Anggaran" : "Budget Envelope Info"}
-          >
-            <Info size={14} strokeWidth={1.75} />
-          </button>
-
-          {onOpenManageCategories && (
+        {/* Action Controls: Info Modal & Manage Categories - Hidden during Edit Mode to avoid collision */}
+        {!isEditMode && (
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
-                onOpenManageCategories();
+                setIsInfoOpen(true);
               }}
-              className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              className="w-7 h-7 rounded-xl flex items-center justify-center hover:bg-[var(--glass-fill)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              title={isIndonesian ? "Info Detail Anggaran" : "Budget Envelope Info"}
             >
-              <span>{isIndonesian ? "Atur" : "Manage"}</span>
-              <ChevronRight size={13} />
+              <Info size={14} strokeWidth={1.75} />
             </button>
-          )}
-        </div>
+
+            {onOpenManageCategories && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  onOpenManageCategories();
+                }}
+                className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                <span>{isIndonesian ? "Atur" : "Manage"}</span>
+                <ChevronRight size={13} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Case 1: User has not configured any category budgets yet (Gentle Setup Prompt) */}

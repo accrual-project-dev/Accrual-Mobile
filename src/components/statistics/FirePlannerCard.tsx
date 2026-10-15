@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import {
   Flame,
   ChevronRight,
@@ -28,6 +28,7 @@ export function FirePlannerCard({
 }: FirePlannerCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const isDark = theme !== "light";
   const isIndonesian = language === "id";
 
@@ -188,7 +189,7 @@ export function FirePlannerCard({
               </span>
               <span className="text-[11px] font-medium text-[var(--text-tertiary)] tabular-nums">
                 {isIndonesian ? "dari" : "of"}{" "}
-                {hideBalance ? "••••••" : formatRupiah(standardFireNumber)}
+                {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(standardFireNumber)}
               </span>
             </div>
           </div>
@@ -252,7 +253,7 @@ export function FirePlannerCard({
                 )}
               </div>
               <p className="text-[12px] font-bold tracking-tight text-[var(--text-primary)] truncate tabular-nums">
-                {hideBalance ? "••••••" : formatRupiah(m.target)}
+                {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(m.target)}
               </p>
             </div>
             <div

@@ -64,7 +64,41 @@ export interface MonteCarloSimulationResult {
     terminalDifference: number;
     terminalPercentageLoss: number;
   } | null;
+  cashBufferRecommendation: CashBufferRecommendation;
+  savingsAccelerationLevers: SavingsAccelerationLevers;
   insights: string[];
+}
+
+export interface CashBufferRecommendation {
+  monthsMin: number;
+  monthsMax: number;
+  amountMin: number;
+  amountMax: number;
+  currentCoverageMonths: number;
+  adequacyStatus: "Optimal" | "Adequate" | "Deficit";
+  recommendationText: string;
+}
+
+export interface AccelerationLeverItem {
+  percentageChange: number;
+  adjustedMonthlySavings: number;
+  adjustedTimelineYears: number | null;
+  yearsSaved: number;
+  monthlySavingsDiff: number;
+}
+
+export interface SavingsAccelerationLevers {
+  baseTimelineYears: number | null;
+  tier15Pct: AccelerationLeverItem;
+  tier30Pct: AccelerationLeverItem;
+  expenseCut10Pct: {
+    reducedMonthlyBurn: number;
+    newFireTarget: number;
+    fireTargetReduction: number;
+    adjustedMonthlySavings: number;
+    adjustedTimelineYears: number | null;
+    yearsSaved: number;
+  };
 }
 
 /**
@@ -349,6 +383,23 @@ export function runMonteCarloSimulation(
     );
   }
 
+  // Cash buffer recommendation for SORR mitigation
+  const cashBufferRecommendation = calculateCashBufferRecommendation({
+    annualExpenses: config.annualExpenses,
+    currentNetWorth: config.initialNetWorth,
+    language: config.language,
+  });
+
+  // Dynamic savings acceleration levers
+  const netRealReturn = Math.max(0.01, config.expectedAnnualReturn - config.annualInflation);
+  const savingsAccelerationLevers = calculateSavingsAccelerationLevers({
+    initialNetWorth: config.initialNetWorth,
+    annualExpenses: config.annualExpenses,
+    monthlyContribution: config.monthlyContribution,
+    safeWithdrawalRate: config.safeWithdrawalRate,
+    netRealReturn,
+  });
+
   return {
     config,
     yearlyTrajectory,
@@ -362,7 +413,175 @@ export function runMonteCarloSimulation(
     successRate,
     resilienceRating,
     sequenceOfReturnsImpact,
+    cashBufferRecommendation,
+    savingsAccelerationLevers,
     insights,
+  };
+}
+
+/**
+ * Calculates projected years to reach target capital under constant real return
+ */
+export function calculateTimelineYears(
+  capital: number,
+  target: number,
+  monthlySavings: number,
+  realReturn: number,
+  maxYears = 40
+): number | null {
+  if (capital >= target) return 0;
+  const annualSavings = monthlySavings * 12;
+  if (annualSavings <= 0 && realReturn <= 0) return null;
+
+  let bal = capital;
+  for (let yr = 1; yr <= maxYears; yr++) {
+    bal = (bal + annualSavings) * (1 + realReturn);
+    if (bal >= target) return yr;
+  }
+  return null;
+}
+
+/**
+ * Calculates recommended liquid cash buffer (18-24 months of essential burn)
+ * to neutralize Sequence of Returns Risk (SORR) in early retirement.
+ */
+export function calculateCashBufferRecommendation({
+  annualExpenses,
+  currentNetWorth,
+  language = "en",
+}: {
+  annualExpenses: number;
+  currentNetWorth: number;
+  language?: "en" | "id";
+}): CashBufferRecommendation {
+  const monthlyBurn = Math.max(1, annualExpenses / 12);
+  const amountMin = Math.round(monthlyBurn * 18);
+  const amountMax = Math.round(monthlyBurn * 24);
+  const currentCoverageMonths = Number((currentNetWorth / monthlyBurn).toFixed(1));
+
+  let adequacyStatus: CashBufferRecommendation["adequacyStatus"] = "Deficit";
+  if (currentCoverageMonths >= 24) adequacyStatus = "Optimal";
+  else if (currentCoverageMonths >= 12) adequacyStatus = "Adequate";
+
+  const isId = language === "id";
+  const recommendationText = isId
+    ? adequacyStatus === "Optimal"
+      ? `Ketahanan likuiditas prima (${currentCoverageMonths} bulan pengeluaran). Dana penyangga melebihi batas aman 24 bulan untuk mitigasi krisis dini (SORR).`
+      : adequacyStatus === "Adequate"
+        ? `Cakupan likuiditas cukup (${currentCoverageMonths} bulan). Disarankan menambah cadangan hingga 18–24 bulan pengeluaran sebelum memasuki fase penarikan.`
+        : `Defisit dana penyangga (${currentCoverageMonths} bulan). Sangat disarankan mengamankan 18–24 bulan biaya hidup dalam instrumen pasar uang bebas risiko.`
+    : adequacyStatus === "Optimal"
+      ? `Prime liquidity resilience (${currentCoverageMonths} months of burn). Reserves exceed the 24-month threshold protecting against Sequence of Returns shocks.`
+      : adequacyStatus === "Adequate"
+        ? `Adequate liquidity buffer (${currentCoverageMonths} months). Expanding reserves to 18–24 months before retirement drawdown is recommended.`
+        : `Buffer deficit (${currentCoverageMonths} months). Storing 18–24 months of essential expenses in risk-free liquid cash is strongly advised to prevent selling in a downturn.`;
+
+  return {
+    monthsMin: 18,
+    monthsMax: 24,
+    amountMin,
+    amountMax,
+    currentCoverageMonths,
+    adequacyStatus,
+    recommendationText,
+  };
+}
+
+/**
+ * Computes savings acceleration levers (+15% savings, +30% savings, -10% burn rate)
+ */
+export function calculateSavingsAccelerationLevers({
+  initialNetWorth,
+  annualExpenses,
+  monthlyContribution,
+  safeWithdrawalRate = 0.04,
+  netRealReturn = 0.06,
+}: {
+  initialNetWorth: number;
+  annualExpenses: number;
+  monthlyContribution: number;
+  safeWithdrawalRate?: number;
+  netRealReturn?: number;
+}): SavingsAccelerationLevers {
+  const standardFireTarget = Math.round(annualExpenses / safeWithdrawalRate);
+  const baseTimeline = calculateTimelineYears(
+    initialNetWorth,
+    standardFireTarget,
+    monthlyContribution,
+    netRealReturn
+  );
+
+  // Tier 15%
+  const savings15 = Math.round(monthlyContribution * 1.15);
+  const timeline15 = calculateTimelineYears(
+    initialNetWorth,
+    standardFireTarget,
+    savings15,
+    netRealReturn
+  );
+  const diff15 = Math.round(monthlyContribution * 0.15);
+  const yearsSaved15 =
+    baseTimeline !== null && timeline15 !== null
+      ? Math.max(0, baseTimeline - timeline15)
+      : 0;
+
+  // Tier 30%
+  const savings30 = Math.round(monthlyContribution * 1.30);
+  const timeline30 = calculateTimelineYears(
+    initialNetWorth,
+    standardFireTarget,
+    savings30,
+    netRealReturn
+  );
+  const diff30 = Math.round(monthlyContribution * 0.30);
+  const yearsSaved30 =
+    baseTimeline !== null && timeline30 !== null
+      ? Math.max(0, baseTimeline - timeline30)
+      : 0;
+
+  // Expense Cut 10%
+  const monthlyBurn = annualExpenses / 12;
+  const reducedMonthlyBurn = Math.round(monthlyBurn * 0.90);
+  const newAnnualExpenses = reducedMonthlyBurn * 12;
+  const newFireTarget = Math.round(newAnnualExpenses / safeWithdrawalRate);
+  const fireTargetReduction = standardFireTarget - newFireTarget;
+  const monthlySavingsDiffFromExpense = Math.round(monthlyBurn * 0.10);
+  const adjustedSavingsWithCut = monthlyContribution + monthlySavingsDiffFromExpense;
+  const timelineCut = calculateTimelineYears(
+    initialNetWorth,
+    newFireTarget,
+    adjustedSavingsWithCut,
+    netRealReturn
+  );
+  const yearsSavedCut =
+    baseTimeline !== null && timelineCut !== null
+      ? Math.max(0, baseTimeline - timelineCut)
+      : 0;
+
+  return {
+    baseTimelineYears: baseTimeline,
+    tier15Pct: {
+      percentageChange: 15,
+      adjustedMonthlySavings: savings15,
+      adjustedTimelineYears: timeline15,
+      yearsSaved: yearsSaved15,
+      monthlySavingsDiff: diff15,
+    },
+    tier30Pct: {
+      percentageChange: 30,
+      adjustedMonthlySavings: savings30,
+      adjustedTimelineYears: timeline30,
+      yearsSaved: yearsSaved30,
+      monthlySavingsDiff: diff30,
+    },
+    expenseCut10Pct: {
+      reducedMonthlyBurn,
+      newFireTarget,
+      fireTargetReduction,
+      adjustedMonthlySavings: adjustedSavingsWithCut,
+      adjustedTimelineYears: timelineCut,
+      yearsSaved: yearsSavedCut,
+    },
   };
 }
 

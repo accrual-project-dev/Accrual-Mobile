@@ -145,14 +145,22 @@ export function CompactAIInsightsHalf({
   return (
     <CompactShell title={isIndonesian ? "Wawasan Finansial" : "Financial Insight"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex items-center py-1">
-        <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-snug line-clamp-3">
+        <p className="text-[11.5px] font-semibold text-[var(--text-primary)] leading-snug line-clamp-2">
           {insightTitle}
         </p>
       </div>
 
       <div className="flex items-center justify-between pt-1.5 border-t border-black/5 dark:border-white/5 text-[10px] font-medium text-[var(--text-tertiary)] shrink-0">
-        <div className="flex items-center gap-1">
-          <Zap size={11} />
+        <div className="flex items-center gap-1.5">
+          <div
+            className="w-4 h-4 rounded-md flex items-center justify-center shrink-0"
+            style={{
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+            }}
+          >
+            <Zap size={9.5} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+          </div>
           <span>{isIndonesian ? "Diagnostik" : "Diagnostic"}</span>
         </div>
         {insightCategory && (
@@ -192,12 +200,12 @@ export function CompactGoalsHalf({
   return (
     <CompactShell title={isIndonesian ? "Target Utama" : "Top Goal"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
-        <div className="flex items-center justify-between">
-          <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate flex-1 min-w-0 pr-1">
             {goalTitle}
           </p>
           <span
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md"
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
             style={{
               background: "var(--glass-fill)",
               color: "var(--text-secondary)",
@@ -247,12 +255,12 @@ export function CompactBillsHalf({
   return (
     <CompactShell title={isIndonesian ? "Tagihan" : "Next Bill"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
-        <div className="flex items-center justify-between">
-          <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate flex-1 min-w-0 pr-1">
             {nextBillName}
           </p>
           <span
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md"
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
             style={{
               background: "var(--glass-fill)",
               color: "var(--text-secondary)",
@@ -267,8 +275,16 @@ export function CompactBillsHalf({
         </p>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
-        <Clock size={11} />
+      <div className="flex items-center gap-1.5 text-[10px] font-medium text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
+        <div
+          className="w-4 h-4 rounded-md flex items-center justify-center shrink-0"
+          style={{
+            background: "var(--glass-fill)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <Clock size={9.5} strokeWidth={1.75} className="text-[var(--text-primary)]" />
+        </div>
         <span>{isIndonesian ? "Siklus mendatang" : "Upcoming cycle"}</span>
       </div>
     </CompactShell>
@@ -293,12 +309,12 @@ export function CompactTopCategoriesHalf({
   return (
     <CompactShell title={isIndonesian ? "Kategori Teratas" : "Top Category"} onOpenDetail={onOpenDetail}>
       <div className="flex-1 flex flex-col justify-center py-1">
-        <div className="flex items-center justify-between">
-          <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate flex-1 min-w-0 pr-1">
             {topCategoryName}
           </span>
           <span
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md"
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
             style={{
               background: "var(--glass-fill)",
               color: "var(--text-secondary)",
@@ -354,7 +370,7 @@ export function CompactCategoryBudgetsHalf({
         <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
           <div>
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate max-w-[85px]">
+              <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate flex-1 min-w-0 pr-1">
                 {topEnvelope.name}
               </span>
               <span

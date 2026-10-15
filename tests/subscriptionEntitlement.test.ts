@@ -42,8 +42,8 @@ describe("Accrual Phase 1: Subscription Entitlement & Monetization Engine", () =
       expect(MONETIZATION_LIMITS.FREE_DASHBOARD_MAX_SLOTS).toBe(4);
     });
 
-    it("enforces free tier limit of 1 personal ledger space", () => {
-      expect(MONETIZATION_LIMITS.FREE_MAX_LEDGERS).toBe(1);
+    it("enforces free tier limit of 2 ledger spaces (personal + 1 additional)", () => {
+      expect(MONETIZATION_LIMITS.FREE_MAX_LEDGERS).toBe(2);
     });
   });
 

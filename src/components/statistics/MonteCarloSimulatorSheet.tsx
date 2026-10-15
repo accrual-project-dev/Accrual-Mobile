@@ -4,7 +4,7 @@ import {
   runMonteCarloSimulation,
   type MonteCarloSimulationResult,
 } from "../../lib/monteCarloEngine";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 import { BottomSheet } from "../ui/BottomSheet";
 import {
@@ -13,8 +13,8 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle2,
-  ShieldCheck,
   Target,
+  Shield,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -46,6 +46,7 @@ export function MonteCarloSimulatorSheet({
   hideBalance = false,
 }: MonteCarloSimulatorSheetProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
 
   // Parameters
   const [horizonYears, setHorizonYears] = useState<number>(20);
@@ -103,6 +104,7 @@ export function MonteCarloSimulatorSheet({
     terminalValues,
     yearlyTrajectory,
     sequenceOfReturnsImpact,
+    cashBufferRecommendation,
     insights,
   } = simulation;
 
@@ -255,7 +257,7 @@ export function MonteCarloSimulatorSheet({
               style={{ color: "var(--text-tertiary)" }}
             >
               {isIndonesian ? "Target Standard FIRE: " : "Standard FIRE Goal: "}
-              {hideBalance ? "••••••" : formatRupiah(fireMilestones.standard.targetAmount)}
+              {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(fireMilestones.standard.targetAmount)}
             </p>
           </div>
 
@@ -372,7 +374,7 @@ export function MonteCarloSimulatorSheet({
                 {isIndonesian ? "Kontribusi Bulanan" : "Monthly Contribution"}
               </span>
               <span className="font-bold" style={{ color: "var(--text-primary)" }}>
-                {hideBalance ? "••••••" : formatRupiah(monthlySavings)} {isIndonesian ? "/ bln" : "/ mo"}
+                {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(monthlySavings)} {isIndonesian ? "/ bln" : "/ mo"}
               </span>
             </div>
             <input
@@ -599,17 +601,17 @@ export function MonteCarloSimulatorSheet({
                               {isIndonesian ? "Garis Waktu" : "Timeline"}: {label}
                             </p>
                             <p className="text-[var(--text-primary)] font-bold">
-                              Median: {hideBalance ? "••••••" : formatRupiah(data.p50)}
+                              Median: {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(data.p50)}
                             </p>
                             <p className="text-[var(--text-tertiary)] text-[10px]">
-                              Bear (P10): {hideBalance ? "••••••" : formatRupiah(data.p10)}
+                              Bear (P10): {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(data.p10)}
                             </p>
                             <p className="text-[var(--text-secondary)] text-[10px]">
-                              Bull (P90): {hideBalance ? "••••••" : formatRupiah(data.p90)}
+                              Bull (P90): {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(data.p90)}
                             </p>
                             <p className="text-[10px] pt-1 mt-1 border-t border-[var(--glass-border)] text-[var(--text-tertiary)]">
                               {isIndonesian ? "Target FIRE: " : "FIRE Target: "}
-                              {hideBalance ? "••••••" : formatRupiah(data.fireTarget)}
+                              {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(data.fireTarget)}
                             </p>
                           </div>
                         );
@@ -662,7 +664,7 @@ export function MonteCarloSimulatorSheet({
                   {isIndonesian ? "Persentil ke-10 (Bear)" : "10th %ile (Bear)"}
                 </p>
                 <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
-                  {hideBalance ? "••••••" : formatRupiah(terminalValues.p10)}
+                  {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(terminalValues.p10)}
                 </p>
               </div>
               <div
@@ -676,7 +678,7 @@ export function MonteCarloSimulatorSheet({
                   {isIndonesian ? "Ekspektasi Median" : "Median Expected"}
                 </p>
                 <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
-                  {hideBalance ? "••••••" : formatRupiah(terminalValues.p50)}
+                  {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(terminalValues.p50)}
                 </p>
               </div>
               <div
@@ -690,7 +692,7 @@ export function MonteCarloSimulatorSheet({
                   {isIndonesian ? "Persentil ke-90 (Bull)" : "90th %ile (Bull)"}
                 </p>
                 <p className="text-[13px] font-semibold tracking-tight mt-1 text-[var(--text-primary)]">
-                  {hideBalance ? "••••••" : formatRupiah(terminalValues.p90)}
+                  {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(terminalValues.p90)}
                 </p>
               </div>
             </div>
@@ -733,7 +735,7 @@ export function MonteCarloSimulatorSheet({
                     )}
                   </div>
                   <span className="text-[13px] font-semibold text-[var(--text-primary)]">
-                    {hideBalance ? "••••••" : formatRupiah(m.targetAmount)}
+                    {hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••` : formatWithPreferred(m.targetAmount)}
                   </span>
                 </div>
 
@@ -846,36 +848,90 @@ export function MonteCarloSimulatorSheet({
               </div>
             </div>
 
+            {/* Dynamic Cash Buffer Playbook Card */}
             <div
-              className="p-3.5 rounded-[20px]"
+              className="p-4 rounded-[22px] space-y-3"
               style={{
-                background: "var(--glass-fill)",
+                background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
               }}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck size={14} style={{ color: "var(--text-secondary)" }} />
-                <span className="text-[11px] font-bold text-[var(--text-primary)]">
-                  {isIndonesian ? "Rekomendasi Lindung Nilai" : "Hedging Recommendations"}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--glass-fill-strong)",
+                      border: "1px solid var(--glass-border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Shield size={13.5} strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <span className="text-[12px] font-bold text-[var(--text-primary)] block">
+                      {isIndonesian ? "Protokol Cadangan Likuid (Cash Cushion)" : "Liquid Cash Cushion Playbook"}
+                    </span>
+                    <span className="text-[10px] text-[var(--text-tertiary)] block">
+                      {isIndonesian
+                        ? "Penyangga 18–24 bulan untuk menetralkan risiko SORR"
+                        : "18–24 months buffer to neutralize early SORR risks"}
+                    </span>
+                  </div>
+                </div>
+                <span
+                  className="text-[9.5px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                  style={{
+                    background: "var(--glass-fill-strong)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {isIndonesian
+                    ? cashBufferRecommendation.adequacyStatus === "Optimal"
+                      ? "Optimal"
+                      : cashBufferRecommendation.adequacyStatus === "Adequate"
+                        ? "Cukup"
+                        : "Perlu Ditambah"
+                    : cashBufferRecommendation.adequacyStatus}
                 </span>
               </div>
-              <ul className="text-[11px] space-y-1 text-[var(--text-tertiary)] list-disc pl-4">
-                <li>
+
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-baseline justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                    {isIndonesian ? "Target Cadangan Tunai / Pasar Uang" : "Target Cash / Money Market Reserve"}
+                  </span>
+                  <span className="text-[14px] font-bold text-[var(--text-primary)] tabular-nums mt-0.5 block">
+                    {hideBalance
+                      ? `${currencyMeta?.symbol || "Rp"} ••••••`
+                      : `${formatWithPreferred(cashBufferRecommendation.amountMin)} – ${formatWithPreferred(cashBufferRecommendation.amountMax)}`}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                    {isIndonesian ? "Probabilitas Ketahanan" : "Survival Rate"}
+                  </span>
+                  <span className="text-[14px] font-bold text-[var(--text-primary)] tabular-nums mt-0.5 block">
+                    {successRate}%
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+                {cashBufferRecommendation.recommendationText}
+              </p>
+
+              <div
+                className="pt-2.5 border-t border-[var(--glass-border)] text-[10.5px] leading-relaxed text-[var(--text-secondary)] space-y-1"
+              >
+                <p>
+                  <strong>{isIndonesian ? "Aturan Eksekusi:" : "Execution Protocol:"}</strong>{" "}
                   {isIndonesian
-                    ? "Pertahankan 6–12 bulan biaya hidup dalam instrumen pasar uang yang sangat likuid."
-                    : "Maintain 6–12 months of living expenses in ultra-liquid money market instruments."}
-                </li>
-                <li>
-                  {isIndonesian
-                    ? "Gunakan strategi penarikan dinamis alih-alih penarikan nominal tetap selama pasar bear (lesu)."
-                    : "Utilize a dynamic withdrawal strategy rather than fixed nominal withdrawals during bear markets."}
-                </li>
-                <li>
-                  {isIndonesian
-                    ? "Bangun beberapa sumber arus modal masuk yang tidak berkorelasi (model Barista FIRE)."
-                    : "Establish multiple non-correlated capital inflows (Barista FIRE model)."}
-                </li>
-              </ul>
+                    ? "Saat terjadi crash pasar saham dini, biayai gaya hidup sepenuhnya dari dana likuid ini tanpa menjual unit reksa dana/saham hingga pasar pulih kembali ke nilai wajar."
+                    : "During early market drawdowns, fund living expenses exclusively from this cash buffer without selling equity units until valuations normalize."}
+                </p>
+              </div>
             </div>
           </div>
         )}

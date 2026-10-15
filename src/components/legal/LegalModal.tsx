@@ -21,12 +21,14 @@ export interface LegalModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: "privacy" | "terms" | "security";
+  zIndex?: number;
 }
 
 export function LegalModal({
   isOpen,
   onClose,
   initialTab = "privacy",
+  zIndex = 1250,
 }: LegalModalProps) {
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
@@ -45,7 +47,7 @@ export function LegalModal({
     : "Legal & Privacy Information";
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title={modalTitle}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} title={modalTitle} zIndex={zIndex}>
       <div
         className="px-5 space-y-4 text-left max-w-lg mx-auto"
         style={{

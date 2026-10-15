@@ -77,10 +77,61 @@ const SYNC_STEPS: StepItem[] = [
 const WINDOW_HEIGHT = 400; // Fixed optical viewport height
 const ROW_HEIGHT = 100;    // Row height per step
 
+// Minimum scramble duration (500ms) ensuring the luxury cipher animation is visible and elegant
+const MIN_SCRAMBLE_MS = 500;
+// Gentle reading pause (320ms) after the cascade finishes revealing before the tumbler advances
+const DWELL_AFTER_REVEAL_MS = 320;
+// Resilient fallback safety timeout (10s) to guarantee zero infinite lockups in case of offline/network issues
+const SAFETY_STEP_TIMEOUT_MS = 10000;
+
+function checkStepMilestoneReady(
+  stepIndex: number,
+  state: {
+    isPreview: boolean;
+    isAssetsLoaded: boolean;
+    isDataReady: boolean;
+    progress?: number;
+    totalCount: number;
+  }
+): boolean {
+  if (state.isPreview) {
+    // In preview mode, steps progress sequentially based on timer
+    return true;
+  }
+
+  switch (stepIndex) {
+    case 0: // vault: Initializing Client Cryptographic Vault
+      return true; // Local key allocation, ready once MIN_SCRAMBLE_MS completes
+
+    case 1: // assets: Preloading Vector Assets & Interface Telemetry
+      return state.isAssetsLoaded;
+
+    case 2: // ledgers: Resolving Spaces & Multi-Account State
+      return (state.progress !== undefined && state.progress >= 30) || state.isDataReady;
+
+    case 3: // entries: Synchronizing Financial Entries & Vault Records
+      return (
+        (state.progress !== undefined && state.progress >= 80) ||
+        state.totalCount > 0 ||
+        state.isDataReady
+      );
+
+    case 4: // integrity: Verifying Space Integrity & Zero-Knowledge
+      return state.isDataReady;
+
+    case 5: // ready: Vault Ready · Unlocking Dashboard
+      return state.isDataReady;
+
+    default:
+      return true;
+  }
+}
+
 export function InitialSyncScreen({
   onComplete,
   totalCount = 0,
   isDataReady = false,
+  progress = 0,
   isPreview = false,
 }: InitialSyncScreenProps) {
   const { theme } = useTheme();
@@ -90,6 +141,8 @@ export function InitialSyncScreen({
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
   const [isCompletedAll, setIsCompletedAll] = useState(false);
+  const [isStepResolved, setIsStepResolved] = useState(false);
+  const [stepStartTime, setStepStartTime] = useState(() => Date.now());
 
   // Preload real icons & preheat lazy route chunks in background
   useEffect(() => {
@@ -113,49 +166,71 @@ export function InitialSyncScreen({
     };
   }, []);
 
-  // Relaxed, comfortable luxury pacing: 2100ms (2.1s) per step so user can read smoothly
+  // Adaptive milestone watcher: continuously scrambles letters until background task completes & MIN_SCRAMBLE_MS met
   useEffect(() => {
-    if (isCompletedAll) return;
+    if (isCompletedAll || isStepResolved) return;
 
-    const timer = setTimeout(() => {
-      setActiveStepIndex((prev) => {
-        const next = prev + 1;
-        if (next < SYNC_STEPS.length - 1) {
-          return next;
-        }
-
-        // In real sync, hold before final step until assets & data are confirmed
-        if (!isPreview && (!isAssetsLoaded || !isDataReady)) {
-          return prev;
-        }
-
-        if (next === SYNC_STEPS.length - 1) {
-          return next;
-        }
-
-        setIsCompletedAll(true);
-        return prev;
+    const check = () => {
+      const elapsed = Date.now() - stepStartTime;
+      const isMilestoneReady = checkStepMilestoneReady(activeStepIndex, {
+        isPreview,
+        isAssetsLoaded,
+        isDataReady,
+        progress,
+        totalCount,
       });
-    }, 2100);
 
-    return () => clearTimeout(timer);
-  }, [activeStepIndex, isAssetsLoaded, isDataReady, isPreview, isCompletedAll]);
+      const isMinTimeMet = elapsed >= MIN_SCRAMBLE_MS;
+      const isSafetyTimeout = elapsed >= SAFETY_STEP_TIMEOUT_MS;
 
-  // Real sync completion handling
-  useEffect(() => {
-    if (isPreview) return;
+      if ((isMilestoneReady && isMinTimeMet) || isSafetyTimeout) {
+        setIsStepResolved(true);
+        return true;
+      }
+      return false;
+    };
 
-    if (activeStepIndex === SYNC_STEPS.length - 1) {
-      const exitTimer = setTimeout(() => {
+    if (check()) return;
+
+    const interval = setInterval(() => {
+      if (check()) {
+        clearInterval(interval);
+      }
+    }, 40);
+
+    return () => clearInterval(interval);
+  }, [
+    activeStepIndex,
+    isStepResolved,
+    stepStartTime,
+    isPreview,
+    isAssetsLoaded,
+    isDataReady,
+    progress,
+    totalCount,
+    isCompletedAll,
+  ]);
+
+  const handleRevealComplete = (index: number) => {
+    // Only respond to reveal completions for the current active step
+    if (index !== activeStepIndex) return;
+
+    if (activeStepIndex < SYNC_STEPS.length - 1) {
+      setTimeout(() => {
+        setActiveStepIndex((prev) => prev + 1);
+        setIsStepResolved(false);
+        setStepStartTime(Date.now());
+      }, DWELL_AFTER_REVEAL_MS);
+    } else {
+      // Final step completed ("Vault Ready · Unlocking Dashboard")
+      setTimeout(() => {
         setIsCompletedAll(true);
-        const finishTimer = setTimeout(() => {
+        setTimeout(() => {
           onComplete?.();
         }, 700);
-        return () => clearTimeout(finishTimer);
-      }, 1800);
-      return () => clearTimeout(exitTimer);
+      }, 1000);
     }
-  }, [activeStepIndex, isPreview, onComplete]);
+  };
 
   // Mathematically exact vertical centering offset:
   // (WINDOW_HEIGHT - ROW_HEIGHT) / 2 ensures step `activeStepIndex` is locked at exactly WINDOW_HEIGHT / 2 (dead center)
@@ -212,6 +287,8 @@ export function InitialSyncScreen({
             type="button"
             onClick={() => {
               setActiveStepIndex(0);
+              setIsStepResolved(false);
+              setStepStartTime(Date.now());
               setIsCompletedAll(false);
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-xl transition-all active:scale-95 cursor-pointer ${
@@ -324,8 +401,11 @@ export function InitialSyncScreen({
                   <EncryptedText
                     text={title}
                     isActive={isActive}
+                    isResolved={isActive ? isStepResolved : isCompleted}
                     isCompleted={isCompleted}
-                    revealDelayMs={28}
+                    revealDelayMs={24}
+                    scrambleIntervalMs={36}
+                    onRevealComplete={() => handleRevealComplete(index)}
                     encryptedClassName={
                       isDark
                         ? "text-white/70 font-mono tracking-wider"

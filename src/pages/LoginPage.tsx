@@ -9,6 +9,7 @@ import {
   User,
   Loader2,
   KeyRound,
+  Check,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
@@ -16,6 +17,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useToast } from "../contexts/ToastContext";
 import {
   getBiometricLoginCredentials,
   saveBiometricLoginCredentials,
@@ -27,6 +29,7 @@ import {
   formatAuthError,
   getPasswordStrength,
   getShowcaseSlides,
+  isValidEmail,
 } from "../components/auth/loginAuthHelpers";
 import { DynamicShowcaseCapsule } from "../components/auth/DynamicShowcaseCapsule";
 import { VaultPinLoginModal } from "../components/auth/VaultPinLoginModal";
@@ -39,6 +42,7 @@ export function LoginPage() {
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
+  const { showToast } = useToast();
   const isNativeIOS =
     typeof window !== "undefined" &&
     Capacitor.isNativePlatform() &&
@@ -54,10 +58,13 @@ export function LoginPage() {
   // Inline email form state
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState(
     () => getBiometricLoginCredentials()?.email || "",
   );
+  const [emailTouched, setEmailTouched] = useState(false);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -185,12 +192,85 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) return;
+
+    if (!email.trim()) {
+      triggerHaptic("heavy");
+      showToast(
+        isIndonesian
+          ? "Harap masukkan alamat surel Anda."
+          : "Please enter your email address.",
+        "info",
+      );
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      triggerHaptic("heavy");
+      showToast(
+        isIndonesian
+          ? "Format surel tidak valid (contoh: nama@domain.com)."
+          : "Invalid email format (e.g. name@domain.com).",
+        "error",
+      );
+      return;
+    }
+
+    if (!password) {
+      triggerHaptic("heavy");
+      showToast(
+        isIndonesian
+          ? "Harap masukkan kata sandi Anda."
+          : "Please enter your password.",
+        "info",
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      triggerHaptic("heavy");
+      showToast(
+        isIndonesian
+          ? "Kata sandi minimal 6 karakter."
+          : "Password must be at least 6 characters.",
+        "error",
+      );
+      return;
+    }
+
+    const isSignUpMode = viewMode === "welcome";
+
+    if (isSignUpMode) {
+      if (!confirmPassword) {
+        triggerHaptic("heavy");
+        showToast(
+          isIndonesian
+            ? "Harap konfirmasi kata sandi Anda."
+            : "Please confirm your password.",
+          "info",
+        );
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        triggerHaptic("heavy");
+        setError(
+          isIndonesian
+            ? "Konfirmasi kata sandi tidak cocok."
+            : "Passwords do not match.",
+        );
+        showToast(
+          isIndonesian
+            ? "Konfirmasi kata sandi tidak cocok."
+            : "Passwords do not match.",
+          "error",
+        );
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
     setMessage(null);
-
-    const isSignUpMode = viewMode === "welcome";
 
     if (isSignUpMode) {
       const { error, data } = await supabase.auth.signUp({
@@ -199,6 +279,7 @@ export function LoginPage() {
       });
       if (error) {
         setError(formatAuthError(error.message, isIndonesian));
+        showToast(formatAuthError(error.message, isIndonesian), "error");
       } else if (data?.session) {
         saveBiometricLoginCredentials(email.trim(), data.session, password);
         setSession(data.session);
@@ -209,6 +290,8 @@ export function LoginPage() {
             : "Account created! Check your email to verify, or sign in directly.",
         );
         setViewMode("login");
+        setConfirmPassword("");
+        setEmailTouched(false);
       }
     } else {
       const { error, data } = await supabase.auth.signInWithPassword({
@@ -217,6 +300,7 @@ export function LoginPage() {
       });
       if (error) {
         setError(formatAuthError(error.message, isIndonesian));
+        showToast(formatAuthError(error.message, isIndonesian), "error");
       } else if (data?.session) {
         saveBiometricLoginCredentials(email.trim(), data.session, password);
         setSession(data.session);
@@ -489,7 +573,11 @@ export function LoginPage() {
                         id="login-email"
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (error) setError(null);
+                        }}
+                        onBlur={() => setEmailTouched(true)}
                         placeholder="your.email@domain.com"
                         aria-label={
                           isIndonesian ? "Alamat email" : "Email address"
@@ -504,6 +592,18 @@ export function LoginPage() {
                         )}
                       />
                     </div>
+                    {emailTouched && email.trim().length > 0 && !isValidEmail(email) && (
+                      <p
+                        className={cn(
+                          "text-[10.5px] font-medium px-1 -mt-0.5",
+                          isDark ? "text-zinc-400" : "text-zinc-500",
+                        )}
+                      >
+                        {isIndonesian
+                          ? "Format surel belum valid (contoh: nama@domain.com)"
+                          : "Invalid email format (e.g. name@domain.com)"}
+                      </p>
+                    )}
 
                     {/* Password Input */}
                     <div className="relative">
@@ -632,6 +732,109 @@ export function LoginPage() {
                       </div>
                     )}
 
+                    {/* Confirm Password Input */}
+                    <div className="relative">
+                      <Lock
+                        size={15}
+                        className={cn(
+                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
+                          isDark ? "text-zinc-500" : "text-zinc-400",
+                        )}
+                      />
+                      <input
+                        id="register-confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (error) setError(null);
+                        }}
+                        placeholder={
+                          isIndonesian
+                            ? "Konfirmasi kata sandi"
+                            : "Confirm password"
+                        }
+                        aria-label={
+                          isIndonesian
+                            ? "Konfirmasi kata sandi"
+                            : "Confirm password"
+                        }
+                        required
+                        minLength={6}
+                        disabled={loading}
+                        className={cn(
+                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 border transition-colors",
+                          isDark
+                            ? "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            : "bg-white/70 border-black/[0.08] text-zinc-950 placeholder:text-zinc-400 shadow-[inset_0_1px_0_#ffffff]",
+                        )}
+                      />
+                      <button
+                        type="button"
+                        aria-label={
+                          showConfirmPassword
+                            ? isIndonesian
+                              ? "Sembunyikan konfirmasi kata sandi"
+                              : "Hide confirm password"
+                            : isIndonesian
+                              ? "Tampilkan konfirmasi kata sandi"
+                              : "Show confirm password"
+                        }
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className={cn(
+                          "absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none",
+                          isDark
+                            ? "text-zinc-500 hover:text-zinc-300"
+                            : "text-zinc-400 hover:text-zinc-700",
+                        )}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff size={15} strokeWidth={1.75} />
+                        ) : (
+                          <Eye size={15} strokeWidth={1.75} />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Confirm Password Inline Feedback */}
+                    {confirmPassword.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-1 -mt-0.5">
+                        {confirmPassword === password ? (
+                          <>
+                            <Check
+                              size={12}
+                              strokeWidth={2.2}
+                              className={isDark ? "text-zinc-300" : "text-zinc-700"}
+                            />
+                            <span
+                              className={cn(
+                                "text-[10.5px] font-medium",
+                                isDark ? "text-zinc-300" : "text-zinc-700",
+                              )}
+                            >
+                              {isIndonesian
+                                ? "Kata sandi cocok"
+                                : "Passwords match"}
+                            </span>
+                          </>
+                        ) : (
+                          <span
+                            className={cn(
+                              "text-[10.5px] font-medium",
+                              isDark ? "text-zinc-400" : "text-zinc-500",
+                            )}
+                          >
+                            {isIndonesian
+                              ? "Kata sandi belum cocok"
+                              : "Passwords do not match yet"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {error && (
                       <p
                         className={cn(
@@ -698,6 +901,9 @@ export function LoginPage() {
                           setShowEmailForm(false);
                           setError(null);
                           setMessage(null);
+                          setConfirmPassword("");
+                          setShowConfirmPassword(false);
+                          setEmailTouched(false);
                         }}
                         className={
                           isDark ? "hover:text-white" : "hover:text-zinc-900"
@@ -713,6 +919,9 @@ export function LoginPage() {
                           setShowEmailForm(true);
                           setError(null);
                           setMessage(null);
+                          setConfirmPassword("");
+                          setShowConfirmPassword(false);
+                          setEmailTouched(false);
                         }}
                         className={
                           isDark
@@ -892,6 +1101,9 @@ export function LoginPage() {
                         setShowEmailForm(false);
                         setError(null);
                         setMessage(null);
+                        setConfirmPassword("");
+                        setShowConfirmPassword(false);
+                        setEmailTouched(false);
                       }}
                       className={cn(
                         "font-semibold hover:underline cursor-pointer",
@@ -997,7 +1209,11 @@ export function LoginPage() {
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (error) setError(null);
+                        }}
+                        onBlur={() => setEmailTouched(true)}
                         placeholder="your.email@domain.com"
                         required
                         disabled={loading}
@@ -1009,6 +1225,18 @@ export function LoginPage() {
                         )}
                       />
                     </div>
+                    {emailTouched && email.trim().length > 0 && !isValidEmail(email) && (
+                      <p
+                        className={cn(
+                          "text-[10.5px] font-medium px-1 -mt-0.5",
+                          isDark ? "text-zinc-400" : "text-zinc-500",
+                        )}
+                      >
+                        {isIndonesian
+                          ? "Format surel belum valid (contoh: nama@domain.com)"
+                          : "Invalid email format (e.g. name@domain.com)"}
+                      </p>
+                    )}
 
                     {/* Password Input */}
                     <div className="relative">
@@ -1118,6 +1346,7 @@ export function LoginPage() {
                           setShowEmailForm(false);
                           setError(null);
                           setMessage(null);
+                          setEmailTouched(false);
                         }}
                         className={
                           isDark ? "hover:text-white" : "hover:text-zinc-900"
@@ -1146,6 +1375,9 @@ export function LoginPage() {
                             setShowEmailForm(true);
                             setError(null);
                             setMessage(null);
+                            setConfirmPassword("");
+                            setShowConfirmPassword(false);
+                            setEmailTouched(false);
                           }}
                           className={
                             isDark
@@ -1320,6 +1552,9 @@ export function LoginPage() {
                         setShowEmailForm(false);
                         setError(null);
                         setMessage(null);
+                        setConfirmPassword("");
+                        setShowConfirmPassword(false);
+                        setEmailTouched(false);
                       }}
                       className={cn(
                         "font-semibold hover:underline cursor-pointer",

@@ -714,10 +714,28 @@ export function HomePage({
   };
 
   const renderCardContent = (cardId: string, size: WidgetSize) => {
+    // In Normal Mode (not edit mode), filter out cards with no data so they do not take up space
+    if (!isEditMode) {
+      if (cardId === "spending_stability" && !intel?.expenseVolatility) return null;
+      if (cardId === "ai_insights" && !intel?.actionCenterInsight) return null;
+      if (cardId === "financial_goals" && (!goals || goals.length === 0)) return null;
+      if (cardId === "upcoming_bills" && (!upcomingBills || upcomingBills.length === 0)) return null;
+      if (cardId === "debt_receivables" && !debtSummary) return null;
+      if (cardId === "recent_transactions" && (!allTxs || allTxs.length === 0)) return null;
+      if (
+        cardId === "top_categories" &&
+        (!currentMonthStats?.topExpenseCategories ||
+          currentMonthStats.topExpenseCategories.length === 0)
+      ) {
+        return null;
+      }
+    }
+
     return (
       <HomeWidgetRenderer
         cardId={cardId}
         size={size}
+        isEditMode={isEditMode}
         intel={intel}
         hideBalance={hideBalance}
         isDark={isDark}

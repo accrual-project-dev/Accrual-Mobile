@@ -10,16 +10,10 @@ import {
   Laptop,
   QrCode,
   FileSpreadsheet,
-  Sparkles,
   LogOut,
 } from "lucide-react";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
-import {
-  type AppReleaseInfo,
-  APP_VERSION,
-  APP_BUILD_NUMBER,
-} from "../../lib/appUpdateService";
 
 export interface SettingsProfileCardProps {
   isGuest: boolean;
@@ -202,9 +196,6 @@ export interface SettingsDataVaultSectionProps {
   onOpenWebDashboard: () => void;
   onOpenDataExportVault: () => void;
   onOpenImport?: () => void;
-  checkingUpdate: boolean;
-  releaseInfo: AppReleaseInfo | null;
-  onCheckForUpdate: () => void;
   onSignOut: () => void;
 }
 
@@ -225,9 +216,6 @@ export function SettingsDataVaultSection({
   onOpenWebDashboard,
   onOpenDataExportVault,
   onOpenImport,
-  checkingUpdate,
-  releaseInfo,
-  onCheckForUpdate,
   onSignOut,
 }: SettingsDataVaultSectionProps) {
   const { theme } = useTheme();
@@ -635,86 +623,7 @@ export function SettingsDataVaultSection({
         </section>
       )}
 
-      {/* ── 8. ABOUT & APP UPDATES ── */}
-      {!searchQuery.trim() && (
-        <section className="space-y-1 select-none">
-          <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
-            {isIndonesian ? "Aplikasi & Pembaruan" : "App & Updates"}
-          </div>
-
-          <div
-            className="rounded-2xl overflow-hidden transition-all"
-            style={{
-              background: groupBg,
-              border: groupBorder,
-              boxShadow: groupShadow,
-            }}
-          >
-            <button
-              type="button"
-              onClick={onCheckForUpdate}
-              disabled={checkingUpdate}
-              className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full disabled:opacity-60"
-            >
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div
-                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: iconBg,
-                    border: iconBorder,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Sparkles size={13.5} strokeWidth={1.8} />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span
-                    className="text-[12.5px] font-semibold truncate leading-tight"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Accrual v{APP_VERSION}
-                  </span>
-                  <span className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
-                    {isIndonesian
-                      ? `Rilis ${APP_BUILD_NUMBER} · Ketuk untuk periksa`
-                      : `Build ${APP_BUILD_NUMBER} · Tap to check`}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {checkingUpdate ? (
-                  <Loader2
-                    size={13}
-                    className="animate-spin text-[var(--text-tertiary)]"
-                  />
-                ) : releaseInfo?.hasUpdate ? (
-                  <span
-                    className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full shadow-xs"
-                    style={{
-                      background: isDark ? "#ffffff" : "#18181b",
-                      color: isDark ? "#000000" : "#ffffff",
-                    }}
-                  >
-                    {isIndonesian ? "Pembaruan" : "Update"}
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Periksa" : "Check"}
-                  </span>
-                )}
-                <ChevronRight
-                  size={14}
-                  strokeWidth={2}
-                  style={{ color: "var(--text-tertiary)" }}
-                />
-              </div>
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* ── 9. SIGN OUT / EXIT GUEST ── */}
+      {/* ── 8. SIGN OUT / EXIT GUEST ── */}
       {!searchQuery.trim() && (
         <div className="pt-1 select-none">
           <button

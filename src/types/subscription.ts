@@ -80,7 +80,7 @@ export const PLAN_PRICING_CONFIG: Record<SubscriptionPlanId, PlanPricingMeta> = 
 export const MONETIZATION_LIMITS = {
   FREE_OCR_MONTHLY_LIMIT: 5,
   FREE_DASHBOARD_MAX_SLOTS: 4,
-  FREE_MAX_LEDGERS: 1,
+  FREE_MAX_LEDGERS: 2,
 } as const;
 
 export const PRO_WIDGET_IDS = [

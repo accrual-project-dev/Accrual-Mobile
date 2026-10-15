@@ -7,7 +7,7 @@
 import React, { useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Minus, Maximize2, Minimize2, GripVertical } from "lucide-react";
-import type { CardWidgetConfig } from "../../lib/widgetLayoutTypes";
+import type { CardWidgetConfig, WidgetSize } from "../../lib/widgetLayoutTypes";
 import { triggerHaptic } from "../../lib/haptics";
 
 interface WidgetCardWrapperProps {
@@ -17,6 +17,7 @@ interface WidgetCardWrapperProps {
   onCycleSize?: (id: string) => void;
   onHide?: (id: string) => void;
   children: React.ReactNode;
+  effectiveSize?: WidgetSize;
 }
 
 export function WidgetCardWrapper({
@@ -26,6 +27,7 @@ export function WidgetCardWrapper({
   onCycleSize,
   onHide,
   children,
+  effectiveSize,
 }: WidgetCardWrapperProps) {
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -78,7 +80,7 @@ export function WidgetCardWrapper({
     }
   }, []);
 
-  const isHalf = card.size === "half";
+  const isHalf = (effectiveSize || card.size) === "half";
 
   return (
     <motion.div
@@ -176,7 +178,7 @@ export function WidgetCardWrapper({
       {/* Edit Mode Specular Border Ring */}
       <div
         className={`rounded-[26px] ${
-          isHalf ? "h-full min-h-0 overflow-hidden" : ""
+          isHalf ? "h-full min-h-0 overflow-hidden" : isEditMode ? "min-h-[140px]" : ""
         } ${
           isEditMode
             ? "ring-2 ring-white/20 ring-offset-2 ring-offset-black/50 transition-shadow duration-200"

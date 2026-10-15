@@ -208,8 +208,8 @@ export const DEFAULT_HOME_WIDGETS: CardWidgetConfig[] = [
   },
   {
     id: "financial_health_gauge",
-    title: "Executive Health Meter",
-    subtitle: "Financial health score & grade gauge",
+    title: "Capital Health",
+    subtitle: "Capital health score & liquidity grade",
     page: "home",
     category: "telemetry",
     size: "half",
@@ -325,8 +325,8 @@ export const WIDGET_LOCALIZED_META: Record<
     id: { title: "Matriks Aktivitas Titik", subtitle: "Matriks kerapatan transaksi 28 hari" },
   },
   financial_health_gauge: {
-    en: { title: "Executive Health Meter", subtitle: "Financial health score & grade gauge" },
-    id: { title: "Meter Kesehatan Eksekutif", subtitle: "Skor kesehatan finansial & pengukur peringkat" },
+    en: { title: "Capital Health", subtitle: "Capital health score & liquidity grade" },
+    id: { title: "Kesehatan Modal", subtitle: "Skor kesehatan modal & peringkat likuiditas" },
   },
   calendar_activity: {
     en: { title: "Calendar Activity", subtitle: "Daily transaction schedule & monthly entries" },

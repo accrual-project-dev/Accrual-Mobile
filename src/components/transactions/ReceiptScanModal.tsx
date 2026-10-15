@@ -265,10 +265,6 @@ export function ReceiptScanModal({
     };
   }, [isOpen, step]);
 
-  const shouldSaveAttachments =
-    typeof window !== "undefined" &&
-    localStorage.getItem("trouvaille_save_attachments") === "true";
-
   // Reset state when modal closed
   useEffect(() => {
     if (!isOpen) {
@@ -1001,26 +997,24 @@ export function ReceiptScanModal({
                       : "Physical receipts, QRIS & bank transfer slips"}
                   </span>
 
-                  {!shouldSaveAttachments && (
-                    <span
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-semibold shrink-0"
-                      style={{
-                        background: isDark
-                          ? "rgba(255,255,255,0.06)"
-                          : "rgba(255,255,255,0.9)",
-                        border: isDark
-                          ? "1px solid rgba(255,255,255,0.10)"
-                          : "1px solid rgba(205,205,205,0.38)",
-                        color: "var(--text-secondary)",
-                        boxShadow: isDark
-                          ? "inset 0 1px 0 rgba(255,255,255,0.10)"
-                          : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
-                      }}
-                    >
-                      <Shield size={9.5} strokeWidth={1.75} />
-                      {isIndonesian ? "Sementara" : "Ephemeral"}
-                    </span>
-                  )}
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-semibold shrink-0"
+                    style={{
+                      background: isDark
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(255,255,255,0.9)",
+                      border: isDark
+                        ? "1px solid rgba(255,255,255,0.10)"
+                        : "1px solid rgba(205,205,205,0.38)",
+                      color: "var(--text-secondary)",
+                      boxShadow: isDark
+                        ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                        : "inset 0 1px 0 rgba(255,255,255,1), 0 2px 6px rgba(15,23,42,0.04)",
+                    }}
+                  >
+                    <Shield size={9.5} strokeWidth={1.75} />
+                    {isIndonesian ? "Sementara" : "Ephemeral"}
+                  </span>
                 </p>
               </div>
 
