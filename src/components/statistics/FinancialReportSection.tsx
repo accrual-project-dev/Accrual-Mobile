@@ -17,10 +17,10 @@ import {
   type FinancialReportPackage,
   type CALKReport,
 } from "../../lib/financialAccounting";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useTheme } from "../../contexts/ThemeContext";
 
 interface FinancialReportSectionProps {
@@ -165,12 +165,16 @@ const getFreeCashflowDescription = (
   return `Defisit operasional: Arus kas keluar melampaui pemasukan periode ini sebesar ${Math.abs(calk.freeCashflowRatePct)}%.`;
 };
 
-const getReconciliationNotes = (calk: CALKReport, isIndonesian: boolean) => {
+const getReconciliationNotes = (
+  calk: CALKReport,
+  isIndonesian: boolean,
+  formatMoney: (val: number) => string,
+) => {
   if (!isIndonesian) return calk.reconciliation.notes;
   if (calk.reconciliation.assetsEqualLiabilitiesPlusEquity) {
-    return "Seluruh pos neraca telah terekonsiliasi sempurna dengan selisih Rp 0 terhadap total aset tercatat sesuai standar prinsip akuntansi.";
+    return `Seluruh pos neraca telah terekonsiliasi sempurna dengan selisih ${formatMoney(0)} terhadap total aset tercatat sesuai standar prinsip akuntansi.`;
   }
-  return `Perhatian: Terdeteksi diskrepansi sebesar ${formatRupiah(Math.abs(calk.reconciliation.discrepancyAmount))} antara Total Aset dan Liabilitas + Ekuitas.`;
+  return `Perhatian: Terdeteksi diskrepansi sebesar ${formatMoney(Math.abs(calk.reconciliation.discrepancyAmount))} antara Total Aset dan Liabilitas + Ekuitas.`;
 };
 
 export function FinancialReportSection({
@@ -184,6 +188,7 @@ export function FinancialReportSection({
 }: FinancialReportSectionProps) {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const [copied, setCopied] = useState(false);
@@ -225,34 +230,34 @@ Tanggal Dibuat: ${new Date().toLocaleDateString("id-ID", { year: "numeric", mont
 
 --- 1. LAPORAN POSISI KEUANGAN (NERACA) ---
 * ASET:
-  - Aset Likuid (Kas & Bank): ${formatRupiah(balanceSheet.liquidAssets.total)}
-  - Portofolio Investasi: ${formatRupiah(balanceSheet.investmentAssets.total)}
-  - Piutang Tertunda: ${formatRupiah(balanceSheet.receivableAssets.total)}
-  TOTAL ASET: ${formatRupiah(balanceSheet.totalAssets)}
+  - Aset Likuid (Kas & Bank): ${formatWithPreferred(balanceSheet.liquidAssets.total)}
+  - Portofolio Investasi: ${formatWithPreferred(balanceSheet.investmentAssets.total)}
+  - Piutang Tertunda: ${formatWithPreferred(balanceSheet.receivableAssets.total)}
+  TOTAL ASET: ${formatWithPreferred(balanceSheet.totalAssets)}
 
 * LIABILITAS:
-  - Jangka Pendek (Kartu Kredit & PayLater): ${formatRupiah(balanceSheet.currentLiabilities.total)}
-  - Jangka Panjang (Pinjaman & Cicilan): ${formatRupiah(balanceSheet.longTermLiabilities.total)}
-  TOTAL LIABILITAS: ${formatRupiah(balanceSheet.totalLiabilities)}
+  - Jangka Pendek (Kartu Kredit & PayLater): ${formatWithPreferred(balanceSheet.currentLiabilities.total)}
+  - Jangka Panjang (Pinjaman & Cicilan): ${formatWithPreferred(balanceSheet.longTermLiabilities.total)}
+  TOTAL LIABILITAS: ${formatWithPreferred(balanceSheet.totalLiabilities)}
 
 * EKUITAS:
-  KEKAYAAN BERSIH: ${formatRupiah(balanceSheet.netWorth)}
+  KEKAYAAN BERSIH: ${formatWithPreferred(balanceSheet.netWorth)}
   Status Keseimbangan: ${balanceSheet.isBalanced ? "SEIMBANG (Aset = Liabilitas + Ekuitas)" : "DISKREPANSI TERDETEKSI"}
 
 --- 2. LAPORAN ARUS KAS ---
 * Arus Kas Operasional (OCF):
-  - Masuk: ${formatRupiah(cashFlow.operatingInflow)}
-  - Keluar: ${formatRupiah(cashFlow.operatingOutflow)}
-  - Bersih OCF: ${formatRupiah(cashFlow.netOperatingCashFlow)}
+  - Masuk: ${formatWithPreferred(cashFlow.operatingInflow)}
+  - Keluar: ${formatWithPreferred(cashFlow.operatingOutflow)}
+  - Bersih OCF: ${formatWithPreferred(cashFlow.netOperatingCashFlow)}
 * Arus Kas Investasi (ICF):
-  - Masuk: ${formatRupiah(cashFlow.investingInflow)}
-  - Keluar: ${formatRupiah(cashFlow.investingOutflow)}
-  - Bersih ICF: ${formatRupiah(cashFlow.netInvestingCashFlow)}
+  - Masuk: ${formatWithPreferred(cashFlow.investingInflow)}
+  - Keluar: ${formatWithPreferred(cashFlow.investingOutflow)}
+  - Bersih ICF: ${formatWithPreferred(cashFlow.netInvestingCashFlow)}
 * Arus Kas Pendanaan (FCF):
-  - Masuk: ${formatRupiah(cashFlow.financingInflow)}
-  - Keluar: ${formatRupiah(cashFlow.financingOutflow)}
-  - Bersih FCF: ${formatRupiah(cashFlow.netFinancingCashFlow)}
-PERGERAKAN KAS BERSIH: ${formatRupiah(cashFlow.netCashFlow)}
+  - Masuk: ${formatWithPreferred(cashFlow.financingInflow)}
+  - Keluar: ${formatWithPreferred(cashFlow.financingOutflow)}
+  - Bersih FCF: ${formatWithPreferred(cashFlow.netFinancingCashFlow)}
+PERGERAKAN KAS BERSIH: ${formatWithPreferred(cashFlow.netCashFlow)}
 
 --- 3. CATATAN ATAS LAPORAN KEUANGAN (CALK) ---
 * Ketahanan Kas: ${calk.solvencyRunwayMonths} bulan (${getSolvencyRatingLabel(calk.solvencyRunwayRating, true)})
@@ -267,34 +272,34 @@ Generated: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "s
 
 --- 1. STATEMENT OF FINANCIAL POSITION (BALANCE SHEET) ---
 * ASSETS:
-  - Liquid Assets (Cash & Bank): ${formatRupiah(balanceSheet.liquidAssets.total)}
-  - Investment Portfolio: ${formatRupiah(balanceSheet.investmentAssets.total)}
-  - Receivables: ${formatRupiah(balanceSheet.receivableAssets.total)}
-  TOTAL ASSETS: ${formatRupiah(balanceSheet.totalAssets)}
+  - Liquid Assets (Cash & Bank): ${formatWithPreferred(balanceSheet.liquidAssets.total)}
+  - Investment Portfolio: ${formatWithPreferred(balanceSheet.investmentAssets.total)}
+  - Receivables: ${formatWithPreferred(balanceSheet.receivableAssets.total)}
+  TOTAL ASSETS: ${formatWithPreferred(balanceSheet.totalAssets)}
 
 * LIABILITIES:
-  - Current (Credit Cards & PayLater): ${formatRupiah(balanceSheet.currentLiabilities.total)}
-  - Long-Term Debt & Loans: ${formatRupiah(balanceSheet.longTermLiabilities.total)}
-  TOTAL LIABILITIES: ${formatRupiah(balanceSheet.totalLiabilities)}
+  - Current (Credit Cards & PayLater): ${formatWithPreferred(balanceSheet.currentLiabilities.total)}
+  - Long-Term Debt & Loans: ${formatWithPreferred(balanceSheet.longTermLiabilities.total)}
+  TOTAL LIABILITIES: ${formatWithPreferred(balanceSheet.totalLiabilities)}
 
 * EQUITY:
-  NET WORTH: ${formatRupiah(balanceSheet.netWorth)}
+  NET WORTH: ${formatWithPreferred(balanceSheet.netWorth)}
   Balance Status: ${balanceSheet.isBalanced ? "BALANCED (Assets = Liabilities + Equity)" : "DISCREPANCY DETECTED"}
 
 --- 2. STATEMENT OF CASH FLOWS ---
 * Operating Cash Flow (OCF):
-  - Inflow: ${formatRupiah(cashFlow.operatingInflow)}
-  - Outflow: ${formatRupiah(cashFlow.operatingOutflow)}
-  - Net OCF: ${formatRupiah(cashFlow.netOperatingCashFlow)}
+  - Inflow: ${formatWithPreferred(cashFlow.operatingInflow)}
+  - Outflow: ${formatWithPreferred(cashFlow.operatingOutflow)}
+  - Net OCF: ${formatWithPreferred(cashFlow.netOperatingCashFlow)}
 * Investing Cash Flow (ICF):
-  - Inflow: ${formatRupiah(cashFlow.investingInflow)}
-  - Outflow: ${formatRupiah(cashFlow.investingOutflow)}
-  - Net ICF: ${formatRupiah(cashFlow.netInvestingCashFlow)}
+  - Inflow: ${formatWithPreferred(cashFlow.investingInflow)}
+  - Outflow: ${formatWithPreferred(cashFlow.investingOutflow)}
+  - Net ICF: ${formatWithPreferred(cashFlow.netInvestingCashFlow)}
 * Financing Cash Flow (FCF):
-  - Inflow: ${formatRupiah(cashFlow.financingInflow)}
-  - Outflow: ${formatRupiah(cashFlow.financingOutflow)}
-  - Net FCF: ${formatRupiah(cashFlow.netFinancingCashFlow)}
-NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
+  - Inflow: ${formatWithPreferred(cashFlow.financingInflow)}
+  - Outflow: ${formatWithPreferred(cashFlow.financingOutflow)}
+  - Net FCF: ${formatWithPreferred(cashFlow.netFinancingCashFlow)}
+NET CASH MOVEMENT: ${formatWithPreferred(cashFlow.netCashFlow)}
 
 --- 3. NOTES TO FINANCIAL STATEMENTS (DISCLOSURES) ---
 * Solvency Runway: ${calk.solvencyRunwayMonths} months (${getSolvencyRatingLabel(calk.solvencyRunwayRating, false)})
@@ -425,7 +430,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
           <div className="text-[10.5px] font-mono font-medium whitespace-nowrap shrink-0 text-[var(--text-tertiary)]">
             {isIndonesian ? "Selisih" : "Diff"}:{" "}
-            {formatRupiah(balanceSheet.discrepancy)}
+            {formatWithPreferred(balanceSheet.discrepancy)}
           </div>
         </div>
       </section>
@@ -488,17 +493,17 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           {[
             {
               label: isIndonesian ? "Total Aset" : "Total Assets",
-              value: formatRupiah(balanceSheet.totalAssets),
+              value: formatWithPreferred(balanceSheet.totalAssets),
               highlight: false,
             },
             {
               label: isIndonesian ? "Total Liabilitas" : "Liabilities",
-              value: formatRupiah(balanceSheet.totalLiabilities),
+              value: formatWithPreferred(balanceSheet.totalLiabilities),
               highlight: false,
             },
             {
               label: isIndonesian ? "Kekayaan Bersih" : "Net Worth",
-              value: formatRupiah(balanceSheet.netWorth),
+              value: formatWithPreferred(balanceSheet.netWorth),
               highlight: true,
             },
           ].map((item, idx) => (
@@ -565,15 +570,15 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   </h4>
                   <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
-                      ? `Kas/Bank: ${formatRupiah(balanceSheet.liquidAssets.total)} • Investasi: ${formatRupiah(balanceSheet.investmentAssets.total)}`
-                      : `Liquid: ${formatRupiah(balanceSheet.liquidAssets.total)} • Inv: ${formatRupiah(balanceSheet.investmentAssets.total)}`}
+                      ? `Kas/Bank: ${formatWithPreferred(balanceSheet.liquidAssets.total)} • Investasi: ${formatWithPreferred(balanceSheet.investmentAssets.total)}`
+                      : `Liquid: ${formatWithPreferred(balanceSheet.liquidAssets.total)} • Inv: ${formatWithPreferred(balanceSheet.investmentAssets.total)}`}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="amount text-[12px] font-bold text-[var(--text-primary)] tabular-nums">
-                  {formatRupiah(balanceSheet.totalAssets)}
+                  {formatWithPreferred(balanceSheet.totalAssets)}
                 </span>
                 <motion.div
                   animate={{ rotate: assetsOpen ? 180 : 0 }}
@@ -604,7 +609,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                           : "Liquid Assets"}
                       </span>
                       <span className="tabular-nums">
-                        {formatRupiah(balanceSheet.liquidAssets.total)}
+                        {formatWithPreferred(balanceSheet.liquidAssets.total)}
                       </span>
                     </div>
                     {balanceSheet.liquidAssets.items.map((it) => (
@@ -618,7 +623,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             {it.percentageOfTotal.toFixed(1)}%
                           </span>
                           <span className="font-semibold text-[var(--text-primary)]">
-                            {formatRupiah(it.balance)}
+                            {formatWithPreferred(it.balance)}
                           </span>
                         </div>
                       </div>
@@ -635,7 +640,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                           : "Investment Portfolio"}
                       </span>
                       <span className="tabular-nums">
-                        {formatRupiah(balanceSheet.investmentAssets.total)}
+                        {formatWithPreferred(balanceSheet.investmentAssets.total)}
                       </span>
                     </div>
                     {balanceSheet.investmentAssets.items.map((it) => (
@@ -649,7 +654,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             {it.percentageOfTotal.toFixed(1)}%
                           </span>
                           <span className="font-semibold text-[var(--text-primary)]">
-                            {formatRupiah(it.balance)}
+                            {formatWithPreferred(it.balance)}
                           </span>
                         </div>
                       </div>
@@ -666,7 +671,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                             {isIndonesian ? "Piutang Tertunda" : "Receivables"}
                           </span>
                           <span className="tabular-nums">
-                            {formatRupiah(balanceSheet.receivableAssets.total)}
+                            {formatWithPreferred(balanceSheet.receivableAssets.total)}
                           </span>
                         </div>
                         {balanceSheet.receivableAssets.items.map((it) => (
@@ -680,7 +685,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                                 {it.percentageOfTotal.toFixed(1)}%
                               </span>
                               <span className="font-semibold text-[var(--text-primary)]">
-                                {formatRupiah(it.balance)}
+                                {formatWithPreferred(it.balance)}
                               </span>
                             </div>
                           </div>
@@ -730,15 +735,15 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   </h4>
                   <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
-                      ? `Utang Lancar: ${formatRupiah(balanceSheet.currentLiabilities.total)} • Jangka Panjang: ${formatRupiah(balanceSheet.longTermLiabilities.total)}`
-                      : `Current: ${formatRupiah(balanceSheet.currentLiabilities.total)} • Long-Term: ${formatRupiah(balanceSheet.longTermLiabilities.total)}`}
+                      ? `Utang Lancar: ${formatWithPreferred(balanceSheet.currentLiabilities.total)} • Jangka Panjang: ${formatWithPreferred(balanceSheet.longTermLiabilities.total)}`
+                      : `Current: ${formatWithPreferred(balanceSheet.currentLiabilities.total)} • Long-Term: ${formatWithPreferred(balanceSheet.longTermLiabilities.total)}`}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="amount text-[12px] font-bold text-[var(--text-secondary)] tabular-nums">
-                  {formatRupiah(balanceSheet.totalLiabilities)}
+                  {formatWithPreferred(balanceSheet.totalLiabilities)}
                 </span>
                 <motion.div
                   animate={{ rotate: liabilitiesOpen ? 180 : 0 }}
@@ -775,7 +780,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         >
                           <span className="truncate">{it.name}</span>
                           <span className="font-semibold text-[var(--text-primary)] tabular-nums">
-                            {formatRupiah(it.balance)}
+                            {formatWithPreferred(it.balance)}
                           </span>
                         </div>
                       ))}
@@ -786,7 +791,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         >
                           <span className="truncate">{it.name}</span>
                           <span className="font-semibold text-[var(--text-primary)] tabular-nums">
-                            {formatRupiah(it.balance)}
+                            {formatWithPreferred(it.balance)}
                           </span>
                         </div>
                       ))}
@@ -842,7 +847,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="amount text-[12px] font-bold text-[var(--text-primary)] tabular-nums">
-                  {formatRupiah(balanceSheet.netWorth)}
+                  {formatWithPreferred(balanceSheet.netWorth)}
                 </span>
                 <motion.div
                   animate={{ rotate: equityOpen ? 180 : 0 }}
@@ -940,7 +945,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
             }}
           >
             {cashFlow.netCashFlow >= 0 ? "+" : ""}
-            {formatRupiah(cashFlow.netCashFlow)}
+            {formatWithPreferred(cashFlow.netCashFlow)}
           </span>
         </div>
 
@@ -949,15 +954,15 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
           {[
             {
               label: isIndonesian ? "Operasional (OCF)" : "Operating (OCF)",
-              value: `${cashFlow.netOperatingCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netOperatingCashFlow)}`,
+              value: `${cashFlow.netOperatingCashFlow >= 0 ? "+" : ""}${formatWithPreferred(cashFlow.netOperatingCashFlow)}`,
             },
             {
               label: isIndonesian ? "Investasi (ICF)" : "Investing (ICF)",
-              value: `${cashFlow.netInvestingCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netInvestingCashFlow)}`,
+              value: `${cashFlow.netInvestingCashFlow >= 0 ? "+" : ""}${formatWithPreferred(cashFlow.netInvestingCashFlow)}`,
             },
             {
               label: isIndonesian ? "Pendanaan (FCF)" : "Financing (FCF)",
-              value: `${cashFlow.netFinancingCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netFinancingCashFlow)}`,
+              value: `${cashFlow.netFinancingCashFlow >= 0 ? "+" : ""}${formatWithPreferred(cashFlow.netFinancingCashFlow)}`,
             },
           ].map((item, idx) => (
             <div
@@ -1019,8 +1024,8 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   </h4>
                   <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
-                      ? `Masuk: ${formatRupiah(cashFlow.operatingInflow)} • Keluar: ${formatRupiah(cashFlow.operatingOutflow)}`
-                      : `In: ${formatRupiah(cashFlow.operatingInflow)} • Out: ${formatRupiah(cashFlow.operatingOutflow)}`}
+                      ? `Masuk: ${formatWithPreferred(cashFlow.operatingInflow)} • Keluar: ${formatWithPreferred(cashFlow.operatingOutflow)}`
+                      : `In: ${formatWithPreferred(cashFlow.operatingInflow)} • Out: ${formatWithPreferred(cashFlow.operatingOutflow)}`}
                   </p>
                 </div>
               </div>
@@ -1028,7 +1033,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="amount text-[12px] font-bold text-[var(--text-primary)] tabular-nums">
                   {cashFlow.netOperatingCashFlow >= 0 ? "+" : ""}
-                  {formatRupiah(cashFlow.netOperatingCashFlow)}
+                  {formatWithPreferred(cashFlow.netOperatingCashFlow)}
                 </span>
                 <motion.div
                   animate={{ rotate: operatingOpen ? 180 : 0 }}
@@ -1060,7 +1065,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                       </span>
                       <span className="font-semibold text-[var(--text-primary)] tabular-nums">
                         {it.net >= 0 ? "+" : ""}
-                        {formatRupiah(it.net)}
+                        {formatWithPreferred(it.net)}
                       </span>
                     </div>
                   ))}
@@ -1106,8 +1111,8 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   </h4>
                   <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
-                      ? `Masuk: ${formatRupiah(cashFlow.investingInflow)} • Keluar: ${formatRupiah(cashFlow.investingOutflow)}`
-                      : `In: ${formatRupiah(cashFlow.investingInflow)} • Out: ${formatRupiah(cashFlow.investingOutflow)}`}
+                      ? `Masuk: ${formatWithPreferred(cashFlow.investingInflow)} • Keluar: ${formatWithPreferred(cashFlow.investingOutflow)}`
+                      : `In: ${formatWithPreferred(cashFlow.investingInflow)} • Out: ${formatWithPreferred(cashFlow.investingOutflow)}`}
                   </p>
                 </div>
               </div>
@@ -1115,7 +1120,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="amount text-[12px] font-bold text-[var(--text-secondary)] tabular-nums">
                   {cashFlow.netInvestingCashFlow >= 0 ? "+" : ""}
-                  {formatRupiah(cashFlow.netInvestingCashFlow)}
+                  {formatWithPreferred(cashFlow.netInvestingCashFlow)}
                 </span>
                 <motion.div
                   animate={{ rotate: investingOpen ? 180 : 0 }}
@@ -1154,7 +1159,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         </span>
                         <span className="font-semibold text-[var(--text-primary)] tabular-nums">
                           {it.net >= 0 ? "+" : ""}
-                          {formatRupiah(it.net)}
+                          {formatWithPreferred(it.net)}
                         </span>
                       </div>
                     ))
@@ -1201,8 +1206,8 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   </h4>
                   <p className="text-[9.5px] text-[var(--text-tertiary)] truncate mt-0.5">
                     {isIndonesian
-                      ? `Masuk: ${formatRupiah(cashFlow.financingInflow)} • Keluar: ${formatRupiah(cashFlow.financingOutflow)}`
-                      : `In: ${formatRupiah(cashFlow.financingInflow)} • Out: ${formatRupiah(cashFlow.financingOutflow)}`}
+                      ? `Masuk: ${formatWithPreferred(cashFlow.financingInflow)} • Keluar: ${formatWithPreferred(cashFlow.financingOutflow)}`
+                      : `In: ${formatWithPreferred(cashFlow.financingInflow)} • Out: ${formatWithPreferred(cashFlow.financingOutflow)}`}
                   </p>
                 </div>
               </div>
@@ -1210,7 +1215,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="amount text-[12px] font-bold text-[var(--text-secondary)] tabular-nums">
                   {cashFlow.netFinancingCashFlow >= 0 ? "+" : ""}
-                  {formatRupiah(cashFlow.netFinancingCashFlow)}
+                  {formatWithPreferred(cashFlow.netFinancingCashFlow)}
                 </span>
                 <motion.div
                   animate={{ rotate: financingOpen ? 180 : 0 }}
@@ -1249,7 +1254,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                         </span>
                         <span className="font-semibold text-[var(--text-primary)] tabular-nums">
                           {it.net >= 0 ? "+" : ""}
-                          {formatRupiah(it.net)}
+                          {formatWithPreferred(it.net)}
                         </span>
                       </div>
                     ))
@@ -1462,7 +1467,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                     </div>
                     <div className="text-right shrink-0">
                       <div className="amount text-[11.5px] font-bold text-[var(--text-primary)] tabular-nums">
-                        {formatRupiah(tx.amount)}
+                        {formatWithPreferred(tx.amount)}
                       </div>
                       <div className="text-[9.5px] text-[var(--text-secondary)] tabular-nums">
                         {tx.percentageOfTotalExpense.toFixed(1)}%
@@ -1496,7 +1501,7 @@ NET CASH MOVEMENT: ${formatRupiah(cashFlow.netCashFlow)}
                   : "Note 5: Reconciliation & Audit Status"}
               </h4>
               <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed mt-0.5">
-                {getReconciliationNotes(calk, isIndonesian)}
+                {getReconciliationNotes(calk, isIndonesian, formatWithPreferred)}
               </p>
             </div>
           </div>

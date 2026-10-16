@@ -23,6 +23,13 @@ export interface ReportFilterOptions {
   spaceId?: string; // "all", "personal", or specific spaceId / tag
   spaceName?: string;
   transactionType?: ReportTransactionType;
+  formatCurrency?: (val: number) => string;
+  preferredCurrency?: string;
+}
+
+export function resolveCurrencyFormatter(options?: ReportFilterOptions): (val: number) => string {
+  if (options?.formatCurrency) return options.formatCurrency;
+  return formatRupiah;
 }
 
 export interface CategorySummaryItem {
@@ -459,7 +466,9 @@ export function generateLuxuryPrintableHtml(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   isIndonesian = false,
+  options?: ReportFilterOptions,
 ): string {
+  const fmt = resolveCurrencyFormatter(options);
   const walletMap = new Map<string, string>();
   wallets.forEach((w) => walletMap.set(w.id, w.name));
 
@@ -498,7 +507,7 @@ export function generateLuxuryPrintableHtml(
           </td>
           <td style="padding: 9px 8px; color: #52525b; white-space: nowrap;">${accountLabel}</td>
           <td style="padding: 9px 8px; text-align: right; font-family: -apple-system, BlinkMacSystemFont, monospace; font-weight: 600; color: ${amtColor}; white-space: nowrap;">
-            ${sign} ${formatRupiah(tx.amount || 0)}
+            ${sign} ${fmt(tx.amount || 0)}
           </td>
         </tr>
       `;
@@ -512,7 +521,7 @@ export function generateLuxuryPrintableHtml(
         <div style="margin-bottom: 8px;">
           <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
             <span style="font-weight: 500; color: #18181b;">${c.name}</span>
-            <span style="font-family: -apple-system, BlinkMacSystemFont, monospace; color: #71717a;">${formatRupiah(c.amount)} (${c.percentage.toFixed(1)}%)</span>
+            <span style="font-family: -apple-system, BlinkMacSystemFont, monospace; color: #71717a;">${fmt(c.amount)} (${c.percentage.toFixed(1)}%)</span>
           </div>
           <div style="width: 100%; height: 5px; background: #f0f0f4; border-radius: 99px; overflow: hidden;">
             <div style="width: ${c.percentage}%; height: 100%; background: #27272a; border-radius: 99px;"></div>
@@ -568,7 +577,7 @@ export function generateLuxuryPrintableHtml(
       <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">${
         isIndonesian ? "TOTAL PEMASUKAN" : "TOTAL INFLOW"
       }</div>
-      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">+${formatRupiah(summary.totalIncome)}</div>
+      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">+${fmt(summary.totalIncome)}</div>
       <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">${
         isIndonesian ? "Pemasukan & kredit" : "Income & credits"
       }</div>
@@ -578,7 +587,7 @@ export function generateLuxuryPrintableHtml(
       <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">${
         isIndonesian ? "TOTAL PENGELUARAN" : "TOTAL OUTFLOW"
       }</div>
-      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">-${formatRupiah(summary.totalExpense)}</div>
+      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">-${fmt(summary.totalExpense)}</div>
       <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">${
         isIndonesian ? "Pengeluaran & debit" : "Expenses & debits"
       }</div>
@@ -588,7 +597,7 @@ export function generateLuxuryPrintableHtml(
       <div style="font-size: 10px; font-weight: 600; color: #71717a; letter-spacing: 0.08em; text-transform: uppercase;">${
         isIndonesian ? "ARUS KAS BERSIH" : "NET CASH FLOW"
       }</div>
-      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)}</div>
+      <div style="font-size: 18px; font-weight: 700; color: #09090c; margin-top: 5px; font-family: -apple-system, BlinkMacSystemFont, monospace;">${(summary.netCashflow >= 0 ? "+" : "") + fmt(summary.netCashflow)}</div>
       <div style="font-size: 10px; color: #a1a1aa; margin-top: 3px;">${
         isIndonesian ? "Pergerakan modal bersih" : "Net capital movement"
       }</div>
@@ -682,8 +691,9 @@ export function triggerPrintLuxuryReport(
   summary: ReportSummary,
   wallets: Wallet[] = [],
   isIndonesian = false,
+  options?: ReportFilterOptions,
 ): void {
-  const html = generateLuxuryPrintableHtml(transactions, summary, wallets, isIndonesian);
+  const html = generateLuxuryPrintableHtml(transactions, summary, wallets, isIndonesian, options);
   const printWindow = window.open("", "_blank");
   if (printWindow) {
     printWindow.document.open();
@@ -1080,6 +1090,7 @@ export function generateLuxuryPdf(
   const pageHeight = doc.internal.pageSize.getHeight(); // 841.89 pt
   const margin = 36;
   const contentWidth = pageWidth - margin * 2; // 523.28 pt
+  const fmt = resolveCurrencyFormatter(options);
 
   let endDateStr: string | undefined;
   if (options) {
@@ -1164,17 +1175,17 @@ export function generateLuxuryPdf(
   const metrics = [
     {
       label: isIndonesian ? "TOTAL PEMASUKAN" : "TOTAL INFLOW",
-      val: `+${formatRupiah(summary.totalIncome)}`,
+      val: `+${fmt(summary.totalIncome)}`,
       sub: isIndonesian ? "Penerimaan kas" : "Income & credits",
     },
     {
       label: isIndonesian ? "TOTAL PENGELUARAN" : "TOTAL OUTFLOW",
-      val: `-${formatRupiah(summary.totalExpense)}`,
+      val: `-${fmt(summary.totalExpense)}`,
       sub: isIndonesian ? "Pengeluaran belanja" : "Expenses & debits",
     },
     {
       label: isIndonesian ? "ARUS KAS BERSIH" : "NET CASHFLOW",
-      val: `${summary.netCashflow >= 0 ? "+" : ""}${formatRupiah(summary.netCashflow)}`,
+      val: `${summary.netCashflow >= 0 ? "+" : ""}${fmt(summary.netCashflow)}`,
       sub: isIndonesian ? "Surplus / defisit" : "Net movement",
     },
     {
@@ -1283,7 +1294,7 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(24, 24, 27);
-  doc.text(formatRupiah(balanceSheet.totalAssets), margin + 10, y + 27);
+  doc.text(fmt(balanceSheet.totalAssets), margin + 10, y + 27);
 
   doc.setDrawColor(232, 232, 237);
   doc.setLineWidth(0.5);
@@ -1305,7 +1316,7 @@ export function generateLuxuryPdf(
       doc.setTextColor(39, 39, 42);
       doc.text(item.name.slice(0, 26), margin + 10, leftY);
       doc.setTextColor(24, 24, 27);
-      doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
+      doc.text(fmt(item.balance), margin + bsColW - 10, leftY, { align: "right" });
       leftY += 10.5;
     });
   } else {
@@ -1330,7 +1341,7 @@ export function generateLuxuryPdf(
       doc.setTextColor(39, 39, 42);
       doc.text(item.name.slice(0, 26), margin + 10, leftY);
       doc.setTextColor(24, 24, 27);
-      doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
+      doc.text(fmt(item.balance), margin + bsColW - 10, leftY, { align: "right" });
       leftY += 10.5;
     });
   }
@@ -1349,7 +1360,7 @@ export function generateLuxuryPdf(
       doc.setTextColor(39, 39, 42);
       doc.text(item.name.slice(0, 26), margin + 10, leftY);
       doc.setTextColor(24, 24, 27);
-      doc.text(formatRupiah(item.balance), margin + bsColW - 10, leftY, { align: "right" });
+      doc.text(fmt(item.balance), margin + bsColW - 10, leftY, { align: "right" });
       leftY += 10.5;
     });
   }
@@ -1363,7 +1374,7 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(24, 24, 27);
-  doc.text(formatRupiah(balanceSheet.totalLiabilities), rightX + 10, y + 27);
+  doc.text(fmt(balanceSheet.totalLiabilities), rightX + 10, y + 27);
 
   doc.setDrawColor(232, 232, 237);
   doc.setLineWidth(0.5);
@@ -1389,14 +1400,14 @@ export function generateLuxuryPdf(
       doc.setTextColor(39, 39, 42);
       doc.text(item.name.slice(0, 26), rightX + 10, rightY);
       doc.setTextColor(24, 24, 27);
-      doc.text(formatRupiah(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
+      doc.text(fmt(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
       rightY += 10.5;
     });
   } else {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(161, 161, 170);
-    doc.text(isIndonesian ? "Tidak ada liabilitas lancar (Rp 0)" : "No current liabilities (Rp 0)", rightX + 10, rightY);
+    doc.text(isIndonesian ? `Tidak ada liabilitas lancar (${fmt(0)})` : `No current liabilities (${fmt(0)})`, rightX + 10, rightY);
     rightY += 10.5;
   }
 
@@ -1414,7 +1425,7 @@ export function generateLuxuryPdf(
       doc.setTextColor(39, 39, 42);
       doc.text(item.name.slice(0, 26), rightX + 10, rightY);
       doc.setTextColor(24, 24, 27);
-      doc.text(formatRupiah(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
+      doc.text(fmt(item.balance), rightX + bsColW - 10, rightY, { align: "right" });
       rightY += 10.5;
     });
   }
@@ -1434,7 +1445,7 @@ export function generateLuxuryPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(18, 18, 20);
-  doc.text(formatRupiah(balanceSheet.netWorth), rightX + 10, netWorthY + 26);
+  doc.text(fmt(balanceSheet.netWorth), rightX + 10, netWorthY + 26);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
@@ -1445,8 +1456,8 @@ export function generateLuxuryPdf(
         ? "100% Seimbang"
         : "100% Balanced"
       : isIndonesian
-        ? `Selisih: ${formatRupiah(balanceSheet.discrepancy)}`
-        : `Diff: ${formatRupiah(balanceSheet.discrepancy)}`,
+        ? `Selisih: ${fmt(balanceSheet.discrepancy)}`
+        : `Diff: ${fmt(balanceSheet.discrepancy)}`,
     rightX + bsColW - 10,
     netWorthY + 26,
     { align: "right" }
@@ -1476,7 +1487,7 @@ export function generateLuxuryPdf(
       doc.setTextColor(39, 39, 42);
       doc.text(cat.name, margin, y);
 
-      const amtText = `${formatRupiah(cat.amount)}  (${cat.percentage.toFixed(1)}%)`;
+      const amtText = `${fmt(cat.amount)}  (${cat.percentage.toFixed(1)}%)`;
       doc.setFont("helvetica", "normal");
       doc.setTextColor(113, 113, 122);
       doc.text(amtText, pageWidth - margin, y, { align: "right" });
@@ -1547,7 +1558,7 @@ export function generateLuxuryPdf(
       doc.setTextColor(39, 39, 42);
       doc.text(cat.name, margin, y);
 
-      const amtText = `${formatRupiah(cat.amount)}  (${cat.percentage.toFixed(1)}%)`;
+      const amtText = `${fmt(cat.amount)}  (${cat.percentage.toFixed(1)}%)`;
       doc.setFont("helvetica", "normal");
       doc.setTextColor(113, 113, 122);
       doc.text(amtText, pageWidth - margin, y, { align: "right" });
@@ -1613,14 +1624,14 @@ export function generateLuxuryPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(113, 113, 122);
-    doc.text(`${isIndonesian ? "Masuk: +" : "Inflow: +"}${formatRupiah(act.inflow)}`, x + 8, y + 27);
-    doc.text(`${isIndonesian ? "Keluar: -" : "Outflow: -"}${formatRupiah(act.outflow)}`, x + 8, y + 39);
+    doc.text(`${isIndonesian ? "Masuk: +" : "Inflow: +"}${fmt(act.inflow)}`, x + 8, y + 27);
+    doc.text(`${isIndonesian ? "Keluar: -" : "Outflow: -"}${fmt(act.outflow)}`, x + 8, y + 39);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
     doc.setTextColor(24, 24, 27);
     doc.text(
-      `${isIndonesian ? "Bersih: " : "Net: "}${(act.net >= 0 ? "+" : "") + formatRupiah(act.net)}`,
+      `${isIndonesian ? "Bersih: " : "Net: "}${(act.net >= 0 ? "+" : "") + fmt(act.net)}`,
       x + 8,
       y + 52
     );
@@ -1636,7 +1647,7 @@ export function generateLuxuryPdf(
   doc.setTextColor(18, 18, 20);
   doc.text(isIndonesian ? "PERUBAHAN KAS BERSIH" : "NET CHANGE IN CASH", margin + 8, y + 15);
   doc.text(
-    `${cashFlow.netCashFlow >= 0 ? "+" : ""}${formatRupiah(cashFlow.netCashFlow)}`,
+    `${cashFlow.netCashFlow >= 0 ? "+" : ""}${fmt(cashFlow.netCashFlow)}`,
     pageWidth - margin - 8,
     y + 15,
     { align: "right" }
@@ -1761,7 +1772,7 @@ export function generateLuxuryPdf(
       doc.text(item.date || "", margin + 6, y + 9);
       doc.text(`${item.note.slice(0, 36)} (${item.categoryName})`, margin + 70, y + 9);
       doc.text(`${item.percentageOfTotalExpense}%`, margin + 340, y + 9);
-      doc.text(formatRupiah(item.amount), pageWidth - margin - 6, y + 9, { align: "right" });
+      doc.text(fmt(item.amount), pageWidth - margin - 6, y + 9, { align: "right" });
 
       doc.setDrawColor(240, 240, 244);
       doc.setLineWidth(0.5);
@@ -1810,8 +1821,8 @@ export function generateLuxuryPdf(
         ? "Status: TERVERIFIKASI SEIMBANG — Seluruh saldo akun dan mutasi kas konsisten 100% tanpa selisih."
         : "Status: VERIFIED BALANCED — All account balances and transaction records are 100% consistent."
       : isIndonesian
-        ? `Status: PERINGATAN — Ditemukan selisih ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`
-        : `Status: WARNING — Discrepancy detected: ${formatRupiah(calk.reconciliation.discrepancyAmount)}.`,
+        ? `Status: PERINGATAN — Ditemukan selisih ${fmt(calk.reconciliation.discrepancyAmount)}.`
+        : `Status: WARNING — Discrepancy detected: ${fmt(calk.reconciliation.discrepancyAmount)}.`,
     margin + 8,
     y + 22
   );
@@ -1897,7 +1908,7 @@ export function generateLuxuryPdf(
 
     // Clean formatting without broken Unicode characters
     const prefix = isIncome ? "+" : isExpense ? "-" : "";
-    const amtStr = `${prefix}${formatRupiah(Number(tx.amount || 0))}`;
+    const amtStr = `${prefix}${fmt(Number(tx.amount || 0))}`;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);

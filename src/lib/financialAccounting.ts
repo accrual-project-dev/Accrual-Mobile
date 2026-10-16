@@ -601,7 +601,7 @@ export function calculateCALKReport(
     ? "CERTIFIED_BALANCED"
     : "AUDIT_WARNING";
   const uninitializedNote = balanceSheet.uninitializedAccounts?.length
-    ? `\n\nHistorical Period Note: ${balanceSheet.uninitializedAccounts.length} account(s) (${balanceSheet.uninitializedAccounts.slice(0, 4).join(", ")}${balanceSheet.uninitializedAccounts.length > 4 ? "..." : ""}) reflect Rp 0 as of this closing date because their first recorded ledger transactions occurred in a subsequent period.`
+    ? `\n\nHistorical Period Note: ${balanceSheet.uninitializedAccounts.length} account(s) (${balanceSheet.uninitializedAccounts.slice(0, 4).join(", ")}${balanceSheet.uninitializedAccounts.length > 4 ? "..." : ""}) reflect a 0 balance as of this closing date because their first recorded ledger transactions occurred in a subsequent period.`
     : "";
   const notes =
     (balanceSheet.isBalanced

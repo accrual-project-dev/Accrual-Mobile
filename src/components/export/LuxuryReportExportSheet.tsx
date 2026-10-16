@@ -17,9 +17,9 @@ import { useWallets } from "../../hooks/useWallets";
 import { useCategories } from "../../hooks/useCategories";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useToast } from "../../contexts/ToastContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
-import { formatRupiah } from "../../lib/utils";
 import { format, parseISO } from "date-fns";
 import {
   filterTransactionsForReport,
@@ -50,6 +50,7 @@ export function LuxuryReportExportSheet({
   defaultSpaceId,
 }: LuxuryReportExportSheetProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, preferredCurrency } = useCurrency();
   const { data: allTxs = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
   const { data: categories = [] } = useCategories();
@@ -81,8 +82,10 @@ export function LuxuryReportExportSheet({
       spaceId: selectedSpaceId,
       spaceName,
       transactionType,
+      formatCurrency: formatWithPreferred,
+      preferredCurrency,
     };
-  }, [dateRange, customStart, customEnd, selectedSpaceId, spaceName, transactionType]);
+  }, [dateRange, customStart, customEnd, selectedSpaceId, spaceName, transactionType, formatWithPreferred, preferredCurrency]);
 
   const filteredTransactions = useMemo(() => {
     return filterTransactionsForReport(allTxs, filterOptions);
@@ -116,7 +119,7 @@ export function LuxuryReportExportSheet({
     try {
       if (action === "print") {
         triggerSuccessHaptic();
-        triggerPrintLuxuryReport(filteredTransactions, summary, wallets, isIndonesian);
+        triggerPrintLuxuryReport(filteredTransactions, summary, wallets, isIndonesian, filterOptions);
         showToast(
           isIndonesian ? "Laporan siap dicetak" : "Executive statement ready for print",
           "update",
@@ -292,7 +295,7 @@ export function LuxuryReportExportSheet({
                 {isIndonesian ? "Arus Kas Bersih" : "Net Cashflow"}
               </span>
               <span className="text-[22px] font-semibold text-[var(--text-primary)]  tracking-tight mt-0.5 block">
-                {(summary.netCashflow >= 0 ? "+" : "") + formatRupiah(summary.netCashflow)}
+                {(summary.netCashflow >= 0 ? "+" : "") + formatWithPreferred(summary.netCashflow)}
               </span>
             </div>
             <div className="text-right">
@@ -315,7 +318,7 @@ export function LuxuryReportExportSheet({
                 </span>
               </div>
               <div className=" text-[13px] font-semibold text-[var(--text-primary)] tracking-tight">
-                +{formatRupiah(summary.totalIncome)}
+                +{formatWithPreferred(summary.totalIncome)}
               </div>
             </div>
 
@@ -327,7 +330,7 @@ export function LuxuryReportExportSheet({
                 </span>
               </div>
               <div className=" text-[13px] font-semibold text-[var(--text-primary)] tracking-tight">
-                -{formatRupiah(summary.totalExpense)}
+                -{formatWithPreferred(summary.totalExpense)}
               </div>
             </div>
           </div>
