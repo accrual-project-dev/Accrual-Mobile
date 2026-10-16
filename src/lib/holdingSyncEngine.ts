@@ -72,6 +72,9 @@ export interface SyncTransactionHoldingParams {
   note?: string | null;
   customUnits?: number;
   customPrice?: number;
+  skipHoldingActivity?: boolean;
+  holdingId?: string;
+  holdingSymbol?: string;
 }
 
 export interface SyncResult {
@@ -93,6 +96,10 @@ export function syncTransactionWithHolding(
   wallets: Wallet[],
   userId?: string,
 ): SyncResult {
+  if (tx.skipHoldingActivity) {
+    return { synced: false, message: "Holding activity skipped as pre-recorded" };
+  }
+
   const amount = Number(tx.amount) || 0;
   if (amount <= 0 && (!tx.customUnits || tx.customUnits <= 0)) {
     return { synced: false, message: "Zero amount or units" };
@@ -107,10 +114,11 @@ export function syncTransactionWithHolding(
   // If neither wallet is an investment/crypto account, check if it's an auto-compound yield with custom units
   if (!isFromCrypto && !isToCrypto) {
     if (tx.type === "income" && tx.customUnits && tx.customUnits > 0) {
+      const targetSymbol = (tx.holdingSymbol || "USDT").toUpperCase();
       const usdtPref = getSavedUsdtPref(userId);
       const rate = tx.customPrice && tx.customPrice > 0 ? tx.customPrice : usdtPref.rate || USD_IDR_ESTIMATE;
-      const holdingId = getStandardUsdtHoldingId(userId);
-      const previousUnits = usdtPref.units;
+      const holdingId = tx.holdingId || (targetSymbol === "USDT" ? getStandardUsdtHoldingId(userId) : `holding-${targetSymbol.toLowerCase()}-${Date.now()}`);
+      const previousUnits = targetSymbol === "USDT" ? usdtPref.units : 0;
       const { updatedHolding } = recordHoldingActivity(
         holdingId,
         {
@@ -126,11 +134,11 @@ export function syncTransactionWithHolding(
       return {
         synced: true,
         action: "yield",
-        holdingSymbol: "USDT",
+        holdingSymbol: targetSymbol,
         unitsDelta: tx.customUnits,
         previousUnits,
         newUnits: updatedHolding.units,
-        message: `Compounded ${tx.customUnits} USDT`,
+        message: `Compounded ${tx.customUnits} ${targetSymbol}`,
       };
     }
     return { synced: false, message: "No investment wallet involved" };

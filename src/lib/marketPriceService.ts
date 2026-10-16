@@ -1050,14 +1050,22 @@ export const INDEX_ALIAS_MAP: Record<string, string> = {
   DOW: "^DJI",
   DJI: "^DJI",
   DIA: "DIA",
+  NIKKEI: "^N225",
+  N225: "^N225",
+  HANGSENG: "^HSI",
+  HSI: "^HSI",
+  FTSE: "^FTSE",
+  STI: "^STI",
+  STOXX50: "^STOXX50E",
 };
 
 const KNOWN_US_TICKERS = new Set([
   "AAPL", "NVDA", "TSLA", "MSFT", "GOOGL", "GOOG", "AMZN", "META",
   "NFLX", "AMD", "INTC", "SPY", "QQQ", "VOO", "VTI", "COIN", "PLTR",
-  "DIS", "BABA", "UBER", "PYPL", "BRK.B", "BRK.A", "JPM", "V", "MA",
+  "DIS", "BABA", "UBER", "PYPL", "BRK.B", "BRK.A", "BRK-B", "JPM", "V", "MA",
   "WMT", "COST", "XOM", "CVX", "LLY", "UNH", "JNJ", "PG", "HD", "BAC",
-  "^GSPC", "^IXIC", "^DJI", "^NDX", "^RUT", "DIA", "IWM",
+  "ARM", "SMCI", "TSM",
+  "^GSPC", "^IXIC", "^DJI", "^NDX", "^RUT", "^N225", "^HSI", "^FTSE", "^STI", "^STOXX50E", "DIA", "IWM",
 ]);
 
 /**

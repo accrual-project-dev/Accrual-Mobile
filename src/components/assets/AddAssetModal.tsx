@@ -151,6 +151,7 @@ export function AddAssetModal({
 
   // Smart Depreciation State
   const [isDepreciationEnabled, setIsDepreciationEnabled] = useState(false);
+  const [rateDirection, setRateDirection] = useState<"appreciation" | "depreciation">("depreciation");
   const [annualRate, setAnnualRate] = useState("15");
 
   // Wallet Funding Source State
@@ -351,10 +352,17 @@ export function AddAssetModal({
           "RD-PENDAPATAN-TETAP": "7.0",
           "RD-CAMPURAN": "9.0",
           "RD-SAHAM": "11.0",
+          "RD-SYARIAH": "7.5",
+          "RD-TERPROTEKSI": "6.8",
+          "RD-GLOBAL-USD": "8.5",
+          "ETF-IDX30": "10.0",
           MMF: "5.0",
           FIF: "7.0",
           BALF: "9.0",
           EQF: "11.0",
+          "ISLAMIC-FUND": "7.5",
+          "PROTECTED-FUND": "6.8",
+          "OFFSHORE-USD": "8.5",
         };
         setAnnualRate(
           fundRates[selectedSymbol] ||
@@ -385,8 +393,32 @@ export function AddAssetModal({
         setFormCurrentPrice(defaultBondPrice);
       } else if (preset.type === "fixed_asset") {
         setPriceMode("custom");
+        const isAppreciating =
+          preset.symbol === "LAND" ||
+          preset.symbol === "PROPERTY" ||
+          preset.symbol === "METALS" ||
+          preset.symbol === "ART";
         setIsDepreciationEnabled(true);
-        setAnnualRate("10");
+        setRateDirection(isAppreciating ? "appreciation" : "depreciation");
+        setAnnualRate(
+          preset.symbol === "LAND"
+            ? "8"
+            : preset.symbol === "PROPERTY"
+              ? "6"
+              : preset.symbol === "METALS"
+                ? "7"
+                : preset.symbol === "ART"
+                  ? "5"
+                  : preset.symbol === "VEHICLE" || preset.symbol === "MOTORCYCLE"
+                    ? "12"
+                    : preset.symbol === "LAPTOP" ||
+                        preset.symbol === "SMARTPHONE" ||
+                        preset.symbol === "ELECTRONICS"
+                      ? "18"
+                      : preset.symbol === "WATCH" || preset.symbol === "JEWELRY"
+                        ? "5"
+                        : "10",
+        );
         setFormBuyPrice("");
         setFormCurrentPrice("");
       } else {
@@ -435,6 +467,7 @@ export function AddAssetModal({
 
       if (editingHolding.annual_rate && editingHolding.annual_rate !== 0) {
         setIsDepreciationEnabled(true);
+        setRateDirection(editingHolding.annual_rate >= 0 ? "appreciation" : "depreciation");
         setAnnualRate(String(Math.abs(editingHolding.annual_rate)));
       } else {
         setIsDepreciationEnabled(false);
@@ -604,7 +637,9 @@ export function AddAssetModal({
     const signedRate =
       isDepreciationEnabled && !isNaN(parsedRate) && parsedRate > 0
         ? formType === "fixed_asset"
-          ? -Math.abs(parsedRate)
+          ? rateDirection === "depreciation"
+            ? -Math.abs(parsedRate)
+            : Math.abs(parsedRate)
           : Math.abs(parsedRate)
         : undefined;
 
@@ -1419,9 +1454,13 @@ export function AddAssetModal({
                       <div>
                         <span className="text-[11.5px] font-semibold text-[var(--text-primary)] block leading-tight">
                           {formType === "fixed_asset"
-                            ? isIndonesian
-                              ? "Penyusutan Nilai Aset (Depresiasi)"
-                              : "Asset Depreciation"
+                            ? rateDirection === "depreciation"
+                              ? isIndonesian
+                                ? "Penyusutan Nilai Aset (Depresiasi)"
+                                : "Asset Depreciation"
+                              : isIndonesian
+                                ? "Apresiasi Nilai Aset (Pertumbuhan)"
+                                : "Asset Appreciation"
                             : formType === "bond"
                               ? isIndonesian
                                 ? "Kupon Bunga Obligasi / SBN"
@@ -1433,8 +1472,8 @@ export function AddAssetModal({
                         <span className="text-[9.5px] text-[var(--text-tertiary)] leading-tight mt-0.5 block">
                           {formType === "fixed_asset"
                             ? isIndonesian
-                              ? "Khusus aset fisik/gadget yang berkurang nilainya seiring waktu"
-                              : "Amortize physical/hardware asset valuation over time"
+                              ? "Penyusutan gadget/kendaraan atau apresiasi properti/tanah seiring waktu"
+                              : "Depreciation for vehicles/gadgets or appreciation for real estate over time"
                             : formType === "bond"
                               ? isIndonesian
                                 ? "Akumulasi kupon bunga tahunan berjalan sejak tanggal pembelian"
@@ -1472,13 +1511,54 @@ export function AddAssetModal({
                     </div>
 
                     {isDepreciationEnabled && (
-                      <div className="pt-2 border-t border-[var(--glass-border)]/40 space-y-1.5 animate-in fade-in duration-150">
+                      <div className="pt-2 border-t border-[var(--glass-border)]/40 space-y-2 animate-in fade-in duration-150">
+                        {formType === "fixed_asset" && (
+                          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-white/[0.04] border border-[var(--glass-border)]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                triggerHaptic("light");
+                                setRateDirection("appreciation");
+                              }}
+                              className={`py-1 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer select-none text-center ${
+                                rateDirection === "appreciation"
+                                  ? isDark
+                                    ? "bg-white text-black shadow-sm"
+                                    : "bg-black text-white shadow-sm"
+                                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                              }`}
+                            >
+                              {isIndonesian ? "Apresiasi (+)" : "Appreciation (+)"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                triggerHaptic("light");
+                                setRateDirection("depreciation");
+                              }}
+                              className={`py-1 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer select-none text-center ${
+                                rateDirection === "depreciation"
+                                  ? isDark
+                                    ? "bg-white text-black shadow-sm"
+                                    : "bg-black text-white shadow-sm"
+                                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                              }`}
+                            >
+                              {isIndonesian ? "Penyusutan (-)" : "Depreciation (-)"}
+                            </button>
+                          </div>
+                        )}
+
                         <div className="flex items-center justify-between text-[10px] ">
                           <span className="text-[var(--text-tertiary)]">
                             {formType === "fixed_asset"
-                              ? isIndonesian
-                                ? "Laju Penyusutan Tahunan:"
-                                : "Annual Depreciation Rate:"
+                              ? rateDirection === "depreciation"
+                                ? isIndonesian
+                                  ? "Laju Penyusutan Tahunan:"
+                                  : "Annual Depreciation Rate:"
+                                : isIndonesian
+                                  ? "Laju Apresiasi Tahunan:"
+                                  : "Annual Appreciation Rate:"
                               : formType === "bond"
                                 ? isIndonesian
                                   ? "Kupon Bunga Tahunan:"
@@ -1488,13 +1568,19 @@ export function AddAssetModal({
                                   : "Estimated Annual Yield:"}
                           </span>
                           <span className="font-bold text-[var(--text-primary)]">
-                            {formType === "fixed_asset" ? `-${annualRate}%` : `+${annualRate}%`} /{" "}
-                            {isIndonesian ? "tahun" : "yr"}
+                            {formType === "fixed_asset"
+                              ? rateDirection === "depreciation"
+                                ? `-${annualRate}%`
+                                : `+${annualRate}%`
+                              : `+${annualRate}%`}{" "}
+                            / {isIndonesian ? "tahun" : "yr"}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           {(formType === "fixed_asset"
-                            ? ["10", "15", "20", "25"]
+                            ? rateDirection === "depreciation"
+                              ? ["10", "15", "20", "25"]
+                              : ["5", "8", "10", "12"]
                             : formType === "bond"
                               ? ["5.5", "6.0", "6.4", "6.8"]
                               : ["5.0", "7.0", "9.0", "12.0"]
@@ -1530,7 +1616,11 @@ export function AddAssetModal({
                                     : "1px solid var(--glass-border)",
                               }}
                             >
-                              {formType === "fixed_asset" ? `-${r}%` : `+${r}%`}
+                              {formType === "fixed_asset"
+                                ? rateDirection === "depreciation"
+                                  ? `-${r}%`
+                                  : `+${r}%`
+                                : `+${r}%`}
                             </button>
                           ))}
                         </div>

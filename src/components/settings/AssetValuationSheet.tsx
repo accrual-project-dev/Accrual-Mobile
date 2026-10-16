@@ -1445,6 +1445,7 @@ export function AssetValuationSheet({
         holdingUnits={usdtPref.units}
         liveRate={usdtPref.rate || USD_IDR_ESTIMATE}
         wallets={wallets}
+        holdings={holdings}
         defaultWalletId={cryptoWallet?.id}
         userId={user?.id}
         onSuccess={() => {

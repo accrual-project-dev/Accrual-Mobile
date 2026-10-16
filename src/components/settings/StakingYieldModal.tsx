@@ -9,6 +9,7 @@ import {
   PieChart,
   Calendar as CalendarIcon,
   Sparkles,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
@@ -23,7 +24,6 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { useCategories } from "../../hooks/useCategories";
-import { syncTransactionWithHolding } from "../../lib/holdingSyncEngine";
 import {
   recordHoldingActivity,
   upsertHolding,
@@ -34,6 +34,7 @@ import type { Wallet, InvestmentHolding } from "../../lib/types";
 
 export type YieldInstrumentType =
   | "daily_bank"
+  | "bond_coupon"
   | "dividend"
   | "deposit"
   | "crypto_staking";
@@ -93,7 +94,7 @@ export function StakingYieldModal({
   // ── Active Lifecycle Tab: 1 = Projection/Setup, 2 = Claim/Record ──────────
   const [activeTab, setActiveTab] = useState<"overview" | "claim">("overview");
 
-  // ── 1. Daily Bank Interest State ──────────────────────────────────────────
+  // ── Default Bank Wallet ───────────────────────────────────────────────────
   const defaultBankWallet = useMemo(() => {
     return (
       wallets.find((w) => {
@@ -116,19 +117,44 @@ export function StakingYieldModal({
     );
   }, [wallets]);
 
+  // ── 1. Daily Bank Interest State ──────────────────────────────────────────
   const [selectedBankWalletId, setSelectedBankWalletId] = useState<string>(
     defaultBankWallet?.id || "",
   );
   const [bankApyInput, setBankApyInput] = useState<string>("3.75");
   const [customBankPrincipal, setCustomBankPrincipal] = useState<string>("");
 
-  // ── 2. Stock Dividend State ───────────────────────────────────────────────
+  // ── 2. Government Bond / SBN Coupon State ─────────────────────────────────
+  const bondHoldings = useMemo(() => {
+    return holdings.filter((h) => h.asset_type === "bond");
+  }, [holdings]);
+
+  const [selectedBondSymbol, setSelectedBondSymbol] = useState<string>(() => {
+    return bondHoldings[0]?.symbol || "ORI025";
+  });
+  const [bondPrincipalInput, setBondPrincipalInput] = useState<string>(() => {
+    const defaultBond = bondHoldings[0];
+    if (defaultBond && defaultBond.units > 0) {
+      const total = defaultBond.units * (defaultBond.current_price || 1000000);
+      return total.toLocaleString("id-ID");
+    }
+    return "50.000.000";
+  });
+  const [bondCouponRateInput, setBondCouponRateInput] = useState<string>(() => {
+    const defaultBond = bondHoldings[0];
+    if (defaultBond?.annual_rate) {
+      return String(Math.abs(defaultBond.annual_rate));
+    }
+    return "6.4";
+  });
+  const [bondPayoutWalletId, setBondPayoutWalletId] = useState<string>(
+    defaultBankWallet?.id || "",
+  );
+
+  // ── 3. Stock Dividend State ───────────────────────────────────────────────
   const stockHoldings = useMemo(() => {
     return holdings.filter(
-      (h) =>
-        h.asset_type === "stock" ||
-        h.asset_type === "mutual_fund" ||
-        h.symbol !== "USDT",
+      (h) => h.asset_type === "stock" || h.asset_type === "mutual_fund",
     );
   }, [holdings]);
 
@@ -141,7 +167,7 @@ export function StakingYieldModal({
     defaultBankWallet?.id || "",
   );
 
-  // ── 3. Bank Term Deposit State ────────────────────────────────────────────
+  // ── 4. Bank Term Deposit State ────────────────────────────────────────────
   const [depositPrincipalInput, setDepositPrincipalInput] =
     useState<string>("10.000.000");
   const [depositApyInput, setDepositApyInput] = useState<string>("6.5");
@@ -150,9 +176,47 @@ export function StakingYieldModal({
     defaultBankWallet?.id || "",
   );
 
-  // ── 4. Crypto Staking State ───────────────────────────────────────────────
+  // ── 5. Multi-Crypto Staking State ─────────────────────────────────────────
+  const cryptoHoldings = useMemo(() => {
+    const list = holdings.filter(
+      (h) => h.asset_type === "crypto" || h.symbol?.toUpperCase() === "USDT",
+    );
+    if (!list.some((h) => h.symbol?.toUpperCase() === "USDT")) {
+      list.unshift({
+        id: "usdt-virtual",
+        symbol: "USDT",
+        name: "Tether USD",
+        asset_type: "crypto",
+        units: availableUnits,
+        avg_buy_price: effectiveRate,
+        current_price: effectiveRate,
+      });
+    }
+    return list;
+  }, [holdings, availableUnits, effectiveRate]);
+
+  const [selectedCryptoSymbol, setSelectedCryptoSymbol] = useState<string>(
+    (holdingSymbol || "USDT").toUpperCase(),
+  );
+
+  const activeCryptoHolding = useMemo(() => {
+    return (
+      cryptoHoldings.find(
+        (h) => h.symbol?.toUpperCase() === selectedCryptoSymbol.toUpperCase(),
+      ) || cryptoHoldings[0]
+    );
+  }, [cryptoHoldings, selectedCryptoSymbol]);
+
+  const effectiveCryptoUnits = Number(activeCryptoHolding?.units || 0);
+  const effectiveCryptoPrice =
+    Number(activeCryptoHolding?.current_price || 0) > 0
+      ? Number(activeCryptoHolding.current_price)
+      : selectedCryptoSymbol.toUpperCase() === "USDT"
+        ? effectiveRate
+        : 1000000;
+
   const [customStakedUnits, setCustomStakedUnits] = useState<string>(
-    availableUnits > 0 ? String(availableUnits) : "1000",
+    effectiveCryptoUnits > 0 ? String(effectiveCryptoUnits) : "1000",
   );
   const [cryptoApyInput, setCryptoApyInput] = useState<string>("8.5");
   const [isAutoCompound, setIsAutoCompound] = useState<boolean>(true);
@@ -160,9 +224,18 @@ export function StakingYieldModal({
     defaultBankWallet?.id || "",
   );
 
-  // ── Claim & Transaction Form State ────────────────────────────────────────
+  // Sync customStakedUnits when selectedCryptoSymbol changes
+  useEffect(() => {
+    if (activeCryptoHolding && activeCryptoHolding.units > 0) {
+      setCustomStakedUnits(String(activeCryptoHolding.units));
+    } else {
+      setCustomStakedUnits("1000");
+    }
+  }, [activeCryptoHolding]);
+
+  // ── Claim & Transaction Form State (Full ISO Timestamp) ───────────────────
   const [claimDate, setClaimDate] = useState<string>(() =>
-    format(new Date(), "yyyy-MM-dd"),
+    format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
   );
   const [isYesterdayDate, setIsYesterdayDate] = useState(false);
   const [claimNote, setClaimNote] = useState<string>("");
@@ -190,7 +263,7 @@ export function StakingYieldModal({
     return isNaN(parsed) || parsed < 0 ? 0 : parsed;
   }, [bankApyInput]);
 
-  // Bank Interest Calculations
+  // 1. Bank Interest Calculations
   const bankProjections = useMemo(() => {
     const annual = effectiveBankPrincipal * (effectiveBankApy / 100);
     const dailyGross = annual / 365;
@@ -205,7 +278,35 @@ export function StakingYieldModal({
     };
   }, [effectiveBankPrincipal, effectiveBankApy]);
 
-  // Crypto Staking Calculations
+  // 2. SBN Coupon Calculations (PPh Final 10%)
+  const effectiveBondPrincipal = useMemo(() => {
+    const clean = bondPrincipalInput.replace(/\D/g, "");
+    const val = parseInt(clean, 10);
+    return isNaN(val) ? 0 : val;
+  }, [bondPrincipalInput]);
+
+  const effectiveBondCouponRate = useMemo(() => {
+    const parsed = parseFloat(bondCouponRateInput.replace(/,/g, "."));
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }, [bondCouponRateInput]);
+
+  const bondProjections = useMemo(() => {
+    const annualGross = effectiveBondPrincipal * (effectiveBondCouponRate / 100);
+    const monthlyGross = annualGross / 12;
+    const taxRate = 0.1; // PPh Final 10% untuk SBN & Obligasi Negara
+    const taxMonthly = monthlyGross * taxRate;
+    const taxAnnual = annualGross * taxRate;
+    return {
+      monthlyGross: Math.round(monthlyGross),
+      monthlyNet: Math.round(monthlyGross - taxMonthly),
+      annualGross: Math.round(annualGross),
+      annualNet: Math.round(annualGross - taxAnnual),
+      taxMonthly: Math.round(taxMonthly),
+      taxAnnual: Math.round(taxAnnual),
+    };
+  }, [effectiveBondPrincipal, effectiveBondCouponRate]);
+
+  // 3. Crypto Staking Calculations
   const effectiveStakedUnits = useMemo(() => {
     const parsed = parseFloat(customStakedUnits.replace(/,/g, "."));
     return isNaN(parsed) || parsed < 0 ? 0 : parsed;
@@ -224,20 +325,20 @@ export function StakingYieldModal({
     return {
       daily: {
         units: Number(dailyUnits.toFixed(4)),
-        idr: Math.round(dailyUnits * effectiveRate),
+        idr: Math.round(dailyUnits * effectiveCryptoPrice),
       },
       monthly: {
         units: Number(monthlyUnits.toFixed(4)),
-        idr: Math.round(monthlyUnits * effectiveRate),
+        idr: Math.round(monthlyUnits * effectiveCryptoPrice),
       },
       yearly: {
         units: Number(annualUnits.toFixed(4)),
-        idr: Math.round(annualUnits * effectiveRate),
+        idr: Math.round(annualUnits * effectiveCryptoPrice),
       },
     };
-  }, [effectiveStakedUnits, effectiveCryptoApy, effectiveRate]);
+  }, [effectiveStakedUnits, effectiveCryptoApy, effectiveCryptoPrice]);
 
-  // Term Deposit Calculations
+  // 4. Term Deposit Calculations
   const effectiveDepositPrincipal = useMemo(() => {
     const clean = depositPrincipalInput.replace(/\D/g, "");
     const val = parseInt(clean, 10);
@@ -284,6 +385,11 @@ export function StakingYieldModal({
             c.name.toLowerCase().includes("bunga")),
       ) || categories.find((c) => c.type === "income");
 
+    // Ensure full ISO timestamp
+    const fullIsoOccurredOn = claimDate.includes("T")
+      ? claimDate
+      : `${claimDate}T12:00:00`;
+
     if (instrumentType === "daily_bank") {
       const amount = bankProjections.daily;
       if (amount <= 0) {
@@ -305,7 +411,7 @@ export function StakingYieldModal({
         category_id: incomeCat?.id || null,
         type: "income",
         amount,
-        occurred_on: claimDate,
+        occurred_on: fullIsoOccurredOn,
         note,
       });
 
@@ -313,6 +419,38 @@ export function StakingYieldModal({
         isIndonesian
           ? `Bunga harian ${formatRupiah(amount)} berhasil dicatat ke ${activeBankWallet?.name || "bank"}`
           : `Daily interest ${formatRupiah(amount)} recorded to ${activeBankWallet?.name || "bank"}`,
+        "add",
+        () => {},
+      );
+    } else if (instrumentType === "bond_coupon") {
+      const amount = bondProjections.monthlyNet;
+      if (amount <= 0) {
+        showToast(
+          isIndonesian
+            ? "Nominal kupon tidak valid"
+            : "Invalid coupon amount",
+          "delete",
+          () => {},
+        );
+        return;
+      }
+      const note =
+        claimNote.trim() ||
+        `${isIndonesian ? "Kupon SBN" : "SBN Coupon"} ${selectedBondSymbol} (+${formatRupiah(amount)})`;
+
+      addTx.mutate({
+        wallet_id: bondPayoutWalletId || selectedBankWalletId,
+        category_id: incomeCat?.id || null,
+        type: "income",
+        amount,
+        occurred_on: fullIsoOccurredOn,
+        note,
+      });
+
+      showToast(
+        isIndonesian
+          ? `Kupon SBN ${selectedBondSymbol} sebesar ${formatRupiah(amount)} berhasil dicatat`
+          : `SBN coupon of ${formatRupiah(amount)} for ${selectedBondSymbol} recorded`,
         "add",
         () => {},
       );
@@ -338,7 +476,7 @@ export function StakingYieldModal({
         category_id: incomeCat?.id || null,
         type: "income",
         amount,
-        occurred_on: claimDate,
+        occurred_on: fullIsoOccurredOn,
         note,
       });
 
@@ -368,7 +506,7 @@ export function StakingYieldModal({
         category_id: incomeCat?.id || null,
         type: "income",
         amount,
-        occurred_on: claimDate,
+        occurred_on: fullIsoOccurredOn,
         note,
       });
 
@@ -380,12 +518,13 @@ export function StakingYieldModal({
         () => {},
       );
     } else {
-      // Crypto Staking
+      // 5. Crypto Staking
       const unitsToClaim =
         cryptoProjections.daily.units > 0
           ? cryptoProjections.daily.units
           : 0.23;
-      const idrAmount = Math.round(unitsToClaim * effectiveRate);
+      const idrAmount = Math.round(unitsToClaim * effectiveCryptoPrice);
+      const targetSymbol = selectedCryptoSymbol.toUpperCase();
 
       if (unitsToClaim <= 0 || idrAmount <= 0) {
         showToast(
@@ -398,61 +537,55 @@ export function StakingYieldModal({
         return;
       }
 
-      const defaultNote = `Staking Yield ${holdingSymbol} (+${unitsToClaim} ${holdingSymbol} · ${
-        isAutoCompound
-          ? "Auto-Compound"
-          : isIndonesian
-            ? "Pencairan Kas"
-            : "Payout"
-      })`;
+      const defaultNote = isIndonesian
+        ? `Imbal Hasil Staking ${targetSymbol} (+${unitsToClaim} ${targetSymbol} · ${
+            isAutoCompound ? "Bunga Majemuk" : "Pencairan Kas"
+          })`
+        : `Staking Yield ${targetSymbol} (+${unitsToClaim} ${targetSymbol} · ${
+            isAutoCompound ? "Auto-Compound" : "Cash Payout"
+          })`;
       const finalNote = claimNote.trim() || defaultNote;
-      const newTxId = `tx-staking-${Date.now()}`;
-
-      const txPayload = {
-        id: newTxId,
-        user_id: userId || "",
-        wallet_id: isAutoCompound
-          ? null
-          : cryptoPayoutWalletId || selectedBankWalletId,
-        category_id: incomeCat?.id || null,
-        type: "income" as const,
-        amount: idrAmount,
-        occurred_on: claimDate,
-        note: finalNote,
-        customUnits: unitsToClaim,
-        customPrice: effectiveRate,
-      };
 
       if (!isAutoCompound) {
+        // Mode: Cash Payout (Disbursed to fiat/bank account)
         addTx.mutate({
           wallet_id: cryptoPayoutWalletId || selectedBankWalletId,
           category_id: incomeCat?.id || null,
           type: "income",
           amount: idrAmount,
-          occurred_on: claimDate,
+          occurred_on: fullIsoOccurredOn,
           note: finalNote,
         });
+
+        showToast(
+          isIndonesian
+            ? `Pencairan yield +${unitsToClaim} ${targetSymbol} (${formatRupiah(idrAmount)}) berhasil dicatat`
+            : `Yield payout +${unitsToClaim} ${targetSymbol} (${formatRupiah(idrAmount)}) recorded`,
+          "add",
+          () => {},
+        );
       } else {
-        const cleanSymbol = (holdingSymbol || "USDT").trim().toUpperCase();
+        // Mode: Auto-Compound (Reinvested directly into coin balance)
         const targetHolding = (holdings || []).find(
-          (h) => h.symbol?.toUpperCase() === cleanSymbol,
+          (h) => h.symbol?.toUpperCase() === targetSymbol,
         );
         let targetHoldingId = targetHolding?.id;
+
         if (!targetHoldingId) {
-          if (cleanSymbol === "USDT") {
+          if (targetSymbol === "USDT") {
             targetHoldingId = getStandardUsdtHoldingId(userId);
           } else {
-            targetHoldingId = `holding-${cleanSymbol.toLowerCase()}-${Date.now()}`;
+            targetHoldingId = `holding-${targetSymbol.toLowerCase()}-${Date.now()}`;
             upsertHolding(
               {
                 id: targetHoldingId,
                 user_id: userId,
-                symbol: cleanSymbol,
-                name: cleanSymbol,
+                symbol: targetSymbol,
+                name: targetSymbol,
                 asset_type: "crypto",
                 units: 0,
-                avg_buy_price: effectiveRate,
-                current_price: effectiveRate,
+                avg_buy_price: effectiveCryptoPrice,
+                current_price: effectiveCryptoPrice,
                 currency: "IDR",
                 icon: "Coins",
                 activities: [],
@@ -461,28 +594,39 @@ export function StakingYieldModal({
             );
           }
         }
+
+        // 1. Record holding activity ONCE directly to the holding
         recordHoldingActivity(
           targetHoldingId,
           {
             type: "buy",
             units: unitsToClaim,
-            price_per_unit: effectiveRate,
+            price_per_unit: effectiveCryptoPrice,
             total_amount: idrAmount,
-            date: claimDate,
+            date: fullIsoOccurredOn.split("T")[0],
             note: finalNote,
           },
           userId,
         );
-        syncTransactionWithHolding(txPayload, wallets, userId);
-      }
 
-      showToast(
-        isIndonesian
-          ? `Yield +${unitsToClaim} ${holdingSymbol} (+${formatRupiah(idrAmount)}) berhasil dicatat`
-          : `Yield +${unitsToClaim} ${holdingSymbol} recorded`,
-        "add",
-        () => {},
-      );
+        // 2. Record income transaction in the ledger so user sees it in cashflow & reports
+        addTx.mutate({
+          wallet_id: null,
+          category_id: incomeCat?.id || null,
+          type: "income",
+          amount: idrAmount,
+          occurred_on: fullIsoOccurredOn,
+          note: finalNote,
+        });
+
+        showToast(
+          isIndonesian
+            ? `Bunga majemuk +${unitsToClaim} ${targetSymbol} (+${formatRupiah(idrAmount)}) berhasil ditambahkan ke saldo aset`
+            : `Auto-compounded +${unitsToClaim} ${targetSymbol} (+${formatRupiah(idrAmount)}) to asset holdings`,
+          "add",
+          () => {},
+        );
+      }
     }
 
     if (onSuccess) onSuccess();
@@ -514,7 +658,7 @@ export function StakingYieldModal({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex flex-col justify-end">
-          {/* Backdrop: Blur Tipis Jernih */}
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -524,7 +668,7 @@ export function StakingYieldModal({
             className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-all"
           />
 
-          {/* Bottom Sheet Surface (Docked to Bottom Like Foto Kedua) */}
+          {/* Bottom Sheet Surface */}
           <motion.div
             initial={{ y: "100%", opacity: 0.5 }}
             animate={{ y: 0, opacity: 1 }}
@@ -575,8 +719,8 @@ export function StakingYieldModal({
                   </h3>
                   <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
                     {isIndonesian
-                      ? "Bunga harian bank, dividen saham, deposito & staking"
-                      : "Daily bank yield, stock dividends, deposit & staking"}
+                      ? "Bunga harian bank, kupon SBN, dividen, deposito & staking"
+                      : "Daily bank yield, bond coupons, dividends, deposit & staking"}
                   </p>
                 </div>
               </div>
@@ -597,10 +741,10 @@ export function StakingYieldModal({
               </button>
             </div>
 
-            {/* ── 2. Instrument Type Tabs (4 Pillars Vertikal - Anti-Truncation) ── */}
+            {/* ── 2. Instrument Type Tabs (5 Pillars: Bank, SBN, Dividen, Deposito, Staking) ── */}
             <div className="px-6 shrink-0">
               <div
-                className="grid grid-cols-4 gap-1 p-1 rounded-2xl mb-3.5 transition-all"
+                className="grid grid-cols-5 gap-1 p-1 rounded-2xl mb-3.5 transition-all"
                 style={{
                   background: isDark
                     ? "rgba(255, 255, 255, 0.05)"
@@ -613,8 +757,13 @@ export function StakingYieldModal({
                 {[
                   {
                     id: "daily_bank" as YieldInstrumentType,
-                    label: isIndonesian ? "Bunga Bank" : "Bank Yield",
+                    label: isIndonesian ? "Bank" : "Bank",
                     icon: Landmark,
+                  },
+                  {
+                    id: "bond_coupon" as YieldInstrumentType,
+                    label: isIndonesian ? "SBN" : "Bonds",
+                    icon: ShieldCheck,
                   },
                   {
                     id: "dividend" as YieldInstrumentType,
@@ -642,7 +791,7 @@ export function StakingYieldModal({
                         triggerHaptic("light");
                         setInstrumentType(tab.id);
                       }}
-                      className="flex flex-col items-center justify-center py-2 px-1 rounded-xl text-[10.5px] font-semibold transition-all cursor-pointer select-none"
+                      className="flex flex-col items-center justify-center py-2 px-0.5 rounded-xl text-[10px] font-semibold transition-all cursor-pointer select-none"
                       style={{
                         background: isActive
                           ? isDark
@@ -877,9 +1026,198 @@ export function StakingYieldModal({
                     </div>
                   )}
 
-                  {/* Case B: Stock Dividend */}
+                  {/* Case B: Government Bond / SBN Coupon */}
+                  {instrumentType === "bond_coupon" && (
+                    <div className="space-y-3.5">
+                      {/* Bond chips if user holds any bonds */}
+                      {bondHoldings.length > 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian ? "Aset Portofolio SBN" : "Portfolio Bond Holdings"}
+                          </label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {bondHoldings.map((b) => (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => {
+                                  triggerHaptic("light");
+                                  setSelectedBondSymbol(b.symbol);
+                                  const total = b.units * (b.current_price || 1000000);
+                                  setBondPrincipalInput(total.toLocaleString("id-ID"));
+                                  if (b.annual_rate) {
+                                    setBondCouponRateInput(String(Math.abs(b.annual_rate)));
+                                  }
+                                }}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer select-none flex items-center gap-1 ${
+                                  selectedBondSymbol === b.symbol
+                                    ? isDark
+                                      ? "bg-white text-black"
+                                      : "bg-black text-white"
+                                    : "bg-white/[0.05] text-[var(--text-secondary)] border border-[var(--glass-border)]"
+                                }`}
+                              >
+                                {selectedBondSymbol === b.symbol && <Check size={11} strokeWidth={2.5} />}
+                                <span>{b.symbol}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian ? "Seri / Kode SBN" : "Bond Series / Code"}
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedBondSymbol}
+                          onChange={(e) => setSelectedBondSymbol(e.target.value.toUpperCase())}
+                          placeholder="Contoh: ORI025, SR020, FR0098"
+                          className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none uppercase"
+                          style={{
+                            background: controlBg,
+                            border: controlBorder,
+                            boxShadow: controlShadow,
+                          }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian ? "Pokok Investasi (Rp)" : "Principal (Rp)"}
+                          </label>
+                          <input
+                            type="text"
+                            value={bondPrincipalInput}
+                            onChange={(e) => {
+                              const formatted = formatLiveAmountInput(e.target.value, isIndonesian);
+                              setBondPrincipalInput(formatted.display);
+                            }}
+                            placeholder="50.000.000"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none"
+                            style={{
+                              background: controlBg,
+                              border: controlBorder,
+                              boxShadow: controlShadow,
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian ? "Kupon p.a. (%)" : "Coupon Rate (%)"}
+                          </label>
+                          <input
+                            type="text"
+                            value={bondCouponRateInput}
+                            onChange={(e) => setBondCouponRateInput(e.target.value)}
+                            placeholder="6.4"
+                            className="w-full h-11 px-3.5 rounded-2xl text-[13px] font-semibold text-[var(--text-primary)] outline-none"
+                            style={{
+                              background: controlBg,
+                              border: controlBorder,
+                              boxShadow: controlShadow,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Yield Hero Card for SBN */}
+                      <div
+                        className="p-4 rounded-3xl space-y-3"
+                        style={{
+                          background: controlBg,
+                          border: controlBorder,
+                          boxShadow: controlShadow,
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[var(--text-tertiary)] text-[11px]">
+                            <Sparkles size={12} className="text-zinc-400" />
+                            <span>
+                              {isIndonesian
+                                ? "Estimasi Kupon Bulanan Bersih"
+                                : "Net Monthly Coupon"}
+                            </span>
+                          </div>
+                          <span className="text-[16px] font-bold text-[var(--text-primary)] amount">
+                            +{formatRupiah(bondProjections.monthlyNet)}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-[var(--glass-border)]/40 text-[11px]">
+                          <div>
+                            <span className="text-[10px] text-[var(--text-tertiary)] block">
+                              {isIndonesian ? "Kupon Bersih / Tahun" : "Net Annual Coupon"}
+                            </span>
+                            <span className="font-semibold text-[var(--text-secondary)] amount">
+                              +{formatRupiah(bondProjections.annualNet)}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-[var(--text-tertiary)] block">
+                              {isIndonesian ? "Pajak PPh Final (10%)" : "Final Tax (10%)"}
+                            </span>
+                            <span className="font-semibold text-[var(--text-tertiary)] amount">
+                              -{formatRupiah(bondProjections.taxMonthly)} / {isIndonesian ? "bln" : "mo"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                          {isIndonesian
+                            ? "Rekening Pencairan Kupon"
+                            : "Coupon Destination Account"}
+                        </label>
+                        <GlassSelect
+                          value={bondPayoutWalletId}
+                          onChange={(v) => setBondPayoutWalletId(v)}
+                          options={walletOptions}
+                          placeholder={
+                            isIndonesian ? "Pilih rekening penerima" : "Choose wallet"
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Case C: Stock Dividend */}
                   {instrumentType === "dividend" && (
                     <div className="space-y-3.5">
+                      {/* Stock chips if user holds stocks */}
+                      {stockHoldings.length > 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian ? "Saham Portofolio" : "Portfolio Stocks"}
+                          </label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {stockHoldings.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => {
+                                  triggerHaptic("light");
+                                  setSelectedStockSymbol(s.symbol);
+                                }}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer select-none flex items-center gap-1 ${
+                                  selectedStockSymbol === s.symbol
+                                    ? isDark
+                                      ? "bg-white text-black"
+                                      : "bg-black text-white"
+                                    : "bg-white/[0.05] text-[var(--text-secondary)] border border-[var(--glass-border)]"
+                                }`}
+                              >
+                                {selectedStockSymbol === s.symbol && <Check size={11} strokeWidth={2.5} />}
+                                <span>{s.symbol}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
                           {isIndonesian
@@ -946,7 +1284,7 @@ export function StakingYieldModal({
                     </div>
                   )}
 
-                  {/* Case C: Term Deposit */}
+                  {/* Case D: Term Deposit */}
                   {instrumentType === "deposit" && (
                     <div className="space-y-3.5">
                       <div className="space-y-1.5">
@@ -1068,19 +1406,50 @@ export function StakingYieldModal({
                     </div>
                   )}
 
-                  {/* Case D: Crypto Staking */}
+                  {/* Case E: Multi-Crypto Staking */}
                   {instrumentType === "crypto_staking" && (
                     <div className="space-y-3.5">
+                      {/* Crypto asset chips */}
+                      {cryptoHoldings.length > 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
+                            {isIndonesian ? "Aset Kripto yang Di-stake" : "Staked Crypto Asset"}
+                          </label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cryptoHoldings.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => {
+                                  triggerHaptic("light");
+                                  setSelectedCryptoSymbol(c.symbol);
+                                }}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer select-none flex items-center gap-1 ${
+                                  selectedCryptoSymbol === c.symbol
+                                    ? isDark
+                                      ? "bg-white text-black"
+                                      : "bg-black text-white"
+                                    : "bg-white/[0.05] text-[var(--text-secondary)] border border-[var(--glass-border)]"
+                                }`}
+                              >
+                                {selectedCryptoSymbol === c.symbol && <Check size={11} strokeWidth={2.5} />}
+                                <span>{c.symbol}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between px-1 text-[11px]">
                           <span className="font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
                             {isIndonesian
-                              ? "Pokok Staking USDT"
-                              : "Staked USDT"}
+                              ? `Pokok Staking ${selectedCryptoSymbol}`
+                              : `Staked ${selectedCryptoSymbol}`}
                           </span>
                           <span className=" text-[var(--text-tertiary)] opacity-80">
                             {isIndonesian ? "Tersedia: " : "Available: "}
-                            {formatHoldingUnits(availableUnits)} USDT
+                            {formatHoldingUnits(effectiveCryptoUnits)} {selectedCryptoSymbol}
                           </span>
                         </div>
                         <input
@@ -1117,6 +1486,39 @@ export function StakingYieldModal({
                         />
                       </div>
 
+                      {/* Yield Hero Card for Crypto */}
+                      <div
+                        className="p-4 rounded-3xl space-y-2.5"
+                        style={{
+                          background: controlBg,
+                          border: controlBorder,
+                          boxShadow: controlShadow,
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-[11.5px]">
+                          <span className="text-[var(--text-tertiary)]">
+                            {isIndonesian ? "Imbal Hasil Harian" : "Daily Yield"}
+                          </span>
+                          <span className="font-bold text-[var(--text-primary)] amount">
+                            +{cryptoProjections.daily.units} {selectedCryptoSymbol}{" "}
+                            <span className="text-[10px] text-[var(--text-tertiary)] font-normal">
+                              (+{formatRupiah(cryptoProjections.daily.idr)})
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11.5px] pt-2 border-t border-[var(--glass-border)]/40">
+                          <span className="text-[var(--text-tertiary)]">
+                            {isIndonesian ? "Imbal Hasil per Tahun" : "Annual Yield"}
+                          </span>
+                          <span className="font-semibold text-[var(--text-secondary)] amount">
+                            +{cryptoProjections.yearly.units} {selectedCryptoSymbol}{" "}
+                            <span className="text-[10px] text-[var(--text-tertiary)] font-normal">
+                              (+{formatRupiah(cryptoProjections.yearly.idr)})
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+
                       {/* Mode: Auto-Compound vs Cash Payout */}
                       <div className="grid grid-cols-2 gap-2.5 pt-1">
                         <button
@@ -1148,7 +1550,7 @@ export function StakingYieldModal({
                           }}
                         >
                           <span className="text-[11.5px] font-bold block">
-                            Auto-Compound
+                            {isIndonesian ? "Bunga Majemuk" : "Auto-Compound"}
                           </span>
                           <span className="text-[10px] opacity-80 mt-0.5 block">
                             {isIndonesian
@@ -1185,7 +1587,7 @@ export function StakingYieldModal({
                           }}
                         >
                           <span className="text-[11.5px] font-bold block">
-                            Cash Payout
+                            {isIndonesian ? "Pencairan Kas" : "Cash Payout"}
                           </span>
                           <span className="text-[10px] opacity-80 mt-0.5 block">
                             {isIndonesian
@@ -1199,7 +1601,7 @@ export function StakingYieldModal({
                         <div className="space-y-1.5 pt-1">
                           <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
                             {isIndonesian
-                              ? "Rekening Pencairan Payout"
+                              ? "Rekening Pencairan Kas"
                               : "Payout Destination Wallet"}
                           </label>
                           <GlassSelect
@@ -1261,7 +1663,7 @@ export function StakingYieldModal({
                         onClick={() => {
                           triggerHaptic("light");
                           setIsYesterdayDate(false);
-                          setClaimDate(format(new Date(), "yyyy-MM-dd"));
+                          setClaimDate(format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"));
                         }}
                         className="h-10 px-4 rounded-full text-[12px] font-semibold transition-all cursor-pointer select-none active:scale-[0.96] flex items-center justify-center gap-1.5"
                         style={{
@@ -1294,7 +1696,7 @@ export function StakingYieldModal({
                           triggerHaptic("light");
                           setIsYesterdayDate(true);
                           setClaimDate(
-                            format(subDays(new Date(), 1), "yyyy-MM-dd"),
+                            format(subDays(new Date(), 1), "yyyy-MM-dd'T'HH:mm:ss"),
                           );
                         }}
                         className="h-10 px-4 rounded-full text-[12px] font-semibold transition-all cursor-pointer select-none active:scale-[0.96] flex items-center justify-center gap-1.5"
@@ -1339,11 +1741,13 @@ export function StakingYieldModal({
                           ? isIndonesian
                             ? "Contoh: Bunga Harian SeaBank"
                             : "e.g. Daily Interest SeaBank"
-                          : instrumentType === "dividend"
-                            ? `${isIndonesian ? "Contoh: Dividen Saham" : "e.g. Stock Dividend"} ${selectedStockSymbol}`
-                            : isIndonesian
-                              ? "Catatan transaksi..."
-                              : "Transaction note..."
+                          : instrumentType === "bond_coupon"
+                            ? `${isIndonesian ? "Contoh: Kupon SBN" : "e.g. SBN Coupon"} ${selectedBondSymbol}`
+                            : instrumentType === "dividend"
+                              ? `${isIndonesian ? "Contoh: Dividen Saham" : "e.g. Stock Dividend"} ${selectedStockSymbol}`
+                              : isIndonesian
+                                ? "Catatan transaksi..."
+                                : "Transaction note..."
                       }
                       className="w-full h-11 px-4 rounded-2xl text-[13px] text-[var(--text-primary)] outline-none transition-all placeholder:text-[var(--text-tertiary)]"
                       style={{

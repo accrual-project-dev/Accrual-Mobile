@@ -716,6 +716,20 @@ describe("Holding Notes Metadata, Undo Activity, and Custom Price", () => {
       expect(getPresetSymbol(mmfPreset, true)).toBe("RD-PASAR-UANG");
       expect(getPresetName(mmfPreset, true)).toBe("Reksa Dana Pasar Uang");
     }
+
+    // Verify expanded catalog completeness
+    expect(PRESET_ASSETS.length).toBeGreaterThan(100);
+    expect(fixedAssets.length).toBeGreaterThanOrEqual(10);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "LAPTOP" && p.category === "fixed_asset")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "MOTORCYCLE" && p.category === "fixed_asset")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "WATCH" && p.category === "fixed_asset")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "GOTO" && p.category === "stock_id")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "ADRO" && p.category === "stock_id")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "AMD" && p.category === "stock_us")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "PLTR" && p.category === "stock_us")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "SUI" && p.category === "crypto")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "^N225" && p.category === "index")).toBe(true);
+    expect(PRESET_ASSETS.some((p) => p.symbol === "^HSI" && p.category === "index")).toBe(true);
   });
 });
 
