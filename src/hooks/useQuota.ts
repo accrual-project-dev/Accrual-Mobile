@@ -21,18 +21,49 @@ export function useQuota() {
   const { isPremium, openPaywall } = useSubscription();
   const { isIndonesian } = useLanguage();
 
+  const userTenantId = user?.id || GUEST_USER_ID;
   const currentPeriod = useMemo(() => format(new Date(), "yyyy-MM"), []);
-  const storageKey = `accrual_ocr_quota_${currentPeriod}`;
+  const storageKey = useMemo(
+    () => `accrual_ocr_quota_${userTenantId}_${currentPeriod}`,
+    [userTenantId, currentPeriod]
+  );
 
-  // 1. Initialize count from local cache immediately
+  // 1. Initialize count from local cache immediately (with backward-compatible legacy fallback)
   const [ocrCount, setOcrCount] = useState<number>(() => {
     try {
-      const stored = localStorage.getItem(storageKey);
+      const stored =
+        localStorage.getItem(storageKey) ||
+        localStorage.getItem(`accrual_ocr_quota_${currentPeriod}`);
       return stored ? parseInt(stored, 10) || 0 : 0;
     } catch {
       return 0;
     }
   });
+
+  // Re-sync local state when active tenant key changes
+  useEffect(() => {
+    try {
+      const stored =
+        localStorage.getItem(storageKey) ||
+        (userTenantId === GUEST_USER_ID
+          ? localStorage.getItem(`accrual_ocr_quota_${currentPeriod}`)
+          : null);
+      setOcrCount(stored ? parseInt(stored, 10) || 0 : 0);
+    } catch {
+      setOcrCount(0);
+    }
+  }, [storageKey, userTenantId, currentPeriod]);
+
+  // Reset on session teardown event
+  useEffect(() => {
+    const handleTeardown = () => {
+      setOcrCount(0);
+    };
+    window.addEventListener("trouvaille_session_teardown", handleTeardown);
+    return () => {
+      window.removeEventListener("trouvaille_session_teardown", handleTeardown);
+    };
+  }, []);
 
   // 2. Sync with Supabase on mount / auth change if logged in
   useEffect(() => {

@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
+import { formatLiveAmountInput } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { getBudgetPeriodInterval } from "../../lib/financialMath";
 import { Calendar } from "lucide-react";
 
@@ -25,24 +26,65 @@ export function BudgetTargetSheet({
 }: BudgetTargetSheetProps) {
   const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
-  const [tempBudgetTarget, setTempBudgetTarget] = useState(String(budgetTarget || ""));
+  const { preferredCurrency, currencyMeta, convertToIdr, convertFromIdr } =
+    useCurrency();
+
+  const [rawAmount, setRawAmount] = useState<number>(0);
+  const [displayAmount, setDisplayAmount] = useState<string>("");
   const [tempPeriodStart, setTempPeriodStart] = useState<number>(budgetPeriodStart);
   const [isCustomDay, setIsCustomDay] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setTempBudgetTarget(String(budgetTarget || ""));
+      if (budgetTarget > 0) {
+        if (preferredCurrency === "IDR") {
+          setRawAmount(budgetTarget);
+          setDisplayAmount(budgetTarget.toLocaleString("id-ID"));
+        } else {
+          const inPreferred = convertFromIdr(budgetTarget, preferredCurrency);
+          const rounded =
+            currencyMeta.decimals === 0
+              ? Math.round(inPreferred)
+              : Math.round(inPreferred * 100) / 100;
+          setRawAmount(rounded);
+          setDisplayAmount(
+            currencyMeta.decimals === 0
+              ? rounded.toLocaleString("ja-JP")
+              : rounded.toLocaleString("en-US", {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: currencyMeta.decimals,
+                })
+          );
+        }
+      } else {
+        setRawAmount(0);
+        setDisplayAmount("");
+      }
       setTempPeriodStart(budgetPeriodStart);
       setIsCustomDay(![1, 25, 27].includes(budgetPeriodStart));
     }
-  }, [isOpen, budgetTarget, budgetPeriodStart]);
+  }, [
+    isOpen,
+    budgetTarget,
+    budgetPeriodStart,
+    preferredCurrency,
+    convertFromIdr,
+    currencyMeta.decimals,
+  ]);
 
   const previewInterval = useMemo(() => {
     return getBudgetPeriodInterval(new Date(), tempPeriodStart);
   }, [tempPeriodStart]);
 
   const handleSave = () => {
-    setBudgetTarget(Number(tempBudgetTarget) || 0);
+    let targetInIdr = 0;
+    if (rawAmount > 0) {
+      targetInIdr =
+        preferredCurrency === "IDR"
+          ? Math.round(rawAmount)
+          : Math.round(convertToIdr(rawAmount, preferredCurrency));
+    }
+    setBudgetTarget(targetInIdr);
     if (setBudgetPeriodStart) {
       setBudgetPeriodStart(tempPeriodStart);
     }
@@ -76,7 +118,12 @@ export function BudgetTargetSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-10 space-y-5">
+      <div
+        className="p-5 space-y-5"
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 32px)",
+        }}
+      >
         <div>
           <h3
             className="font-semibold text-lg"
@@ -99,23 +146,34 @@ export function BudgetTargetSheet({
           >
             {isIndonesian ? "Batas Anggaran Bulanan" : "Monthly Spending Limit"}
           </label>
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={
-              tempBudgetTarget ? formatRupiah(Number(tempBudgetTarget)) : ""
-            }
-            onChange={(e) => {
-              const raw = e.target.value.replace(/[^0-9]/g, "");
-              setTempBudgetTarget(raw);
-            }}
-            placeholder="Rp 0"
-            className="w-full px-3.5 py-2.5 rounded-xl outline-none font-semibold text-[16px] amount border border-[var(--glass-border)] bg-[var(--bg-elevated)]"
-            style={{
-              color: "var(--text-primary)",
-            }}
-          />
+          <div className="flex items-center px-3.5 py-2.5 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-elevated)] focus-within:border-[var(--text-primary)] transition-colors">
+            <span
+              className="text-[15px] font-semibold mr-1.5 select-none"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {currencyMeta.symbol}
+            </span>
+            <input
+              type="text"
+              inputMode={currencyMeta.decimals > 0 ? "decimal" : "numeric"}
+              value={displayAmount}
+              onChange={(e) => {
+                const { raw, formatted } = formatLiveAmountInput(
+                  e.target.value,
+                  preferredCurrency === "IDR" && isIndonesian,
+                  currencyMeta.decimals > 0,
+                  currencyMeta.decimals
+                );
+                setRawAmount(raw);
+                setDisplayAmount(formatted);
+              }}
+              placeholder="0"
+              className="w-full bg-transparent outline-none font-semibold text-[16px] amount"
+              style={{
+                color: "var(--text-primary)",
+              }}
+            />
+          </div>
         </div>
 
         {/* Budget Period Start Selector */}

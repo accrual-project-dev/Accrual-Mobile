@@ -14,12 +14,12 @@ import {
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useCategories } from "../../hooks/useCategories";
 import { useAllTransactions } from "../../hooks/useTransactions";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { IconRenderer } from "../ui/IconRenderer";
 import { BottomSheet } from "../ui/BottomSheet";
 
@@ -50,6 +50,7 @@ export function CategoryBudgetDeck({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
 
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
@@ -243,7 +244,7 @@ export function CategoryBudgetDeck({
             >
               <span>
                 {isIndonesian
-                  ? "Atur Budget Kategori Sekarang"
+                  ? "Atur Anggaran Kategori Sekarang"
                   : "Set Category Budgets Now"}
               </span>
               <ChevronRight size={13} />
@@ -312,10 +313,10 @@ export function CategoryBudgetDeck({
 
                   <div className="flex items-center gap-1.5 shrink-0 text-[11px]">
                     <span className="font-semibold text-[var(--text-primary)]">
-                      {hideBalance ? "••••" : formatRupiah(env.spent)}
+                      {hideBalance ? `${currencyMeta.symbol} ••••` : formatWithPreferred(env.spent)}
                     </span>
                     <span className="text-[var(--text-tertiary)]">
-                      / {hideBalance ? "••••" : formatRupiah(env.budgetAmount)}
+                      / {hideBalance ? `${currencyMeta.symbol} ••••` : formatWithPreferred(env.budgetAmount)}
                     </span>
                     <span
                       className={`text-[10.5px] font-bold ml-0.5 ${
@@ -370,8 +371,8 @@ export function CategoryBudgetDeck({
                     }
                   >
                     {hideBalance
-                      ? "••••"
-                      : `${env.isOverbudget ? "+" : ""}${formatRupiah(Math.abs(env.remaining))}`}
+                      ? `${currencyMeta.symbol} ••••`
+                      : `${env.isOverbudget ? "+" : ""}${formatWithPreferred(Math.abs(env.remaining))}`}
                   </span>
                 </div>
               </div>
@@ -386,7 +387,12 @@ export function CategoryBudgetDeck({
         onClose={() => setIsInfoOpen(false)}
         title={isIndonesian ? "Sistem Amplop Anggaran" : "Category Envelope System"}
       >
-        <div className="p-5 space-y-4 select-none pb-10">
+        <div
+          className="p-5 space-y-4 select-none"
+          style={{
+            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 32px)",
+          }}
+        >
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
@@ -433,7 +439,7 @@ export function CategoryBudgetDeck({
               </div>
               <p className="text-[11.5px] text-[var(--text-tertiary)]">
                 {isIndonesian
-                  ? "Kartu ini secara otomatis mengurutkan 5 kategori dengan persentase pemakaian kuota tertinggi. Anda dapat langsung mengidentifikasi pos pengeluaran yang berisiko overbudget sebelum bulan berakhir."
+                  ? "Kartu ini secara otomatis mengurutkan 5 kategori dengan persentase pemakaian kuota tertinggi. Anda dapat langsung mengidentifikasi pos pengeluaran yang berisiko melampaui anggaran sebelum bulan berakhir."
                   : "This card automatically ranks the 5 categories consuming the highest percentage of their budget so you can prevent overspending before month-end."}
               </p>
             </div>

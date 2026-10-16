@@ -1,5 +1,4 @@
 import { TrendingUp, TrendingDown, ChevronRight } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -38,7 +37,7 @@ export function CashflowPulseCard({
   consumedPct,
 }: CashflowPulseCardProps) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const isIndonesian = language === "id";
 
   const isSurplus = netCashflow >= 0;
@@ -130,8 +129,8 @@ export function CashflowPulseCard({
             style={{ color: "var(--text-primary)" }}
           >
             {hideBalance
-              ? "Rp ••••••••"
-              : `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netCashflow))}`}
+              ? `${currencyMeta.symbol} ••••••••`
+              : `${isSurplus ? "+" : "-"}${formatWithPreferred(Math.abs(netCashflow))}`}
           </div>
           <p
             className="text-[11px] font-medium mt-0.5"
@@ -209,7 +208,7 @@ export function CashflowPulseCard({
               <span style={{ color: "var(--text-secondary)" }}>
                 {hideBalance
                   ? "••%"
-                  : `${consumedPct !== undefined ? consumedPct.toFixed(0) : Math.round((totalExpense / budgetTarget) * 100)}% ${isIndonesian ? "dari" : "of"} ${formatRupiah(budgetTarget)}`}
+                  : `${consumedPct !== undefined ? consumedPct.toFixed(0) : Math.round((totalExpense / budgetTarget) * 100)}% ${isIndonesian ? "dari" : "of"} ${formatWithPreferred(budgetTarget)}`}
               </span>
             </div>
             <div
@@ -244,7 +243,7 @@ export function CashflowPulseCard({
             className="amount text-[12px] mt-0.5 truncate"
             style={{ color: "var(--text-primary)" }}
           >
-            {hideBalance ? "••••" : `+${formatRupiah(totalIncome)}`}
+            {hideBalance ? `${currencyMeta.symbol} ••••` : `+${formatWithPreferred(totalIncome)}`}
           </p>
         </div>
 
@@ -259,7 +258,7 @@ export function CashflowPulseCard({
             className="amount text-[12px] mt-0.5 truncate"
             style={{ color: "var(--text-primary)" }}
           >
-            {hideBalance ? "••••" : `-${formatRupiah(totalExpense)}`}
+            {hideBalance ? `${currencyMeta.symbol} ••••` : `-${formatWithPreferred(totalExpense)}`}
           </p>
         </div>
 
@@ -274,7 +273,7 @@ export function CashflowPulseCard({
             className="amount text-[12px] mt-0.5 truncate"
             style={{ color: "var(--text-primary)" }}
           >
-            {hideBalance ? "••••" : formatRupiah(dailyAverage)}
+            {hideBalance ? `${currencyMeta.symbol} ••••` : formatWithPreferred(dailyAverage)}
           </p>
         </div>
       </div>

@@ -1276,7 +1276,7 @@ export function SettingsPage({
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       {budgetTarget > 0
-                        ? formatRupiah(budgetTarget)
+                        ? formatRupiah(budgetTarget, preferredCurrency)
                         : isIndonesian
                           ? "Belum Diatur"
                           : "Not Set"}
