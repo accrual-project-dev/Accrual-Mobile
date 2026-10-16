@@ -72,7 +72,15 @@ export async function parseExcelFile(file: File): Promise<ParsedSpreadsheet> {
           const jsDate = XLSX.SSF.parse_date_code(cell);
           if (jsDate) {
             const { y, m, d } = jsDate;
-            return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const dateStr = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            // If fractional day contains time, preserve full ISO timestamp YYYY-MM-DDTHH:mm:ss (Rule 8.1)
+            if (jsDate.H || jsDate.M || jsDate.S || (cell % 1 > 0.00001)) {
+              const H = String(jsDate.H || 0).padStart(2, "0");
+              const M = String(jsDate.M || 0).padStart(2, "0");
+              const S = String(Math.floor(jsDate.S || 0)).padStart(2, "0");
+              return `${dateStr}T${H}:${M}:${S}`;
+            }
+            return dateStr;
           }
         }
         // Excel time fraction numbers (0 < cell < 1)

@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { AlertCircle } from "lucide-react";
 import { BottomSheet } from "./BottomSheet";
 import { triggerHaptic } from "../../lib/haptics";
@@ -15,6 +15,7 @@ export interface GlassConfirmationModalProps {
   isIndonesian?: boolean;
   isDark?: boolean;
   zIndex?: number;
+  children?: ReactNode;
 }
 
 export function GlassConfirmationModal({
@@ -29,6 +30,7 @@ export function GlassConfirmationModal({
   isIndonesian = true,
   isDark = true,
   zIndex,
+  children,
 }: GlassConfirmationModalProps) {
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="" zIndex={zIndex}>
@@ -51,6 +53,7 @@ export function GlassConfirmationModal({
             <p className="text-[12px] text-[var(--text-tertiary)] mt-1 leading-relaxed">
               {description}
             </p>
+            {children && <div className="mt-3">{children}</div>}
           </div>
         </div>
 

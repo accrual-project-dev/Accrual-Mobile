@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  Edit3,
   X,
   User,
   Calendar,
@@ -32,13 +33,14 @@ import {
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWallets } from "../../hooks/useWallets";
 import { useDebtReceivables } from "../../hooks/useDebtReceivables";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import type {
   DebtType,
   DebtReceivableRecord,
+  DebtRepayment,
 } from "../../types/debt";
 import {
   getDebtDueStatus,
@@ -55,6 +57,71 @@ export interface DebtReceivablesSheetProps {
 
 type TabFilter = "all" | "receivable" | "debt" | "settled";
 
+function LinkedTxOptionToggle({
+  isIndonesian,
+  isDark,
+  defaultChecked = true,
+  onChange,
+}: {
+  isIndonesian: boolean;
+  isDark: boolean;
+  defaultChecked?: boolean;
+  onChange: (val: boolean) => void;
+}) {
+  const [checked, setChecked] = useState(defaultChecked);
+
+  const toggle = () => {
+    const next = !checked;
+    setChecked(next);
+    onChange(next);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={toggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggle();
+        }
+      }}
+      className="flex items-center justify-between p-3 rounded-xl cursor-pointer select-none transition-all mt-2"
+      style={{
+        background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+        border: "1px solid var(--glass-border)",
+      }}
+    >
+      <div className="space-y-0.5 pr-2">
+        <span className="text-[12px] font-semibold text-[var(--text-primary)] block">
+          {isIndonesian ? "Batalkan Mutasi Saldo Dompet" : "Revert Wallet Balance"}
+        </span>
+        <span className="text-[10.5px] text-[var(--text-tertiary)] block">
+          {checked
+            ? isIndonesian
+              ? "Transaksi kas tertaut akan dihapus otomatis"
+              : "Linked cash transactions will be automatically deleted"
+            : isIndonesian
+              ? "Transaksi kas tetap disimpan di riwayat"
+              : "Cash transactions will remain in transaction history"}
+        </span>
+      </div>
+      <div
+        className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 shrink-0 ${
+          checked ? "bg-[var(--text-primary)]" : "bg-[var(--glass-border)]"
+        }`}
+      >
+        <div
+          className={`w-4 h-4 rounded-full transition-transform ${
+            isDark ? "bg-[#09090c]" : "bg-white"
+          } ${checked ? "translate-x-4" : "translate-x-0"}`}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function DebtReceivablesSheet({
   isOpen,
   onClose,
@@ -66,10 +133,13 @@ export function DebtReceivablesSheet({
   const { showToast } = useToast();
   const { data: wallets = [] } = useWallets();
 
+  const { formatWithPreferred, currencyMeta } = useCurrency();
+
   const {
     records,
     summary,
     createRecord,
+    updateRecord,
     deleteRecord,
     recordRepayment,
     removeRepayment,
@@ -87,6 +157,7 @@ export function DebtReceivablesSheet({
     description: string;
     confirmLabel?: string;
     onConfirm: () => void | Promise<void>;
+    children?: React.ReactNode;
   }>({
     isOpen: false,
     title: "",
@@ -99,6 +170,15 @@ export function DebtReceivablesSheet({
   const [repayingRecord, setRepayingRecord] = useState<DebtReceivableRecord | null>(
     null,
   );
+  const [editingRecord, setEditingRecord] = useState<DebtReceivableRecord | null>(
+    null,
+  );
+
+  // Edit Record Form State
+  const [editPersonName, setEditPersonName] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editTotalAmountStr, setEditTotalAmountStr] = useState("");
 
   // New Record Form State
   const [formType, setFormType] = useState<DebtType>(initialType || "receivable");
@@ -254,21 +334,154 @@ export function DebtReceivablesSheet({
     }
   };
 
+  const handleOpenEditModal = (record: DebtReceivableRecord) => {
+    triggerHaptic("light");
+    setEditingRecord(record);
+    setEditPersonName(record.personName);
+    setEditDueDate(record.dueDate || "");
+    setEditNote(record.note || "");
+    setEditTotalAmountStr(record.totalAmount.toString());
+  };
+
+  const handleSaveEditRecord = () => {
+    if (!editingRecord) return;
+    const trimmedName = editPersonName.trim();
+    if (!trimmedName) {
+      showToast(
+        isIndonesian ? "Nama pihak tidak boleh kosong" : "Contact name cannot be empty",
+        "info",
+      );
+      return;
+    }
+    const rawAmt = Number(editTotalAmountStr.replace(/\D/g, "")) || 0;
+    if (rawAmt <= 0) {
+      showToast(
+        isIndonesian
+          ? "Nominal pokok harus lebih dari nol"
+          : "Principal amount must be greater than zero",
+        "info",
+      );
+      return;
+    }
+    const totalRepaid = editingRecord.repayments.reduce(
+      (acc, r) => acc + (Number(r.amount) || 0),
+      0,
+    );
+    if (rawAmt < totalRepaid) {
+      showToast(
+        isIndonesian
+          ? `Nominal tidak boleh kurang dari total cicilan (${formatWithPreferred(totalRepaid)})`
+          : `Amount cannot be less than total repaid (${formatWithPreferred(totalRepaid)})`,
+        "info",
+      );
+      return;
+    }
+
+    try {
+      updateRecord(editingRecord.id, {
+        personName: trimmedName,
+        dueDate: editDueDate || null,
+        note: editNote || null,
+        totalAmount: rawAmt,
+      });
+
+      triggerSuccessHaptic();
+      showToast(
+        isIndonesian
+          ? "Perubahan catatan berhasil disimpan"
+          : "Record changes saved successfully",
+        "update",
+      );
+      setEditingRecord(null);
+    } catch {
+      showToast(
+        isIndonesian ? "Gagal menyimpan perubahan" : "Failed to save changes",
+        "info",
+      );
+    }
+  };
+
   const handleDeleteRecord = (record: DebtReceivableRecord) => {
     triggerHaptic("medium");
+    const hasLinkedTransactions = Boolean(
+      record.disbursementTxId || record.repayments.some((r) => r.txId),
+    );
+    let cleanTx = true;
+
     setConfirmModalConfig({
       isOpen: true,
       title: isIndonesian
         ? `Hapus Catatan ${record.personName}?`
         : `Delete Record for ${record.personName}?`,
-      description: isIndonesian
-        ? "Catatan ini akan dihapus dari buku utang piutang. Transaksi yang telah tertaut tidak akan terpengaruh."
-        : "This entry will be removed from your debt book. Linked transactions will not be touched.",
+      description: hasLinkedTransactions
+        ? isIndonesian
+          ? "Catatan ini memiliki mutasi transaksi dompet tertaut. Tentukan apakah transaksi mutasi kas juga ingin dibatalkan."
+          : "This record has linked wallet cashflow transactions. Choose whether to revert linked wallet mutations."
+        : isIndonesian
+          ? "Catatan ini akan dihapus dari buku utang piutang."
+          : "This entry will be removed from your debt book.",
       confirmLabel: isIndonesian ? "Hapus Catatan" : "Delete Record",
+      children: hasLinkedTransactions ? (
+        <LinkedTxOptionToggle
+          isIndonesian={isIndonesian}
+          isDark={isDark}
+          defaultChecked={true}
+          onChange={(val) => {
+            cleanTx = val;
+          }}
+        />
+      ) : undefined,
       onConfirm: async () => {
-        await deleteRecord(record.id, { cleanLinkedTransactions: false });
+        await deleteRecord(record.id, { cleanLinkedTransactions: cleanTx });
         showToast(
           isIndonesian ? "Catatan berhasil dihapus" : "Record deleted",
+          "delete",
+        );
+      },
+    });
+  };
+
+  const handleDeleteRepayment = (
+    record: DebtReceivableRecord,
+    rep: DebtRepayment,
+  ) => {
+    triggerHaptic("light");
+    const hasLinkedTx = Boolean(rep.txId);
+    let cleanTx = true;
+
+    setConfirmModalConfig({
+      isOpen: true,
+      title: isIndonesian
+        ? "Hapus Pembayaran Cicilan?"
+        : "Delete This Repayment?",
+      description: hasLinkedTx
+        ? isIndonesian
+          ? "Pembayaran ini memiliki transaksi kas tertaut pada dompet. Tentukan apakah transaksi mutasi kas juga ingin dibatalkan."
+          : "This repayment has a linked cash transaction. Choose whether to revert the wallet transaction."
+        : isIndonesian
+          ? "Pembayaran cicilan ini akan dihapus dari riwayat pelunasan."
+          : "This repayment will be removed from the installment history.",
+      confirmLabel: isIndonesian
+        ? "Hapus Pembayaran"
+        : "Delete Repayment",
+      children: hasLinkedTx ? (
+        <LinkedTxOptionToggle
+          isIndonesian={isIndonesian}
+          isDark={isDark}
+          defaultChecked={true}
+          onChange={(val) => {
+            cleanTx = val;
+          }}
+        />
+      ) : undefined,
+      onConfirm: async () => {
+        await removeRepayment(record.id, rep.id, {
+          cleanLinkedTransactions: cleanTx,
+        });
+        showToast(
+          isIndonesian
+            ? "Pembayaran dihapus"
+            : "Repayment deleted",
           "delete",
         );
       },
@@ -313,7 +526,7 @@ export function DebtReceivablesSheet({
                 {isIndonesian ? "Total Piutang" : "Receivables"}
               </span>
               <span className="text-[13px] font-bold tracking-tight text-[var(--text-primary)] block truncate">
-                {formatRupiah(summary.totalReceivables)}
+                {formatWithPreferred(summary.totalReceivables)}
               </span>
               <span className="text-[9.5px] font-medium text-[var(--text-secondary)] block">
                 {summary.activeReceivablesCount}{" "}
@@ -327,7 +540,7 @@ export function DebtReceivablesSheet({
                 {isIndonesian ? "Total Utang" : "Payables"}
               </span>
               <span className="text-[13px] font-bold tracking-tight text-[var(--text-secondary)] block truncate">
-                {formatRupiah(summary.totalDebts)}
+                {formatWithPreferred(summary.totalDebts)}
               </span>
               <span className="text-[9.5px] font-medium text-[var(--text-secondary)] block">
                 {summary.activeDebtsCount}{" "}
@@ -350,7 +563,7 @@ export function DebtReceivablesSheet({
                 }}
               >
                 {summary.netReceivables >= 0 ? "+" : ""}
-                {formatRupiah(summary.netReceivables)}
+                {formatWithPreferred(summary.netReceivables)}
               </span>
               <span className="text-[9.5px] font-medium text-[var(--text-tertiary)] block">
                 {summary.settledReceivablesCount + summary.settledDebtsCount}{" "}
@@ -814,7 +1027,7 @@ export function DebtReceivablesSheet({
                 </span>
                 <span className="text-[10px] text-[var(--text-secondary)] block">
                   {isIndonesian ? "Sisa Kewajiban" : "Outstanding Balance"}:{" "}
-                  {formatRupiah(repayingRecord.remainingAmount)}
+                  {formatWithPreferred(repayingRecord.remainingAmount)}
                 </span>
               </div>
               <button
@@ -878,7 +1091,7 @@ export function DebtReceivablesSheet({
                 }}
               >
                 <span className="text-[12px] font-semibold text-[var(--text-secondary)]">
-                  Rp
+                  {currencyMeta.symbol}
                 </span>
                 <input
                   type="text"
@@ -1031,7 +1244,180 @@ export function DebtReceivablesSheet({
           </div>
         )}
 
-        {/* ── 5. Record List ── */}
+        {/* ── 5. Edit Record Sub-Form ── */}
+        {editingRecord && (
+          <div
+            className="p-4 rounded-[22px] space-y-3.5 transition-all animate-in fade-in"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            <div className="flex items-center justify-between pb-1">
+              <div>
+                <span className="text-[12.5px] font-bold text-[var(--text-primary)] block">
+                  {isIndonesian ? "Edit Catatan" : "Edit Record"}: {editingRecord.personName}
+                </span>
+                <span className="text-[10px] text-[var(--text-secondary)] block">
+                  {editingRecord.type === "receivable"
+                    ? isIndonesian
+                      ? "Piutang"
+                      : "Receivable"
+                    : isIndonesian
+                      ? "Utang"
+                      : "Debt"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="w-7 h-7 rounded-xl flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Person Name Input */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold text-[var(--text-secondary)] block">
+                {isIndonesian ? "Nama Pihak" : "Contact Person"}
+              </label>
+              <div
+                className="flex items-center gap-2 px-3 h-10 rounded-xl"
+                style={{
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <User size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
+                <input
+                  type="text"
+                  value={editPersonName}
+                  onChange={(e) => setEditPersonName(e.target.value)}
+                  placeholder={isIndonesian ? "Contoh: Budi, Kantor" : "e.g. John, Office"}
+                  className="w-full bg-transparent text-[12px] text-[var(--text-primary)] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Principal Total Amount Input */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[10.5px] font-semibold text-[var(--text-secondary)] block">
+                  {isIndonesian ? "Total Nominal Pokok" : "Principal Total Amount"}
+                </label>
+                {editingRecord.repayments.length > 0 && (
+                  <span className="text-[9.5px] text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Min. cicilan" : "Min. repaid"}:{" "}
+                    {formatWithPreferred(
+                      editingRecord.repayments.reduce(
+                        (acc, r) => acc + (Number(r.amount) || 0),
+                        0,
+                      ),
+                    )}
+                  </span>
+                )}
+              </div>
+              <div
+                className="flex items-center gap-2 px-3 h-10 rounded-xl"
+                style={{
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <span className="text-[12px] font-bold text-[var(--text-tertiary)] shrink-0">
+                  {currencyMeta.symbol}
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={editTotalAmountStr}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "");
+                    setEditTotalAmountStr(raw ? Number(raw).toLocaleString("id-ID") : "");
+                  }}
+                  placeholder="0"
+                  className="w-full bg-transparent text-[13px] font-bold text-[var(--text-primary)] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Due Date Input */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold text-[var(--text-secondary)] block">
+                {isIndonesian ? "Tenggat Waktu / Jatuh Tempo" : "Due Date"}
+              </label>
+              <div
+                className="flex items-center gap-2 px-3 h-10 rounded-xl"
+                style={{
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <Calendar size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
+                <input
+                  type="date"
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                  className="w-full bg-transparent text-[11.5px] text-[var(--text-primary)] outline-none cursor-pointer"
+                  style={{ colorScheme: isDark ? "dark" : "light" }}
+                />
+              </div>
+            </div>
+
+            {/* Note Input */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold text-[var(--text-secondary)] block">
+                {isIndonesian ? "Catatan Tambahan" : "Notes"}
+              </label>
+              <div
+                className="flex items-center gap-2 px-3 h-10 rounded-xl"
+                style={{
+                  background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <FileText size={13} strokeWidth={1.8} className="text-[var(--text-tertiary)] shrink-0" />
+                <input
+                  type="text"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder={isIndonesian ? "Keterangan opsional" : "Optional note"}
+                  className="w-full bg-transparent text-[11.5px] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="flex-1 h-9 rounded-xl font-semibold text-[11.5px] text-[var(--text-secondary)] active:scale-95 transition-all cursor-pointer"
+                style={{
+                  background: "var(--glass-fill)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                {isIndonesian ? "Batal" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditRecord}
+                className="flex-1 h-9 rounded-xl font-semibold text-[11.5px] active:scale-95 transition-all cursor-pointer shadow-xs"
+                style={{
+                  background: isDark ? "#ffffff" : "#18181b",
+                  color: isDark ? "#000000" : "#ffffff",
+                }}
+              >
+                {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── 6. Record List ── */}
         <div className="space-y-2.5 pt-1">
           {filteredRecords.length === 0 ? (
             <div
@@ -1188,7 +1574,7 @@ export function DebtReceivablesSheet({
                               : "Remaining Balance"}
                         </span>
                         <span className="text-[14px] font-extrabold tracking-tight text-[var(--text-primary)]">
-                          {formatRupiah(record.remainingAmount)}
+                          {formatWithPreferred(record.remainingAmount)}
                         </span>
                       </div>
                       <div className="text-right">
@@ -1196,7 +1582,7 @@ export function DebtReceivablesSheet({
                           {isIndonesian ? "Total Pokok" : "Principal"}
                         </span>
                         <span className="text-[11px] font-medium text-[var(--text-secondary)]">
-                          {formatRupiah(record.totalAmount)}
+                          {formatWithPreferred(record.totalAmount)}
                         </span>
                       </div>
                     </div>
@@ -1262,15 +1648,25 @@ export function DebtReceivablesSheet({
                       )}
                     </div>
 
-                    {/* Delete Record Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRecord(record)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
-                      title={isIndonesian ? "Hapus catatan" : "Delete record"}
-                    >
-                      <Trash2 size={12.5} strokeWidth={1.8} />
-                    </button>
+                    {/* Action Buttons: Edit & Delete */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(record)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+                        title={isIndonesian ? "Edit catatan" : "Edit record"}
+                      >
+                        <Edit3 size={12.5} strokeWidth={1.8} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRecord(record)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+                        title={isIndonesian ? "Hapus catatan" : "Delete record"}
+                      >
+                        <Trash2 size={12.5} strokeWidth={1.8} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* ── Installment History Accordion ── */}
@@ -1293,7 +1689,7 @@ export function DebtReceivablesSheet({
                         >
                           <div>
                             <span className="font-semibold text-[var(--text-primary)] block">
-                              +{formatRupiah(rep.amount)}
+                              +{formatWithPreferred(rep.amount)}
                             </span>
                             <span className="text-[9.5px] text-[var(--text-tertiary)] block">
                               {rep.date}
@@ -1303,32 +1699,7 @@ export function DebtReceivablesSheet({
                           </div>
                           <button
                             type="button"
-                            onClick={() => {
-                              triggerHaptic("light");
-                              setConfirmModalConfig({
-                                isOpen: true,
-                                title: isIndonesian
-                                  ? "Hapus Pembayaran Cicilan?"
-                                  : "Delete This Repayment?",
-                                description: isIndonesian
-                                  ? "Pembayaran cicilan ini akan dihapus dari riwayat pelunasan."
-                                  : "This repayment will be removed from the installment history.",
-                                confirmLabel: isIndonesian
-                                  ? "Hapus Pembayaran"
-                                  : "Delete Repayment",
-                                onConfirm: async () => {
-                                  await removeRepayment(record.id, rep.id, {
-                                    cleanLinkedTransactions: false,
-                                  });
-                                  showToast(
-                                    isIndonesian
-                                      ? "Pembayaran dihapus"
-                                      : "Repayment deleted",
-                                    "delete",
-                                  );
-                                },
-                              });
-                            }}
+                            onClick={() => handleDeleteRepayment(record, rep)}
                             className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
                           >
                             <Trash2 size={11} strokeWidth={1.8} />
@@ -1370,7 +1741,9 @@ export function DebtReceivablesSheet({
         confirmLabel={confirmModalConfig.confirmLabel}
         isIndonesian={isIndonesian}
         isDark={isDark}
-      />
+      >
+        {confirmModalConfig.children}
+      </GlassConfirmationModal>
     </BottomSheet>
   );
 }

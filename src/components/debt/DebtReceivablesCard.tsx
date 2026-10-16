@@ -9,7 +9,7 @@
 
 import { ChevronRight } from "lucide-react";
 import type { DebtReceivableSummary } from "../../types/debt";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { CompactShell } from "../home/widgets/CompactShell";
 
 export interface DebtReceivablesCardProps {
@@ -29,6 +29,8 @@ export function DebtReceivablesCard({
   size = "full",
   isEditMode = false,
 }: DebtReceivablesCardProps) {
+  const { formatWithPreferred } = useCurrency();
+
   if (size === "half") {
     return (
       <CompactShell
@@ -53,7 +55,7 @@ export function DebtReceivablesCard({
             </span>
             <span className="text-[16px] font-extrabold tracking-tight text-[var(--text-primary)] block truncate">
               {summary.netReceivables >= 0 ? "+" : ""}
-              {formatRupiah(summary.netReceivables)}
+              {formatWithPreferred(summary.netReceivables)}
             </span>
           </div>
 
@@ -151,7 +153,7 @@ export function DebtReceivablesCard({
               {isIndonesian ? "Piutang" : "Receivables"}
             </span>
             <span className="text-[14px] font-bold tracking-tight text-[var(--text-primary)] block truncate">
-              {formatRupiah(summary.totalReceivables)}
+              {formatWithPreferred(summary.totalReceivables)}
             </span>
             <span className="text-[9.5px] font-medium text-[var(--text-tertiary)] block">
               {summary.activeReceivablesCount} {isIndonesian ? "pihak" : "active"}
@@ -164,7 +166,7 @@ export function DebtReceivablesCard({
               {isIndonesian ? "Utang" : "Debts"}
             </span>
             <span className="text-[14px] font-bold tracking-tight text-[var(--text-secondary)] block truncate">
-              {formatRupiah(summary.totalDebts)}
+              {formatWithPreferred(summary.totalDebts)}
             </span>
             <span className="text-[9.5px] font-medium text-[var(--text-tertiary)] block">
               {summary.activeDebtsCount} {isIndonesian ? "pihak" : "active"}
@@ -186,7 +188,7 @@ export function DebtReceivablesCard({
               }}
             >
               {summary.netReceivables >= 0 ? "+" : ""}
-              {formatRupiah(summary.netReceivables)}
+              {formatWithPreferred(summary.netReceivables)}
             </span>
             <span className="text-[9.5px] font-medium text-[var(--text-tertiary)] block">
               {summary.settledReceivablesCount + summary.settledDebtsCount} {isIndonesian ? "lunas" : "settled"}

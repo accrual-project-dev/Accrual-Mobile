@@ -348,14 +348,40 @@ export function parseStatementText(
   const items: ParsedStatementItem[] = [];
 
   // Build dedup lookup from existing transactions
+  // Normalize occurred_on to YYYY-MM-DD so comparisons work whether occurred_on has a full ISO time or not
   const existingMap = new Map<string, boolean>();
+  const existing48hMap = new Map<string, boolean>();
+
   for (const tx of existingTransactions) {
+    const rawOccurred = tx.occurred_on || "";
+    const txDate = rawOccurred.length >= 10 ? rawOccurred.slice(0, 10) : rawOccurred;
     const roundedAmt = Math.round(Number(tx.amount) / 1000) * 1000;
     const noteSlug = (tx.note || "").toLowerCase().replace(/\s+/g, "").slice(0, 20);
-    const key1 = `${tx.occurred_on}_${Math.round(Number(tx.amount))}_${tx.type}`;
-    const key2 = `${tx.occurred_on}_${roundedAmt}_${tx.type}_${noteSlug}`;
+
+    // Exact day keys
+    const key1 = `${txDate}_${Math.round(Number(tx.amount))}_${tx.type}`;
+    const key2 = `${txDate}_${roundedAmt}_${tx.type}_${noteSlug}`;
     existingMap.set(key1, true);
     existingMap.set(key2, true);
+
+    // 48-hour tolerance (adjacent day keys: D-1 and D+1) for Rule 8.1
+    try {
+      const parsedD = parse(txDate, "yyyy-MM-dd", new Date());
+      if (isValid(parsedD)) {
+        const prevDay = new Date(parsedD.getTime() - 86400000);
+        const nextDay = new Date(parsedD.getTime() + 86400000);
+        const prevStr = format(prevDay, "yyyy-MM-dd");
+        const nextStr = format(nextDay, "yyyy-MM-dd");
+        existing48hMap.set(`${prevStr}_${Math.round(Number(tx.amount))}_${tx.type}`, true);
+        existing48hMap.set(`${nextStr}_${Math.round(Number(tx.amount))}_${tx.type}`, true);
+        if (noteSlug) {
+          existing48hMap.set(`${prevStr}_${roundedAmt}_${tx.type}_${noteSlug}`, true);
+          existing48hMap.set(`${nextStr}_${roundedAmt}_${tx.type}_${noteSlug}`, true);
+        }
+      }
+    } catch {
+      // ignore date parse errors
+    }
   }
 
   let idCounter = 1;
@@ -384,7 +410,14 @@ export function parseStatementText(
     for (const cols of rows) {
       if (!cols || cols.length === 0) continue;
       const dateStr = cols[cm.dateCol] || "";
-      const timeStr = cm.timeCol !== null && cols[cm.timeCol] ? cols[cm.timeCol].trim() : "";
+      let timeStr = cm.timeCol !== null && cols[cm.timeCol] ? cols[cm.timeCol].trim() : "";
+      if (!timeStr && dateStr) {
+        // Look for inline time: "2025-01-21T14:30:00" or "2025-01-21 14:30" or "21/01/2025 14:30:00"
+        const inlineTimeMatch = dateStr.match(/[T\s](\d{1,2}:\d{2}(?::\d{2})?)/i);
+        if (inlineTimeMatch) {
+          timeStr = inlineTimeMatch[1];
+        }
+      }
       const description = cols[cm.descCol] || "";
       let amount = 0;
       let type: TransactionType = "expense";
@@ -524,6 +557,40 @@ export function parseStatementText(
         itemCategoryEmoji = resolvedCat.emoji;
       }
 
+      // Arrow Transfer in Description check (e.g. "BCA → Mandiri", "ShopeePay -> Cash", "BNI ke Blu")
+      if (type !== "transfer") {
+        const arrowCleanedDesc = sanitizeTransferArrowText(description || cleanDesc);
+        const arrowParts = arrowCleanedDesc.split(" → ");
+        if (arrowParts.length === 2 && arrowParts[0].trim() && arrowParts[1].trim()) {
+          const srcCandidate = arrowParts[0].trim();
+          const dstCandidate = arrowParts[1].trim();
+
+          const matchedSrc = wallets.find(
+            (w) => w.name.toLowerCase().trim() === srcCandidate.toLowerCase()
+          );
+          const matchedDst = wallets.find(
+            (w) => w.name.toLowerCase().trim() === dstCandidate.toLowerCase()
+          );
+
+          if (matchedSrc || matchedDst) {
+            type = "transfer";
+            if (matchedSrc) {
+              itemWalletId = matchedSrc.id;
+              itemWalletName = matchedSrc.name;
+            } else if (!itemWalletName) {
+              itemWalletName = srcCandidate;
+            }
+
+            if (matchedDst) {
+              destinationWalletId = matchedDst.id;
+              destinationWalletName = matchedDst.name;
+            } else {
+              destinationWalletName = dstCandidate;
+            }
+          }
+        }
+      }
+
       // Transfer vs Expense check
       const isTransferSignal = /\b(transfer ke|kirim ke|to rekening|ke rek|top.?up|isi saldo|pindah saldo)\b/i.test(description);
       if (type === "expense" && isTransferSignal) {
@@ -539,9 +606,14 @@ export function parseStatementText(
       const noteSlug = (sanitizedCleanDesc || sanitizedDescription || "tx").toLowerCase().replace(/\s+/g, "").slice(0, 20);
       const dedupKey1 = `${normalizedDate}_${Math.round(amount)}_${type}`;
       const dedupKey2 = `${normalizedDate}_${roundedAmt}_${type}_${noteSlug}`;
-      const isDuplicate = existingMap.has(dedupKey1) || existingMap.has(dedupKey2);
-      const duplicateReason = isDuplicate
-        ? `Matches existing ${type} on ${normalizedDate} (Rp ${amount.toLocaleString("id-ID")})`
+      const isExactDuplicate = existingMap.has(dedupKey1) || existingMap.has(dedupKey2);
+      const is48hDuplicate = !isExactDuplicate && (existing48hMap.has(dedupKey1) || existing48hMap.has(dedupKey2));
+
+      const isDuplicate = isExactDuplicate || is48hDuplicate;
+      const duplicateReason = isExactDuplicate
+        ? `Sama dengan transaksi ${type} pada ${normalizedDate} (${amount.toLocaleString()})`
+        : is48hDuplicate
+        ? `Kemungkinan duplikat (toleransi 48 jam) ${type} (${amount.toLocaleString()})`
         : undefined;
 
       items.push({
@@ -561,7 +633,8 @@ export function parseStatementText(
         suggestedCategoryEmoji: itemCategoryEmoji,
         isDuplicate,
         duplicateReason,
-        selected: !isDuplicate,
+        needsReview: is48hDuplicate,
+        selected: !isExactDuplicate,
         raw: cols.join(", "),
       });
     }
@@ -751,10 +824,35 @@ export function parseStatementText(
 
     const normalizedDate = normalizeDateString(dateStr || new Date().toISOString());
     const cleanDesc = cleanBankNarration(description);
+    const sanitizedDescription = sanitizeNote(description);
+    const sanitizedCleanDesc = sanitizeNote(cleanDesc);
 
     // Transfer vs Expense check
     let destinationWalletId: string | null = null;
     let destinationWalletName: string | null = null;
+
+    // Arrow Transfer in Description check
+    if ((type as TransactionType) !== "transfer") {
+      const arrowCleanedDesc = sanitizeTransferArrowText(description || cleanDesc);
+      const arrowParts = arrowCleanedDesc.split(" → ");
+      if (arrowParts.length === 2 && arrowParts[0].trim() && arrowParts[1].trim()) {
+        const srcCandidate = arrowParts[0].trim();
+        const dstCandidate = arrowParts[1].trim();
+
+        const matchedDst = wallets.find(
+          (w) => w.name.toLowerCase().trim() === dstCandidate.toLowerCase()
+        );
+        const matchedSrc = wallets.find(
+          (w) => w.name.toLowerCase().trim() === srcCandidate.toLowerCase()
+        );
+
+        if (matchedSrc || matchedDst) {
+          type = "transfer";
+          destinationWalletId = matchedDst ? matchedDst.id : null;
+          destinationWalletName = matchedDst ? matchedDst.name : dstCandidate;
+        }
+      }
+    }
 
     const isTransferSignal = /\b(transfer ke|kirim ke|to rekening|ke rek|top.?up|isi saldo)\b/i.test(description);
     if (type === "expense" && isTransferSignal) {
@@ -767,26 +865,31 @@ export function parseStatementText(
     }
 
     const mockTx: Partial<Transaction> = {
-      note: `${cleanDesc} ${description}`,
+      note: `${sanitizedCleanDesc} ${sanitizedDescription}`.trim(),
       type,
       amount,
     };
     const resolvedCat = resolveTransactionCategory(mockTx, categories);
 
     const roundedAmt = Math.round(amount / 1000) * 1000;
-    const noteSlug = cleanDesc.toLowerCase().replace(/\s+/g, "").slice(0, 20);
+    const noteSlug = (sanitizedCleanDesc || sanitizedDescription || "tx").toLowerCase().replace(/\s+/g, "").slice(0, 20);
     const dedupKey1 = `${normalizedDate}_${Math.round(amount)}_${type}`;
     const dedupKey2 = `${normalizedDate}_${roundedAmt}_${type}_${noteSlug}`;
-    const isDuplicate = existingMap.has(dedupKey1) || existingMap.has(dedupKey2);
-    const duplicateReason = isDuplicate
-      ? `Matches existing ${type} on ${normalizedDate} (Rp ${amount.toLocaleString("id-ID")})`
+    const isExactDuplicate = existingMap.has(dedupKey1) || existingMap.has(dedupKey2);
+    const is48hDuplicate = !isExactDuplicate && (existing48hMap.has(dedupKey1) || existing48hMap.has(dedupKey2));
+
+    const isDuplicate = isExactDuplicate || is48hDuplicate;
+    const duplicateReason = isExactDuplicate
+      ? `Sama dengan transaksi ${type} pada ${normalizedDate} (${amount.toLocaleString()})`
+      : is48hDuplicate
+      ? `Kemungkinan duplikat (toleransi 48 jam) ${type} (${amount.toLocaleString()})`
       : undefined;
 
     items.push({
       id: `stmt-tx-${Date.now()}-${idCounter++}`,
       date: normalizedDate,
-      description: description || "Transaction",
-      cleanDescription: cleanDesc,
+      description: sanitizedDescription || "Transaction",
+      cleanDescription: sanitizedCleanDesc,
       amount,
       type,
       destinationWalletId,
@@ -796,7 +899,8 @@ export function parseStatementText(
       suggestedCategoryEmoji: resolvedCat.emoji,
       isDuplicate,
       duplicateReason,
-      selected: !isDuplicate,
+      needsReview: is48hDuplicate,
+      selected: !isExactDuplicate,
       raw: line,
     });
   }

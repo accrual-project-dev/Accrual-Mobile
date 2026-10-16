@@ -44,7 +44,7 @@ import {
   Building2,
   TrendingUp,
 } from "lucide-react";
-import { parseStatementText, type ParsedStatementItem, type StatementFormat } from "../../lib/statementParser";
+import { parseStatementText, sanitizeNote, type ParsedStatementItem, type StatementFormat } from "../../lib/statementParser";
 import {
   detectColumns,
   columnRoleLabel,
@@ -60,8 +60,8 @@ import { useSpace } from "../../contexts/SpaceContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSubscription } from "../../contexts/SubscriptionContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useQuota } from "../../hooks/useQuota";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -177,6 +177,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
   const addCategory = useAddCategory();
   const { showToast } = useToast();
   const { isPremium } = useSubscription();
+  const { formatWithPreferred } = useCurrency();
   const { checkOcrLimitAndPrompt, recordOcrUsage, ocrRemaining } = useQuota();
 
   // --- Step & Navigation State ---
@@ -704,7 +705,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
           wallet_id: finalWalletId,
           to_wallet_id: finalToWalletId,
           occurred_on: occurredOn,
-          note: item.cleanDescription || item.description || "",
+          note: sanitizeNote(item.cleanDescription || item.description || ""),
           ledger_id: activeSpaceId !== "all" ? activeSpaceId : "personal",
           space_id: activeSpaceId !== "all" ? activeSpaceId : null,
         };
@@ -1372,13 +1373,13 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               >
                 <div className="flex items-center gap-3">
                   {totalInflow > 0 && (
-                    <span style={{ color: "var(--accent)" }}>+{formatRupiah(totalInflow)}</span>
+                    <span style={{ color: "var(--accent)" }}>+{formatWithPreferred(totalInflow)}</span>
                   )}
                   {totalOutflow > 0 && (
-                    <span style={{ color: "var(--text-primary)" }}>−{formatRupiah(totalOutflow)}</span>
+                    <span style={{ color: "var(--text-primary)" }}>−{formatWithPreferred(totalOutflow)}</span>
                   )}
                   {totalTransfer > 0 && (
-                    <span style={{ color: "var(--text-secondary)" }}>⇄ {formatRupiah(totalTransfer)}</span>
+                    <span style={{ color: "var(--text-secondary)" }}>⇄ {formatWithPreferred(totalTransfer)}</span>
                   )}
                 </div>
 
@@ -1664,7 +1665,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                           }}
                         >
                           {isIncome ? "+" : isTransfer ? "⇄" : "−"}
-                          {formatRupiah(item.amount)}
+                          {formatWithPreferred(item.amount)}
                         </span>
                         <span
                           className="text-[9px] font-semibold uppercase tracking-wider"

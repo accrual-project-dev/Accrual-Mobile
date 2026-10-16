@@ -2,6 +2,20 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import type { Bill, Category, Transaction, DebtReceivableRecord } from './types'
 import { parseISO, subDays, endOfMonth, addMonths, startOfMonth, format } from 'date-fns'
 import { formatRupiah } from './utils'
+import { formatCurrencyAmount, convertCurrency, type SupportedCurrency } from './currency'
+
+function formatNotificationCurrency(idrAmount: number): string {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const pref = localStorage.getItem("trouvaille_preferred_currency") as SupportedCurrency;
+      if (pref && pref !== "IDR") {
+        const converted = convertCurrency(idrAmount, "IDR", pref);
+        return formatCurrencyAmount(converted, pref);
+      }
+    }
+  } catch {}
+  return formatRupiah(idrAmount);
+}
 
 export async function requestNotificationPermission(): Promise<boolean> {
   try {
@@ -586,7 +600,7 @@ export async function syncDebtReceivableNotifications(
       const dueDate = parseISO(record.dueDate);
       if (isNaN(dueDate.getTime())) continue;
 
-      const amtFormatted = formatRupiah(record.remainingAmount);
+      const amtFormatted = formatNotificationCurrency(record.remainingAmount);
       const isReceivable = record.type === "receivable";
 
       // 1. Advance notification (1 day before) at 09:00 AM

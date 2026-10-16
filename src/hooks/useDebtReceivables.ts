@@ -9,6 +9,7 @@
 // ======================================================================
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { format } from "date-fns";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import type {
@@ -28,6 +29,18 @@ import {
 } from "../lib/debtReceivableEngine";
 import { useAddTransaction, useDeleteTransaction } from "./useTransactions";
 import { syncDebtReceivableNotifications } from "../lib/notifications";
+
+function formatFullIsoOccurredOn(dateStr?: string | null): string {
+  const now = new Date();
+  if (!dateStr || !dateStr.trim()) {
+    return format(now, "yyyy-MM-dd'T'HH:mm:ss");
+  }
+  const clean = dateStr.trim();
+  if (clean.includes("T")) {
+    return clean;
+  }
+  return `${clean}${format(now, "'T'HH:mm:ss")}`;
+}
 
 export function useDebtReceivables() {
   const { user } = useAuth();
@@ -107,7 +120,7 @@ export function useDebtReceivables() {
               : isIndonesian
                 ? `Pinjaman diterima dari ${input.personName}`
                 : `Loan received from ${input.personName}`,
-            occurred_on: effectiveCreatedDate,
+            occurred_on: formatFullIsoOccurredOn(effectiveCreatedDate),
           });
         } catch (err) {
           console.warn("[useDebtReceivables] Failed to auto-create wallet mutation:", err);
@@ -217,7 +230,7 @@ export function useDebtReceivables() {
               : isIndonesian
                 ? `Pembayaran utang ke ${target.personName}`
                 : `Debt repayment to ${target.personName}`,
-            occurred_on: effectiveDate,
+            occurred_on: formatFullIsoOccurredOn(effectiveDate),
           });
         } catch (err) {
           console.warn("[useDebtReceivables] Failed to auto-create repayment transaction:", err);
