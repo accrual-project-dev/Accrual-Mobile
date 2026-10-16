@@ -15,6 +15,7 @@ import {
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import type { Wallet, InvestmentHolding } from "../../lib/types";
 import {
   getStandardUsdtHoldingId,
@@ -47,6 +48,7 @@ export function ConvertWalletToAssetModal({
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
   const updateWallet = useUpdateWallet();
+  const { formatWithPreferred } = useCurrency();
 
   const { balancesById } = useWalletBalances();
   const { data: allTxs = [] } = useAllTransactions();
@@ -229,7 +231,7 @@ export function ConvertWalletToAssetModal({
                 {wallet?.name || "USDT"}
               </p>
               <p className="text-[11px] text-[var(--text-secondary)] amount">
-                Saldo: {formatRupiah(walletBalance)}
+                {isIndonesian ? "Saldo: " : "Balance: "}{formatWithPreferred(walletBalance)}
               </p>
             </div>
           </div>

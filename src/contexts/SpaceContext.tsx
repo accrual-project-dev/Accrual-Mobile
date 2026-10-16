@@ -260,21 +260,31 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
             } catch {}
             return merged;
           });
-          // Re-validate activeSpaceId: if it points to a now-loaded active space, confirm it
+          // Re-validate activeSpaceId: if it points to a now-loaded active space, confirm it;
+          // otherwise auto-heal back to defaultSpaceId or "personal"
           setActiveSpaceIdState((curr) => {
             const savedActive = (() => {
               try { return localStorage.getItem(ACTIVE_SPACE_KEY) || ""; } catch { return ""; }
             })();
             const targetId = savedActive || curr;
+            if (targetId === "personal" || targetId === "all") {
+              return targetId;
+            }
             const matchedSpace = cloudSpaces.find((s) => s.id === targetId);
             if (
-              targetId !== "personal" &&
               matchedSpace &&
               matchedSpace.member_status !== "pending"
             ) {
               return targetId;
             }
-            return curr;
+            // Auto-heal orphaned / revoked space: fallback to defaultSpaceId or "personal"
+            const fallbackId = (() => {
+              try { return localStorage.getItem(DEFAULT_LEDGER_KEY) || "personal"; } catch { return "personal"; }
+            })();
+            try {
+              localStorage.setItem(ACTIVE_SPACE_KEY, fallbackId);
+            } catch {}
+            return fallbackId;
           });
         }
       }
@@ -625,12 +635,33 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem(CUSTOM_SPACES_KEY, JSON.stringify(updated));
         localStorage.setItem(LEDGERS_STORAGE_KEY, JSON.stringify(updated));
+        localStorage.removeItem(`trouvaille_shared_members_${id}`);
       } catch {}
       return updated;
     });
 
-    // If active space was deleted, revert to personal
-    setActiveSpaceIdState((curr) => (curr === id ? "personal" : curr));
+    // If active space was deleted, revert to personal (in state & localStorage)
+    setActiveSpaceIdState((curr) => {
+      if (curr === id) {
+        const nextActive = reassignToId || "personal";
+        try {
+          localStorage.setItem(ACTIVE_SPACE_KEY, nextActive);
+        } catch {}
+        return nextActive;
+      }
+      return curr;
+    });
+
+    // If default space was deleted, revert default to personal
+    setDefaultSpaceIdState((curr) => {
+      if (curr === id) {
+        try {
+          localStorage.setItem(DEFAULT_LEDGER_KEY, "personal");
+        } catch {}
+        return "personal";
+      }
+      return curr;
+    });
 
     // Cloud delete
     (async () => {

@@ -219,7 +219,7 @@ export function SharedLedgerDetailSheet({
         );
       }
     } catch {
-      showToast(isIndonesian ? "Gagal memperbarui kode." : "Failed to regenerate code.", "add");
+      showToast(isIndonesian ? "Gagal memperbarui kode." : "Failed to regenerate code.", "delete");
     } finally {
       setIsRegenerating(false);
     }

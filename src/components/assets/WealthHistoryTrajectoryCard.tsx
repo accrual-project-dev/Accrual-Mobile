@@ -9,8 +9,8 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 export type BalanceSheetRange = "1D" | "7D" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 
@@ -42,6 +42,7 @@ const GlassTooltip = ({
   isDark,
 }: GlassTooltipProps) => {
   if (!active || !payload?.length) return null;
+  const { formatWithPreferred } = useCurrency();
   const val = payload[0]?.value ?? 0;
 
   return (
@@ -70,7 +71,7 @@ const GlassTooltip = ({
           {isIndonesian ? "Kekayaan" : "Net Worth"}
         </span>
         <span className="text-[12px] font-bold text-[var(--text-primary)] tabular-nums amount">
-          {isStealthMode ? "••••••••" : formatRupiah(val)}
+          {isStealthMode ? "••••••••" : formatWithPreferred(val)}
         </span>
       </div>
     </div>
@@ -110,6 +111,7 @@ export function WealthHistoryTrajectoryCard({
   isIndonesian,
   isDark,
 }: WealthHistoryTrajectoryCardProps) {
+  const { formatWithPreferred, formatCompactWithPreferred, currencyMeta } = useCurrency();
   const isPositive = assetTrend.diff >= 0;
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
 
@@ -235,7 +237,7 @@ export function WealthHistoryTrajectoryCard({
       {/* ── BARIS 2: Nominal Besar di Kiri & Keterangan Keuntungan Terbuka (Unboxed) di Kanan ── */}
       <div className="flex items-baseline justify-between gap-3 mb-3">
         <h2 className="amount text-[27px] sm:text-[30px] font-bold tracking-tight text-[var(--text-primary)] leading-none tabular-nums">
-          {isStealthMode ? "Rp ••••••••" : formatRupiah(netWorth)}
+          {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(netWorth)}
         </h2>
 
         {/* Keterangan Keuntungan: Murni Tipografi Terbuka, Tanpa Kotak/Pill, Ada Angka & Persen */}
@@ -253,7 +255,7 @@ export function WealthHistoryTrajectoryCard({
             <span>
               {isStealthMode
                 ? "••••"
-                : `${isPositive ? "+" : ""}${formatRupiah(assetTrend.diff)}`}
+                : `${isPositive ? "+" : ""}${formatWithPreferred(assetTrend.diff)}`}
             </span>
           </span>
 
@@ -406,9 +408,7 @@ export function WealthHistoryTrajectoryCard({
           <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {isStealthMode
               ? "••••"
-              : chartPeak >= 1000
-                ? "Rp " + formatAxisY(chartPeak)
-                : formatRupiah(chartPeak)}
+              : formatCompactWithPreferred(chartPeak)}
           </span>
         </div>
 
@@ -419,9 +419,7 @@ export function WealthHistoryTrajectoryCard({
           <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {isStealthMode
               ? "••••"
-              : chartTrough >= 1000
-                ? "Rp " + formatAxisY(chartTrough)
-                : formatRupiah(chartTrough)}
+              : formatCompactWithPreferred(chartTrough)}
           </span>
         </div>
 
@@ -433,8 +431,8 @@ export function WealthHistoryTrajectoryCard({
             {isStealthMode
               ? "••••"
               : capitalDeployment > 0
-                ? "+Rp " + formatAxisY(capitalDeployment)
-                : "Rp 0"}
+                ? `+${formatCompactWithPreferred(capitalDeployment)}`
+                : formatCompactWithPreferred(0)}
           </span>
         </div>
 
@@ -445,7 +443,7 @@ export function WealthHistoryTrajectoryCard({
           <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {isStealthMode
               ? "••••"
-              : `${isPositive ? "+" : "-"}Rp ${formatAxisY(Math.abs(assetTrend.diff))}`}
+              : `${isPositive ? "+" : "-"}${formatCompactWithPreferred(Math.abs(assetTrend.diff))}`}
           </span>
         </div>
       </div>

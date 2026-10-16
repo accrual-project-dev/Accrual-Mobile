@@ -25,6 +25,7 @@ import {
   fetchCryptoQuote,
   fetchStockQuote,
   fetchGoldQuote,
+  getSavedHoldings,
   type UsdtValuationPref,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, AssetType } from "../../lib/types";
@@ -446,8 +447,18 @@ export function AddAssetModal({
       const holdingCurr = (editingHolding.currency as "IDR" | "USD") || "IDR";
       setFormCurrency(holdingCurr);
       setFormUnits(String(editingHolding.units || ""));
-      setFormBuyPrice(formatHoldingPrice(editingHolding.avg_buy_price, holdingCurr));
-      setFormCurrentPrice(formatHoldingPrice(editingHolding.current_price, holdingCurr));
+      const displayBuy =
+        holdingCurr === "USD" && editingHolding.native_price
+          ? editingHolding.native_price
+          : holdingCurr === "USD" && editingHolding.avg_buy_price > 10000 && usdtRate > 0
+            ? editingHolding.avg_buy_price / usdtRate
+            : editingHolding.avg_buy_price;
+      const displayCurrent =
+        holdingCurr === "USD" && editingHolding.current_price > 10000 && usdtRate > 0
+          ? editingHolding.current_price / usdtRate
+          : editingHolding.current_price;
+      setFormBuyPrice(formatHoldingPrice(displayBuy, holdingCurr));
+      setFormCurrentPrice(formatHoldingPrice(displayCurrent, holdingCurr));
       setFormIcon(editingHolding.icon || "Coins");
       setPriceMode(editingHolding.is_custom_price ? "custom" : "live");
       setFormPurchaseDate(
@@ -686,23 +697,40 @@ export function AddAssetModal({
     }
 
     // Generic Investment Holding
+    const isUSD = formCurrency === "USD";
+    const effectiveRate = usdtRate > 0 ? usdtRate : 16415;
+    const baseBuyPrice = isUSD ? Math.round(buyPrice * effectiveRate) : buyPrice;
+    const baseCurrentPrice = isUSD
+      ? Math.round((currentPrice || buyPrice) * effectiveRate)
+      : (currentPrice || buyPrice);
+
+    let finalSymbol = symbol;
+    if (formType === "fixed_asset" && !editingHolding) {
+      const currentHoldings = getSavedHoldings(userId);
+      if (currentHoldings.some((h) => h.symbol?.toUpperCase() === finalSymbol.toUpperCase())) {
+        finalSymbol = `${finalSymbol}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+      }
+    }
+
     const newH: InvestmentHolding = {
       id: editingHolding?.id || `h_${Date.now()}`,
       user_id: userId,
-      symbol,
+      symbol: finalSymbol,
       name: formName.trim(),
       asset_type: formType,
       units,
-      avg_buy_price: buyPrice,
-      current_price: currentPrice,
+      avg_buy_price: baseBuyPrice,
+      current_price: baseCurrentPrice,
       currency: formCurrency,
+      native_price: isUSD ? buyPrice : undefined,
+      native_currency: isUSD ? "USD" : undefined,
       notes: finalPlatform ? `Platform: ${finalPlatform}` : undefined,
       last_price_updated_at: new Date().toISOString(),
       icon: formIcon,
       annual_rate: signedRate,
       purchase_date: formPurchaseDate || undefined,
       is_custom_price: priceMode === "custom",
-      custom_price: priceMode === "custom" ? currentPrice : undefined,
+      custom_price: priceMode === "custom" ? baseCurrentPrice : undefined,
     };
 
     onSaveHolding(newH);

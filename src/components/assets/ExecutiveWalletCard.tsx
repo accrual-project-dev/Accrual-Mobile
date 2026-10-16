@@ -7,8 +7,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { getIncludeReceivableInLiquid } from "../../lib/financialMath";
 import type { Wallet as WalletType, InvestmentHolding } from "../../lib/types";
 
@@ -48,6 +48,7 @@ export function ExecutiveWalletCard({
   usdtRate = 15850,
   usdtUnits = 0,
 }: ExecutiveWalletCardProps) {
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const [isExpanded, setIsExpanded] = useState(true);
   const [pageState, setPageState] = useState<[number, number]>([0, 0]);
   const [page, direction] = pageState;
@@ -120,7 +121,7 @@ export function ExecutiveWalletCard({
         allocation: alloc,
         metadata: `${finalUsdtUnits.toLocaleString()} USDT • ${isIndonesian ? "Aktif" : "Active"}`,
         trendText: "▲ 0.0%",
-        livePrice: `${formatRupiah(usdtRate)} / USDT`,
+        livePrice: `${formatWithPreferred(usdtRate)} / USDT`,
         sparklinePoints: "M 0 16 Q 25 14 50 16 T 80 15 T 100 16",
         sparklineArea:
           "M 0 16 Q 25 14 50 16 T 80 15 T 100 16 L 100 32 L 0 32 Z",
@@ -151,7 +152,7 @@ export function ExecutiveWalletCard({
           : isIndonesian
             ? "▲ Aktif"
             : "▲ Active",
-        livePrice: `${formatRupiah(h.current_price || h.avg_buy_price)} / ${h.symbol}`,
+        livePrice: `${formatWithPreferred(h.current_price || h.avg_buy_price)} / ${h.symbol}`,
         sparklinePoints: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10",
         sparklineArea: "M 0 20 Q 25 8 50 22 T 80 6 T 100 10 L 100 32 L 0 32 Z",
         sparklinePeakY: 10,
@@ -218,7 +219,7 @@ export function ExecutiveWalletCard({
             ? "Rekening Kas Aktif"
             : "Active Cash Account",
         trendText: isIndonesian ? "▲ Kas" : "▲ Cash",
-        livePrice: formatRupiah(bal),
+        livePrice: formatWithPreferred(bal),
         sparklinePoints: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4",
         sparklineArea: "M 0 24 Q 25 28 45 16 T 80 12 T 100 4 L 100 32 L 0 32 Z",
         sparklinePeakY: 4,
@@ -244,7 +245,7 @@ export function ExecutiveWalletCard({
               ? `Solvabilitas: ${solvencyScore}%`
               : `Solvency: ${solvencyScore}%`,
         trendText: isIndonesian ? "▲ Solven" : "▲ Solvent",
-        livePrice: formatRupiah(netWorth),
+        livePrice: formatWithPreferred(netWorth),
         sparklinePoints: "M 0 26 Q 30 24 60 14 T 100 4",
         sparklineArea: "M 0 26 Q 30 24 60 14 T 100 4 L 100 32 L 0 32 Z",
         sparklinePeakY: 4,
@@ -541,8 +542,8 @@ export function ExecutiveWalletCard({
                         style={{ color: isWhite ? "#000000" : "#ffffff" }}
                       >
                         {isStealthMode
-                          ? "••••••••"
-                          : formatRupiah(activeCard.balance)}
+                          ? `${currencyMeta.symbol} ••••••••`
+                          : formatWithPreferred(activeCard.balance)}
                       </span>
                       <span
                         className="text-[8px]  font-bold px-1 py-0.2 rounded shrink-0"
@@ -797,7 +798,7 @@ export function ExecutiveWalletCard({
               className="amount text-[27px] sm:text-[30px] font-light tracking-tight leading-tight"
               style={{ color: isDark ? "#ffffff" : "#09090c" }}
             >
-              {isStealthMode ? "••••••••" : formatRupiah(netWorth)}
+              {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(netWorth)}
             </p>
           </div>
 
@@ -824,7 +825,7 @@ export function ExecutiveWalletCard({
                 className="text-[9.5px]  font-bold block mt-0.5"
                 style={{ color: isDark ? "#ffffff" : "#09090c" }}
               >
-                {isStealthMode ? "••••••" : formatRupiah(totalGrossAssets)}
+                {isStealthMode ? "••••••" : formatWithPreferred(totalGrossAssets)}
               </span>
             </div>
 
@@ -846,7 +847,7 @@ export function ExecutiveWalletCard({
                 className="text-[9.5px]  font-bold block mt-0.5"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {isStealthMode ? "••••••" : formatRupiah(liabilitiesTotal)}
+                {isStealthMode ? "••••••" : formatWithPreferred(liabilitiesTotal)}
               </span>
             </div>
 

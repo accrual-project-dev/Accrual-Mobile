@@ -11,6 +11,7 @@ import { formatRupiah, formatHoldingUnits } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { IconRenderer } from "../ui/IconRenderer";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import type { InvestmentHolding } from "../../lib/types";
 import type { UsdtValuationPref } from "../../lib/marketPriceService";
 import { calculateHoldingValuation } from "../../lib/marketPriceService";
@@ -111,6 +112,7 @@ export function PortfolioHoldingsDeck({
 }: PortfolioHoldingsDeckProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { formatWithPreferred, currencyMeta } = useCurrency();
 
   const [categoryFilter, setCategoryFilter] = useState<PresetCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -538,7 +540,7 @@ export function PortfolioHoldingsDeck({
                     {/* Sisi Kanan Atas: Nilai Pasar & Harga Saat Ini */}
                     <div className="text-right shrink-0">
                       <div className="font-bold text-[13px] text-[var(--text-primary)] tabular-nums leading-none">
-                        {isStealthMode ? "••••••••" : formatRupiah(totalVal)}
+                        {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(totalVal)}
                       </div>
                       <div className="text-[9.5px] text-[var(--text-secondary)] font-medium tabular-nums mt-1 leading-none">
                         {formatNativeQuote(h)}
@@ -560,7 +562,7 @@ export function PortfolioHoldingsDeck({
                       <span>
                         {isIndonesian ? "Beli:" : "DCA:"}{" "}
                         <strong className="font-medium text-[var(--text-secondary)]">
-                          {formatRupiah(buyPrice)}
+                          {formatWithPreferred(buyPrice)}
                         </strong>
                       </span>
                     </div>
@@ -577,7 +579,7 @@ export function PortfolioHoldingsDeck({
                         }}
                       >
                         {pnl >= 0 ? "+" : "−"}
-                        {formatRupiah(Math.abs(pnl))} ({pnlPct >= 0 ? "+" : ""}
+                        {formatWithPreferred(Math.abs(pnl))} ({pnlPct >= 0 ? "+" : ""}
                         {pnlPct.toFixed(1)}%)
                       </span>
                       <span className="opacity-30">·</span>
@@ -699,7 +701,7 @@ export function PortfolioHoldingsDeck({
                       </td>
 
                       <td className="py-2 px-2.5 text-right text-[var(--text-secondary)] tabular-nums text-[10px]">
-                        {formatRupiah(buyPrice)}
+                        {formatWithPreferred(buyPrice)}
                       </td>
 
                       <td className="py-2 px-2.5 text-right">
@@ -709,7 +711,7 @@ export function PortfolioHoldingsDeck({
                       </td>
 
                       <td className="py-2 px-2.5 text-right font-bold text-[var(--text-primary)] tabular-nums">
-                        {isStealthMode ? "••••••••" : formatRupiah(totalVal)}
+                        {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(totalVal)}
                       </td>
 
                       <td className="py-2 px-2.5 text-right tabular-nums">

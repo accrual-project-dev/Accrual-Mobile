@@ -109,17 +109,23 @@ export function filterTransactionsForReport(
 
     // Space filtering
     if (options.spaceId && options.spaceId !== "all") {
+      const explicitSpace = (tx.ledger_id || tx.space_id || "").toLowerCase();
       if (options.spaceId === "personal") {
         const note = (tx.note || "").toLowerCase();
-        if (tx.space_id || note.includes("#business") || note.includes("#travel") || note.includes("#kantor") || note.includes("#liburan")) {
+        if (
+          (explicitSpace && explicitSpace !== "personal") ||
+          note.includes("#business") ||
+          note.includes("#travel") ||
+          note.includes("#kantor") ||
+          note.includes("#liburan")
+        ) {
           return false;
         }
       } else {
         const target = options.spaceId.toLowerCase().replace(/^#/, "");
-        const txSpace = (tx.space_id || "").toLowerCase();
         const note = (tx.note || "").toLowerCase();
         const matchesSpace =
-          txSpace === target ||
+          explicitSpace === target ||
           note.includes(`#${target}`) ||
           (target === "business" && (note.includes("#kantor") || note.includes("#reimburse"))) ||
           (target === "travel" && note.includes("#liburan"));

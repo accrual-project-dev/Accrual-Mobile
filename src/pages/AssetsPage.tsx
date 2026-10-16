@@ -25,12 +25,13 @@ import {
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatRupiah, formatHoldingUnits } from "../lib/utils";
+import { formatHoldingUnits } from "../lib/utils";
 import { triggerHaptic } from "../lib/haptics";
 import { useToast } from "../contexts/ToastContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useWallets, resolveWalletClassification } from "../hooks/useWallets";
 import { useWalletBalances } from "../hooks/useWalletBalances";
@@ -86,6 +87,7 @@ export function AssetsPage() {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
   const { isStealthMode, toggleStealthMode } = usePrivacy();
+  const { formatWithPreferred } = useCurrency();
   const [bsRange, setBsRange] = useState<BalanceSheetRange>("7D");
 
   const { data: wallets = [] } = useWallets();
@@ -602,7 +604,7 @@ export function AssetsPage() {
     if (!isCryptoClassifiedAsInvestment && (usdtMarketValue > 0 || usdtPref.units > 0)) {
       items.push({
         label: "Tether USD (USDT)",
-        sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`,
+        sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatWithPreferred(usdtPref.rate)}`,
         amount: usdtMarketValue,
         detail: isIndonesian
           ? "Stablecoin cadangan di akun"
@@ -690,7 +692,7 @@ export function AssetsPage() {
     if (isCryptoClassifiedAsInvestment && (usdtMarketValue > 0 || usdtPref.units > 0)) {
       items.unshift({
         label: "Tether USD (USDT)",
-        sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`,
+        sublabel: `${formatHoldingUnits(usdtPref.units)} USDT · @${formatWithPreferred(usdtPref.rate)}`,
         amount: usdtMarketValue,
         detail: isIndonesian
           ? "Portofolio kripto/investasi"
@@ -713,7 +715,9 @@ export function AssetsPage() {
         ? growthHoldings.length === 0
           ? "Tier 2 ditujukan untuk instrumen bertumbuh berimbal hasil tinggi seperti saham, reksa dana, dan kripto. Belum ada instrumen pasar terdaftar."
           : `Terdapat ${growthHoldings.length} aset pasar aktif untuk pertumbuhan modal jangka panjang di atas inflasi.`
-        : "Higher-yielding, fluctuating market holdings including equities, crypto, and funds.",
+        : growthHoldings.length === 0
+          ? "Tier 2 is intended for high-growth instruments such as equities, mutual funds, and crypto. No market instruments registered yet."
+          : `There are ${growthHoldings.length} active market assets for long-term capital growth outperforming inflation.`,
       items,
       ctaLabel: isIndonesian ? "Tambah Aset Pasar" : "Add Market Asset",
       onCta: () => {
@@ -734,7 +738,7 @@ export function AssetsPage() {
           label: `${h.name} (${h.symbol})`,
           sublabel: `${formatHoldingUnits(h.units)} gram · ${isIndonesian ? "Logam Mulia" : "Precious Metal"}`,
           amount: val.marketValue,
-          detail: formatRupiah(val.marketValue),
+          detail: formatWithPreferred(val.marketValue),
           onClick: () => {
             setSelectedMetricDrillDown(null);
             handleOpenHoldingDetail(h);
@@ -747,7 +751,7 @@ export function AssetsPage() {
         label: h.name,
         sublabel: h.asset_type.toUpperCase().replace("_", " "),
         amount: val.marketValue,
-        detail: formatRupiah(val.marketValue),
+        detail: formatWithPreferred(val.marketValue),
         onClick: () => {
           setSelectedMetricDrillDown(null);
           handleOpenHoldingDetail(h);
@@ -766,7 +770,9 @@ export function AssetsPage() {
         ? items.length === 0
           ? "Tier 3 mencakup aset riil fisik berwujud seperti Emas Batangan Antam/UBS, properti, dan kendaraan bermotor sebagai penyimpan nilai fisik jangka panjang."
           : `Terdapat ${items.length} kepemilikan aset riil fisik sebagai pelindung kekayaan dari depresiasi nilai mata uang.`
-        : "Physical and hard tangible assets preserving generational purchasing power.",
+        : items.length === 0
+          ? "Tier 3 covers physical hard assets such as physical gold, property, and vehicles as long-term stores of value."
+          : `There are ${items.length} physical tangible holdings serving as generational wealth protection against currency depreciation.`,
       items,
       ctaLabel: isIndonesian ? "Catat Aset Riil" : "Record Tangible Asset",
       onCta: () => {
@@ -811,8 +817,10 @@ export function AssetsPage() {
       narrative: isIndonesian
         ? liabilitiesTotal === 0
           ? "Neraca keuangan Anda bebas utang. Rasio utang terhadap aset (D/A) adalah 0.0%, memberikan fleksibilitas penuh terhadap arus kas bulanan."
-          : `Total kewajiban tercatat sebesar ${formatRupiah(liabilitiesTotal)}. Rasio D/A Anda adalah ${debtToAssetRatio.toFixed(1)}% (batas aman < 30%).`
-        : "Active liabilities, loans and credit cards measured against total gross assets.",
+          : `Total kewajiban tercatat sebesar ${formatWithPreferred(liabilitiesTotal)}. Rasio D/A Anda adalah ${debtToAssetRatio.toFixed(1)}% (batas aman < 30%).`
+        : liabilitiesTotal === 0
+          ? "Your balance sheet is debt-free. Your debt-to-asset (D/A) ratio is 0.0%, providing complete flexibility for your monthly cash flow."
+          : `Total recorded liabilities are ${formatWithPreferred(liabilitiesTotal)}. Your D/A ratio is ${debtToAssetRatio.toFixed(1)}% (safe threshold < 30%).`,
       items,
       ctaLabel: isIndonesian ? "Buka Neraca Lengkap" : "View Balance Sheet",
       onCta: () => {
@@ -1114,8 +1122,8 @@ export function AssetsPage() {
                 </p>
                 <p className="text-[10.5px] text-[var(--text-secondary)] leading-tight">
                   {isIndonesian
-                    ? `Transaksi mutasi (${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 0)}) belum tercermin pada unit holding.`
-                    : "A recent transfer has not yet been reflected in holding units."}
+                    ? `Transaksi mutasi (${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 0)}) belum tercermin pada unit holding.`
+                    : `A transfer of ${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 0)} has not yet been reflected in holding units.`}
                 </p>
                 <p className="text-[9.5px] text-[var(--text-tertiary)] flex items-center gap-1 pt-0.5">
                   <span>{isIndonesian ? "Geser ke samping untuk menutup" : "Swipe sideways to dismiss"}</span>
@@ -1185,8 +1193,8 @@ export function AssetsPage() {
               </p>
               <p className="text-[10.5px] text-[var(--text-secondary)] leading-tight">
                 {isIndonesian
-                  ? `Saldo ${formatRupiah(balancesById[unlinkedCryptoWallet.id] ?? Number(unlinkedCryptoWallet.balance || 0))} belum ditautkan sebagai unit holding aset.`
-                  : `Balance ${formatRupiah(balancesById[unlinkedCryptoWallet.id] ?? Number(unlinkedCryptoWallet.balance || 0))} is not yet linked as holding units.`}
+                  ? `Saldo ${formatWithPreferred(balancesById[unlinkedCryptoWallet.id] ?? Number(unlinkedCryptoWallet.balance || 0))} belum ditautkan sebagai unit holding aset.`
+                  : `Balance ${formatWithPreferred(balancesById[unlinkedCryptoWallet.id] ?? Number(unlinkedCryptoWallet.balance || 0))} is not yet linked as holding units.`}
               </p>
             </div>
           </div>

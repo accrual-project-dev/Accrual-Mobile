@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Layers } from "lucide-react";
 import { RingChart, Ring, RingCenter } from "../ui/RingChart";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 export interface UnifiedCapitalAllocationCardProps {
   liquidAssetsTotal: number;
@@ -26,23 +27,6 @@ export interface UnifiedCapitalAllocationCardProps {
   onOpenConsolidatedDrawer?: () => void;
 }
 
-function formatAxisNumber(val: number, isIndonesian: boolean): string {
-  if (val === 0) return "Rp 0";
-  if (Math.abs(val) >= 1_000_000_000) {
-    const b = val / 1_000_000_000;
-    return `Rp ${b % 1 === 0 ? b.toFixed(0) : b.toFixed(1)} ${isIndonesian ? "M" : "B"}`;
-  }
-  if (Math.abs(val) >= 1_000_000) {
-    const m = val / 1_000_000;
-    return `Rp ${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)} ${isIndonesian ? "jt" : "M"}`;
-  }
-  if (Math.abs(val) >= 1_000) {
-    const k = val / 1_000;
-    return `Rp ${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)} ${isIndonesian ? "rb" : "k"}`;
-  }
-  return `Rp ${val.toLocaleString()}`;
-}
-
 export function UnifiedCapitalAllocationCard({
   liquidAssetsTotal,
   growthAssetsTotal,
@@ -65,6 +49,7 @@ export function UnifiedCapitalAllocationCard({
   onOpenDebtDetail,
   onOpenConsolidatedDrawer: _onOpenConsolidatedDrawer,
 }: UnifiedCapitalAllocationCardProps) {
+  const { formatCompactWithPreferred } = useCurrency();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Dataset for the 4 pillars formatted for RingChart
@@ -312,7 +297,7 @@ export function UnifiedCapitalAllocationCard({
                   <span className="text-[11px] font-bold text-[var(--text-primary)] tabular-nums leading-none">
                     {isStealthMode
                       ? "••••"
-                      : formatAxisNumber(item.amount, isIndonesian)}
+                      : formatCompactWithPreferred(item.amount)}
                   </span>
                 </div>
               </button>

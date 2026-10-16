@@ -322,17 +322,22 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
     let holdingId = holding.id;
 
     // Ensure ID is a valid UUID for PostgreSQL UUID primary key
+    const isFixed = holding.asset_type === "fixed_asset";
     if (!isValidUUID(holdingId)) {
-      const { data: existing } = await supabase
-        .from("holdings")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("symbol", holding.symbol)
-        .limit(1)
-        .maybeSingle();
+      if (!isFixed && holding.symbol) {
+        const { data: existing } = await supabase
+          .from("holdings")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("symbol", holding.symbol)
+          .limit(1)
+          .maybeSingle();
 
-      if (existing?.id && isValidUUID(existing.id)) {
-        holdingId = existing.id;
+        if (existing?.id && isValidUUID(existing.id)) {
+          holdingId = existing.id;
+        } else {
+          holdingId = generateUUID();
+        }
       } else {
         holdingId = generateUUID();
       }
@@ -353,7 +358,7 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
     const payload = {
       id: holdingId,
       user_id: userId,
-      symbol: holding.symbol?.toUpperCase().trim(),
+      symbol: holding.symbol?.toUpperCase().trim() || null,
       name: holding.name,
       asset_type: holding.asset_type,
       units: holding.units,
@@ -368,9 +373,9 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
       last_price_updated_at: holding.last_price_updated_at || new Date().toISOString(),
     };
 
-    const { error: upsertErr } = await supabase
-      .from("holdings")
-      .upsert(payload, { onConflict: "user_id,symbol" });
+    const { error: upsertErr } = isFixed
+      ? await supabase.from("holdings").upsert(payload, { onConflict: "id" })
+      : await supabase.from("holdings").upsert(payload, { onConflict: "user_id,symbol" });
 
     // Safe fallback if unique constraint (user_id, symbol) has not yet been applied in DB
     if (upsertErr) {
@@ -420,18 +425,19 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
 
     if (!error && Array.isArray(data)) {
       markHoldingsHydrated(userId);
-      // Map deduplicating by normalized symbol, keeping the latest / highest-unit row
+      // Map deduplicating by normalized symbol for market assets, keeping unique row.id for fixed/custom assets
       const symbolMap = new Map<string, any>();
       for (const row of data) {
         const sym = (row.symbol || "").toUpperCase().trim();
-        if (!sym) continue;
-        if (!symbolMap.has(sym)) {
-          symbolMap.set(sym, row);
+        const isFixed = row.asset_type === "fixed_asset";
+        const mapKey = isFixed || !sym ? `id_${row.id}` : sym;
+        if (!symbolMap.has(mapKey)) {
+          symbolMap.set(mapKey, row);
         } else {
           // If already encountered, pick the one with positive units or higher units
-          const prev = symbolMap.get(sym);
+          const prev = symbolMap.get(mapKey);
           if ((Number(row.units) || 0) > (Number(prev.units) || 0)) {
-            symbolMap.set(sym, row);
+            symbolMap.set(mapKey, row);
           }
         }
       }
@@ -546,7 +552,7 @@ export function saveHoldings(holdings: InvestmentHolding[], userId?: string, syn
       }
     }
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
       window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated", { detail: holdings }));
     }
   } catch (e) {
@@ -559,8 +565,12 @@ export function saveHoldings(holdings: InvestmentHolding[], userId?: string, syn
  */
 export function upsertHolding(holding: InvestmentHolding, userId?: string): InvestmentHolding[] {
   const current = getSavedHoldings(userId);
-  const index = current.findIndex((h) => h.id === holding.id || (h.symbol && h.symbol === holding.symbol));
-  const targetId = isValidUUID(holding.id) ? holding.id : generateUUID();
+  const isFixed = holding.asset_type === "fixed_asset";
+  const index = current.findIndex(
+    (h) => h.id === holding.id || (!isFixed && h.asset_type !== "fixed_asset" && h.symbol && h.symbol === holding.symbol),
+  );
+  const existingId = index >= 0 ? current[index].id : undefined;
+  const targetId = holding.id && holding.id.trim() !== "" ? holding.id : (existingId || generateUUID());
   let updated: InvestmentHolding[];
   if (index >= 0) {
     updated = [...current];
@@ -1300,8 +1310,17 @@ export function calculateAssetDepreciation(
  */
 export function calculateHoldingValuation(holding: InvestmentHolding): HoldingValuation {
   const units = Number(holding.units || 0);
-  const buyPrice = Number(holding.avg_buy_price || 0);
+  let buyPrice = Number(holding.avg_buy_price || 0);
   let currentPrice = Number(holding.current_price || buyPrice);
+
+  // Self-healing legacy fallback: If holding was saved with USD buyPrice but IDR currentPrice (ratio > 500x)
+  if (
+    (holding.currency === "USD" || holding.native_currency === "USD") &&
+    buyPrice > 0 &&
+    currentPrice > buyPrice * 500
+  ) {
+    buyPrice = Math.round(buyPrice * USD_IDR_ESTIMATE);
+  }
 
   // If holding has annual depreciation/growth rate and purchase date, dynamically adjust current market price
   if (

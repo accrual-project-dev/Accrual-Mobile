@@ -15,11 +15,11 @@ import {
   Scale,
   ArrowUpRight,
 } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { usePrivacy } from "../../contexts/PrivacyContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   getSavedUsdtPref,
@@ -43,6 +43,7 @@ export function PortfolioIntelligenceDeck({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isStealthMode: hideBalance } = usePrivacy();
+  const { formatWithPreferred } = useCurrency();
   const { user } = useAuth();
   const [activeTelemetryTab, setActiveTelemetryTab] = useState<"performance" | "risk">("performance");
 
@@ -334,7 +335,7 @@ export function PortfolioIntelligenceDeck({
                 >
                   {hideBalance
                     ? "••••"
-                    : `${totalFloatingPnL >= 0 ? "+" : ""}${formatRupiah(totalFloatingPnL)}`}
+                    : `${totalFloatingPnL >= 0 ? "+" : ""}${formatWithPreferred(totalFloatingPnL)}`}
                 </p>
                 <p className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
                   {isIndonesian ? "Keuntungan modal bersih" : "Net floating return"}
@@ -358,11 +359,11 @@ export function PortfolioIntelligenceDeck({
                   className="text-[17px] font-semibold amount tracking-tight leading-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {hideBalance ? "••••" : formatRupiah(totalMarketValuation)}
+                  {hideBalance ? "••••" : formatWithPreferred(totalMarketValuation)}
                 </p>
                 <p className="text-[10px] truncate" style={{ color: "var(--text-secondary)" }}>
                   {isIndonesian ? "Modal Pokok:" : "Cost Basis:"}{" "}
-                  {hideBalance ? "••••" : formatRupiah(totalInvestedCostBasis)}
+                  {hideBalance ? "••••" : formatWithPreferred(totalInvestedCostBasis)}
                 </p>
               </div>
             </div>
@@ -475,7 +476,7 @@ export function PortfolioIntelligenceDeck({
                   </span>
                 </div>
                 <p className="text-[13px] font-semibold amount" style={{ color: "var(--text-primary)" }}>
-                  {hideBalance ? "••••" : formatRupiah(defensiveLiquid)}
+                  {hideBalance ? "••••" : formatWithPreferred(defensiveLiquid)}
                 </p>
                 <p className="text-[10px] font-medium" style={{ color: "var(--text-secondary)" }}>
                   {defensiveShare.toFixed(1)}%
@@ -497,7 +498,7 @@ export function PortfolioIntelligenceDeck({
                   </span>
                 </div>
                 <p className="text-[13px] font-semibold amount" style={{ color: "var(--text-primary)" }}>
-                  {hideBalance ? "••••" : formatRupiah(stableFixed)}
+                  {hideBalance ? "••••" : formatWithPreferred(stableFixed)}
                 </p>
                 <p className="text-[10px] font-medium" style={{ color: "var(--text-secondary)" }}>
                   {stableShare.toFixed(1)}%
@@ -519,7 +520,7 @@ export function PortfolioIntelligenceDeck({
                   </span>
                 </div>
                 <p className="text-[13px] font-semibold amount" style={{ color: "var(--text-primary)" }}>
-                  {hideBalance ? "••••" : formatRupiah(growthVolatile)}
+                  {hideBalance ? "••••" : formatWithPreferred(growthVolatile)}
                 </p>
                 <p className="text-[10px] font-medium" style={{ color: "var(--text-secondary)" }}>
                   {volatileShare.toFixed(1)}%

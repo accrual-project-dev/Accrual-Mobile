@@ -10,9 +10,10 @@ import {
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
-import { formatRupiah, formatHoldingUnits } from "../../lib/utils";
+import { formatHoldingUnits } from "../../lib/utils";
 import { calculateHoldingValuation } from "../../lib/marketPriceService";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import type { InvestmentHolding, Wallet as WalletType } from "../../types";
 
 export interface ConsolidatedBalanceSheetDrawerProps {
@@ -64,6 +65,7 @@ export function ConsolidatedBalanceSheetDrawer({
   isIndonesian,
   isDark,
 }: ConsolidatedBalanceSheetDrawerProps) {
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState<
     "all" | "tier1" | "tier2" | "tier3" | "liabilities"
@@ -206,7 +208,7 @@ export function ConsolidatedBalanceSheetDrawer({
                 : "Consolidated Net Worth"}
             </span>
             <p className=" text-xl sm:text-2xl font-semibold text-[var(--text-primary)] mt-0.5 tracking-tight">
-              {isStealthMode ? "••••••••" : formatRupiah(netWorth)}
+              {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(netWorth)}
             </p>
           </div>
           <div className="text-right flex flex-col items-end">
@@ -214,12 +216,12 @@ export function ConsolidatedBalanceSheetDrawer({
               {isIndonesian ? "Total Aset Kotor" : "Total Gross Assets"}
             </span>
             <span className=" text-[12.5px] font-semibold text-[var(--text-primary)] mt-0.5">
-              {isStealthMode ? "••••••••" : formatRupiah(totalGrossAssets)}
+              {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(totalGrossAssets)}
             </span>
             <span className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
               {isIndonesian ? "Liabilitas: " : "Debt: "}
               <span className=" font-medium text-[var(--text-secondary)]">
-                {isStealthMode ? "••••" : formatRupiah(liabilitiesTotal)}
+                {isStealthMode ? "••••" : formatWithPreferred(liabilitiesTotal)}
               </span>
             </span>
           </div>
@@ -343,7 +345,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     : "Tier 1 · Liquid & Current"}
                 </span>
                 <span className=" text-[11px] font-bold text-[var(--text-primary)]">
-                  {isStealthMode ? "••••••••" : formatRupiah(liquidAssetsTotal)}
+                  {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(liquidAssetsTotal)}
                 </span>
               </div>
 
@@ -372,7 +374,7 @@ export function ConsolidatedBalanceSheetDrawer({
                       </div>
                       <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5 font-sans">
                         {usdtPref.units > 0
-                          ? `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`
+                          ? `${formatHoldingUnits(usdtPref.units)} USDT · @${formatWithPreferred(usdtPref.rate)}`
                           : `Wallet linked · ${formatHoldingUnits(suggestedUsdtUnits)} USDT`}
                       </p>
                     </div>
@@ -380,8 +382,8 @@ export function ConsolidatedBalanceSheetDrawer({
                   <div className="text-right shrink-0 pl-2">
                     <span className="text-[13px]  font-bold text-[var(--text-primary)] block leading-tight">
                       {isStealthMode
-                        ? "••••••••"
-                        : formatRupiah(usdtMarketValue)}
+                        ? `${currencyMeta.symbol} ••••••••`
+                        : formatWithPreferred(usdtMarketValue)}
                     </span>
                     <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5 font-sans">
                       <span
@@ -445,8 +447,8 @@ export function ConsolidatedBalanceSheetDrawer({
                   <div className="text-right  shrink-0 pl-2">
                     <span className="text-[13px] font-bold text-[var(--text-primary)]">
                       {isStealthMode
-                        ? "••••••••"
-                        : formatRupiah(
+                        ? `${currencyMeta.symbol} ••••••••`
+                        : formatWithPreferred(
                             balancesById
                               ? balancesById[w.id] ?? 0
                               : Number(w.balance || 0),
@@ -482,7 +484,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     : "Tier 2 · Market & Growth"}
                 </span>
                 <span className=" text-[11px] font-bold text-[var(--text-primary)]">
-                  {isStealthMode ? "••••••••" : formatRupiah(growthAssetsTotal)}
+                  {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(growthAssetsTotal)}
                 </span>
               </div>
 
@@ -511,7 +513,7 @@ export function ConsolidatedBalanceSheetDrawer({
                       </div>
                       <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5 font-sans">
                         {usdtPref.units > 0
-                          ? `${formatHoldingUnits(usdtPref.units)} USDT · @${formatRupiah(usdtPref.rate)}`
+                          ? `${formatHoldingUnits(usdtPref.units)} USDT · @${formatWithPreferred(usdtPref.rate)}`
                           : `Wallet linked · ${formatHoldingUnits(suggestedUsdtUnits)} USDT`}
                       </p>
                     </div>
@@ -519,8 +521,8 @@ export function ConsolidatedBalanceSheetDrawer({
                   <div className="text-right shrink-0 pl-2">
                     <span className="text-[13px]  font-bold text-[var(--text-primary)] block leading-tight">
                       {isStealthMode
-                        ? "••••••••"
-                        : formatRupiah(usdtMarketValue)}
+                        ? `${currencyMeta.symbol} ••••••••`
+                        : formatWithPreferred(usdtMarketValue)}
                     </span>
                   </div>
                 </div>
@@ -567,8 +569,8 @@ export function ConsolidatedBalanceSheetDrawer({
                     <div className="text-right shrink-0 pl-2">
                       <span className="text-[13px]  font-bold text-[var(--text-primary)] block leading-tight">
                         {isStealthMode
-                          ? "••••••••"
-                          : formatRupiah(val.marketValue)}
+                          ? `${currencyMeta.symbol} ••••••••`
+                          : formatWithPreferred(val.marketValue)}
                       </span>
                       <div className="flex items-center justify-end gap-1.5 text-[10px] mt-0.5 font-sans">
                         <span
@@ -626,7 +628,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     : "Tier 3 · Fixed & Tangibles"}
                 </span>
                 <span className=" text-[11px] font-bold text-[var(--text-primary)]">
-                  {isStealthMode ? "••••••••" : formatRupiah(fixedAssetsTotal)}
+                  {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(fixedAssetsTotal)}
                 </span>
               </div>
 
@@ -662,8 +664,8 @@ export function ConsolidatedBalanceSheetDrawer({
                     <div className="text-right  shrink-0 pl-2">
                       <span className="text-[13px] font-bold text-[var(--text-primary)]">
                         {isStealthMode
-                          ? "••••••••"
-                          : formatRupiah(val.marketValue)}
+                          ? `${currencyMeta.symbol} ••••••••`
+                          : formatWithPreferred(val.marketValue)}
                       </span>
                     </div>
                   </div>
@@ -701,7 +703,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     : "Liabilities & Debt"}
                 </span>
                 <span className=" text-[11px] font-bold text-[var(--text-primary)]">
-                  {isStealthMode ? "••••••••" : formatRupiah(liabilitiesTotal)}
+                  {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(liabilitiesTotal)}
                 </span>
               </div>
 
@@ -726,7 +728,7 @@ export function ConsolidatedBalanceSheetDrawer({
                   </div>
                   <div className="text-right  shrink-0 pl-2">
                     <span className="text-[13px] font-bold text-[var(--text-primary)]">
-                      {isStealthMode ? "••••••••" : formatRupiah(debtAmt)}
+                      {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(debtAmt)}
                     </span>
                   </div>
                 </div>
@@ -756,7 +758,7 @@ export function ConsolidatedBalanceSheetDrawer({
                     </div>
                   </div>
                   <span className=" text-[11.5px] font-semibold text-[var(--text-tertiary)]">
-                    Rp 0
+                    {formatWithPreferred(0)}
                   </span>
                 </div>
               )}

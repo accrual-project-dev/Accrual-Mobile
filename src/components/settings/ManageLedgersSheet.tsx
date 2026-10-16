@@ -31,13 +31,13 @@ import { SharedLedgerDetailSheet } from "./SharedLedgerDetailSheet";
 import { JoinLedgerContent } from "./JoinLedgerModal";
 import { useSpace, type MoneySpace } from "../../contexts/SpaceContext";
 import { useAllTransactions } from "../../hooks/useTransactions";
-import type { Transaction } from "../../types";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useQuota } from "../../hooks/useQuota";
 import { useSubscription } from "../../contexts/SubscriptionContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface ManageLedgersSheetProps {
   isOpen: boolean;
@@ -142,8 +142,10 @@ export function ManageLedgersSheet({
     addCustomSpace,
     updateCustomSpace,
     deleteCustomSpace,
+    filterTransactionsBySpace,
   } = useSpace();
 
+  const { preferredCurrency } = useCurrency();
   const { data: transactions = [] } = useAllTransactions();
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
@@ -164,7 +166,7 @@ export function ManageLedgersSheet({
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formIcon, setFormIcon] = useState("BookOpen");
-  const [formCurrency, setFormCurrency] = useState("IDR");
+  const [formCurrency, setFormCurrency] = useState<string>(preferredCurrency || "IDR");
   const [formIsShared, setFormIsShared] = useState(false);
   const [formIsDefault, setFormIsDefault] = useState(false);
   const [reassignToPersonal, setReassignToPersonal] = useState(true);
@@ -174,24 +176,15 @@ export function ManageLedgersSheet({
   const [targetSharedLedger, setTargetSharedLedger] =
     useState<MoneySpace | null>(null);
 
-  // Calculate transaction count per ledger
+  // Calculate transaction count per ledger using single source of truth filterTransactionsBySpace
   const transactionCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     spaces.forEach((s) => {
-      counts[s.id] = 0;
-    });
-
-    transactions.forEach((tx: Transaction) => {
-      const targetId = tx.ledger_id || tx.space_id || "personal";
-      if (counts[targetId] !== undefined) {
-        counts[targetId] += 1;
-      } else {
-        counts["personal"] = (counts["personal"] || 0) + 1;
-      }
+      counts[s.id] = filterTransactionsBySpace(transactions, s.id).length;
     });
 
     return counts;
-  }, [spaces, transactions]);
+  }, [spaces, transactions, filterTransactionsBySpace]);
 
   const renderIcon = (iconName: string, size = 16) => {
     const matched = LEDGER_ICONS.find(
@@ -209,7 +202,7 @@ export function ManageLedgersSheet({
     setFormName("");
     setFormDescription("");
     setFormIcon("Briefcase");
-    setFormCurrency("IDR");
+    setFormCurrency(preferredCurrency || "IDR");
     setFormIsShared(false);
     setFormIsDefault(false);
     setViewState("create");
