@@ -6,6 +6,7 @@ import {
   Target,
 } from "lucide-react";
 import { useSubscription } from "../../contexts/SubscriptionContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { format, isToday } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import type { WidgetSize } from "../../lib/widgetLayoutTypes";
@@ -140,6 +141,7 @@ export function HomeWidgetRenderer({
   navigate,
 }: HomeWidgetRendererProps) {
   const { isPremium, openPaywall } = useSubscription();
+  const { formatWithPreferred } = useCurrency();
 
   switch (cardId) {
     case "net_portfolio":
@@ -551,10 +553,14 @@ export function HomeWidgetRenderer({
                           border: "1px solid var(--glass-border)",
                         }}
                       >
-                        <Target
-                          size={16}
-                          style={{ color: "var(--text-primary)" }}
-                        />
+                        {g.icon ? (
+                          <IconRenderer icon={g.icon} size="w-4 h-4" />
+                        ) : (
+                          <Target
+                            size={16}
+                            style={{ color: "var(--text-primary)" }}
+                          />
+                        )}
                       </div>
                       <div>
                         <p
@@ -567,9 +573,9 @@ export function HomeWidgetRenderer({
                           className="text-[11px] font-medium"
                           style={{ color: "var(--text-tertiary)" }}
                         >
-                          {formatRupiah(g.currentAmount)}{" "}
+                          {formatWithPreferred(g.currentAmount)}{" "}
                           {isIndonesian ? "dari" : "of"}{" "}
-                          {formatRupiah(g.targetAmount)}
+                          {formatWithPreferred(g.targetAmount)}
                         </p>
                       </div>
                     </div>

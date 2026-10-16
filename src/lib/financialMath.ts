@@ -2284,6 +2284,7 @@ export function calculateGoalPlanning(
   baselines: PersonalBaselineResult,
   now = new Date(),
   language: "en" | "id" = "en",
+  formatCurrencyFn?: (amount: number) => string,
 ): GoalPlanningResult {
   const isId = language === "id";
   const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
@@ -2303,11 +2304,13 @@ export function calculateGoalPlanning(
   const historicalRetainedCash =
     baselines.medianNetCashflow > 0 ? baselines.medianNetCashflow : 0;
 
+  const fmt = formatCurrencyFn || ((n: number) => `Rp ${n.toLocaleString("id-ID")}`);
+
   let trajectoryStatus: "ON TRACK" | "BEHIND TARGET" | "AHEAD OF TARGET" =
     "ON TRACK";
   let trajectoryExplanation = isId
-    ? `Membutuhkan sekitar Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bulan selama ${remainingMonths} bulan.`
-    : `Requires approximately Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/month over ${remainingMonths} months.`;
+    ? `Membutuhkan sekitar ${fmt(requiredMonthlyContribution)}/bulan selama ${remainingMonths} bulan.`
+    : `Requires approximately ${fmt(requiredMonthlyContribution)}/month over ${remainingMonths} months.`;
 
   if (goal.currentAmount >= goal.targetAmount) {
     trajectoryStatus = "AHEAD OF TARGET";
@@ -2317,18 +2320,18 @@ export function calculateGoalPlanning(
   } else if (historicalRetainedCash >= requiredMonthlyContribution * 1.1) {
     trajectoryStatus = "ON TRACK";
     trajectoryExplanation = isId
-      ? `Rata-rata kas ditahan historis Anda (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/bln) mendukung laju Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bln yang diperlukan.`
-      : `Your historical average retained cash (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/mo) supports the required Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/mo pace.`;
+      ? `Rata-rata kas ditahan historis Anda (${fmt(historicalRetainedCash)}/bln) mendukung laju ${fmt(requiredMonthlyContribution)}/bln yang diperlukan.`
+      : `Your historical average retained cash (${fmt(historicalRetainedCash)}/mo) supports the required ${fmt(requiredMonthlyContribution)}/mo pace.`;
   } else if (historicalRetainedCash >= requiredMonthlyContribution * 0.8) {
     trajectoryStatus = "ON TRACK";
     trajectoryExplanation = isId
-      ? `Kontribusi yang diperlukan (Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bln) sangat selaras dengan arus kas bersih historis (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/bln).`
-      : `Required contribution (Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/mo) closely aligns with historical net cashflow (Rp ${historicalRetainedCash.toLocaleString("id-ID")}/mo).`;
+      ? `Kontribusi yang diperlukan (${fmt(requiredMonthlyContribution)}/bln) sangat selaras dengan arus kas bersih historis (${fmt(historicalRetainedCash)}/bln).`
+      : `Required contribution (${fmt(requiredMonthlyContribution)}/mo) closely aligns with historical net cashflow (${fmt(historicalRetainedCash)}/mo).`;
   } else {
     trajectoryStatus = "BEHIND TARGET";
     trajectoryExplanation = isId
-      ? `Target membutuhkan Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/bulan sementara rata-rata kas ditahan historis adalah Rp ${historicalRetainedCash.toLocaleString("id-ID")}/bulan.`
-      : `Target requires Rp ${requiredMonthlyContribution.toLocaleString("id-ID")}/month while historical average retained cash is Rp ${historicalRetainedCash.toLocaleString("id-ID")}/month.`;
+      ? `Target membutuhkan ${fmt(requiredMonthlyContribution)}/bulan sementara rata-rata kas ditahan historis adalah ${fmt(historicalRetainedCash)}/bulan.`
+      : `Target requires ${fmt(requiredMonthlyContribution)}/month while historical average retained cash is ${fmt(historicalRetainedCash)}/month.`;
   }
 
   return {

@@ -194,7 +194,7 @@ export function CompactGoalsHalf({
   onOpenDetail?: () => void;
 }) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
 
   return (
@@ -216,7 +216,7 @@ export function CompactGoalsHalf({
           </span>
         </div>
         <p className="text-[11px] amount text-[var(--text-tertiary)] mt-1 truncate">
-          {formatRupiah(currentAmount)} / {formatRupiah(targetAmount)}
+          {formatWithPreferred(currentAmount)} / {formatWithPreferred(targetAmount)}
         </p>
       </div>
 

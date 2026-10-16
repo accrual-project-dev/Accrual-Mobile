@@ -1,22 +1,53 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useAuth, GUEST_USER_ID } from "../contexts/AuthContext";
 
 export interface Goal {
-  id: string
-  title: string
-  targetAmount: number
-  currentAmount: number
-  icon: string
-  color: string
-  targetDate?: string
+  id: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  icon: string;
+  color: string;
+  targetDate?: string;
 }
 
-export const GOALS_STORAGE_KEY = "trouvaille_financial_goals_v2"
-export const GOALS_INITIALIZED_KEY = "trouvaille_goals_initialized_v2"
-export const GOALS_UPDATED_EVENT = "trouvaille_goals_updated"
+export const LEGACY_GOALS_STORAGE_KEY = "trouvaille_financial_goals_v2";
+export const GOALS_STORAGE_KEY = "trouvaille_financial_goals_v2";
+export const GOALS_INITIALIZED_KEY = "trouvaille_goals_initialized_v2";
+export const GOALS_UPDATED_EVENT = "trouvaille_goals_updated";
 
-export function deductGoalFromStorage(goalIdOrTag: string, amount: number) {
+export const getGoalsStorageKey = (userId: string = GUEST_USER_ID) =>
+  `trouvaille_financial_goals_${userId}`;
+
+export const getGoalsInitializedKey = (userId: string = GUEST_USER_ID) =>
+  `trouvaille_goals_initialized_${userId}`;
+
+export function getActiveUserTenantId(): string {
   try {
-    const raw = localStorage.getItem(GOALS_STORAGE_KEY);
+    if (typeof window === "undefined" || !window.localStorage) return GUEST_USER_ID;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.user?.id) return parsed.user.id;
+        }
+      }
+    }
+  } catch {}
+  return GUEST_USER_ID;
+}
+
+export function deductGoalFromStorage(
+  goalIdOrTag: string,
+  amount: number,
+  userId?: string
+) {
+  try {
+    const tenantId = userId || getActiveUserTenantId();
+    const key = getGoalsStorageKey(tenantId);
+    const raw = localStorage.getItem(key) || localStorage.getItem(LEGACY_GOALS_STORAGE_KEY);
     if (!raw) return;
     const goals: Goal[] = JSON.parse(raw);
     if (!Array.isArray(goals)) return;
@@ -39,7 +70,10 @@ export function deductGoalFromStorage(goalIdOrTag: string, amount: number) {
     });
 
     if (matched) {
-      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(key, JSON.stringify(updated));
+      if (tenantId === GUEST_USER_ID) {
+        localStorage.setItem(LEGACY_GOALS_STORAGE_KEY, JSON.stringify(updated));
+      }
       window.dispatchEvent(new CustomEvent(GOALS_UPDATED_EVENT));
     }
   } catch (err) {
@@ -47,9 +81,15 @@ export function deductGoalFromStorage(goalIdOrTag: string, amount: number) {
   }
 }
 
-export function addGoalToStorage(goalIdOrTag: string, amount: number) {
+export function addGoalToStorage(
+  goalIdOrTag: string,
+  amount: number,
+  userId?: string
+) {
   try {
-    const raw = localStorage.getItem(GOALS_STORAGE_KEY);
+    const tenantId = userId || getActiveUserTenantId();
+    const key = getGoalsStorageKey(tenantId);
+    const raw = localStorage.getItem(key) || localStorage.getItem(LEGACY_GOALS_STORAGE_KEY);
     if (!raw) return;
     const goals: Goal[] = JSON.parse(raw);
     if (!Array.isArray(goals)) return;
@@ -72,7 +112,10 @@ export function addGoalToStorage(goalIdOrTag: string, amount: number) {
     });
 
     if (matched) {
-      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(key, JSON.stringify(updated));
+      if (tenantId === GUEST_USER_ID) {
+        localStorage.setItem(LEGACY_GOALS_STORAGE_KEY, JSON.stringify(updated));
+      }
       window.dispatchEvent(new CustomEvent(GOALS_UPDATED_EVENT));
     }
   } catch (err) {
@@ -81,49 +124,70 @@ export function addGoalToStorage(goalIdOrTag: string, amount: number) {
 }
 
 export function useGoals() {
-  const [goals, setGoals] = useState<Goal[]>(() => {
+  const { user } = useAuth();
+  const userId = user?.id || GUEST_USER_ID;
+  const storageKey = useMemo(() => getGoalsStorageKey(userId), [userId]);
+  const initKey = useMemo(() => getGoalsInitializedKey(userId), [userId]);
+
+  const readStoredGoals = useCallback((): Goal[] => {
     try {
-      const isInit = localStorage.getItem(GOALS_INITIALIZED_KEY);
-      if (isInit) {
-        const stored = localStorage.getItem(GOALS_STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
+      const stored =
+        localStorage.getItem(storageKey) ||
+        (userId === GUEST_USER_ID
+          ? localStorage.getItem(LEGACY_GOALS_STORAGE_KEY)
+          : null);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
       }
-      localStorage.setItem(GOALS_INITIALIZED_KEY, "true");
       return [];
     } catch {
       return [];
     }
-  });
+  }, [storageKey, userId]);
 
-  const persistGoals = (nextGoals: Goal[]) => {
-    setGoals(nextGoals);
-    try {
-      localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(nextGoals));
-      localStorage.setItem(GOALS_INITIALIZED_KEY, "true");
-      window.dispatchEvent(new CustomEvent(GOALS_UPDATED_EVENT));
-    } catch (e) {
-      console.warn("Failed to persist goals:", e);
-    }
-  };
+  const [goals, setGoals] = useState<Goal[]>(readStoredGoals);
 
+  // Sync goals when active user tenant changes
+  useEffect(() => {
+    setGoals(readStoredGoals());
+  }, [readStoredGoals]);
+
+  const persistGoals = useCallback(
+    (nextGoals: Goal[]) => {
+      setGoals(nextGoals);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(nextGoals));
+        localStorage.setItem(initKey, "true");
+        if (userId === GUEST_USER_ID) {
+          localStorage.setItem(LEGACY_GOALS_STORAGE_KEY, JSON.stringify(nextGoals));
+          localStorage.setItem(GOALS_INITIALIZED_KEY, "true");
+        }
+        window.dispatchEvent(new CustomEvent(GOALS_UPDATED_EVENT));
+      } catch (e) {
+        console.warn("Failed to persist goals:", e);
+      }
+    },
+    [storageKey, initKey, userId]
+  );
+
+  // Listen to multi-window storage sync and session teardown events
   useEffect(() => {
     const handleSync = () => {
-      try {
-        const stored = localStorage.getItem(GOALS_STORAGE_KEY);
-        if (stored) {
-          setGoals(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.warn("Failed to sync goals:", e);
-      }
+      setGoals(readStoredGoals());
+    };
+    const handleTeardown = () => {
+      setGoals([]);
     };
     window.addEventListener(GOALS_UPDATED_EVENT, handleSync);
     window.addEventListener("storage", handleSync);
+    window.addEventListener("trouvaille_session_teardown", handleTeardown);
     return () => {
       window.removeEventListener(GOALS_UPDATED_EVENT, handleSync);
       window.removeEventListener("storage", handleSync);
+      window.removeEventListener("trouvaille_session_teardown", handleTeardown);
     };
-  }, []);
+  }, [readStoredGoals]);
 
   const addGoal = (goal: Omit<Goal, "id">) => {
     const newGoal: Goal = { ...goal, id: Math.random().toString(36).slice(2, 9) };
@@ -161,3 +225,4 @@ export function useGoals() {
     depositToGoal,
   };
 }
+
