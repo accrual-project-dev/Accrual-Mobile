@@ -676,26 +676,27 @@ export function parseNaturalTransaction(
 
   // A. Tarik Tunai (Bank -> Cash withdrawal)
   const withdrawalMatch = text.match(
-    /\b(?:tarik\s+tunai|penarikan\s+tunai|tarik\s+kas|tarik\s+uang|ambil\s+uang(?:\s+di\s+atm|\s+dari\s+atm)?|tarik\s+cash|ambil\s+cash)\b/i,
+    /\b(?:tarik\s+tunai|penarikan\s+tunai|tarik\s+kas|tarik\s+uang|ambil\s+uang(?:\s+di\s+atm|\s+dari\s+atm)?|tarik\s+cash|ambil\s+cash|cash\s+withdrawal|withdraw\s+cash|withdraw|withdrawal)\b/i,
   );
 
   // B. Setor Tunai (Cash -> Bank deposit)
   const depositMatch = text.match(
-    /\b(?:setor\s+tunai|setor\s+uang|nabung\s+cash|setor\s+cash|deposit\s+tunai)\b/i,
+    /\b(?:setor\s+tunai|setor\s+uang|nabung\s+cash|setor\s+cash|deposit\s+tunai|cash\s+deposit|deposit\s+cash)\b/i,
   );
 
   // C. Transfer or E-Wallet Top-up keywords
-  const isTransferKeyword = /\b(transfer|pindah|kirim|tf)\b/i.test(text);
+  const isTransferKeyword = /\b(transfer|pindah|kirim|tf|send|move)\b/i.test(text);
   const isNotFuelOrCommodityRefill = !/\bisi\s+(?:bensin|solar|pertamax|pertalite|bbm|angin|gas|lpg|air|pulsa|paket|kuota)\b/i.test(text);
   const isTopUpKeyword =
-    /\b(top\s*up|topup|isi\s*saldo)\b/i.test(text) ||
+    /\b(top\s*up|topup|isi\s*saldo|reload)\b/i.test(text) ||
     (/\bisi\b/i.test(text) &&
       isNotFuelOrCommodityRefill &&
-      /(?:top\s*up|topup|isi\s*(?:saldo)?)\s+(\w+)(?:.*?)(?:dari|pake|pakai|lewat)\s+(\w+)/i.test(text));
+      /(?:top\s*up|topup|isi\s*(?:saldo)?|reload)\s+(\w+)(?:.*?)(?:dari|pake|pakai|lewat|from|via|using)\s+(\w+)/i.test(text));
 
   if (withdrawalMatch) {
     detectedType = "transfer";
     confidence += 0.35;
+    text = text.replace(withdrawalMatch[0], " ").trim();
 
     const bankWallet = findMentionedBankWallet();
     const cashWallet = findCashWallet();
@@ -712,10 +713,10 @@ export function parseNaturalTransaction(
       matchedTokens.toWalletToken = cashWallet.name;
       text = text.replace(new RegExp(`\\b${cashWallet.name}\\b`, "i"), " ");
     }
-    text = text.replace(withdrawalMatch[0], " ").trim();
   } else if (depositMatch) {
     detectedType = "transfer";
     confidence += 0.35;
+    text = text.replace(depositMatch[0], " ").trim();
 
     const cashWallet = findCashWallet();
     const bankWallet = findMentionedBankWallet();
@@ -732,18 +733,17 @@ export function parseNaturalTransaction(
       matchedTokens.toWalletToken = bankWallet.name;
       text = text.replace(new RegExp(`\\b${bankWallet.name}\\b`, "i"), " ");
     }
-    text = text.replace(depositMatch[0], " ").trim();
   } else if (isTransferKeyword || isTopUpKeyword) {
     detectedType = "transfer";
     confidence += 0.3;
 
-    // Pattern A: "top up gopay 100k dari bca" or "topup dana pake bca"
+    // Pattern A: "top up gopay 100k dari bca", "topup dana pake bca", "reload ovo from bca"
     const topUpRouteMatch = text.match(
-      /(?:top\s*up|topup|isi\s*(?:saldo)?)\s+(\w+)(?:.*?)(?:dari|pake|pakai|lewat)\s+(\w+)/i,
+      /(?:top\s*up|topup|isi\s*(?:saldo)?|reload)\s+(\w+)(?:.*?)(?:dari|pake|pakai|lewat|from|via|using)\s+(\w+)/i,
     );
 
-    // Pattern B: "dari X ke Y" or "X ke Y"
-    const standardRouteMatch = text.match(/(?:dari\s+)?(\w+)\s+ke\s+(\w+)/i);
+    // Pattern B: "dari X ke Y", "from X to Y", or "X ke Y" / "X to Y"
+    const standardRouteMatch = text.match(/(?:(?:dari|from)\s+)?(\w+)\s+(?:ke|to)\s+(\w+)/i);
 
     if (topUpRouteMatch) {
       const targetStr = topUpRouteMatch[1].toLowerCase();
@@ -769,10 +769,11 @@ export function parseNaturalTransaction(
     } else if (standardRouteMatch) {
       const fromStr = standardRouteMatch[1].toLowerCase();
       const toStr = standardRouteMatch[2].toLowerCase();
+      const isFromAmountLike = /^\d+(?:[kK]|rb|ribu|jt|juta|m|mio|million)?$/i.test(fromStr);
 
-      const matchedFrom = wallets.find((w) =>
-        w.name.toLowerCase().includes(fromStr),
-      );
+      const matchedFrom = !isFromAmountLike
+        ? wallets.find((w) => w.name.toLowerCase().includes(fromStr))
+        : undefined;
       const matchedTo = wallets.find((w) =>
         w.name.toLowerCase().includes(toStr),
       );
@@ -788,11 +789,15 @@ export function parseNaturalTransaction(
         matchedTokens.toWalletToken = matchedTo.name;
       }
 
-      text = text.replace(standardRouteMatch[0], " ").trim();
+      if (matchedFrom && matchedTo) {
+        text = text.replace(standardRouteMatch[0], " ").trim();
+      } else if (matchedTo) {
+        text = text.replace(new RegExp(`(?:ke|to)\\s+${toStr}`, "i"), " ").trim();
+      }
     }
 
     text = text
-      .replace(/\b(transfer|pindah|kirim|tf|top\s*up|topup|isi\s*saldo|isi)\b/gi, " ")
+      .replace(/\b(transfer|pindah|kirim|tf|send|move|top\s*up|topup|isi\s*saldo|isi|reload)\b/gi, " ")
       .trim();
   } else if (
     /\b(?:gaji|gajian|salary|income|bonus|komisi|terima(?:\s+transferan)?|dapat\s+transferan|dapet\s+transferan|cair(?:\s+dividen)?|dividen|hadiah|angpao|thr|uang\s+saku|dapat\s+duit|dapet\s+duit|dapat\s+uang|dapet\s+uang|dikasih(?:\s+uang)?|hasil\s+jualan|penjualan|omzet|omset|cashback|refund|pengembalian|upah|fee|royalti)\b/i.test(
@@ -1068,7 +1073,7 @@ export function parseNaturalTransaction(
   // 6. Clean Note / Residual Text
   // Remove filler words and strip stray periods/commas left over by speech recognition
   let cleanNote = text
-    .replace(/\b(dari|ke|di|beli|bayar|untuk|buat|at|in|for|pada)\b/gi, " ")
+    .replace(/\b(dari|ke|di|beli|bayar|untuk|buat|at|in|for|pada|from|to|by|via)\b/gi, " ")
     .replace(/[.,;:-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -1085,9 +1090,11 @@ export function parseNaturalTransaction(
 
     if (!cleanNote || /^[.\s,;:-]+$/.test(cleanNote) || isCleanNoteWalletName) {
       if (withdrawalMatch) {
-        cleanNote = "Tarik Tunai";
+        const isEnglishWithdrawal = /\b(?:cash\s+withdrawal|withdraw\s+cash|withdraw|withdrawal)\b/i.test(withdrawalMatch[0]);
+        cleanNote = isEnglishWithdrawal ? "Cash Withdrawal" : "Tarik Tunai";
       } else if (depositMatch) {
-        cleanNote = "Setor Tunai";
+        const isEnglishDeposit = /\b(?:cash\s+deposit|deposit\s+cash)\b/i.test(depositMatch[0]);
+        cleanNote = isEnglishDeposit ? "Cash Deposit" : "Setor Tunai";
       } else {
         cleanNote = "Transfer";
       }

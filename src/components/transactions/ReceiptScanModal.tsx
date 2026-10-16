@@ -51,8 +51,9 @@ import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSubscription } from "../../contexts/SubscriptionContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useQuota } from "../../hooks/useQuota";
-import { formatRupiah } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { format } from "date-fns";
 import type { TransactionType } from "../../lib/types";
@@ -88,6 +89,7 @@ export function ReceiptScanModal({
 
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+  const { preferredCurrency, currencyMeta } = useCurrency();
   const isDark = theme !== "light";
 
   const { data: wallets = [] } = useWallets();
@@ -450,8 +452,12 @@ export function ReceiptScanModal({
         setWalletId(fallbackWallet?.id || null);
       }
 
-      // Check category match (never blind fallback to Admin & Fee)
-      const cleanCats = categories.filter(
+      // Check category match (never blind fallback to Admin & Fee, match detected transaction type)
+      const targetType = result.slip.type === "income" ? "income" : "expense";
+      const typeMatchedCategories = categories.filter((c) => c.type === targetType);
+      const categoryPool = typeMatchedCategories.length > 0 ? typeMatchedCategories : categories;
+
+      const cleanCats = categoryPool.filter(
         (c) =>
           !c.name.toLowerCase().includes("admin") &&
           !c.name.toLowerCase().includes("fee") &&
@@ -464,6 +470,7 @@ export function ReceiptScanModal({
         cleanCats.find((c) => /belanja|groceries/i.test(c.name)) ||
         cleanCats.find((c) => /lainnya|other/i.test(c.name)) ||
         cleanCats[0] ||
+        categoryPool[0] ||
         categories[0];
 
       const matchedCat = categories.find(
@@ -700,7 +707,7 @@ export function ReceiptScanModal({
     handleSaveTransaction();
   };
 
-  const handleSaveTransaction = () => {
+  const handleSaveTransaction = async () => {
     if (!amount || amount <= 0) {
       showToast(
         isIndonesian
@@ -818,7 +825,7 @@ export function ReceiptScanModal({
         to_wallet_id: null,
         category_id: adminCatId,
         note: feeNote,
-        occurred_on: format(date, "yyyy-MM-dd"),
+        occurred_on: format(adminTxDate, "yyyy-MM-dd'T'HH:mm:ss"),
         created_at: adminTxDate.toISOString(),
       });
     };
@@ -833,7 +840,7 @@ export function ReceiptScanModal({
     }
 
     if (includeAdminFee && adminFeeAmount > 0 && effectiveWalletId) {
-      saveAdminFeeIfRequested();
+      await saveAdminFeeIfRequested();
       showToast(
         isIndonesian
           ? "2 transaksi dicatat (pokok & biaya admin)"
@@ -860,7 +867,7 @@ export function ReceiptScanModal({
         to_wallet_id: type === "transfer" ? effectiveToWalletId : null,
         category_id: type === "transfer" ? null : effectiveCatId,
         note: finalDescription || null,
-        occurred_on: format(date, "yyyy-MM-dd"),
+        occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
         created_at: txDate.toISOString(),
       },
       {
@@ -898,6 +905,13 @@ export function ReceiptScanModal({
       combinedDate.setHours(h, m, 0, 0);
     }
 
+    const feeSuffix =
+      includeAdminFee && adminFeeAmount > 0
+        ? isIndonesian
+          ? ` (Biaya admin: ${formatCurrency(adminFeeAmount, preferredCurrency)})`
+          : ` (Admin fee: ${formatCurrency(adminFeeAmount, preferredCurrency)})`
+        : "";
+
     onOpenForm({
       type,
       amount,
@@ -905,7 +919,7 @@ export function ReceiptScanModal({
       categoryId: type === "transfer" ? null : categoryId,
       toWalletId: type === "transfer" ? toWalletId : null,
       date: combinedDate,
-      note: finalDescription,
+      note: `${finalDescription}${feeSuffix}`,
     });
     onClose();
   };
@@ -1329,7 +1343,7 @@ export function ReceiptScanModal({
                         className="text-[11px] font-medium"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        CSV / Mutasi
+                        {isIndonesian ? "CSV / Mutasi" : "CSV / Statement"}
                       </span>
                     </button>
                   )}
@@ -1780,14 +1794,18 @@ export function ReceiptScanModal({
                         className="text-[19px] font-semibold select-none"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        Rp
+                        {currencyMeta.symbol}
                       </span>
 
                       <input
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={amount ? amount.toLocaleString("id-ID") : ""}
+                        value={
+                          amount
+                            ? amount.toLocaleString(isIndonesian ? "id-ID" : "en-US")
+                            : ""
+                        }
                         onChange={(e) => {
                           const raw = e.target.value.replace(/[^0-9]/g, "");
                           setAmount(raw ? Number(raw) : 0);
@@ -1800,8 +1818,12 @@ export function ReceiptScanModal({
                           width: `${
                             Math.max(
                               2,
-                              (amount ? amount.toLocaleString("id-ID") : "0")
-                                .length,
+                              (amount
+                                ? amount.toLocaleString(
+                                    isIndonesian ? "id-ID" : "en-US",
+                                  )
+                                : "0"
+                              ).length,
                             ) *
                               20 +
                             16
@@ -1866,8 +1888,8 @@ export function ReceiptScanModal({
                               style={{ color: "var(--text-primary)" }}
                             >
                               {isIndonesian
-                                ? `Catat Biaya Admin (+${formatRupiah(adminFeeAmount)})`
-                                : `Record Admin Fee (+${formatRupiah(adminFeeAmount)})`}
+                                ? `Catat Biaya Admin (+${formatCurrency(adminFeeAmount, preferredCurrency)})`
+                                : `Record Admin Fee (+${formatCurrency(adminFeeAmount, preferredCurrency)})`}
                             </p>
                             <p
                               className="text-[10px] font-normal truncate mt-0.5"
@@ -1888,7 +1910,7 @@ export function ReceiptScanModal({
                               : "var(--text-tertiary)",
                           }}
                         >
-                          +{formatRupiah(adminFeeAmount)}
+                          +{formatCurrency(adminFeeAmount, preferredCurrency)}
                         </span>
                       </div>
                     )}
@@ -2413,7 +2435,7 @@ export function ReceiptScanModal({
                           }}
                         >
                           {isIndonesian ? "Simpan Transaksi" : "Save Transaction"}{" "}
-                          {amount > 0 ? `(${formatRupiah(amount)})` : ""}
+                          {amount > 0 ? `(${formatCurrency(amount, preferredCurrency)})` : ""}
                         </span>
                       </div>
                     )}

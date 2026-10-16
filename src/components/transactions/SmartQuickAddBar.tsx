@@ -18,10 +18,11 @@ import {
   parseMultiNaturalTransactions,
   type ParsedTransactionResult,
 } from "../../lib/nlpParser";
-import { formatRupiah } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface SmartQuickAddBarProps {
   categories: Category[];
@@ -39,6 +40,7 @@ export function SmartQuickAddBar({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
+  const { preferredCurrency } = useCurrency();
 
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -56,7 +58,7 @@ export function SmartQuickAddBar({
         const rec = new SpeechRec();
         rec.continuous = false;
         rec.interimResults = true;
-        rec.lang = "id-ID";
+        rec.lang = isIndonesian ? "id-ID" : "en-US";
 
         rec.onstart = () => {
           setIsListening(true);
@@ -87,7 +89,7 @@ export function SmartQuickAddBar({
         console.warn("Speech init failed:", err);
       }
     }
-  }, []);
+  }, [isIndonesian]);
 
   const toggleListening = () => {
     if (!recognitionRef.current) return;
@@ -97,10 +99,18 @@ export function SmartQuickAddBar({
       triggerHaptic("light");
     } else {
       try {
+        recognitionRef.current.lang = isIndonesian ? "id-ID" : "en-US";
         recognitionRef.current.start();
       } catch {
         recognitionRef.current.stop();
-        setTimeout(() => recognitionRef.current.start(), 150);
+        setTimeout(() => {
+          try {
+            if (recognitionRef.current) {
+              recognitionRef.current.lang = isIndonesian ? "id-ID" : "en-US";
+              recognitionRef.current.start();
+            }
+          } catch {}
+        }, 150);
       }
     }
   };
@@ -314,7 +324,7 @@ export function SmartQuickAddBar({
                   }}
                 >
                   <Layers size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
-                  {parsedList.length} {isIndonesian ? "Item • Total" : "Items • Total"} {formatRupiah(totalBatchAmount)}
+                  {parsedList.length} {isIndonesian ? "Item • Total" : "Items • Total"} {formatCurrency(totalBatchAmount, preferredCurrency)}
                 </span>
                 {parsedList.map((item, idx) => (
                   <span
@@ -326,7 +336,7 @@ export function SmartQuickAddBar({
                       color: "var(--text-secondary)",
                     }}
                   >
-                    #{idx + 1} {item.note || item.categoryName}: {item.amount ? formatRupiah(item.amount) : "0"}
+                    #{idx + 1} {item.note || item.categoryName}: {item.amount ? formatCurrency(item.amount, preferredCurrency) : formatCurrency(0, preferredCurrency)}
                   </span>
                 ))}
               </>
@@ -342,7 +352,7 @@ export function SmartQuickAddBar({
                     }}
                   >
                     <Coins size={10.5} strokeWidth={1.5} style={{ color: "var(--text-secondary)" }} />
-                    {formatRupiah(parsed.amount)}
+                    {formatCurrency(parsed.amount, preferredCurrency)}
                   </span>
                 )}
 
@@ -378,7 +388,8 @@ export function SmartQuickAddBar({
 
                 {parsed.dateLabel &&
                   parsed.dateLabel !== "Today" &&
-                  parsed.dateLabel !== "Hari Ini" && (
+                  parsed.dateLabel !== "Hari Ini" &&
+                  parsed.dateLabel !== "Hari ini" && (
                     <span
                       className="px-2 py-0.5 rounded-lg text-[11px] font-medium flex items-center gap-1"
                       style={{
@@ -388,7 +399,16 @@ export function SmartQuickAddBar({
                       }}
                     >
                       <Calendar size={10.5} strokeWidth={1.5} />
-                      {parsed.dateLabel}
+                      {parsed.dateLabel === "Yesterday" ||
+                      parsed.dateLabel === "Kemarin"
+                        ? isIndonesian
+                          ? "Kemarin"
+                          : "Yesterday"
+                        : parsed.dateLabel.endsWith("d ago")
+                          ? isIndonesian
+                            ? `${parsed.dateLabel.replace("d ago", "")} hari lalu`
+                            : parsed.dateLabel
+                          : parsed.dateLabel}
                     </span>
                   )}
               </>

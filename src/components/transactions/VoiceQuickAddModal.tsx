@@ -23,7 +23,8 @@ import {
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatCurrency } from "../../lib/utils";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import {
   parseNaturalTransaction,
@@ -306,6 +307,7 @@ export function VoiceQuickAddModal({
 }: VoiceQuickAddModalProps) {
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+  const { preferredCurrency } = useCurrency();
   const isDark = theme !== "light";
 
   const { data: categories = [] } = useCategories();
@@ -610,7 +612,7 @@ export function VoiceQuickAddModal({
       type: resolvedType,
       amount: parsed.amount,
       note: parsed.note || (transcript.trim() ? transcript.trim() : null),
-      occurred_on: format(txDate, "yyyy-MM-dd"),
+      occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
       created_at: txDate.toISOString(),
       category_id:
         resolvedType === "transfer" ? null : resolvedCategory?.id || null,
@@ -662,7 +664,7 @@ export function VoiceQuickAddModal({
         (wallets.length > 0 ? wallets[0] : null);
       const itemToWallet =
         itemType === "transfer"
-          ? wallets.find((w) => w.id === item.toWalletId) ||
+          ? wallets.find((w) => w.id === item.toWalletId && w.id !== itemWallet?.id) ||
             wallets.find((w) => w.id !== itemWallet?.id) ||
             null
           : null;
@@ -675,7 +677,7 @@ export function VoiceQuickAddModal({
           item.note ||
           item.categoryName ||
           (transcript.trim() ? transcript.trim() : null),
-        occurred_on: format(txDate, "yyyy-MM-dd"),
+        occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
         created_at: txDate.toISOString(),
         category_id: itemType === "transfer" ? null : itemCat?.id || null,
         wallet_id: itemWallet?.id || null,
@@ -983,7 +985,7 @@ export function VoiceQuickAddModal({
                       className="text-[13px] font-semibold amount"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      Total {formatRupiah(totalBatchAmount)}
+                      Total {formatCurrency(totalBatchAmount, preferredCurrency)}
                     </span>
                   </div>
 
@@ -1051,8 +1053,8 @@ export function VoiceQuickAddModal({
                             style={{ color: "var(--text-primary)" }}
                           >
                             {item.amount !== null
-                              ? formatRupiah(item.amount)
-                              : "Rp 0"}
+                              ? formatCurrency(item.amount, preferredCurrency)
+                              : formatCurrency(0, preferredCurrency)}
                           </span>
                           <div
                             className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity"
@@ -1062,7 +1064,11 @@ export function VoiceQuickAddModal({
                                 : "rgba(0, 0, 0, 0.05)",
                               color: "var(--text-secondary)",
                             }}
-                            title="Edit this transaction"
+                            title={
+                              isIndonesian
+                                ? "Ubah transaksi ini"
+                                : "Edit this transaction"
+                            }
                           >
                             <Pen size={12} strokeWidth={1.8} />
                           </div>
@@ -1076,7 +1082,11 @@ export function VoiceQuickAddModal({
                 <div
                   onClick={() => handleOpenForm(0)}
                   className="w-full flex flex-col items-center gap-3 cursor-pointer active:scale-[0.98] transition-all p-2 rounded-2xl"
-                  title="Click to edit transaction"
+                  title={
+                    isIndonesian
+                      ? "Ketuk untuk mengubah transaksi"
+                      : "Click to edit transaction"
+                  }
                 >
                   {/* Hero Amount */}
                   <div className="text-center">
@@ -1085,8 +1095,8 @@ export function VoiceQuickAddModal({
                       style={{ color: "var(--text-primary)" }}
                     >
                       {parsed.amount !== null && parsed.amount > 0
-                        ? formatRupiah(parsed.amount)
-                        : "Rp 0"}
+                        ? formatCurrency(parsed.amount, preferredCurrency)
+                        : formatCurrency(0, preferredCurrency)}
                     </span>
                   </div>
 
@@ -1154,10 +1164,15 @@ export function VoiceQuickAddModal({
                           }}
                         >
                           <Calendar size={11.5} strokeWidth={1.75} />
-                          {parsed.dateLabel === "Hari ini"
-                            ? "Today"
-                            : parsed.dateLabel === "Kemarin"
-                              ? "Yesterday"
+                          {parsed.dateLabel === "Yesterday" ||
+                          parsed.dateLabel === "Kemarin"
+                            ? isIndonesian
+                              ? "Kemarin"
+                              : "Yesterday"
+                            : parsed.dateLabel.endsWith("d ago")
+                              ? isIndonesian
+                                ? `${parsed.dateLabel.replace("d ago", "")} hari lalu`
+                                : parsed.dateLabel
                               : parsed.dateLabel}
                         </span>
                       )}
@@ -1249,8 +1264,8 @@ export function VoiceQuickAddModal({
                       ? "Menyimpan Semua..."
                       : "Saving All..."
                     : isIndonesian
-                      ? `Simpan Semua (${formatRupiah(totalBatchAmount)})`
-                      : `Save All (${formatRupiah(totalBatchAmount)})`}
+                      ? `Simpan Semua (${formatCurrency(totalBatchAmount, preferredCurrency)})`
+                      : `Save All (${formatCurrency(totalBatchAmount, preferredCurrency)})`}
                 </button>
               ) : hasAmount ? (
                 <button
@@ -1269,8 +1284,8 @@ export function VoiceQuickAddModal({
                       ? "Menyimpan..."
                       : "Saving..."
                     : isIndonesian
-                      ? `Simpan (${formatRupiah(parsed.amount!)})`
-                      : `Save (${formatRupiah(parsed.amount!)})`}
+                      ? `Simpan (${formatCurrency(parsed.amount!, preferredCurrency)})`
+                      : `Save (${formatCurrency(parsed.amount!, preferredCurrency)})`}
                 </button>
               ) : null}
             </div>
@@ -1468,7 +1483,9 @@ export function VoiceQuickAddModal({
                 ? isIndonesian
                   ? "Batal"
                   : "Cancel"
-                : "Manual"}
+                : isIndonesian
+                  ? "Formulir"
+                  : "Manual"}
             </span>
           </div>
         </div>

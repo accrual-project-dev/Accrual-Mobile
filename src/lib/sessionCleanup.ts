@@ -12,6 +12,7 @@ import {
   clearBiometricLoginCredentials,
 } from "./biometricAuth";
 import { clearMerchantMemory } from "./merchantCategoryMemory";
+import { terminateOCRWorker } from "./ocrEngine";
 
 export interface SessionCleanupOptions {
   /** If true, preserves 'trouvaille_guest_mode' flag so user stays in guest state */
@@ -176,7 +177,14 @@ export async function clearAllLocalUserSessionData(
     console.warn("[SessionCleanup] Biometric teardown warning:", bioErr);
   }
 
-  // 8. Notify mounted React Contexts (e.g. SpaceProvider) to purge in-memory state immediately
+  // 8. Terminate background WebAssembly OCR workers to release memory
+  try {
+    await terminateOCRWorker();
+  } catch (ocrErr) {
+    console.warn("[SessionCleanup] terminateOCRWorker warning:", ocrErr);
+  }
+
+  // 9. Notify mounted React Contexts (e.g. SpaceProvider) to purge in-memory state immediately
   try {
     if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
       window.dispatchEvent(new CustomEvent("trouvaille_session_teardown"));
