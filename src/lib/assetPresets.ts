@@ -5,6 +5,7 @@ export type PresetCategory =
   | "crypto"
   | "stock_us"
   | "stock_id"
+  | "index"
   | "gold"
   | "mutual_fund"
   | "bond"
@@ -13,11 +14,21 @@ export type PresetCategory =
 
 export interface PresetAsset {
   symbol: string;
+  symbolId?: string;
   name: string;
+  nameId?: string;
   type: AssetType;
   category: PresetCategory;
   suggestedCurrency?: "IDR" | "USD";
   icon?: string;
+}
+
+export function getPresetName(preset: PresetAsset, isIndonesian: boolean): string {
+  return isIndonesian && preset.nameId ? preset.nameId : preset.name;
+}
+
+export function getPresetSymbol(preset: PresetAsset, isIndonesian: boolean): string {
+  return isIndonesian && preset.symbolId ? preset.symbolId : preset.symbol;
 }
 
 export const PRESET_ASSETS: PresetAsset[] = [
@@ -203,10 +214,74 @@ export const PRESET_ASSETS: PresetAsset[] = [
     icon: "TrendingUp",
   },
 
+  // Market Indices (Indeks Pasar)
+  {
+    symbol: "^JKSE",
+    symbolId: "^JKSE",
+    name: "Jakarta Composite Index (IHSG)",
+    nameId: "IHSG (Indeks Harga Saham Gabungan)",
+    type: "stock",
+    category: "index",
+    suggestedCurrency: "IDR",
+    icon: "BarChart3",
+  },
+  {
+    symbol: "^JKLQ45",
+    symbolId: "^JKLQ45",
+    name: "IDX Liquid 45 Index (LQ45)",
+    nameId: "LQ45 (Indeks 45 Saham Likuid IDX)",
+    type: "stock",
+    category: "index",
+    suggestedCurrency: "IDR",
+    icon: "BarChart3",
+  },
+  {
+    symbol: "^JK30",
+    symbolId: "^JK30",
+    name: "IDX Top 30 Blue Chip (IDX30)",
+    nameId: "IDX30 (Indeks 30 Saham Unggulan)",
+    type: "stock",
+    category: "index",
+    suggestedCurrency: "IDR",
+    icon: "BarChart3",
+  },
+  {
+    symbol: "^GSPC",
+    symbolId: "^GSPC",
+    name: "S&P 500 Index",
+    nameId: "Indeks S&P 500",
+    type: "stock",
+    category: "index",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "^IXIC",
+    symbolId: "^IXIC",
+    name: "Nasdaq Composite",
+    nameId: "Komposit Nasdaq",
+    type: "stock",
+    category: "index",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+  {
+    symbol: "^DJI",
+    symbolId: "^DJI",
+    name: "Dow Jones Industrial Average",
+    nameId: "Dow Jones Industrial Average",
+    type: "stock",
+    category: "index",
+    suggestedCurrency: "USD",
+    icon: "TrendingUp",
+  },
+
   // Gold & Commodities
   {
     symbol: "XAU",
-    name: "Gold Antam (per gram)",
+    symbolId: "XAU",
+    name: "Antam Gold (per gram)",
+    nameId: "Emas Antam (per gram)",
     type: "gold",
     category: "gold",
     suggestedCurrency: "IDR",
@@ -214,7 +289,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "UBS",
-    name: "Gold UBS (per gram)",
+    symbolId: "UBS",
+    name: "UBS Gold (per gram)",
+    nameId: "Emas UBS (per gram)",
     type: "gold",
     category: "gold",
     suggestedCurrency: "IDR",
@@ -222,7 +299,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "XAG",
-    name: "Silver Pure (per gram)",
+    symbolId: "XAG",
+    name: "Pure Silver (per gram)",
+    nameId: "Perak Murni (per gram)",
     type: "gold",
     category: "gold",
     suggestedCurrency: "IDR",
@@ -231,32 +310,40 @@ export const PRESET_ASSETS: PresetAsset[] = [
 
   // Mutual Funds
   {
-    symbol: "RD-PASAR-UANG",
+    symbol: "MMF",
+    symbolId: "RD-PASAR-UANG",
     name: "Money Market Fund",
+    nameId: "Reksa Dana Pasar Uang",
     type: "mutual_fund",
     category: "mutual_fund",
     suggestedCurrency: "IDR",
     icon: "TrendingUp",
   },
   {
-    symbol: "RD-PENDAPATAN-TETAP",
+    symbol: "FIF",
+    symbolId: "RD-PENDAPATAN-TETAP",
     name: "Fixed Income Fund",
+    nameId: "Reksa Dana Pendapatan Tetap",
     type: "mutual_fund",
     category: "mutual_fund",
     suggestedCurrency: "IDR",
     icon: "FileText",
   },
   {
-    symbol: "RD-SAHAM",
-    name: "Equity Fund",
+    symbol: "EQF",
+    symbolId: "RD-SAHAM",
+    name: "Equity Index Fund",
+    nameId: "Reksa Dana Saham",
     type: "mutual_fund",
     category: "mutual_fund",
     suggestedCurrency: "IDR",
     icon: "TrendingUp",
   },
   {
-    symbol: "RD-CAMPURAN",
+    symbol: "BALF",
+    symbolId: "RD-CAMPURAN",
     name: "Balanced Fund",
+    nameId: "Reksa Dana Campuran",
     type: "mutual_fund",
     category: "mutual_fund",
     suggestedCurrency: "IDR",
@@ -266,7 +353,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   // Bonds / SBN
   {
     symbol: "ORI",
-    name: "Obligasi Negara Ritel (ORI)",
+    symbolId: "ORI",
+    name: "Retail Government Bond (ORI)",
+    nameId: "Obligasi Negara Ritel (ORI)",
     type: "bond",
     category: "bond",
     suggestedCurrency: "IDR",
@@ -274,7 +363,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "SBR",
-    name: "Savings Bond Ritel (SBR)",
+    symbolId: "SBR",
+    name: "Retail Savings Bond (SBR)",
+    nameId: "Savings Bond Ritel (SBR)",
     type: "bond",
     category: "bond",
     suggestedCurrency: "IDR",
@@ -282,7 +373,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "SR",
-    name: "Sukuk Ritel (SR)",
+    symbolId: "SR",
+    name: "Retail Sovereign Sukuk (SR)",
+    nameId: "Sukuk Ritel (SR)",
     type: "bond",
     category: "bond",
     suggestedCurrency: "IDR",
@@ -290,7 +383,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "FR",
-    name: "Surat Utang Negara (Fixed Rate / FR)",
+    symbolId: "FR",
+    name: "Fixed Rate Treasury Bond (FR)",
+    nameId: "Surat Utang Negara (FR)",
     type: "bond",
     category: "bond",
     suggestedCurrency: "IDR",
@@ -298,7 +393,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "PBS",
+    symbolId: "PBS",
     name: "Project Based Sukuk (PBS)",
+    nameId: "Project Based Sukuk (PBS)",
     type: "bond",
     category: "bond",
     suggestedCurrency: "IDR",
@@ -306,7 +403,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "INDON",
+    symbolId: "INDON",
     name: "Indonesian Sovereign US Dollar Bond",
+    nameId: "Obligasi Valas Pemerintah RI (INDON)",
     type: "bond",
     category: "bond",
     suggestedCurrency: "USD",
@@ -315,32 +414,40 @@ export const PRESET_ASSETS: PresetAsset[] = [
 
   // Fixed Assets
   {
-    symbol: "RUMAH",
+    symbol: "PROPERTY",
+    symbolId: "PROPERTI",
     name: "Residential Property",
+    nameId: "Rumah / Properti Hunian",
     type: "fixed_asset",
     category: "fixed_asset",
     suggestedCurrency: "IDR",
     icon: "Home",
   },
   {
-    symbol: "TANAH",
+    symbol: "LAND",
+    symbolId: "TANAH",
     name: "Land / Real Estate",
+    nameId: "Tanah / Lahan Properti",
     type: "fixed_asset",
     category: "fixed_asset",
     suggestedCurrency: "IDR",
     icon: "Landmark",
   },
   {
-    symbol: "MOBIL",
+    symbol: "VEHICLE",
+    symbolId: "KENDARAAN",
     name: "Vehicle / Automobile",
+    nameId: "Kendaraan / Mobil",
     type: "fixed_asset",
     category: "fixed_asset",
     suggestedCurrency: "IDR",
     icon: "Shield",
   },
   {
-    symbol: "LOGAM",
+    symbol: "METALS",
+    symbolId: "LOGAM MULIA",
     name: "Physical Precious Metals",
+    nameId: "Logam Mulia / Emas Batangan",
     type: "fixed_asset",
     category: "fixed_asset",
     suggestedCurrency: "IDR",
@@ -350,7 +457,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   // Valas (Foreign Currency Holdings)
   {
     symbol: "USD",
+    symbolId: "USD",
     name: "US Dollar",
+    nameId: "Dolar Amerika Serikat",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",
@@ -358,7 +467,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "EUR",
+    symbolId: "EUR",
     name: "Euro",
+    nameId: "Euro",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",
@@ -366,7 +477,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "SGD",
+    symbolId: "SGD",
     name: "Singapore Dollar",
+    nameId: "Dolar Singapura",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",
@@ -374,7 +487,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "JPY",
+    symbolId: "JPY",
     name: "Japanese Yen",
+    nameId: "Yen Jepang",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",
@@ -382,7 +497,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "GBP",
+    symbolId: "GBP",
     name: "British Pound",
+    nameId: "Poundsterling Inggris",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",
@@ -390,7 +507,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "AUD",
+    symbolId: "AUD",
     name: "Australian Dollar",
+    nameId: "Dolar Australia",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",
@@ -398,7 +517,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "CNY",
+    symbolId: "CNY",
     name: "Chinese Yuan",
+    nameId: "Yuan Tiongkok",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",
@@ -406,7 +527,9 @@ export const PRESET_ASSETS: PresetAsset[] = [
   },
   {
     symbol: "MYR",
+    symbolId: "MYR",
     name: "Malaysian Ringgit",
+    nameId: "Ringgit Malaysia",
     type: "crypto",
     category: "valas",
     suggestedCurrency: "USD",

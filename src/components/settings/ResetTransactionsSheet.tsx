@@ -185,7 +185,7 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
               className="w-full py-4 rounded-[20px] font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl disabled:opacity-40 cursor-pointer"
               style={{
                 background: "var(--text-primary)",
-                color: "var(--bg)",
+                color: "var(--bg-primary)",
               }}
             >
               <Trash2 size={16} strokeWidth={1.75} />
@@ -251,7 +251,7 @@ export function ResetTransactionsSheet({ isOpen, onClose }: ResetTransactionsShe
                 className="flex-1 py-3.5 rounded-[18px] font-semibold text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
                 style={{
                   background: "var(--text-primary)",
-                  color: "var(--bg)",
+                  color: "var(--bg-primary)",
                 }}
               >
                 <Trash2 size={16} strokeWidth={1.75} />

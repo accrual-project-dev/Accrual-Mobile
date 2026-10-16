@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { IconRenderer } from "../ui/IconRenderer";
 import {
   PRESET_ASSETS,
+  getPresetName,
+  getPresetSymbol,
   type PresetAsset,
   type PresetCategory,
 } from "../../lib/assetPresets";
@@ -327,8 +329,10 @@ export function AddAssetModal({
   const handleSelectPreset = useCallback(
     async (preset: PresetAsset) => {
       triggerHaptic("light");
-      setFormSymbol(preset.symbol);
-      setFormName(preset.name);
+      const selectedSymbol = getPresetSymbol(preset, isIndonesian);
+      const selectedName = getPresetName(preset, isIndonesian);
+      setFormSymbol(selectedSymbol);
+      setFormName(selectedName);
       setFormType(preset.type);
       const curr = preset.suggestedCurrency || "IDR";
       setFormCurrency(curr);
@@ -347,8 +351,16 @@ export function AddAssetModal({
           "RD-PENDAPATAN-TETAP": "7.0",
           "RD-CAMPURAN": "9.0",
           "RD-SAHAM": "11.0",
+          MMF: "5.0",
+          FIF: "7.0",
+          BALF: "9.0",
+          EQF: "11.0",
         };
-        setAnnualRate(fundRates[preset.symbol] || "6.0");
+        setAnnualRate(
+          fundRates[selectedSymbol] ||
+            fundRates[preset.symbol] ||
+            "6.0",
+        );
         setFormBuyPrice(formatHoldingPrice(1000, curr));
         setFormCurrentPrice(formatHoldingPrice(1000, curr));
       } else if (preset.type === "bond") {
@@ -362,7 +374,11 @@ export function AddAssetModal({
           PBS: "6.6",
           INDON: "5.2",
         };
-        setAnnualRate(bondRates[preset.symbol] || "6.5");
+        setAnnualRate(
+          bondRates[selectedSymbol] ||
+            bondRates[preset.symbol] ||
+            "6.5",
+        );
         const defaultBondPriceNum = curr === "USD" ? 1000 : 1000000;
         const defaultBondPrice = formatHoldingPrice(defaultBondPriceNum, curr);
         setFormBuyPrice(defaultBondPrice);
@@ -382,7 +398,7 @@ export function AddAssetModal({
       }
       setPhase(2);
     },
-    [fetchLiveQuote],
+    [fetchLiveQuote, isIndonesian],
   );
 
   // Reset or initialize on open / change
@@ -438,10 +454,13 @@ export function AddAssetModal({
     return PRESET_ASSETS.filter((item) => {
       const matchCat =
         presetCategory === "all" || item.category === presetCategory;
+      const q = searchQuery.trim().toLowerCase();
       const matchSearch =
-        searchQuery.trim() === "" ||
-        item.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.name.toLowerCase().includes(searchQuery.toLowerCase());
+        q === "" ||
+        item.symbol.toLowerCase().includes(q) ||
+        (item.symbolId && item.symbolId.toLowerCase().includes(q)) ||
+        item.name.toLowerCase().includes(q) ||
+        (item.nameId && item.nameId.toLowerCase().includes(q));
       return matchCat && matchSearch;
     });
   }, [presetCategory, searchQuery]);
@@ -866,6 +885,10 @@ export function AddAssetModal({
                           key: "stock_id",
                           label: isIndonesian ? "Saham IDX" : "IDX Stocks",
                         },
+                        {
+                          key: "index",
+                          label: isIndonesian ? "Indeks" : "Indices",
+                        },
                         { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
                         {
                           key: "mutual_fund",
@@ -1002,7 +1025,7 @@ export function AddAssetModal({
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 leading-none">
                             <span className="font-semibold text-[12.5px] text-[var(--text-primary)] ">
-                              {preset.symbol}
+                              {getPresetSymbol(preset, isIndonesian)}
                             </span>
                             {preset.suggestedCurrency && (
                               <span className="text-[9px] px-1.5 py-0.2 rounded  font-medium bg-white/[0.05] text-[var(--text-secondary)] border border-[var(--glass-border)]">
@@ -1011,7 +1034,7 @@ export function AddAssetModal({
                             )}
                           </div>
                           <span className="text-[10.5px] text-[var(--text-tertiary)] truncate block mt-1 leading-none">
-                            {preset.name}
+                            {getPresetName(preset, isIndonesian)}
                           </span>
                         </div>
                       </div>

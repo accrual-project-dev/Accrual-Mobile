@@ -227,7 +227,7 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
                   : "var(--bg-elevated)",
               color:
                 isConfirmed && !isDeleting
-                  ? "var(--bg)"
+                  ? "var(--bg-primary)"
                   : "var(--text-tertiary)",
               border: "1px solid var(--glass-border)",
             }}

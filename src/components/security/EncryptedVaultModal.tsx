@@ -12,6 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -50,6 +51,8 @@ export function EncryptedVaultModal({
   defaultTab = "export",
 }: EncryptedVaultModalProps) {
   const { session } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
   const queryClient = useQueryClient();
@@ -501,10 +504,12 @@ export function EncryptedVaultModal({
                   {isIndonesian ? "Atur Kata Sandi Brankas" : "Set Vault Passphrase"}
                 </label>
                 <div
-                  className="flex items-center px-3 py-2.5 rounded-xl transition-all"
+                  className="flex items-center px-3.5 py-3 rounded-2xl transition-all"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.05)"
+                      : "rgba(0, 0, 0, 0.035)",
+                    border: "none",
                   }}
                 >
                   <Lock
@@ -543,10 +548,12 @@ export function EncryptedVaultModal({
                   {isIndonesian ? "Konfirmasi Kata Sandi" : "Confirm Passphrase"}
                 </label>
                 <div
-                  className="flex items-center px-3 py-2.5 rounded-xl transition-all"
+                  className="flex items-center px-3.5 py-3 rounded-2xl transition-all"
                   style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.05)"
+                      : "rgba(0, 0, 0, 0.035)",
+                    border: "none",
                   }}
                 >
                   <Lock
@@ -573,10 +580,10 @@ export function EncryptedVaultModal({
               type="button"
               disabled={isExporting || !exportPassphrase || !exportConfirmPassphrase}
               onClick={handleExecuteExport}
-              className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 px-4 rounded-2xl text-[13.5px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-0 shadow-[0_2px_8px_rgba(0,0,0,0.18)] active:scale-[0.99]"
               style={{
                 background: "var(--text-primary)",
-                color: "var(--bg)",
+                color: "var(--bg-primary)",
               }}
             >
               {isExporting ? (
@@ -753,10 +760,12 @@ export function EncryptedVaultModal({
                   : "Enter Decryption Passphrase"}
               </label>
               <div
-                className="flex items-center px-3 py-2.5 rounded-xl transition-all"
+                className="flex items-center px-3.5 py-3 rounded-2xl transition-all"
                 style={{
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--glass-border)",
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.035)",
+                  border: "none",
                 }}
               >
                 <Lock
@@ -803,12 +812,17 @@ export function EncryptedVaultModal({
                   style={{
                     background:
                       restoreMode === "merge"
-                        ? "var(--bg-elevated)"
+                        ? isDark
+                          ? "rgba(255, 255, 255, 0.06)"
+                          : "rgba(0, 0, 0, 0.04)"
                         : "var(--glass-fill)",
                     border:
                       restoreMode === "merge"
-                        ? "1px solid var(--text-primary)"
+                        ? isDark
+                          ? "1px solid rgba(255, 255, 255, 0.16)"
+                          : "1px solid rgba(0, 0, 0, 0.14)"
                         : "1px solid var(--glass-border)",
+                    opacity: restoreMode === "merge" ? 1 : 0.6,
                   }}
                 >
                   <span
@@ -834,12 +848,17 @@ export function EncryptedVaultModal({
                   style={{
                     background:
                       restoreMode === "replace"
-                        ? "var(--bg-elevated)"
+                        ? isDark
+                          ? "rgba(255, 255, 255, 0.06)"
+                          : "rgba(0, 0, 0, 0.04)"
                         : "var(--glass-fill)",
                     border:
                       restoreMode === "replace"
-                        ? "1px solid var(--text-primary)"
+                        ? isDark
+                          ? "1px solid rgba(255, 255, 255, 0.16)"
+                          : "1px solid rgba(0, 0, 0, 0.14)"
                         : "1px solid var(--glass-border)",
+                    opacity: restoreMode === "replace" ? 1 : 0.6,
                   }}
                 >
                   <span
@@ -894,10 +913,10 @@ export function EncryptedVaultModal({
               type="button"
               disabled={isRestoring || !parsedPayload || !restorePassphrase}
               onClick={handleExecuteRestore}
-              className="w-full py-3 px-4 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 px-4 rounded-2xl text-[13.5px] font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-0 shadow-[0_2px_8px_rgba(0,0,0,0.18)] active:scale-[0.99]"
               style={{
                 background: "var(--text-primary)",
-                color: "var(--bg)",
+                color: "var(--bg-primary)",
               }}
             >
               {isRestoring ? (

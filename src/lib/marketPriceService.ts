@@ -1,5 +1,6 @@
 import type { InvestmentHolding, AssetType, HoldingActivity } from "./types";
 import { supabase } from "./supabase";
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
 
 export const HOLDINGS_STORAGE_KEY = "trouvaille_holdings_v1";
 export const QUOTES_CACHE_KEY = "trouvaille_market_quotes_cache_v2";
@@ -1034,34 +1035,137 @@ export interface StockMarketQuote {
   isUS: boolean;
 }
 
+export const INDEX_ALIAS_MAP: Record<string, string> = {
+  IHSG: "^JKSE",
+  COMPOSITE: "^JKSE",
+  LQ45: "^JKLQ45",
+  IDX30: "^JK30",
+  "S&P500": "^GSPC",
+  "S&P 500": "^GSPC",
+  SPX: "^GSPC",
+  SPY: "SPY",
+  NASDAQ: "^IXIC",
+  NDX: "^NDX",
+  QQQ: "QQQ",
+  DOW: "^DJI",
+  DJI: "^DJI",
+  DIA: "DIA",
+};
+
 const KNOWN_US_TICKERS = new Set([
   "AAPL", "NVDA", "TSLA", "MSFT", "GOOGL", "GOOG", "AMZN", "META",
   "NFLX", "AMD", "INTC", "SPY", "QQQ", "VOO", "VTI", "COIN", "PLTR",
   "DIS", "BABA", "UBER", "PYPL", "BRK.B", "BRK.A", "JPM", "V", "MA",
-  "WMT", "COST", "XOM", "CVX", "LLY", "UNH", "JNJ", "PG", "HD", "BAC"
+  "WMT", "COST", "XOM", "CVX", "LLY", "UNH", "JNJ", "PG", "HD", "BAC",
+  "^GSPC", "^IXIC", "^DJI", "^NDX", "^RUT", "DIA", "IWM",
 ]);
 
 /**
- * Fetch live stock quote via Yahoo Finance Chart API.
- * Supports both Indonesian equities (*.JK) and US equities with smart disambiguation.
+ * Resilient multi-tier Yahoo Finance Chart data fetcher:
+ * Tier 1: Native CapacitorHttp on iOS/Android (bypasses CORS via native NSURLSession, sets desktop UA).
+ * Tier 2: Vite Dev Proxy (/api/yahoo) when running locally in development.
+ * Tier 3: Supabase Edge Function ('market-quote') for production Web/PWA deployments.
+ * Tier 4: Direct browser fetch with timeout protection.
+ */
+async function resilientFetchYahooChart(ticker: string, timeoutMs = 4000): Promise<any | null> {
+  const encodedTicker = encodeURIComponent(ticker);
+
+  // Tier 1: Native CapacitorHttp (iOS / Android)
+  if (typeof Capacitor !== "undefined" && Capacitor.isNativePlatform()) {
+    try {
+      const resp = await CapacitorHttp.get({
+        url: `https://query1.finance.yahoo.com/v8/finance/chart/${encodedTicker}?interval=1d&range=1d`,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "application/json",
+        },
+        connectTimeout: timeoutMs,
+        readTimeout: timeoutMs,
+      });
+      if (resp.status >= 200 && resp.status < 300 && resp.data) {
+        const data = typeof resp.data === "string" ? JSON.parse(resp.data) : resp.data;
+        if (data?.chart?.result?.[0]?.meta) return data;
+      }
+    } catch (e) {
+      console.warn("[resilientFetchYahooChart] Native CapacitorHttp notice:", e);
+    }
+  }
+
+  // Tier 2: Vite Dev Proxy when running in local browser
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+  ) {
+    try {
+      const res = await universalFetchWithTimeout(
+        `/api/yahoo/v8/finance/chart/${encodedTicker}?interval=1d&range=1d`,
+        undefined,
+        timeoutMs,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.chart?.result?.[0]?.meta) return data;
+      }
+    } catch {}
+  }
+
+  // Tier 3: Supabase Edge Function 'market-quote' (Serverless proxy for Web/PWA)
+  try {
+    const { data, error } = await supabase.functions.invoke("market-quote", {
+      body: { ticker },
+    });
+    if (!error && data?.chart?.result?.[0]?.meta) {
+      return data;
+    }
+  } catch {}
+
+  // Tier 4: Direct universalFetchWithTimeout
+  try {
+    const res = await universalFetchWithTimeout(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodedTicker}?interval=1d&range=1d`,
+      undefined,
+      timeoutMs,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.chart?.result?.[0]?.meta) return data;
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Fetch live stock and market index quote via Yahoo Finance Chart API.
+ * Supports Indonesian equities (*.JK), global indices (^JKSE, ^GSPC, ^IXIC), and US equities with smart disambiguation.
  */
 export async function fetchStockQuote(
   symbol: string,
   forceRefresh = false,
   preferIDR = false,
 ): Promise<StockMarketQuote | null> {
-  const cleanSymbol = symbol.trim().toUpperCase();
-  if (!cleanSymbol) return null;
+  const rawClean = symbol.trim().toUpperCase();
+  if (!rawClean) return null;
 
+  // Resolve alias (e.g. IHSG -> ^JKSE, S&P 500 -> ^GSPC)
+  const cleanSymbol = INDEX_ALIAS_MAP[rawClean] || rawClean;
+
+  const isIndex = cleanSymbol.startsWith("^");
+  const isJKIndex = cleanSymbol === "^JKSE" || cleanSymbol === "^JKLQ45" || cleanSymbol === "^JK30";
   const isExplicitJK = cleanSymbol.endsWith(".JK");
   const baseTicker = cleanSymbol.replace(/\.JK$/, "");
 
-  // Candidate tickers to try in sequence:
-  // If preferIDR, or explicitly .JK, or not a known US ticker and has 4 letters -> try .JK first!
-  const shouldTryJKFirst = isExplicitJK || preferIDR || (!KNOWN_US_TICKERS.has(baseTicker) && baseTicker.length === 4);
-  const candidates = shouldTryJKFirst
-    ? [`${baseTicker}.JK`, baseTicker]
-    : [baseTicker, `${baseTicker}.JK`];
+  let candidates: string[];
+  if (isIndex) {
+    candidates = [cleanSymbol];
+  } else {
+    const shouldTryJKFirst =
+      isExplicitJK || preferIDR || (!KNOWN_US_TICKERS.has(baseTicker) && baseTicker.length === 4);
+    candidates = shouldTryJKFirst
+      ? [`${baseTicker}.JK`, baseTicker]
+      : [baseTicker, `${baseTicker}.JK`];
+  }
 
   const cacheKeyUSD = `stock_quote_usd_${baseTicker}`;
   const cacheKeyIDR = `stock_quote_idr_${baseTicker}`;
@@ -1070,7 +1174,7 @@ export async function fetchStockQuote(
     const cachedIDR = getCachedQuote(cacheKeyIDR);
     if (cachedIDR !== null) {
       const cachedUSD = getCachedQuote(cacheKeyUSD);
-      const isUS = !shouldTryJKFirst;
+      const isUS = isIndex ? !isJKIndex : (candidates[0] === baseTicker && !isExplicitJK);
       return {
         regularMarketPrice: isUS ? (cachedUSD ?? 0) : cachedIDR,
         idr: cachedIDR,
@@ -1084,18 +1188,12 @@ export async function fetchStockQuote(
 
   for (const ticker of candidates) {
     try {
-      const res = await universalFetchWithTimeout(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`,
-        undefined,
-        3500,
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
+      const data = await resilientFetchYahooChart(ticker, 4000);
       const meta = data?.chart?.result?.[0]?.meta;
       const regularMarketPrice = meta?.regularMarketPrice;
 
       if (typeof regularMarketPrice === "number" && regularMarketPrice > 0) {
-        const isJK = ticker.endsWith(".JK") || meta?.currency === "IDR";
+        const isJK = ticker.endsWith(".JK") || meta?.currency === "IDR" || isJKIndex;
         let idrPrice: number;
         let usdPrice: number;
 
@@ -1110,6 +1208,10 @@ export async function fetchStockQuote(
         setCachedQuote(cacheKeyUSD, usdPrice);
         setCachedQuote(cacheKeyIDR, idrPrice);
         setCachedQuote(`stock_quote_idr_${ticker}`, idrPrice);
+        if (rawClean !== cleanSymbol) {
+          setCachedQuote(`stock_quote_idr_${rawClean}`, idrPrice);
+          setCachedQuote(`stock_quote_usd_${rawClean}`, usdPrice);
+        }
 
         return {
           regularMarketPrice,

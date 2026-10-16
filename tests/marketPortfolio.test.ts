@@ -623,6 +623,100 @@ describe("Holding Notes Metadata, Undo Activity, and Custom Price", () => {
     expect(gold?.pricePerGramIDR).toBeGreaterThan(1_000_000);
     expect(gold?.usdPerTroyOz).toBeGreaterThan(1000);
   });
+
+  it("INDEX_ALIAS_MAP maps major indices properly and PRESET_ASSETS contains index category", async () => {
+    const { INDEX_ALIAS_MAP } = await import("../src/lib/marketPriceService");
+    expect(INDEX_ALIAS_MAP["IHSG"]).toBe("^JKSE");
+    expect(INDEX_ALIAS_MAP["LQ45"]).toBe("^JKLQ45");
+    expect(INDEX_ALIAS_MAP["IDX30"]).toBe("^JK30");
+    expect(INDEX_ALIAS_MAP["S&P 500"]).toBe("^GSPC");
+    expect(INDEX_ALIAS_MAP["NASDAQ"]).toBe("^IXIC");
+    expect(INDEX_ALIAS_MAP["DOW"]).toBe("^DJI");
+
+    const { PRESET_ASSETS } = await import("../src/lib/assetPresets");
+    const indexPresets = PRESET_ASSETS.filter((p) => p.category === "index");
+    expect(indexPresets.length).toBeGreaterThanOrEqual(6);
+    expect(indexPresets.some((p) => p.symbol === "^JKSE")).toBe(true);
+    expect(indexPresets.some((p) => p.symbol === "^GSPC")).toBe(true);
+  });
+
+  it("fetchStockQuote resolves live quotes for NVDA, BBCA, IHSG, and S&P 500", async () => {
+    const { fetchStockQuote } = await import("../src/lib/marketPriceService");
+
+    // Test US Stock: NVDA
+    const nvda = await fetchStockQuote("NVDA");
+    if (nvda) {
+      expect(nvda.regularMarketPrice).toBeGreaterThan(0);
+      expect(nvda.isUS).toBe(true);
+      expect(nvda.usd).toBeGreaterThan(0);
+      expect(nvda.idr).toBeGreaterThan(100_000);
+    }
+
+    // Test IDX Stock: BBCA
+    const bbca = await fetchStockQuote("BBCA");
+    if (bbca) {
+      expect(bbca.regularMarketPrice).toBeGreaterThan(1000);
+      expect(bbca.isUS).toBe(false);
+      expect(bbca.idr).toBeGreaterThan(1000);
+    }
+
+    // Test Index Alias: IHSG -> ^JKSE
+    const ihsg = await fetchStockQuote("IHSG");
+    if (ihsg) {
+      expect(ihsg.regularMarketPrice).toBeGreaterThan(1000);
+      expect(ihsg.isUS).toBe(false);
+      expect(ihsg.idr).toBeGreaterThan(1000);
+    }
+
+    // Test Index Alias: S&P 500 -> ^GSPC
+    const spx = await fetchStockQuote("S&P 500");
+    if (spx) {
+      expect(spx.regularMarketPrice).toBeGreaterThan(1000);
+      expect(spx.isUS).toBe(true);
+      expect(spx.usd).toBeGreaterThan(1000);
+    }
+  });
+
+  it("resolves bilingual asset presets cleanly without mixed language", async () => {
+    const { PRESET_ASSETS, getPresetSymbol, getPresetName } = await import(
+      "../src/lib/assetPresets"
+    );
+
+    // Test Fixed Assets
+    const fixedAssets = PRESET_ASSETS.filter((p) => p.category === "fixed_asset");
+    expect(fixedAssets.length).toBeGreaterThanOrEqual(4);
+
+    const propertyPreset = fixedAssets.find((p) => p.symbol === "PROPERTY");
+    expect(propertyPreset).toBeDefined();
+    if (propertyPreset) {
+      // English mode
+      expect(getPresetSymbol(propertyPreset, false)).toBe("PROPERTY");
+      expect(getPresetName(propertyPreset, false)).toBe("Residential Property");
+
+      // Indonesian mode
+      expect(getPresetSymbol(propertyPreset, true)).toBe("PROPERTI");
+      expect(getPresetName(propertyPreset, true)).toBe("Rumah / Properti Hunian");
+    }
+
+    const landPreset = fixedAssets.find((p) => p.symbol === "LAND");
+    expect(landPreset).toBeDefined();
+    if (landPreset) {
+      expect(getPresetSymbol(landPreset, false)).toBe("LAND");
+      expect(getPresetName(landPreset, false)).toBe("Land / Real Estate");
+      expect(getPresetSymbol(landPreset, true)).toBe("TANAH");
+      expect(getPresetName(landPreset, true)).toBe("Tanah / Lahan Properti");
+    }
+
+    // Test Mutual Funds
+    const mmfPreset = PRESET_ASSETS.find((p) => p.symbol === "MMF");
+    expect(mmfPreset).toBeDefined();
+    if (mmfPreset) {
+      expect(getPresetSymbol(mmfPreset, false)).toBe("MMF");
+      expect(getPresetName(mmfPreset, false)).toBe("Money Market Fund");
+      expect(getPresetSymbol(mmfPreset, true)).toBe("RD-PASAR-UANG");
+      expect(getPresetName(mmfPreset, true)).toBe("Reksa Dana Pasar Uang");
+    }
+  });
 });
 
 

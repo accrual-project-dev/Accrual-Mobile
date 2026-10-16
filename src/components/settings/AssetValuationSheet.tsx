@@ -58,6 +58,8 @@ import type { InvestmentHolding, AssetType } from "../../lib/types";
 import type { UsdtValuationPref } from "../../lib/marketPriceService";
 import {
   PRESET_ASSETS,
+  getPresetName,
+  getPresetSymbol,
   type PresetAsset,
   type PresetCategory,
 } from "../../lib/assetPresets";
@@ -277,8 +279,10 @@ export function AssetValuationSheet({
 
   const handleSelectPreset = async (preset: PresetAsset) => {
     triggerHaptic("medium");
-    setFormSymbol(preset.symbol);
-    setFormName(preset.name);
+    const selectedSymbol = getPresetSymbol(preset, isIndonesian);
+    const selectedName = getPresetName(preset, isIndonesian);
+    setFormSymbol(selectedSymbol);
+    setFormName(selectedName);
     setFormType(preset.type);
     setFormIcon(preset.icon || "TrendingUp");
     setFormCurrency(preset.suggestedCurrency || "IDR");
@@ -350,10 +354,13 @@ export function AssetValuationSheet({
     return PRESET_ASSETS.filter((preset) => {
       const matchCategory =
         presetCategory === "all" || preset.category === presetCategory;
+      const q = searchQuery.trim().toLowerCase();
       const matchQuery =
-        !searchQuery ||
-        preset.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        preset.name.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        preset.symbol.toLowerCase().includes(q) ||
+        (preset.symbolId && preset.symbolId.toLowerCase().includes(q)) ||
+        preset.name.toLowerCase().includes(q) ||
+        (preset.nameId && preset.nameId.toLowerCase().includes(q));
       return matchCategory && matchQuery;
     });
   }, [searchQuery, presetCategory]);
@@ -1505,6 +1512,10 @@ export function AssetValuationSheet({
                   key: "stock_id",
                   label: isIndonesian ? "Saham IDX" : "IDX Stocks",
                 },
+                {
+                  key: "index",
+                  label: isIndonesian ? "Indeks" : "Indices",
+                },
                 { key: "gold", label: isIndonesian ? "Emas" : "Gold" },
                 {
                   key: "mutual_fund",
@@ -1584,7 +1595,7 @@ export function AssetValuationSheet({
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="font-semibold text-[13px] text-[var(--text-primary)] ">
-                        {preset.symbol}
+                        {getPresetSymbol(preset, isIndonesian)}
                       </span>
                       {preset.suggestedCurrency && (
                         <span className="text-[9.5px] px-2 py-0.5 rounded-full font-semibold bg-white/[0.06] text-[var(--text-secondary)] border border-[var(--glass-border)]">
@@ -1593,7 +1604,7 @@ export function AssetValuationSheet({
                       )}
                     </div>
                     <span className="text-[11px] text-[var(--text-tertiary)] truncate block mt-0.5">
-                      {preset.name}
+                      {getPresetName(preset, isIndonesian)}
                     </span>
                   </div>
                 </div>
