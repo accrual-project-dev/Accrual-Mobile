@@ -100,7 +100,7 @@ export function BillDailyReminderSheet({
       setBillReminderLeadDays(selectedLeadDays);
 
       if (dailyEnabled) {
-        await syncDailyStreakReminder(false);
+        await syncDailyStreakReminder(false, isIndonesian);
       } else {
         await cancelDailyStreakReminder();
       }

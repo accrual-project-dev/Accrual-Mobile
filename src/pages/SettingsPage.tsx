@@ -428,7 +428,7 @@ export function SettingsPage({
         localStorage.setItem("trouvaille_bill_reminders_enabled", "true");
         localStorage.setItem("trouvaille_daily_reminder_enabled", "true");
         await syncBillNotifications(bills, isIndonesian);
-        await syncDailyStreakReminder(false);
+        await syncDailyStreakReminder(false, isIndonesian);
         showToast(
           isIndonesian
             ? "Pengingat tagihan & catat harian diaktifkan"

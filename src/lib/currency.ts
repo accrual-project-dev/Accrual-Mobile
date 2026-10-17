@@ -203,6 +203,26 @@ export function formatCurrencyAmount(
 }
 
 /**
+ * Format currency using stored user preferences from localStorage.
+ * Resilient for background notifications, headless calculations, and tests.
+ */
+export function formatStoredCurrency(
+  idrAmount: number,
+  options?: { showCode?: boolean }
+): string {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const pref = localStorage.getItem(PREFERRED_CURRENCY_KEY) as SupportedCurrency;
+      if (pref && CURRENCY_METADATA[pref]) {
+        const converted = convertCurrency(idrAmount, "IDR", pref);
+        return formatCurrencyAmount(converted, pref, options);
+      }
+    }
+  } catch {}
+  return formatCurrencyAmount(idrAmount, "IDR", options);
+}
+
+/**
  * Format compact currency for limited width displays (e.g. 1.2M, 500k, 2.5B).
  */
 export function formatCompactRupiah(val: number): string {

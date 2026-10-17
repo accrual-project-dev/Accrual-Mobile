@@ -411,8 +411,8 @@ export function HomePage({
   }, [allTxs, currentMonthKey]);
 
   useEffect(() => {
-    syncDailyStreakReminder(intel.loggedToday);
-  }, [intel.loggedToday]);
+    syncDailyStreakReminder(intel.loggedToday, isIndonesian);
+  }, [intel.loggedToday, isIndonesian]);
 
   const daysInMonth = now.getDate();
   const dailyAverage = daysInMonth > 0 ? totalExpense / daysInMonth : 0;

@@ -8,7 +8,7 @@ import {
 } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import type { Transaction, Category, Wallet, Bill, AccountClassification } from "./types";
-import { formatRupiah } from "./utils";
+import { formatStoredCurrency } from "./currency";
 
 export type BudgetRiskLevel = "SAFE" | "WATCH" | "AT RISK";
 
@@ -1236,6 +1236,7 @@ export function generateActionCenterInsight(options: {
   safeToSpend: number;
   unpaidBillsCount: number;
   language?: "en" | "id";
+  formatFn?: (amount: number) => string;
 }): ActionCenterInsight {
   const {
     budget,
@@ -1249,9 +1250,11 @@ export function generateActionCenterInsight(options: {
     safeToSpend,
     unpaidBillsCount,
     language,
+    formatFn,
   } = options;
 
   const isId = language === "id";
+  const fmt = formatFn || formatStoredCurrency;
 
   // Priority 0: Clean Baseline / No Expenses Recorded Yet In Current Cycle
   if (options.totalExpense === 0) {
@@ -1273,13 +1276,13 @@ export function generateActionCenterInsight(options: {
           : "The capital monitoring system is standing by to evaluate daily outflow velocity and anomaly detection upon your first transaction.",
         bulletPoints: isId
           ? [
-              "Pengeluaran aktual: Rp 0",
-              budget > 0 ? `Plafon anggaran: ${formatRupiah(budget)}` : "Plafon anggaran: Belum ditentukan",
+              `Pengeluaran aktual: ${fmt(0)}`,
+              budget > 0 ? `Plafon anggaran: ${fmt(budget)}` : "Plafon anggaran: Belum ditentukan",
               "Status telemetri: Siaga pemantauan",
             ]
           : [
-              "Actual spending: Rp 0",
-              budget > 0 ? `Budget limit: ${formatRupiah(budget)}` : "Budget limit: Not configured",
+              `Actual spending: ${fmt(0)}`,
+              budget > 0 ? `Budget limit: ${fmt(budget)}` : "Budget limit: Not configured",
               "Telemetry status: Standby monitoring",
             ],
       },
@@ -1291,8 +1294,8 @@ export function generateActionCenterInsight(options: {
     return {
       type: "projected_overrun",
       title: isId
-        ? `Proyeksi ${formatRupiah(projectedVariance)} melampaui anggaran bulanan`
-        : `Projected ${formatRupiah(projectedVariance)} above monthly budget`,
+        ? `Proyeksi ${fmt(projectedVariance)} melampaui anggaran bulanan`
+        : `Projected ${fmt(projectedVariance)} above monthly budget`,
       subtitle: isId
         ? `Pada laju harian saat ini, pengeluaran akan mencapai ${consumedPct.toFixed(0)}% dari batas.`
         : `At current daily run-rate, total spending will reach ${consumedPct.toFixed(0)}% of limit.`,
@@ -1302,18 +1305,18 @@ export function generateActionCenterInsight(options: {
       drillDownDetails: {
         headline: isId ? "Proyeksi Pembengkakan Anggaran" : "Projected Budget Overrun",
         explanation: isId
-          ? `Berdasarkan ${timePct.toFixed(0)}% hari yang telah berlalu, rata-rata belanja harian diproyeksikan melebihi pagu bulanan sebesar ${formatRupiah(projectedVariance)}.`
-          : `Based on ${timePct.toFixed(0)}% of days elapsed, your average daily spending projects to exceed your monthly limit by ${formatRupiah(projectedVariance)}.`,
+          ? `Berdasarkan ${timePct.toFixed(0)}% hari yang telah berlalu, rata-rata belanja harian diproyeksikan melebihi pagu bulanan sebesar ${fmt(projectedVariance)}.`
+          : `Based on ${timePct.toFixed(0)}% of days elapsed, your average daily spending projects to exceed your monthly limit by ${fmt(projectedVariance)}.`,
         bulletPoints: isId
           ? [
               `Pengeluaran saat ini: ${consumedPct.toFixed(0)}% dari batas`,
               `Bulan berjalan: ${timePct.toFixed(0)}%`,
-              `Selisih proyeksi akhir bulan: +${formatRupiah(projectedVariance)}`,
+              `Selisih proyeksi akhir bulan: +${fmt(projectedVariance)}`,
             ]
           : [
               `Current spending: ${consumedPct.toFixed(0)}% of limit`,
               `Month elapsed: ${timePct.toFixed(0)}%`,
-              `Projected month-end variance: +${formatRupiah(projectedVariance)}`,
+              `Projected month-end variance: +${fmt(projectedVariance)}`,
             ],
       },
     };
@@ -1324,8 +1327,8 @@ export function generateActionCenterInsight(options: {
     return {
       type: "spending_pace",
       title: isId
-        ? `Laju pengeluaran ${formatRupiah(paceDiff)} lebih cepat dari tempo bulanan`
-        : `Spending is running ${formatRupiah(paceDiff)} ahead of monthly pace`,
+        ? `Laju pengeluaran ${fmt(paceDiff)} lebih cepat dari tempo bulanan`
+        : `Spending is running ${fmt(paceDiff)} ahead of monthly pace`,
       subtitle: isId
         ? `${consumedPct.toFixed(0)}% anggaran terpakai vs ${timePct.toFixed(0)}% hari berjalan.`
         : `${consumedPct.toFixed(0)}% budget consumed vs ${timePct.toFixed(0)}% days elapsed.`,
@@ -1339,14 +1342,14 @@ export function generateActionCenterInsight(options: {
           : `You are currently spending faster than the proportional time elapsed in the current month.`,
         bulletPoints: isId
           ? [
-              `Ekspektasi pengeluaran saat ini: ${formatRupiah(options.totalExpense - paceDiff)}`,
-              `Pengeluaran aktual: ${formatRupiah(options.totalExpense)}`,
-              `Deviasi tempo: +${formatRupiah(paceDiff)}`,
+              `Ekspektasi pengeluaran saat ini: ${fmt(options.totalExpense - paceDiff)}`,
+              `Pengeluaran aktual: ${fmt(options.totalExpense)}`,
+              `Deviasi tempo: +${fmt(paceDiff)}`,
             ]
           : [
-              `Expected spending at this point: ${formatRupiah(options.totalExpense - paceDiff)}`,
-              `Actual spending: ${formatRupiah(options.totalExpense)}`,
-              `Pace variance: +${formatRupiah(paceDiff)}`,
+              `Expected spending at this point: ${fmt(options.totalExpense - paceDiff)}`,
+              `Actual spending: ${fmt(options.totalExpense)}`,
+              `Pace variance: +${fmt(paceDiff)}`,
             ],
       },
     };
@@ -1363,8 +1366,8 @@ export function generateActionCenterInsight(options: {
         ? `Belanja ${topSpike.name} naik ${topSpike.pctChange}% dibanding bulan lalu`
         : `${topSpike.name} spending increased ${topSpike.pctChange}% vs last month`,
       subtitle: isId
-        ? `+${formatRupiah(topSpike.deltaAmount)} lebih tinggi dari garis dasar bulan lalu.`
-        : `+${formatRupiah(topSpike.deltaAmount)} higher than previous month's baseline.`,
+        ? `+${fmt(topSpike.deltaAmount)} lebih tinggi dari garis dasar bulan lalu.`
+        : `+${fmt(topSpike.deltaAmount)} higher than previous month's baseline.`,
       badge: isId ? "PERGESERAN KATEGORI" : "CATEGORY SHIFT",
       actionLabel: isId ? "Lihat kategori" : "View category",
       actionType: "category_detail",
@@ -1375,7 +1378,7 @@ export function generateActionCenterInsight(options: {
           ? `${topSpike.name} mencatatkan lonjakan beban terbesar dibanding bulan sebelumnya.`
           : `${topSpike.name} had the largest positive expense change compared to the previous month.`,
         bulletPoints: topSpike.contributors.map(
-          (c) => `${c.note}: ${formatRupiah(c.amount)} (${c.count} ${isId ? "trx" : "txs"})`,
+          (c) => `${c.note}: ${fmt(c.amount)} (${c.count} ${isId ? "trx" : "txs"})`,
         ),
       },
     };
@@ -1389,8 +1392,8 @@ export function generateActionCenterInsight(options: {
         ? `${unpaidBillsCount} tagihan mendatang terjadwal di siklus ini`
         : `${unpaidBillsCount} upcoming bills scheduled this cycle`,
       subtitle: isId
-        ? `Bantalan belanja aman saat ini ${formatRupiah(safeToSpend)}.`
-        : `Safe-to-spend buffer is currently ${formatRupiah(safeToSpend)}.`,
+        ? `Bantalan belanja aman saat ini ${fmt(safeToSpend)}.`
+        : `Safe-to-spend buffer is currently ${fmt(safeToSpend)}.`,
       badge: isId ? "BANTALAN AMAN" : "SAFETY BUFFER",
       actionLabel: isId ? "Lihat tagihan" : "View upcoming bills",
       actionType: "bills",
@@ -1401,12 +1404,12 @@ export function generateActionCenterInsight(options: {
           : `Upcoming recurring bills are deducted from liquid assets to determine your unencumbered spending balance.`,
         bulletPoints: isId
           ? [
-              `Total komitmen mendatang: ${formatRupiah(options.safeToSpend)}`,
-              `Sisa bantalan pengaman: ${formatRupiah(safeToSpend)}`,
+              `Total komitmen mendatang: ${fmt(options.safeToSpend)}`,
+              `Sisa bantalan pengaman: ${fmt(safeToSpend)}`,
             ]
           : [
-              `Total upcoming commitments: ${formatRupiah(options.safeToSpend)}`,
-              `Remaining safety buffer: ${formatRupiah(safeToSpend)}`,
+              `Total upcoming commitments: ${fmt(options.safeToSpend)}`,
+              `Remaining safety buffer: ${fmt(safeToSpend)}`,
             ],
       },
     };
@@ -1417,8 +1420,8 @@ export function generateActionCenterInsight(options: {
     return {
       type: "healthy",
       title: isId
-        ? `Pengeluaran ${formatRupiah(options.totalExpense)} belum memiliki pagu anggaran`
-        : `Spending of ${formatRupiah(options.totalExpense)} has no budget limit`,
+        ? `Pengeluaran ${fmt(options.totalExpense)} belum memiliki pagu anggaran`
+        : `Spending of ${fmt(options.totalExpense)} has no budget limit`,
       subtitle: isId
         ? "Tetapkan batas anggaran bulanan untuk mengaktifkan sistem peringatan dini deviasi dan proyeksi akhir bulan."
         : "Set a monthly budget ceiling to unlock automated deviation alerts and month-end projections.",
@@ -1432,12 +1435,12 @@ export function generateActionCenterInsight(options: {
           : "Setting a monthly budget ceiling protects your savings rate and unlocks early detection of spending velocity overruns.",
         bulletPoints: isId
           ? [
-              `Pengeluaran berjalan: ${formatRupiah(options.totalExpense)}`,
+              `Pengeluaran berjalan: ${fmt(options.totalExpense)}`,
               "Pagu anggaran aktif: Belum ditentukan",
               "Perlindungan deviasi: Memerlukan batas anggaran",
             ]
           : [
-              `Current spending: ${formatRupiah(options.totalExpense)}`,
+              `Current spending: ${fmt(options.totalExpense)}`,
               "Active budget ceiling: Unset",
               "Deviation protection: Requires active budget",
             ],
@@ -1485,8 +1488,10 @@ export function generateMonthlyFinancialReview(
   budget: number,
   monthDate: Date,
   language?: "en" | "id",
+  formatFn?: (amount: number) => string,
 ): MonthlyFinancialReviewData {
   const isId = language === "id";
+  const fmt = formatFn || formatStoredCurrency;
   const monthName = format(monthDate, "MMMM");
   const year = monthDate.getFullYear();
   const monthNumber = monthDate.getMonth() + 1;
@@ -1510,7 +1515,7 @@ export function generateMonthlyFinancialReview(
     if (s.deltaAmount === 0 && s.pctChange === 0) return;
     whatChanged.push({
       label: s.name,
-      changeText: `${s.isIncrease ? "↑" : "↓"} ${s.pctChange}% (${formatRupiah(Math.abs(s.deltaAmount))})`,
+      changeText: `${s.isIncrease ? "↑" : "↓"} ${s.pctChange}% (${fmt(Math.abs(s.deltaAmount))})`,
       isUp: s.isIncrease,
     });
   });
@@ -1551,8 +1556,8 @@ export function generateMonthlyFinancialReview(
     const savedMoM = prevAgg.totalExpense - currentAgg.totalExpense;
     whatWentWell.push(
       isId
-        ? `Total pengeluaran berkurang ${formatRupiah(savedMoM)} dibandingkan bulan lalu.`
-        : `Total outflow decreased by Rp ${(savedMoM / 1000).toFixed(0)}K compared to previous month.`,
+        ? `Total pengeluaran berkurang ${fmt(savedMoM)} dibandingkan bulan lalu.`
+        : `Total outflow decreased by ${fmt(savedMoM)} compared to previous month.`,
     );
   }
   if (whatWentWell.length === 0 && currentAgg.netCashflow >= 0) {
@@ -1569,8 +1574,8 @@ export function generateMonthlyFinancialReview(
     const over = currentAgg.totalExpense - budget;
     whatNeedsAttention.push(
       isId
-        ? `Pengeluaran melampaui anggaran bulanan sebesar ${formatRupiah(over)}.`
-        : `Outflow exceeded monthly budget by Rp ${(over / 1000).toFixed(0)}K.`,
+        ? `Pengeluaran melampaui anggaran bulanan sebesar ${fmt(over)}.`
+        : `Outflow exceeded monthly budget by ${fmt(over)}.`,
     );
   }
   const bigSpike = shifts.find(
@@ -1579,15 +1584,15 @@ export function generateMonthlyFinancialReview(
   if (bigSpike) {
     whatNeedsAttention.push(
       isId
-        ? `Pengeluaran ${bigSpike.name} melonjak ${bigSpike.pctChange}% (+${formatRupiah(bigSpike.deltaAmount)} vs bulan lalu).`
-        : `${bigSpike.name} spending grew ${bigSpike.pctChange}% (+Rp ${(bigSpike.deltaAmount / 1000).toFixed(0)}K vs previous month).`,
+        ? `Pengeluaran ${bigSpike.name} melonjak ${bigSpike.pctChange}% (+${fmt(bigSpike.deltaAmount)} vs bulan lalu).`
+        : `${bigSpike.name} spending grew ${bigSpike.pctChange}% (+${fmt(bigSpike.deltaAmount)} vs previous month).`,
     );
   }
   if (currentAgg.netCashflow < 0) {
     whatNeedsAttention.push(
       isId
-        ? `Defisit kas bersih sebesar ${formatRupiah(Math.abs(currentAgg.netCashflow))} (pengeluaran melebihi pemasukan).`
-        : `Net deficit of Rp ${(Math.abs(currentAgg.netCashflow) / 1000).toFixed(0)}K (outflow exceeded inflow).`,
+        ? `Defisit kas bersih sebesar ${fmt(Math.abs(currentAgg.netCashflow))} (pengeluaran melebihi pemasukan).`
+        : `Net deficit of ${fmt(Math.abs(currentAgg.netCashflow))} (outflow exceeded inflow).`,
     );
   }
 
@@ -3122,8 +3127,10 @@ export function calculateExpenseVolatility(
   transactions: Transaction[],
   now: Date = new Date(),
   language: "en" | "id" = "en",
+  formatFn?: (amount: number) => string,
 ): ExpenseVolatilityResult {
   const isId = language === "id";
+  const fmt = formatFn || formatStoredCurrency;
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
   const currentDay = now.getDate();
@@ -3219,14 +3226,14 @@ export function calculateExpenseVolatility(
   if (cv < 0.85) {
     stability = "STABLE";
     reason = isId
-      ? `Laju harian konsisten sekitar ${formatRupiah(Math.round(meanDailyExpense))}/hari dengan ayunan tak terduga yang minimal.`
-      : `Consistent daily run-rate around ${formatRupiah(Math.round(meanDailyExpense))}/day with minimal unexpected swings.`;
+      ? `Laju harian konsisten sekitar ${fmt(Math.round(meanDailyExpense))}/hari dengan ayunan tak terduga yang minimal.`
+      : `Consistent daily run-rate around ${fmt(Math.round(meanDailyExpense))}/day with minimal unexpected swings.`;
   } else if (cv <= 1.6) {
     stability = "MODERATE";
     if (peakDailyExpense > meanDailyExpense * 2.2) {
       reason = isId
-        ? `Pengeluaran harian menunjukkan variasi moderat, dengan puncak ${formatRupiah(peakDailyExpense)} pada ${peakDateFormatted}.`
-        : `Daily spending shows moderate variation, with a peak of ${formatRupiah(peakDailyExpense)} on ${peakDateFormatted}.`;
+        ? `Pengeluaran harian menunjukkan variasi moderat, dengan puncak ${fmt(peakDailyExpense)} pada ${peakDateFormatted}.`
+        : `Daily spending shows moderate variation, with a peak of ${fmt(peakDailyExpense)} on ${peakDateFormatted}.`;
     } else {
       reason = isId
         ? "Pengeluaran harian menunjukkan fluktuasi moderat antara hari sibuk dan hari tenang."
@@ -3236,8 +3243,8 @@ export function calculateExpenseVolatility(
     stability = "VOLATILE";
     if (peakDailyExpense > meanDailyExpense * 3) {
       reason = isId
-        ? `Pengeluaran harian Anda berfluktuasi lebih dari biasanya bulan ini, dipicu puncak ${formatRupiah(peakDailyExpense)} pada ${peakDateFormatted}.`
-        : `Your daily spending fluctuated more than usual this month, driven by a ${formatRupiah(peakDailyExpense)} peak on ${peakDateFormatted}.`;
+        ? `Pengeluaran harian Anda berfluktuasi lebih dari biasanya bulan ini, dipicu puncak ${fmt(peakDailyExpense)} pada ${peakDateFormatted}.`
+        : `Your daily spending fluctuated more than usual this month, driven by a ${fmt(peakDailyExpense)} peak on ${peakDateFormatted}.`;
     } else {
       reason = isId
         ? "Pengeluaran harian Anda berfluktuasi signifikan bulan ini dengan pengeluaran besar yang tidak teratur."

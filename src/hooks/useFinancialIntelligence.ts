@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { getDaysInMonth, isSameMonth, subMonths, format, subDays } from "date-fns";
 import type { Transaction, Bill, Category, Goal } from "../lib/types";
 import { useLanguage } from "../contexts/LanguageContext";
-import { formatRupiah } from "../lib/utils";
+import { useCurrency } from "../contexts/CurrencyContext";
 import {
   computeMonthAggregates,
   computeSpendingPace,
@@ -90,6 +90,7 @@ export function useFinancialIntelligence({
   activeMonthDate,
 }: FinancialIntelligenceOptions) {
   const { language } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
   const activeMonthTimestamp = activeMonthDate ? activeMonthDate.getTime() : null;
 
@@ -209,8 +210,8 @@ export function useFinancialIntelligence({
       momentumReason =
         netCashflow < 0
           ? (isIndonesian
-              ? `Pengeluaran melebihi pemasukan ${isCurrentReferenceMonth ? "bulan ini" : "di bulan terpilih"} sebesar ${formatRupiah(Math.abs(netCashflow))}`
-              : `Outflow exceeds inflow ${isCurrentReferenceMonth ? "this month" : "in the selected month"} by ${formatRupiah(Math.abs(netCashflow))}`)
+              ? `Pengeluaran melebihi pemasukan ${isCurrentReferenceMonth ? "bulan ini" : "di bulan terpilih"} sebesar ${formatWithPreferred(Math.abs(netCashflow))}`
+              : `Outflow exceeds inflow ${isCurrentReferenceMonth ? "this month" : "in the selected month"} by ${formatWithPreferred(Math.abs(netCashflow))}`)
           : (isIndonesian
               ? `Laju belanja meningkat terhadap batas anggaran`
               : `Spending pace is elevated against budget limit`);
@@ -244,6 +245,7 @@ export function useFinancialIntelligence({
       safeToSpend,
       unpaidBillsCount: unpaidUpcomingBills.length,
       language,
+      formatFn: formatWithPreferred,
     });
 
     // 10. Monthly Financial Review (for Statistics Page)
@@ -266,12 +268,13 @@ export function useFinancialIntelligence({
       budget,
       referenceDate,
       language,
+      formatWithPreferred,
     );
 
     // Enrich Monthly Review with Baseline Comparison if available
     if (personalBaselines.status !== "insufficient") {
-      const minStr = formatRupiah(personalBaselines.typicalExpenseRange[0]);
-      const maxStr = formatRupiah(personalBaselines.typicalExpenseRange[1]);
+      const minStr = formatWithPreferred(personalBaselines.typicalExpenseRange[0]);
+      const maxStr = formatWithPreferred(personalBaselines.typicalExpenseRange[1]);
       monthlyReview.baselineComparison = {
         typicalRangeText: `${minStr} – ${maxStr}`,
         statusText:
@@ -374,6 +377,7 @@ export function useFinancialIntelligence({
       transactions,
       referenceDate,
       language,
+      formatWithPreferred,
     );
 
     // 19. Daily Logging Streak (Gamification & Retention)
@@ -463,5 +467,6 @@ export function useFinancialIntelligence({
     activeMonthTimestamp,
     language,
     isIndonesian,
+    formatWithPreferred,
   ]);
 }

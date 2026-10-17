@@ -1,13 +1,17 @@
 import { BottomSheet } from "./BottomSheet";
 import { Bell, CheckCircle2, Calendar, Sparkles, TrendingUp, ShieldAlert } from "lucide-react";
 import { useUpcomingBills, getBillDueStatusLabel } from "../../hooks/useBills";
-import { formatRupiah } from "../../lib/utils";
 import { format } from "date-fns";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 import {
   WEEKLY_DIGEST_ENABLED_KEY,
   MONTH_END_REVIEW_ENABLED_KEY,
   BUDGET_ALERTS_ENABLED_KEY,
+  getWeeklyDigestDay,
+  getWeeklyDigestTime,
+  getMonthEndReviewTime,
 } from "../../lib/notifications";
 
 interface NotificationSheetProps {
@@ -17,6 +21,8 @@ interface NotificationSheetProps {
 
 export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
+  const { maskAmount } = usePrivacy();
   const upcomingBills = useUpcomingBills();
   const lastSyncedAt = localStorage.getItem("trouvaille_last_synced");
   const syncLabel = lastSyncedAt
@@ -26,6 +32,19 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
   const weeklyDigestEnabled = localStorage.getItem(WEEKLY_DIGEST_ENABLED_KEY) !== "false";
   const monthEndEnabled = localStorage.getItem(MONTH_END_REVIEW_ENABLED_KEY) !== "false";
   const budgetAlertsEnabled = localStorage.getItem(BUDGET_ALERTS_ENABLED_KEY) !== "false";
+
+  const weeklyDay = getWeeklyDigestDay();
+  const weeklyTime = getWeeklyDigestTime();
+  const monthEndTime = getMonthEndReviewTime();
+
+  const weeklyDayLabel = isIndonesian
+    ? weeklyDay === "friday" ? "Jumat" : weeklyDay === "monday" ? "Senin" : "Minggu"
+    : weeklyDay === "friday" ? "Fri" : weeklyDay === "monday" ? "Mon" : "Sun";
+
+  const weeklyBadgeText = `${weeklyDayLabel} ${weeklyTime}`;
+  const monthEndBadgeText = isIndonesian
+    ? `Akhir Bulan ${monthEndTime}`
+    : `Month-End ${monthEndTime}`;
 
   const activeCount = upcomingBills.length + (weeklyDigestEnabled ? 1 : 0) + (monthEndEnabled ? 1 : 0);
 
@@ -113,7 +132,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                       className="text-[11px]"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      {dueStatusLabel} · {formatRupiah(Number(bill.amount))}
+                      {dueStatusLabel} · {maskAmount(formatWithPreferred(Number(bill.amount)))}
                     </p>
                   </div>
                 </div>
@@ -164,7 +183,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                   }}
                 >
                   {weeklyDigestEnabled
-                    ? (isIndonesian ? "Minggu 19:30" : "Sun 19:30")
+                    ? weeklyBadgeText
                     : (isIndonesian ? "Nonaktif" : "Disabled")}
                 </span>
               </div>
@@ -212,7 +231,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                   }}
                 >
                   {monthEndEnabled
-                    ? (isIndonesian ? "Akhir Bulan 20:30" : "Month-End 20:30")
+                    ? monthEndBadgeText
                     : (isIndonesian ? "Nonaktif" : "Disabled")}
                 </span>
               </div>

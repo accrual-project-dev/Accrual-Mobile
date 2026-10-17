@@ -1,21 +1,9 @@
 import { LocalNotifications } from '@capacitor/local-notifications'
 import type { Bill, Category, Transaction, DebtReceivableRecord } from './types'
 import { parseISO, subDays, endOfMonth, addMonths, startOfMonth, format } from 'date-fns'
-import { formatRupiah } from './utils'
-import { formatCurrencyAmount, convertCurrency, type SupportedCurrency } from './currency'
+import { formatStoredCurrency } from './currency'
 
-function formatNotificationCurrency(idrAmount: number): string {
-  try {
-    if (typeof localStorage !== "undefined") {
-      const pref = localStorage.getItem("trouvaille_preferred_currency") as SupportedCurrency;
-      if (pref && pref !== "IDR") {
-        const converted = convertCurrency(idrAmount, "IDR", pref);
-        return formatCurrencyAmount(converted, pref);
-      }
-    }
-  } catch {}
-  return formatRupiah(idrAmount);
-}
+export const formatNotificationCurrency = formatStoredCurrency;
 
 export async function requestNotificationPermission(): Promise<boolean> {
   try {
@@ -88,7 +76,7 @@ export async function syncBillNotifications(
       if (isNaN(dueDate.getTime())) continue;
 
       const amtFormatted = bill.amount
-        ? "Rp " + Number(bill.amount).toLocaleString("id-ID")
+        ? formatStoredCurrency(Number(bill.amount))
         : "";
 
       // 1. Advance notification (if leadDays > 0)
@@ -187,6 +175,7 @@ export async function cancelDailyStreakReminder(): Promise<void> {
 
 export async function syncDailyStreakReminder(
   hasLoggedToday: boolean = false,
+  isIndonesian?: boolean,
 ): Promise<void> {
   try {
     // Check if user disabled daily streak reminders in settings (default true)
@@ -194,6 +183,12 @@ export async function syncDailyStreakReminder(
       await cancelDailyStreakReminder();
       return;
     }
+
+    const isId =
+      isIndonesian !== undefined
+        ? isIndonesian
+        : typeof localStorage !== "undefined" &&
+          localStorage.getItem("trouvaille_language") === "id";
 
     const granted = await requestNotificationPermission();
     if (!granted) return;
@@ -215,12 +210,19 @@ export async function syncDailyStreakReminder(
       scheduledTime.setDate(scheduledTime.getDate() + 1);
     }
 
+    const title = isId
+      ? "Pertahankan Rekor Finansial Anda"
+      : "Maintain Your Financial Streak";
+    const body = isId
+      ? "Belum ada transaksi tercatat hari ini. Catat pengeluaran Anda sekarang untuk menjaga rekor konsistensi!"
+      : "No transactions recorded today. Log your expenses now to keep your consistency streak active!";
+
     await LocalNotifications.schedule({
       notifications: [
         {
           id: DAILY_REMINDER_NOTIFICATION_ID,
-          title: "Maintain Your Financial Streak",
-          body: "No transactions recorded today. Log your expenses now to keep your consistency streak active!",
+          title,
+          body,
           schedule: {
             at: scheduledTime,
             every: "day",
@@ -372,7 +374,7 @@ export async function syncWeeklyDigestNotification(
       )
       .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
-    const spendText = weekExpense > 0 ? formatRupiah(weekExpense) : "Rp 0";
+    const spendText = weekExpense > 0 ? formatStoredCurrency(weekExpense) : formatStoredCurrency(0);
     const notifTitle = isIndonesian
       ? "Rekap Finansial Mingguan"
       : "Weekly Financial Digest";
@@ -536,8 +538,8 @@ export async function checkBudgetThresholdAlerts(
 
         const title = isIndonesian ? `Batas Anggaran Tercapai: ${cat.name}` : `Budget Exceeded: ${cat.name}`;
         const body = isIndonesian
-          ? `Pengeluaran telah mencapai 100% (${formatRupiah(spent)} dari anggaran ${formatRupiah(cat.budget_amount)}).`
-          : `Spending reached 100% (${formatRupiah(spent)} of ${formatRupiah(cat.budget_amount)} budget).`;
+          ? `Pengeluaran telah mencapai 100% (${formatStoredCurrency(spent)} dari anggaran ${formatStoredCurrency(cat.budget_amount)}).`
+          : `Spending reached 100% (${formatStoredCurrency(spent)} of ${formatStoredCurrency(cat.budget_amount)} budget).`;
 
         await showNativeLocalNotification({ title, body });
       } else if (pct >= 80 && !catRecord.reached80 && !catRecord.reached100) {
@@ -547,8 +549,8 @@ export async function checkBudgetThresholdAlerts(
 
         const title = isIndonesian ? `Peringatan Anggaran (80%): ${cat.name}` : `Budget Alert (80%): ${cat.name}`;
         const body = isIndonesian
-          ? `Pengeluaran mencapai ${Math.round(pct)}% (${formatRupiah(spent)} dari anggaran ${formatRupiah(cat.budget_amount)}). Sisa: ${formatRupiah(cat.budget_amount - spent)}.`
-          : `Spending reached ${Math.round(pct)}% (${formatRupiah(spent)} of ${formatRupiah(cat.budget_amount)}). Remaining: ${formatRupiah(cat.budget_amount - spent)}.`;
+          ? `Pengeluaran mencapai ${Math.round(pct)}% (${formatStoredCurrency(spent)} dari anggaran ${formatStoredCurrency(cat.budget_amount)}). Sisa: ${formatStoredCurrency(cat.budget_amount - spent)}.`
+          : `Spending reached ${Math.round(pct)}% (${formatStoredCurrency(spent)} of ${formatStoredCurrency(cat.budget_amount)}). Remaining: ${formatStoredCurrency(cat.budget_amount - spent)}.`;
 
         await showNativeLocalNotification({ title, body });
       }
