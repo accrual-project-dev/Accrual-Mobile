@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, X, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,8 +56,13 @@ import {
   HomeModalsContainer,
   type StockRange,
 } from "../components/home";
-import { DebtReceivablesSheet } from "../components/debt/DebtReceivablesSheet";
 import { useDebtReceivables } from "../hooks/useDebtReceivables";
+
+const DebtReceivablesSheet = lazy(() =>
+  import("../components/debt/DebtReceivablesSheet").then((m) => ({
+    default: m.DebtReceivablesSheet,
+  })),
+);
 
 interface HomePageProps {
   onOpenAdd?: () => void;
@@ -1045,10 +1050,14 @@ export function HomePage({
         onCloseTour={() => setIsTourOpen(false)}
       />
 
-      <DebtReceivablesSheet
-        isOpen={debtSheetOpen}
-        onClose={() => setDebtSheetOpen(false)}
-      />
+      {debtSheetOpen && (
+        <Suspense fallback={null}>
+          <DebtReceivablesSheet
+            isOpen={debtSheetOpen}
+            onClose={() => setDebtSheetOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -92,7 +92,7 @@ export interface HomeWidgetRendererProps {
   navigate: (to: string) => void;
 }
 
-export function HomeWidgetRenderer({
+function HomeWidgetRendererComponent({
   cardId,
   size,
   isEditMode = false,
@@ -1642,3 +1642,49 @@ export function HomeWidgetRenderer({
       ) : null;
   }
 }
+
+const MemoizedHomeWidgetRenderer = React.memo(
+  HomeWidgetRendererComponent,
+  (prev, next) => {
+    // Only re-render if critical props or underlying widget state actually changed
+    if (prev.cardId !== next.cardId) return false;
+    if (prev.size !== next.size) return false;
+    if (prev.isEditMode !== next.isEditMode) return false;
+    if (prev.hideBalance !== next.hideBalance) return false;
+    if (prev.isDark !== next.isDark) return false;
+    if (prev.isIndonesian !== next.isIndonesian) return false;
+    if (prev.isColdLoading !== next.isColdLoading) return false;
+    if (prev.budgetTarget !== next.budgetTarget) return false;
+    if (prev.dailyAverage !== next.dailyAverage) return false;
+    if (prev.daysInMonth !== next.daysInMonth) return false;
+    if (prev.totalExpense !== next.totalExpense) return false;
+    if (prev.liquidAssets !== next.liquidAssets) return false;
+    if (prev.healthScore !== next.healthScore) return false;
+    if (prev.runwayMonths !== next.runwayMonths) return false;
+    if (prev.calendarExpanded !== next.calendarExpanded) return false;
+    if (prev.stockRange !== next.stockRange) return false;
+    if (prev.calPad !== next.calPad) return false;
+    if (prev.activeSpendDaysCount !== next.activeSpendDaysCount) return false;
+    if (prev.allTxs !== next.allTxs) return false;
+    if (prev.monthTxs !== next.monthTxs) return false;
+    if (prev.categories !== next.categories) return false;
+    if (prev.goals !== next.goals) return false;
+    if (prev.upcomingBills !== next.upcomingBills) return false;
+    if (prev.intel !== next.intel) return false;
+    if (prev.assetData !== next.assetData) return false;
+    if (prev.debtSummary !== next.debtSummary) return false;
+    if (prev.currentMonthStats !== next.currentMonthStats) return false;
+    if (prev.categoryDonutData !== next.categoryDonutData) return false;
+    if (prev.last7DaysOutlays !== next.last7DaysOutlays) return false;
+    if (prev.heatmapDaysData !== next.heatmapDaysData) return false;
+
+    return true;
+  },
+);
+
+export const HomeWidgetRenderer = Object.assign(
+  function HomeWidgetRenderer(props: HomeWidgetRendererProps) {
+    return HomeWidgetRendererComponent(props);
+  },
+  MemoizedHomeWidgetRenderer,
+) as unknown as typeof MemoizedHomeWidgetRenderer;

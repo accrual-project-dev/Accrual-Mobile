@@ -12,7 +12,6 @@ import {
   clearBiometricLoginCredentials,
 } from "./biometricAuth";
 import { clearMerchantMemory } from "./merchantCategoryMemory";
-import { terminateOCRWorker } from "./ocrEngine";
 
 export interface SessionCleanupOptions {
   /** If true, preserves 'trouvaille_guest_mode' flag so user stays in guest state */
@@ -178,9 +177,12 @@ export async function clearAllLocalUserSessionData(
     console.warn("[SessionCleanup] Biometric teardown warning:", bioErr);
   }
 
-  // 8. Terminate background WebAssembly OCR workers to release memory
+  // 8. Terminate background WebAssembly OCR workers to release memory (dynamically imported to avoid bundle leakage)
   try {
-    await terminateOCRWorker();
+    const ocrModule = await import("./ocrEngine");
+    if (typeof ocrModule.terminateOCRWorker === "function") {
+      await ocrModule.terminateOCRWorker();
+    }
   } catch (ocrErr) {
     console.warn("[SessionCleanup] terminateOCRWorker warning:", ocrErr);
   }

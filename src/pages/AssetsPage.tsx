@@ -11,7 +11,7 @@
 // Strictly Non-Mixed Localization (100% Pure English / Indonesian)
 // ======================================================================
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -61,7 +61,6 @@ import {
   WealthHistoryTrajectoryCard,
   WealthTacticalInsightsDeck,
   AssetsModalsContainer,
-  CashAccountDetailSheet,
   type BalanceSheetRange,
   type MetricDrillDownData,
 } from "../components/assets";
@@ -71,11 +70,21 @@ import {
 } from "../lib/financialMath";
 import { startOfMonth } from "date-fns";
 import type { Wallet, InvestmentHolding } from "../lib/types";
-import { WalletManagementSheets } from "../components/settings/WalletManagementSheets";
 import {
   type PresetAsset,
   type PresetCategory,
 } from "../lib/assetPresets";
+
+const CashAccountDetailSheet = lazy(() =>
+  import("../components/assets/CashAccountDetailSheet").then((m) => ({
+    default: m.CashAccountDetailSheet,
+  })),
+);
+const WalletManagementSheets = lazy(() =>
+  import("../components/settings/WalletManagementSheets").then((m) => ({
+    default: m.WalletManagementSheets,
+  })),
+);
 
 export type { PresetCategory, PresetAsset, BalanceSheetRange };
 
@@ -1338,25 +1347,33 @@ export function AssetsPage() {
       />
 
       {/* ── 9. Dedicated Cash Account Detail Sheet ── */}
-      <CashAccountDetailSheet
-        isOpen={!!selectedCashWallet}
-        onClose={() => setSelectedCashWallet(null)}
-        wallet={selectedCashWallet}
-        onEditWallet={(w) => {
-          setEditingWallet(w);
-          setIsWalletManagementOpen(true);
-        }}
-      />
+      {selectedCashWallet && (
+        <Suspense fallback={null}>
+          <CashAccountDetailSheet
+            isOpen={!!selectedCashWallet}
+            onClose={() => setSelectedCashWallet(null)}
+            wallet={selectedCashWallet}
+            onEditWallet={(w) => {
+              setEditingWallet(w);
+              setIsWalletManagementOpen(true);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* ── 10. Direct Wallet Management Sheet for Account Card Detail ── */}
-      <WalletManagementSheets
-        isOpen={isWalletManagementOpen}
-        onClose={() => {
-          setIsWalletManagementOpen(false);
-          setEditingWallet(null);
-        }}
-        initialWalletToEdit={editingWallet}
-      />
+      {isWalletManagementOpen && (
+        <Suspense fallback={null}>
+          <WalletManagementSheets
+            isOpen={isWalletManagementOpen}
+            onClose={() => {
+              setIsWalletManagementOpen(false);
+              setEditingWallet(null);
+            }}
+            initialWalletToEdit={editingWallet}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

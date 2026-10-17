@@ -23,7 +23,6 @@ import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
 import { SyncStatusPill } from "./components/ui/SyncStatusPill";
 import { ClipboardTransactionBanner } from "./components/common/ClipboardTransactionBanner";
-import { BatchTransactionReviewSheet } from "./components/transactions/BatchTransactionReviewSheet";
 import { saveDraftBatch } from "./lib/draftTransactionService";
 import type { ParsedStatementItem } from "./lib/statementParser";
 import { App as CapApp } from "@capacitor/app";
@@ -56,7 +55,6 @@ import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
 import { useSpace } from "./contexts/SpaceContext";
 import { useSubscription } from "./contexts/SubscriptionContext";
-import { AccrualPaywallModal } from "./components/paywall/AccrualPaywallModal";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
@@ -133,6 +131,16 @@ const ResetPasswordModal = lazy(() =>
 const ProductTourOverlay = lazy(() =>
   import("./components/onboarding/ProductTourOverlay").then((module) => ({
     default: module.ProductTourOverlay,
+  })),
+);
+const BatchTransactionReviewSheet = lazy(() =>
+  import("./components/transactions/BatchTransactionReviewSheet").then((module) => ({
+    default: module.BatchTransactionReviewSheet,
+  })),
+);
+const AccrualPaywallModal = lazy(() =>
+  import("./components/paywall/AccrualPaywallModal").then((module) => ({
+    default: module.AccrualPaywallModal,
   })),
 );
 
@@ -1269,16 +1277,18 @@ function AppShell() {
       )}
 
       {batchReviewOpen && (
-        <BatchTransactionReviewSheet
-          isOpen={batchReviewOpen}
-          onClose={() => setBatchReviewOpen(false)}
-          items={batchReviewItems}
-          categories={categories}
-          wallets={wallets}
-          sourceTitle={batchSourceTitle}
-          onConfirmBatch={handleConfirmBatchReview}
-          onSaveDraft={handleSaveDraftReview}
-        />
+        <Suspense fallback={null}>
+          <BatchTransactionReviewSheet
+            isOpen={batchReviewOpen}
+            onClose={() => setBatchReviewOpen(false)}
+            items={batchReviewItems}
+            categories={categories}
+            wallets={wallets}
+            sourceTitle={batchSourceTitle}
+            onConfirmBatch={handleConfirmBatchReview}
+            onSaveDraft={handleSaveDraftReview}
+          />
+        </Suspense>
       )}
 
       {addSheetOpen && (
@@ -1349,10 +1359,14 @@ function AppShell() {
       </Suspense>
 
       {/* Accrual Pro Membership Paywall Modal */}
-      <AccrualPaywallModal
-        isOpen={isPaywallOpen}
-        onClose={closePaywall}
-      />
+      {isPaywallOpen && (
+        <Suspense fallback={null}>
+          <AccrualPaywallModal
+            isOpen={isPaywallOpen}
+            onClose={closePaywall}
+          />
+        </Suspense>
+      )}
 
 
       {/* iOS App Switcher / Multitasking Privacy Screen Shield */}

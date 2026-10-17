@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { X } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -6,19 +7,52 @@ import { IconRenderer } from "../ui/IconRenderer";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { NotificationSheet } from "../ui/NotificationSheet";
 import { MetricDrillDownSheet } from "./MetricDrillDownSheet";
-import { BillManagementSheets } from "../settings/BillManagementSheets";
-import { PayBillModal } from "../bills/PayBillModal";
-import { ManageLedgersSheet } from "../settings/ManageLedgersSheet";
-import { CategoryManagementSheets } from "../settings/CategoryManagementSheets";
-import { NfcCardReaderModal } from "../nfc/NfcCardReaderModal";
 import { WidgetCustomizationBar } from "../common";
-import { ProfileSheet } from "../settings/ProfileSheet";
-import { WebDashboardLinkModal } from "../settings/WebDashboardLinkModal";
-import { GoalDetailModal } from "../goals/GoalDetailModal";
 import type { Goal } from "../../hooks/useGoals";
 import { HOME_PRESETS, getLocalizedWidgetMeta } from "../../lib/widgetLayoutTypes";
 import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+
+const BillManagementSheets = lazy(() =>
+  import("../settings/BillManagementSheets").then((m) => ({
+    default: m.BillManagementSheets,
+  })),
+);
+const PayBillModal = lazy(() =>
+  import("../bills/PayBillModal").then((m) => ({
+    default: m.PayBillModal,
+  })),
+);
+const ManageLedgersSheet = lazy(() =>
+  import("../settings/ManageLedgersSheet").then((m) => ({
+    default: m.ManageLedgersSheet,
+  })),
+);
+const CategoryManagementSheets = lazy(() =>
+  import("../settings/CategoryManagementSheets").then((m) => ({
+    default: m.CategoryManagementSheets,
+  })),
+);
+const NfcCardReaderModal = lazy(() =>
+  import("../nfc/NfcCardReaderModal").then((m) => ({
+    default: m.NfcCardReaderModal,
+  })),
+);
+const ProfileSheet = lazy(() =>
+  import("../settings/ProfileSheet").then((m) => ({
+    default: m.ProfileSheet,
+  })),
+);
+const WebDashboardLinkModal = lazy(() =>
+  import("../settings/WebDashboardLinkModal").then((m) => ({
+    default: m.WebDashboardLinkModal,
+  })),
+);
+const GoalDetailModal = lazy(() =>
+  import("../goals/GoalDetailModal").then((m) => ({
+    default: m.GoalDetailModal,
+  })),
+);
 
 export interface HomeModalsContainerProps {
   selectedDate: Date | null;
@@ -243,14 +277,16 @@ export function HomeModalsContainer({
       )}
 
       {selectedGoal && (
-        <GoalDetailModal
-          goal={selectedGoal}
-          isOpen={!!selectedGoal}
-          onClose={onCloseGoal}
-          onDeposit={depositToGoal}
-          onUpdate={updateGoal}
-          onDelete={deleteGoal}
-        />
+        <Suspense fallback={null}>
+          <GoalDetailModal
+            goal={selectedGoal}
+            isOpen={!!selectedGoal}
+            onClose={onCloseGoal}
+            onDeposit={depositToGoal}
+            onUpdate={updateGoal}
+            onDelete={deleteGoal}
+          />
+        </Suspense>
       )}
 
       {metricDrillDown && (
@@ -263,67 +299,77 @@ export function HomeModalsContainer({
       )}
 
       {billManagementOpen && (
-        <BillManagementSheets
-          isOpen={billManagementOpen}
-          onClose={onCloseBillManagement}
-        />
+        <Suspense fallback={null}>
+          <BillManagementSheets
+            isOpen={billManagementOpen}
+            onClose={onCloseBillManagement}
+          />
+        </Suspense>
       )}
 
       {payingBill && (
-        <PayBillModal
-          isOpen={!!payingBill}
-          bill={payingBill}
-          onClose={onClosePayingBill}
-          isPending={markBillPaid.isPending}
-          onConfirmPaid={({ bill, recordTransaction, walletId }) => {
-            markBillPaid.mutate(
-              { bill, paid: true, recordTransaction, walletId },
-              {
-                onSuccess: () => {
-                  onClosePayingBill();
-                  showToast(
-                    isIndonesian
-                      ? `${bill.title} berhasil ditandai lunas`
-                      : `${bill.title} marked as paid`,
-                    "add",
-                    () => {},
-                  );
+        <Suspense fallback={null}>
+          <PayBillModal
+            isOpen={!!payingBill}
+            bill={payingBill}
+            onClose={onClosePayingBill}
+            isPending={markBillPaid.isPending}
+            onConfirmPaid={({ bill, recordTransaction, walletId }) => {
+              markBillPaid.mutate(
+                { bill, paid: true, recordTransaction, walletId },
+                {
+                  onSuccess: () => {
+                    onClosePayingBill();
+                    showToast(
+                      isIndonesian
+                        ? `${bill.title} berhasil ditandai lunas`
+                        : `${bill.title} marked as paid`,
+                      "add",
+                      () => {},
+                    );
+                  },
+                  onError: (error: any) => {
+                    showToast(
+                      error?.message ||
+                        (isIndonesian
+                          ? `Gagal menandai ${bill.title}`
+                          : `Failed to mark ${bill.title} as paid`),
+                      "delete",
+                      () => {},
+                    );
+                  },
                 },
-                onError: (error: any) => {
-                  showToast(
-                    error?.message ||
-                      (isIndonesian
-                        ? `Gagal menandai ${bill.title}`
-                        : `Failed to mark ${bill.title} as paid`),
-                    "delete",
-                    () => {},
-                  );
-                },
-              },
-            );
-          }}
-        />
+              );
+            }}
+          />
+        </Suspense>
       )}
 
       {spaceSwitcherOpen && (
-        <ManageLedgersSheet
-          isOpen={spaceSwitcherOpen}
-          onClose={onCloseSpaceSwitcher}
-        />
+        <Suspense fallback={null}>
+          <ManageLedgersSheet
+            isOpen={spaceSwitcherOpen}
+            onClose={onCloseSpaceSwitcher}
+          />
+        </Suspense>
       )}
 
       {categoryManagementOpen && (
-        <CategoryManagementSheets
-          isOpen={categoryManagementOpen}
-          onClose={onCloseCategoryManagement}
-        />
+        <Suspense fallback={null}>
+          <CategoryManagementSheets
+            isOpen={categoryManagementOpen}
+            onClose={onCloseCategoryManagement}
+          />
+        </Suspense>
       )}
 
       {nfcModalOpen && (
-        <NfcCardReaderModal
-          isOpen={nfcModalOpen}
-          onClose={onCloseNfcModal}
-        />
+        <Suspense fallback={null}>
+          <NfcCardReaderModal
+            isOpen={nfcModalOpen}
+            onClose={onCloseNfcModal}
+          />
+        </Suspense>
       )}
 
       {/* CUSTOMIZE HOME WIDGETS MODAL */}
@@ -547,22 +593,26 @@ export function HomeModalsContainer({
 
       {/* Profile Sheet */}
       {profileSheetOpen && (
-        <ProfileSheet
-          isOpen={profileSheetOpen}
-          onClose={onCloseProfileSheet}
-          avatarUrl={avatarUrl}
-          setAvatarUrl={(url) => setCustomAvatarUrl(url)}
-          displayName={displayName}
-          setDisplayName={(name) => setCustomDisplayName(name)}
-          onOpenDeleteAccount={onOpenDeleteAccount}
-        />
+        <Suspense fallback={null}>
+          <ProfileSheet
+            isOpen={profileSheetOpen}
+            onClose={onCloseProfileSheet}
+            avatarUrl={avatarUrl}
+            setAvatarUrl={(url) => setCustomAvatarUrl(url)}
+            displayName={displayName}
+            setDisplayName={(name) => setCustomDisplayName(name)}
+            onOpenDeleteAccount={onOpenDeleteAccount}
+          />
+        </Suspense>
       )}
 
       {webDashboardOpen && (
-        <WebDashboardLinkModal
-          isOpen={webDashboardOpen}
-          onClose={onCloseWebDashboard}
-        />
+        <Suspense fallback={null}>
+          <WebDashboardLinkModal
+            isOpen={webDashboardOpen}
+            onClose={onCloseWebDashboard}
+          />
+        </Suspense>
       )}
     </>
   );

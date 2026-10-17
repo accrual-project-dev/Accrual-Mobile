@@ -22,6 +22,8 @@ export default defineConfig({
           "**/LuxuryReportExportSheet-*.js",
           "**/html2canvas-*.js",
           "**/jsqr-*.js",
+          "**/tesseract-*.js",
+          "**/tesseract.js*",
         ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
@@ -94,11 +96,19 @@ export default defineConfig({
           if (id.includes("node_modules/framer-motion")) return "motion";
           if (id.includes("node_modules/html2canvas")) return "html2canvas";
           if (id.includes("node_modules/jsqr")) return "jsqr";
+          if (id.includes("node_modules/tesseract.js")) return "tesseract-vendor";
           if (
             id.includes("node_modules/@supabase") ||
             id.includes("node_modules/@tanstack")
           )
             return "query-supabase";
+          if (id.includes("node_modules/date-fns")) return "date-vendor";
+          if (id.includes("node_modules/lucide-react")) return "icons-vendor";
+          if (
+            id.includes("node_modules/@capacitor") ||
+            id.includes("node_modules/@capgo")
+          )
+            return "capacitor-vendor";
           if (
             id.includes("node_modules/react/") ||
             id.includes("node_modules/react-dom/") ||
