@@ -29,7 +29,7 @@ export const TransactionBatchActionBar = memo(function TransactionBatchActionBar
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 35, scale: 0.96 }}
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          className="fixed bottom-[calc(78px+env(safe-area-inset-bottom,16px))] left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md z-[9999] p-3 rounded-[24px] flex items-center justify-between pointer-events-auto"
+          className="fixed bottom-[max(calc(env(safe-area-inset-bottom,0px)+80px),92px)] left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md z-[9999] p-3 rounded-[24px] flex items-center justify-between pointer-events-auto"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--glass-border)",
@@ -74,7 +74,7 @@ export const TransactionBatchActionBar = memo(function TransactionBatchActionBar
                 }}
               >
                 <Trash2 size={13} strokeWidth={2} />
-                <span>Delete ({selectedCount})</span>
+                <span>{isIndonesian ? `Hapus (${selectedCount})` : `Delete (${selectedCount})`}</span>
               </button>
             )}
             <button
@@ -82,8 +82,8 @@ export const TransactionBatchActionBar = memo(function TransactionBatchActionBar
               onClick={onExitSelectMode}
               className="px-3.5 py-1.5 rounded-xl text-[12px] font-bold active:scale-95 transition-all cursor-pointer"
               style={{
-                background: "var(--accent)",
-                color: "var(--accent-ink)",
+                background: "var(--text-primary)",
+                color: "var(--bg-base)",
               }}
             >
               {isIndonesian ? "Selesai" : "Done"}

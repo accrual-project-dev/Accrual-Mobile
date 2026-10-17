@@ -174,7 +174,7 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
             {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatCurrency(totalPeriodAmount, preferredCurrency)}
           </p>
           <p className="text-[11px] font-medium mt-1 text-[var(--text-tertiary)] truncate">
-            {dynamicChartData.length} data points · {selectedMonthLabel}
+            {dynamicChartData.length} {isIndonesian ? "titik data" : "data points"} · {selectedMonthLabel}
           </p>
         </div>
 
@@ -189,7 +189,11 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
               border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
               color: isStealthMode ? "var(--accent)" : "var(--text-secondary)",
             }}
-            title={isStealthMode ? "Disable Stealth Mode" : "Enable Stealth Mode"}
+            title={
+              isStealthMode
+                ? isIndonesian ? "Nonaktifkan Mode Samaran" : "Disable Stealth Mode"
+                : isIndonesian ? "Aktifkan Mode Samaran" : "Enable Stealth Mode"
+            }
           >
             {isStealthMode ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
@@ -246,7 +250,7 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
               </p>
               <p className="text-[10px] text-[var(--text-tertiary)] truncate">
                 {isIndonesian
-                  ? "Tersimpan di draft · Saldo belum terpotong"
+                  ? "Tersimpan di draf · Saldo belum terpotong"
                   : "Saved in drafts · Balance unchanged"}
               </p>
             </div>
@@ -257,7 +261,7 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
               type="button"
               onClick={() => {
                 triggerHaptic("medium");
-                onOpenBatchReview?.(allDraftItems, isIndonesian ? "Draft Transaksi" : "Draft Inbox");
+                onOpenBatchReview?.(allDraftItems, isIndonesian ? "Draf Transaksi" : "Draft Inbox");
               }}
               className="px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
               style={{
@@ -280,7 +284,7 @@ export const TransactionHorizonBarChart = memo(function TransactionHorizonBarCha
                 border: isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 color: "var(--text-tertiary)",
               }}
-              title={isIndonesian ? "Buang Semua Draft" : "Dismiss All Drafts"}
+              title={isIndonesian ? "Buang Semua Draf" : "Dismiss All Drafts"}
             >
               <X size={12} />
             </button>

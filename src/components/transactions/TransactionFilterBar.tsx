@@ -178,7 +178,7 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
                       ? isDark ? "1px solid #FFFFFF" : "1px solid #18181B"
                       : isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
-                title="Advanced Filters"
+                title={isIndonesian ? "Filter Lanjutan" : "Advanced Filters"}
               >
                 <SlidersHorizontal size={13} />
                 <span className="text-[11px] font-semibold">
@@ -218,7 +218,9 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
                     : isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)",
                 }}
                 title={
-                  isSelectMode ? "Exit Select Mode" : "Select Transactions"
+                  isSelectMode
+                    ? isIndonesian ? "Keluar Mode Pilihan" : "Exit Select Mode"
+                    : isIndonesian ? "Pilih Transaksi" : "Select Transactions"
                 }
               >
                 <CheckSquare size={13} />
@@ -409,7 +411,7 @@ export const TransactionFilterBar = memo(function TransactionFilterBar({
                 }}
               >
                 <Tag size={11} className="opacity-70" />
-                <span>{cat?.name || "Category"}</span>
+                <span>{cat?.name || (isIndonesian ? "Kategori" : "Category")}</span>
                 <button
                   type="button"
                   onClick={() => {

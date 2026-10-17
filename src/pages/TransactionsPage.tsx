@@ -317,7 +317,7 @@ export function TransactionsPage({
     setEditingTx({
       ...tx,
       id: "",
-      occurred_on: format(new Date(), "yyyy-MM-dd"),
+      occurred_on: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
       created_at: new Date().toISOString(),
     });
     setSheetOpen(true);

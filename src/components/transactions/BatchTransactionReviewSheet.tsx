@@ -767,7 +767,7 @@ export function BatchTransactionReviewSheet({
             }}
           >
             <Bookmark size={13} strokeWidth={2} />
-            <span>{isIndonesian ? "Simpan ke Draft" : "Save Draft"}</span>
+            <span>{isIndonesian ? "Simpan Draf" : "Save Draft"}</span>
           </button>
 
           {/* Confirm & Record Button */}
