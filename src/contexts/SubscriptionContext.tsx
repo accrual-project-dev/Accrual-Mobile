@@ -23,7 +23,14 @@ import { supabase } from "../lib/supabase";
 import { revenueCatService } from "../lib/revenueCatService";
 import { triggerSuccessHaptic, triggerHaptic } from "../lib/haptics";
 
-const SUBSCRIPTION_STORAGE_KEY = "accrual_subscription_state_v1";
+export const SUBSCRIPTION_STORAGE_KEY = "accrual_subscription_state_v1";
+
+export function getSubscriptionStorageKey(userId?: string | null): string {
+  if (!userId || userId === GUEST_USER_ID) {
+    return `${SUBSCRIPTION_STORAGE_KEY}_guest`;
+  }
+  return `${SUBSCRIPTION_STORAGE_KEY}_${userId}`;
+}
 
 export interface SubscriptionContextValue {
   subscription: UserSubscription;
@@ -77,15 +84,20 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return DEFAULT_SUBSCRIPTION;
   });
 
-  // Persist to local storage whenever subscription changes
-  const saveToLocal = useCallback((sub: UserSubscription) => {
-    setSubscription(sub);
-    try {
-      localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(sub));
-    } catch {
-      // Ignore quota storage issues
-    }
-  }, []);
+  // Persist to local storage whenever subscription changes (scoped by user ID)
+  const saveToLocal = useCallback(
+    (sub: UserSubscription) => {
+      setSubscription(sub);
+      try {
+        const key = getSubscriptionStorageKey(user?.id);
+        localStorage.setItem(key, JSON.stringify(sub));
+        localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(sub));
+      } catch {
+        // Ignore quota storage issues
+      }
+    },
+    [user?.id]
+  );
 
   // Fetch remote subscription from Supabase if logged in
   const fetchRemoteSubscription = useCallback(async () => {
@@ -131,9 +143,42 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [user, saveToLocal]);
 
   useEffect(() => {
+    if (!user || user.id === GUEST_USER_ID) {
+      // Switched to guest / logged out: load guest state or default free
+      try {
+        const guestKey = getSubscriptionStorageKey(user?.id);
+        const cached = localStorage.getItem(guestKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed.tier === "string") {
+            setSubscription(parsed);
+          } else {
+            setSubscription(DEFAULT_SUBSCRIPTION);
+          }
+        } else {
+          setSubscription(DEFAULT_SUBSCRIPTION);
+        }
+      } catch {
+        setSubscription(DEFAULT_SUBSCRIPTION);
+      }
+      revenueCatService.logOut().catch(() => {});
+      return;
+    }
+
+    // Authenticated user: load user cache and fetch remote
+    try {
+      const userKey = getSubscriptionStorageKey(user.id);
+      const cached = localStorage.getItem(userKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.tier === "string") {
+          setSubscription(parsed);
+        }
+      }
+    } catch {}
+
     fetchRemoteSubscription();
-    const appUserId = user && user.id !== GUEST_USER_ID ? user.id : undefined;
-    revenueCatService.initialize(appUserId);
+    revenueCatService.initialize(user.id);
   }, [fetchRemoteSubscription, user]);
 
   const isPremium = useMemo(() => {

@@ -8,17 +8,24 @@
 // - Rule 7: Zero colored utility classes
 // ======================================================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, Check, RotateCcw, Lock, ArrowRight } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { LegalModal } from "../legal/LegalModal";
 import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSubscription } from "../../contexts/SubscriptionContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { triggerHaptic } from "../../lib/haptics";
 import type { SubscriptionPlanId } from "../../types/subscription";
+import { PLAN_PRICING_CONFIG } from "../../types/subscription";
+import {
+  revenueCatService,
+  REVENUECAT_PRODUCT_IDS,
+} from "../../lib/revenueCatService";
+import type { PurchasesOffering } from "@revenuecat/purchases-capacitor";
 
 interface AccrualPaywallModalProps {
   isOpen: boolean;
@@ -30,6 +37,7 @@ export function AccrualPaywallModal({
   onClose,
 }: AccrualPaywallModalProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const {
     upgradeToPlan,
     restorePurchases,
@@ -45,6 +53,44 @@ export function AccrualPaywallModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [legalTab, setLegalTab] = useState<"privacy" | "terms" | null>(null);
   const [showGuestLoginPrompt, setShowGuestLoginPrompt] = useState(false);
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isOpen) {
+      revenueCatService.getOffering().then((off) => {
+        if (isMounted && off) {
+          setOffering(off);
+        }
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
+  const getPlanPriceDisplay = (planId: SubscriptionPlanId) => {
+    const productId = REVENUECAT_PRODUCT_IDS[planId];
+    const pkg = offering?.availablePackages?.find(
+      (p) => p.product?.identifier === productId || p.identifier === productId,
+    );
+
+    if (pkg?.product?.priceString) {
+      return pkg.product.priceString;
+    }
+
+    const config = PLAN_PRICING_CONFIG[planId];
+    return formatWithPreferred(config.price);
+  };
+
+  const getAnnualMonthlyBreakdown = () => {
+    const annualPriceIdr = PLAN_PRICING_CONFIG.accrual_annual_199k.price;
+    const monthlyEq = Math.round(annualPriceIdr / 12);
+    const formattedMonthly = formatWithPreferred(monthlyEq);
+    return isIndonesian
+      ? `7 hari gratis, lalu ${formattedMonthly}/bln`
+      : `7 days free, then ~${formattedMonthly}/mo`;
+  };
 
   const handleSelectPlan = (plan: SubscriptionPlanId) => {
     triggerHaptic();
@@ -122,6 +168,14 @@ export function AccrualPaywallModal({
           "info",
         );
       }
+    } catch (err) {
+      console.error("[AccrualPaywallModal] Restore error:", err);
+      showToast(
+        isIndonesian
+          ? "Gagal memulihkan pembelian. Periksa koneksi internet Anda."
+          : "Failed to restore purchases. Please check your internet connection.",
+        "error",
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -261,16 +315,14 @@ export function AccrualPaywallModal({
                 {isIndonesian ? "Paket Tahunan" : "Annual Plan"}
               </div>
               <div className="text-[11.5px] text-[var(--text-tertiary)] mt-0.5">
-                {isIndonesian
-                  ? "7 hari gratis, lalu Rp 16.583/bln"
-                  : "7 days free, then ~Rp 16,583/mo"}
+                {getAnnualMonthlyBreakdown()}
               </div>
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
                 <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
-                  Rp 199.000
+                  {getPlanPriceDisplay("accrual_annual_199k")}
                 </div>
                 <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "/ tahun" : "/ year"}
@@ -302,7 +354,7 @@ export function AccrualPaywallModal({
             <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
                 <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
-                  Rp 29.000
+                  {getPlanPriceDisplay("accrual_monthly_29k")}
                 </div>
                 <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "/ bulan" : "/ month"}
@@ -341,7 +393,7 @@ export function AccrualPaywallModal({
             <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
                 <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
-                  Rp 499.000
+                  {getPlanPriceDisplay("accrual_lifetime_499k")}
                 </div>
                 <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "sekali bayar" : "one-time"}

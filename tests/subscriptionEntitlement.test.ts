@@ -5,6 +5,19 @@ import {
   type UserSubscription,
   type SubscriptionPlanId,
 } from "../src/types/subscription";
+import {
+  getSubscriptionStorageKey,
+  SUBSCRIPTION_STORAGE_KEY,
+} from "../src/contexts/SubscriptionContext";
+import {
+  clearAllLocalUserSessionData,
+  USER_SESSION_STORAGE_KEYS,
+} from "../src/lib/sessionCleanup";
+import {
+  formatCurrencyAmount,
+  convertCurrency,
+  DEFAULT_RATES,
+} from "../src/lib/currency";
 
 // Mock localStorage for node test runner
 let store: Record<string, string> = {};
@@ -18,6 +31,10 @@ const mockLocalStorage = {
   },
   clear: () => {
     store = {};
+  },
+  key: (i: number) => Object.keys(store)[i] ?? null,
+  get length() {
+    return Object.keys(store).length;
   },
 };
 
@@ -164,6 +181,76 @@ describe("Accrual Phase 1: Subscription Entitlement & Monetization Engine", () =
       expect(restored.tier).toBe("premium");
       expect(restored.isLifetime).toBe(true);
       expect(restored.planId).toBe("accrual_lifetime_499k");
+    });
+  });
+
+  describe("5. Multi-Tenant Session Teardown & Entitlement Isolation", () => {
+    it("generates user-scoped storage keys separating guests from authenticated subscribers", () => {
+      const guestKey = getSubscriptionStorageKey("guest_local_user");
+      const userAKey = getSubscriptionStorageKey("user-uuid-1234");
+      const userBKey = getSubscriptionStorageKey("user-uuid-5678");
+
+      expect(guestKey).toBe("accrual_subscription_state_v1_guest");
+      expect(userAKey).toBe("accrual_subscription_state_v1_user-uuid-1234");
+      expect(userBKey).toBe("accrual_subscription_state_v1_user-uuid-5678");
+      expect(userAKey).not.toBe(guestKey);
+      expect(userAKey).not.toBe(userBKey);
+    });
+
+    it("includes subscription storage key in USER_SESSION_STORAGE_KEYS to guarantee purge on logout", () => {
+      expect(USER_SESSION_STORAGE_KEYS).toContain("accrual_subscription_state_v1");
+    });
+
+    it("wipes subscription state completely during clearAllLocalUserSessionData", async () => {
+      const testSub: UserSubscription = {
+        tier: "premium",
+        status: "active",
+        planId: "accrual_annual_199k",
+        isLifetime: false,
+        updatedAt: new Date().toISOString(),
+      };
+
+      mockLocalStorage.setItem("accrual_subscription_state_v1", JSON.stringify(testSub));
+      mockLocalStorage.setItem("accrual_subscription_state_v1_user-1", JSON.stringify(testSub));
+
+      await clearAllLocalUserSessionData(null, { preserveGuestFlag: false });
+
+      expect(mockLocalStorage.getItem("accrual_subscription_state_v1")).toBeNull();
+      expect(mockLocalStorage.getItem("accrual_subscription_state_v1_user-1")).toBeNull();
+    });
+  });
+
+  describe("6. Dynamic Multi-Currency Pricing on Paywall", () => {
+    it("dynamically converts plan prices from IDR base to USD and EUR", () => {
+      const annualIdr = PLAN_PRICING_CONFIG.accrual_annual_199k.price;
+      const monthlyIdr = PLAN_PRICING_CONFIG.accrual_monthly_29k.price;
+      const lifetimeIdr = PLAN_PRICING_CONFIG.accrual_lifetime_499k.price;
+
+      // When in USD
+      const annualUsd = convertCurrency(annualIdr, "IDR", "USD", DEFAULT_RATES);
+      const formattedAnnualUsd = formatCurrencyAmount(annualUsd, "USD");
+      expect(formattedAnnualUsd).toContain("$");
+      expect(formattedAnnualUsd).not.toContain("Rp");
+
+      const monthlyUsd = convertCurrency(monthlyIdr, "IDR", "USD", DEFAULT_RATES);
+      const formattedMonthlyUsd = formatCurrencyAmount(monthlyUsd, "USD");
+      expect(formattedMonthlyUsd).toContain("$");
+
+      const lifetimeUsd = convertCurrency(lifetimeIdr, "IDR", "USD", DEFAULT_RATES);
+      const formattedLifetimeUsd = formatCurrencyAmount(lifetimeUsd, "USD");
+      expect(formattedLifetimeUsd).toContain("$");
+
+      // When in EUR
+      const annualEur = convertCurrency(annualIdr, "IDR", "EUR", DEFAULT_RATES);
+      const formattedAnnualEur = formatCurrencyAmount(annualEur, "EUR");
+      expect(formattedAnnualEur).toContain("€");
+      expect(formattedAnnualEur).not.toContain("Rp");
+    });
+
+    it("calculates accurate annual monthly breakdown", () => {
+      const annualIdr = PLAN_PRICING_CONFIG.accrual_annual_199k.price;
+      const monthlyEquivalent = Math.round(annualIdr / 12);
+      expect(monthlyEquivalent).toBe(16583);
     });
   });
 });
