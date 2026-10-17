@@ -83,15 +83,95 @@ import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "./supabase";
 
+export type BiometryKind = "face" | "fingerprint" | "biometric" | "none";
+
+export interface VerifyBiometricOptions {
+  reason?: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  negativeButtonText?: string;
+}
+
 export async function isBiometricAvailable(): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const result = await NativeBiometric.isAvailable({ useFallback: false });
+      return !!result?.isAvailable;
+    } catch {
+      return false;
+    }
+  }
+  if (typeof window !== "undefined" && window.PublicKeyCredential) {
+    try {
+      const available =
+        await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      return !!available;
+    } catch {
+      return false;
+    }
+  }
   return false;
 }
 
-export async function registerBiometricPasskey(): Promise<boolean> {
+export async function getBiometryKind(): Promise<BiometryKind> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const result = await NativeBiometric.isAvailable({ useFallback: false });
+      if (!result?.isAvailable) return "none";
+      // 1=TOUCH_ID, 2=FACE_ID, 3=FINGERPRINT, 4=FACE_AUTHENTICATION, 5=IRIS, 6=MULTIPLE
+      if (result.biometryType === 2 || result.biometryType === 4) return "face";
+      if (result.biometryType === 1 || result.biometryType === 3) return "fingerprint";
+      return "biometric";
+    } catch {
+      return "none";
+    }
+  }
+  return "none";
+}
+
+export async function verifyBiometricPasskey(
+  options?: VerifyBiometricOptions,
+): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await NativeBiometric.verifyIdentity({
+        reason: options?.reason || "Verify your identity to unlock Accrual",
+        title: options?.title || "Accrual Security",
+        subtitle: options?.subtitle || "Confirm biometrics to continue",
+        description: options?.description,
+        negativeButtonText: options?.negativeButtonText || "Cancel",
+        useFallback: false,
+      });
+      return true;
+    } catch (err: any) {
+      console.info("[biometricAuth] Biometric verification cancelled or failed:", err?.message || err);
+      return false;
+    }
+  }
   return false;
 }
 
-export async function verifyBiometricPasskey(): Promise<boolean> {
+export async function registerBiometricPasskey(
+  options?: VerifyBiometricOptions,
+): Promise<boolean> {
+  const available = await isBiometricAvailable();
+  if (!available) return false;
+
+  const verified = await verifyBiometricPasskey(
+    options || {
+      reason: "Enroll biometrics to protect your vault",
+      title: "Enroll Biometrics",
+      subtitle: "Verify identity to enable biometric unlock",
+      negativeButtonText: "Cancel",
+    },
+  );
+
+  if (verified) {
+    localStorage.setItem(BIOMETRIC_CREDENTIAL_KEY, "enrolled_" + Date.now());
+    saveSecuritySettings({ hasBiometric: true });
+    return true;
+  }
   return false;
 }
 
@@ -356,14 +436,132 @@ export interface BiometricAuthResult {
   error?: string;
 }
 
-export async function authenticateWithBiometrics(): Promise<BiometricAuthResult> {
+export async function authenticateWithBiometrics(
+  isIndonesian = false,
+): Promise<BiometricAuthResult> {
+  const available = await isBiometricAvailable();
+  const settings = getSecuritySettings();
+  if (!available || !settings.hasBiometric) {
+    return {
+      success: false,
+      error: isIndonesian
+        ? "Otentikasi biometrik belum diaktifkan. Silakan gunakan PIN Keamanan."
+        : "Biometric authentication is not enabled. Please authenticate using your Security PIN.",
+    };
+  }
+
+  const verified = await verifyBiometricPasskey({
+    reason: isIndonesian
+      ? "Verifikasi identitas Anda untuk masuk"
+      : "Verify your identity to sign in",
+    title: isIndonesian ? "Otentikasi Biometrik" : "Biometric Authentication",
+    negativeButtonText: isIndonesian ? "Gunakan PIN" : "Use PIN",
+  });
+
+  if (!verified) {
+    return {
+      success: false,
+      error: isIndonesian
+        ? "Otentikasi biometrik dibatalkan atau tidak cocok."
+        : "Biometric authentication was cancelled or failed.",
+    };
+  }
+
+  // 1. Hardware Keychain credentials if native
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const creds = await NativeBiometric.getCredentials({ server: "trouvaille.app" });
+      if (creds?.username && creds?.password) {
+        const { data } = await supabase.auth.signInWithPassword({
+          email: creds.username,
+          password: creds.password,
+        });
+        if (data?.session) {
+          saveBiometricLoginCredentials(creds.username, data.session, creds.password);
+          return {
+            success: true,
+            session: data.session,
+            email: creds.username,
+          };
+        }
+      }
+    } catch (e) {
+      console.info("[biometricAuth] Native Keychain lookup skipped in biometric auth:", e);
+    }
+  }
+
+  // 2. Persistent session or biometric credentials with refresh token
+  const hint = getBiometricLoginCredentials();
+  const vaultSession = hint?.session || getPersistentSession();
+
+  if (vaultSession?.refresh_token) {
+    try {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: vaultSession.access_token || "",
+        refresh_token: vaultSession.refresh_token,
+      });
+
+      if (data?.session) {
+        saveBiometricLoginCredentials(hint?.email || data.session.user?.email || "", data.session);
+        return {
+          success: true,
+          session: data.session,
+          email: hint?.email || data.session.user?.email,
+        };
+      }
+
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (isOffline || error?.message?.toLowerCase().includes("fetch")) {
+        return {
+          success: true,
+          session: vaultSession,
+          email: hint?.email || vaultSession.user?.email,
+        };
+      }
+    } catch {
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (isOffline) {
+        return {
+          success: true,
+          session: vaultSession,
+          email: hint?.email || vaultSession.user?.email,
+        };
+      }
+    }
+  }
+
+  // 3. Active session check
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session) {
+      saveBiometricLoginCredentials(data.session.user?.email || "", data.session);
+      return {
+        success: true,
+        session: data.session,
+        email: data.session.user?.email,
+      };
+    }
+  } catch {}
+
+  // 4. Fallback vault session
+  if (vaultSession) {
+    return {
+      success: true,
+      session: vaultSession,
+      email: hint?.email || vaultSession.user?.email,
+    };
+  }
+
   return {
-    success: false,
-    error: "Biometric authentication is not enabled. Please authenticate using your Security PIN.",
+    success: true,
+    email: hint?.email,
   };
 }
 
-export async function authenticateWithPin(pin: string): Promise<BiometricAuthResult> {
+export async function authenticateWithPin(
+  pin: string,
+  isIndonesian = false,
+): Promise<BiometricAuthResult> {
   const verified = await verifySecurityPin(pin);
   if (!verified) {
     const lockout = getPinLockoutState();
@@ -371,12 +569,16 @@ export async function authenticateWithPin(pin: string): Promise<BiometricAuthRes
       const waitMins = Math.ceil(lockout.remainingSeconds / 60);
       return {
         success: false,
-        error: `PIN locked due to too many failed attempts. Try again in ${waitMins} minute(s).`,
+        error: isIndonesian
+          ? `PIN terkunci karena terlalu banyak percobaan salah. Coba lagi dalam ${waitMins} menit.`
+          : `PIN locked due to too many failed attempts. Try again in ${waitMins} minute(s).`,
       };
     }
     return {
       success: false,
-      error: "Incorrect PIN. Please try again.",
+      error: isIndonesian
+        ? "PIN salah. Silakan coba lagi."
+        : "Incorrect PIN. Please try again.",
     };
   }
 

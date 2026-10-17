@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Lock,
   LogOut,
   Delete,
+  ScanFace,
+  Fingerprint,
 } from "lucide-react";
 import { useSecurityLock } from "../../contexts/SecurityLockContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -15,6 +17,10 @@ export function BiometricLockOverlay() {
   const {
     isLocked,
     unlockWithPin,
+    unlockWithBiometric,
+    securitySettings,
+    isBiometricSupported,
+    biometryKind,
   } = useSecurityLock();
   const { signOut } = useAuth();
   const { isIndonesian } = useLanguage();
@@ -22,6 +28,69 @@ export function BiometricLockOverlay() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
+  const isPromptingRef = useRef(false);
+
+  // Live countdown ticker for anti-brute force lockout
+  useEffect(() => {
+    const checkLockout = () => {
+      const lockout = getPinLockoutState();
+      if (lockout.isLocked) {
+        setLockoutSeconds(lockout.remainingSeconds);
+      } else {
+        setLockoutSeconds(0);
+      }
+    };
+
+    checkLockout();
+    const interval = setInterval(checkLockout, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Biometric prompt action
+  const triggerBiometricUnlock = useCallback(async () => {
+    if (
+      isPromptingRef.current ||
+      !securitySettings.hasBiometric ||
+      !isBiometricSupported
+    ) {
+      return;
+    }
+    isPromptingRef.current = true;
+    try {
+      await unlockWithBiometric({
+        reason: isIndonesian
+          ? "Gunakan otentikasi biometrik untuk membuka Accrual"
+          : "Use biometric authentication to unlock Accrual",
+        title: isIndonesian ? "Buka Kunci Accrual" : "Unlock Accrual",
+        subtitle: isIndonesian
+          ? "Konfirmasi identitas biometrik Anda"
+          : "Confirm your biometric identity",
+        negativeButtonText: isIndonesian ? "Gunakan PIN" : "Use PIN",
+      });
+    } finally {
+      isPromptingRef.current = false;
+    }
+  }, [
+    securitySettings.hasBiometric,
+    isBiometricSupported,
+    unlockWithBiometric,
+    isIndonesian,
+  ]);
+
+  // Auto-prompt biometrics once when app locks
+  useEffect(() => {
+    if (isLocked && securitySettings.hasBiometric && isBiometricSupported) {
+      const timer = setTimeout(() => {
+        triggerBiometricUnlock();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isLocked,
+    securitySettings.hasBiometric,
+    isBiometricSupported,
+    triggerBiometricUnlock,
+  ]);
 
   const handlePinDigit = async (digit: string) => {
     const lockout = getPinLockoutState();
@@ -111,7 +180,7 @@ export function BiometricLockOverlay() {
 
         {/* Middle Interactive Zone: PIN Numeric Keypad */}
         <div className="w-full max-w-xs flex flex-col items-center justify-center my-auto">
-          <div className="w-full space-y-6">
+          <div className="w-full space-y-5">
             {/* PIN Dots Indicator (Strict Monochrome Rule 7) */}
             <div className="flex items-center justify-center gap-3">
               {[0, 1, 2, 3, 4, 5].map((i) => {
@@ -139,6 +208,37 @@ export function BiometricLockOverlay() {
               })}
             </div>
 
+            {/* Optional Quick Biometric Shortcut Pill */}
+            {securitySettings.hasBiometric && isBiometricSupported && (
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={triggerBiometricUnlock}
+                  className="flex items-center gap-2 py-1.5 px-3.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all cursor-pointer"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {biometryKind === "face" ? (
+                    <ScanFace size={13.5} strokeWidth={1.75} />
+                  ) : (
+                    <Fingerprint size={13.5} strokeWidth={1.75} />
+                  )}
+                  <span>
+                    {biometryKind === "face"
+                      ? isIndonesian
+                        ? "Buka dengan Face ID"
+                        : "Unlock with Face ID"
+                      : isIndonesian
+                        ? "Buka dengan Sidik Jari"
+                        : "Unlock with Biometrics"}
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* Number Keypad Grid */}
             <div className="grid grid-cols-3 gap-3">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
@@ -157,18 +257,49 @@ export function BiometricLockOverlay() {
                 </button>
               ))}
 
-              <button
-                type="button"
-                onClick={() => {
-                  setPinInput("");
-                  setPinError(false);
-                  triggerHaptic("light");
-                }}
-                className="h-14 rounded-2xl flex items-center justify-center text-[11px] font-semibold active:scale-92 transition-all cursor-pointer"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {isIndonesian ? "Hapus" : "Clear"}
-              </button>
+              {/* Bottom Row Left: Clear or Biometric button */}
+              {pinInput.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinInput("");
+                    setPinError(false);
+                    triggerHaptic("light");
+                  }}
+                  className="h-14 rounded-2xl flex items-center justify-center text-[11px] font-semibold active:scale-92 transition-all cursor-pointer select-none"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {isIndonesian ? "Hapus" : "Clear"}
+                </button>
+              ) : securitySettings.hasBiometric && isBiometricSupported ? (
+                <button
+                  type="button"
+                  onClick={triggerBiometricUnlock}
+                  className="h-14 rounded-2xl flex items-center justify-center active:scale-92 transition-all cursor-pointer select-none"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                  aria-label={
+                    biometryKind === "face"
+                      ? isIndonesian
+                        ? "Buka dengan Face ID"
+                        : "Unlock with Face ID"
+                      : isIndonesian
+                        ? "Buka dengan Sidik Jari"
+                        : "Unlock with Fingerprint"
+                  }
+                >
+                  {biometryKind === "face" ? (
+                    <ScanFace size={21} strokeWidth={1.6} />
+                  ) : (
+                    <Fingerprint size={21} strokeWidth={1.6} />
+                  )}
+                </button>
+              ) : (
+                <div className="h-14" />
+              )}
 
               <button
                 type="button"

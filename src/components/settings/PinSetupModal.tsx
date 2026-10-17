@@ -158,8 +158,8 @@ export function PinSetupModal({ isOpen, onClose }: PinSetupModalProps) {
             onClick={handleAction}
             className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold transition-all disabled:opacity-50 cursor-pointer active:scale-95"
             style={{
-              background: "var(--accent)",
-              color: "var(--accent-ink)",
+              background: "var(--text-primary)",
+              color: "var(--bg-canvas)",
             }}
           >
             {pinStep === "create"

@@ -14,8 +14,35 @@ import {
   getPersistentSession,
   clearPersistentSession,
   authenticateWithPin,
+  authenticateWithBiometrics,
+  isBiometricAvailable,
+  getBiometryKind,
+  verifyBiometricPasskey,
+  registerBiometricPasskey,
+  clearBiometricCredential,
 } from "../src/lib/biometricAuth";
 import { supabase } from "../src/lib/supabase";
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
+import { Capacitor } from "@capacitor/core";
+
+vi.mock("@capgo/capacitor-native-biometric", () => ({
+  NativeBiometric: {
+    isAvailable: vi.fn().mockResolvedValue({ isAvailable: false, biometryType: 0 }),
+    verifyIdentity: vi.fn().mockResolvedValue(undefined),
+    getCredentials: vi.fn().mockResolvedValue({ username: "", password: "" }),
+    setCredentials: vi.fn().mockResolvedValue(undefined),
+    deleteCredentials: vi.fn().mockResolvedValue(undefined),
+    setData: vi.fn().mockResolvedValue(undefined),
+    getData: vi.fn().mockResolvedValue({ value: "" }),
+    deleteData: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock("@capacitor/core", () => ({
+  Capacitor: {
+    isNativePlatform: vi.fn(() => false),
+  },
+}));
 
 // Polyfill localStorage in node test environment
 const store: Record<string, string> = {};
@@ -258,6 +285,108 @@ describe("Biometric & Security Engine Test Suite", () => {
       configurable: true,
       writable: true,
     });
+    clearSecurityPin();
+  });
+
+  it("checks native biometric availability and kind accurately", async () => {
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+
+    // Mock Face ID (biometryType: 2)
+    vi.mocked(NativeBiometric.isAvailable).mockResolvedValue({
+      isAvailable: true,
+      biometryType: 2,
+      authenticationStrength: 1,
+      deviceIsSecure: true,
+      strongBiometryIsAvailable: true,
+    });
+
+    expect(await isBiometricAvailable()).toBe(true);
+    expect(await getBiometryKind()).toBe("face");
+
+    // Mock Fingerprint / Touch ID (biometryType: 1)
+    vi.mocked(NativeBiometric.isAvailable).mockResolvedValueOnce({
+      isAvailable: true,
+      biometryType: 1,
+      authenticationStrength: 1,
+      deviceIsSecure: true,
+      strongBiometryIsAvailable: true,
+    });
+    expect(await getBiometryKind()).toBe("fingerprint");
+
+    // Mock unavailable
+    vi.mocked(NativeBiometric.isAvailable).mockResolvedValue({
+      isAvailable: false,
+      biometryType: 0,
+      authenticationStrength: 0,
+      deviceIsSecure: false,
+      strongBiometryIsAvailable: false,
+    });
+    expect(await isBiometricAvailable()).toBe(false);
+    expect(await getBiometryKind()).toBe("none");
+  });
+
+  it("registers biometric passkey and clears credentials accurately", async () => {
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+    vi.mocked(NativeBiometric.isAvailable).mockResolvedValue({
+      isAvailable: true,
+      biometryType: 2,
+      authenticationStrength: 1,
+      deviceIsSecure: true,
+      strongBiometryIsAvailable: true,
+    });
+    vi.mocked(NativeBiometric.verifyIdentity).mockResolvedValue();
+
+    const registered = await registerBiometricPasskey();
+    expect(registered).toBe(true);
+    expect(getSecuritySettings().hasBiometric).toBe(true);
+
+    // Clear biometric credential
+    clearBiometricCredential();
+    expect(getSecuritySettings().hasBiometric).toBe(false);
+  });
+
+  it("authenticates with biometrics and returns stored session vault", async () => {
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+    vi.mocked(NativeBiometric.isAvailable).mockResolvedValue({
+      isAvailable: true,
+      biometryType: 2,
+      authenticationStrength: 1,
+      deviceIsSecure: true,
+      strongBiometryIsAvailable: true,
+    });
+    vi.mocked(NativeBiometric.verifyIdentity).mockResolvedValue();
+
+    // Not enrolled yet -> returns error
+    clearBiometricCredential();
+    const disabledResult = await authenticateWithBiometrics(true);
+    expect(disabledResult.success).toBe(false);
+    expect(disabledResult.error).toContain("Otentikasi biometrik belum diaktifkan");
+
+    // Enroll and save session
+    await registerBiometricPasskey();
+    savePersistentSession({ user: { email: "biometric@trouvaille.app" } });
+
+    const authResult = await authenticateWithBiometrics(false);
+    expect(authResult.success).toBe(true);
+    expect(authResult.session?.user?.email).toBe("biometric@trouvaille.app");
+
+    clearBiometricCredential();
+    clearPersistentSession();
+  });
+
+  it("returns strictly localized error messages on failed PIN authentication (Rule 6)", async () => {
+    await setSecurityPin("998877");
+
+    // English wrong PIN
+    const resEn = await authenticateWithPin("000000", false);
+    expect(resEn.success).toBe(false);
+    expect(resEn.error).toBe("Incorrect PIN. Please try again.");
+
+    // Indonesian wrong PIN
+    const resId = await authenticateWithPin("000000", true);
+    expect(resId.success).toBe(false);
+    expect(resId.error).toBe("PIN salah. Silakan coba lagi.");
+
     clearSecurityPin();
   });
 });

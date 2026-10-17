@@ -26,6 +26,8 @@ import {
   BookOpen,
   Sparkles,
   Scale,
+  Fingerprint,
+  ScanFace,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -230,8 +232,14 @@ export function SettingsPage({
     budgetPeriodStart,
     setBudgetPeriodStart,
   } = useBudgetTarget();
-  const { securitySettings, updateSettings: updateSecuritySettings } =
-    useSecurityLock();
+  const {
+    securitySettings,
+    updateSettings: updateSecuritySettings,
+    isBiometricSupported,
+    biometryKind,
+    enrollBiometric,
+    removeBiometric,
+  } = useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
   const { preferredCurrency, currencyMeta, formatWithPreferred } =
     useCurrency();
@@ -902,6 +910,10 @@ export function SettingsPage({
     "Atur PIN Keamanan Setup Security PIN",
     "passcode pin change ubah atur sandi security",
   );
+  const showBiometric = matches(
+    "Buka Kunci Biometrik Face ID Sidik Jari Biometric Unlock Fingerprint",
+    "biometric face id touch id fingerprint sensor sidik jari wajah",
+  );
   const showMedia = matches(
     "Camera & Photos Access Izin Aplikasi Perangkat",
     "permissions receipt scanner gallery camera notifikasi suara mic biometrik izin",
@@ -915,6 +927,7 @@ export function SettingsPage({
     showPinLock ||
     showTimeout ||
     showPinConfig ||
+    showBiometric ||
     showMedia ||
     showLegal;
 
@@ -2242,6 +2255,110 @@ export function SettingsPage({
                         />
                       </div>
                     </button>
+                  </>
+                )}
+
+                {isBiometricSupported && showBiometric && (
+                  <>
+                    <div style={gradientDivider} />
+                    <div className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px]">
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div
+                          className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                          style={{
+                            background: iconBg,
+                            border: iconBorder,
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          {biometryKind === "face" ? (
+                            <ScanFace size={13.5} strokeWidth={1.8} />
+                          ) : (
+                            <Fingerprint size={13.5} strokeWidth={1.8} />
+                          )}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span
+                            className="text-[12.5px] font-semibold truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {biometryKind === "face"
+                              ? isIndonesian
+                                ? "Buka Kunci Face ID"
+                                : "Face ID Unlock"
+                              : isIndonesian
+                                ? "Buka Kunci Biometrik"
+                                : "Biometric Unlock"}
+                          </span>
+                          <span
+                            className="text-[10px] truncate"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            {isIndonesian
+                              ? "Buka brankas instan dengan sensor perangkat"
+                              : "Instantly unlock vault with device sensor"}
+                          </span>
+                        </div>
+                      </div>
+                      <ToggleSwitch
+                        checked={securitySettings.hasBiometric}
+                        onChange={async () => {
+                          if (!securitySettings.hasBiometric) {
+                            if (!securitySettings.hasPin) {
+                              showToast(
+                                isIndonesian
+                                  ? "Atur PIN Keamanan terlebih dahulu sebelum mengaktifkan biometrik"
+                                  : "Set up a Security PIN first before enabling biometrics",
+                                "info",
+                                null,
+                                3000,
+                              );
+                              setPinModalOpen(true);
+                              return;
+                            }
+                            const enrolled = await enrollBiometric({
+                              reason: isIndonesian
+                                ? "Daftarkan otentikasi biometrik untuk membuka Accrual"
+                                : "Enroll biometric authentication to unlock Accrual",
+                              title: isIndonesian
+                                ? "Daftarkan Biometrik"
+                                : "Enroll Biometrics",
+                              subtitle: isIndonesian
+                                ? "Konfirmasi sensor identitas Anda"
+                                : "Confirm your identity sensor",
+                              negativeButtonText: isIndonesian ? "Batal" : "Cancel",
+                            });
+                            if (enrolled) {
+                              showToast(
+                                isIndonesian
+                                  ? "Otentikasi biometrik berhasil diaktifkan"
+                                  : "Biometric authentication enabled",
+                                "update",
+                                () => {},
+                              );
+                            } else {
+                              showToast(
+                                isIndonesian
+                                  ? "Gagal mengaktifkan biometrik atau dibatalkan"
+                                  : "Failed to enable biometrics or cancelled",
+                                "delete",
+                                () => {},
+                              );
+                            }
+                          } else {
+                            removeBiometric();
+                            showToast(
+                              isIndonesian
+                                ? "Otentikasi biometrik dinonaktifkan"
+                                : "Biometric authentication disabled",
+                              "update",
+                              () => {},
+                            );
+                          }
+                        }}
+                        ariaLabel="Toggle Biometric unlock"
+                      />
+                    </div>
                   </>
                 )}
               </>

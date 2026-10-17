@@ -12,11 +12,17 @@ import {
   updateLastActiveTimestamp,
   isLockTimeoutExceeded,
   isBiometricAvailable,
+  getBiometryKind,
+  verifyBiometricPasskey,
+  registerBiometricPasskey,
   verifySecurityPin,
   setSecurityPin,
   clearSecurityPin,
   clearBiometricCredential,
+  resetPinLockout,
   type SecuritySettings,
+  type BiometryKind,
+  type VerifyBiometricOptions,
 } from "../lib/biometricAuth";
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
 import { App as CapApp } from "@capacitor/app";
@@ -25,12 +31,13 @@ import { Capacitor } from "@capacitor/core";
 interface SecurityLockContextType {
   isLocked: boolean;
   isBiometricSupported: boolean;
+  biometryKind: BiometryKind;
   securitySettings: SecuritySettings;
-  unlockWithBiometric: () => Promise<boolean>;
+  unlockWithBiometric: (options?: VerifyBiometricOptions) => Promise<boolean>;
   unlockWithPin: (pin: string) => Promise<boolean>;
   lockApp: () => void;
   updateSettings: (partial: Partial<SecuritySettings>) => void;
-  enrollBiometric: (userEmail?: string) => Promise<boolean>;
+  enrollBiometric: (options?: VerifyBiometricOptions) => Promise<boolean>;
   enrollPin: (pin: string) => Promise<boolean>;
   removePin: () => void;
   removeBiometric: () => void;
@@ -43,6 +50,7 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     () => getSecuritySettings(),
   );
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+  const [biometryKind, setBiometryKind] = useState<BiometryKind>("none");
   const [isLocked, setIsLocked] = useState<boolean>(() => {
     const s = getSecuritySettings();
     return s.enabled; // Locked initially on app start if enabled
@@ -50,8 +58,12 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
 
   // Check device biometric capabilities on mount & listen for session teardown (Rule 8.2)
   useEffect(() => {
+    let isMounted = true;
     isBiometricAvailable().then((supported) => {
-      setIsBiometricSupported(supported);
+      if (isMounted) setIsBiometricSupported(supported);
+    });
+    getBiometryKind().then((kind) => {
+      if (isMounted) setBiometryKind(kind);
     });
 
     const handleSessionTeardown = () => {
@@ -61,6 +73,7 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("trouvaille_session_teardown", handleSessionTeardown);
     return () => {
+      isMounted = false;
       window.removeEventListener("trouvaille_session_teardown", handleSessionTeardown);
     };
   }, []);
@@ -71,9 +84,24 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     setSecuritySettingsState({ ...updated });
   }, []);
 
-  const unlockWithBiometric = useCallback(async (): Promise<boolean> => {
-    return false;
-  }, []);
+  const unlockWithBiometric = useCallback(
+    async (options?: VerifyBiometricOptions): Promise<boolean> => {
+      if (!securitySettings.enabled || !securitySettings.hasBiometric) {
+        return false;
+      }
+      const ok = await verifyBiometricPasskey(options);
+      if (ok) {
+        setIsLocked(false);
+        updateLastActiveTimestamp();
+        resetPinLockout();
+        triggerSuccessHaptic();
+        return true;
+      }
+      triggerHaptic("heavy");
+      return false;
+    },
+    [securitySettings.enabled, securitySettings.hasBiometric],
+  );
 
   const unlockWithPin = useCallback(async (pin: string): Promise<boolean> => {
     const valid = await verifySecurityPin(pin);
@@ -94,9 +122,21 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     }
   }, [securitySettings.enabled]);
 
-  const enrollBiometric = useCallback(async (): Promise<boolean> => {
-    return false;
-  }, []);
+  const enrollBiometric = useCallback(
+    async (options?: VerifyBiometricOptions): Promise<boolean> => {
+      if (!securitySettings.hasPin) {
+        return false;
+      }
+      const ok = await registerBiometricPasskey(options);
+      if (ok) {
+        updateSettings({ hasBiometric: true });
+        triggerSuccessHaptic();
+        return true;
+      }
+      return false;
+    },
+    [securitySettings.hasPin, updateSettings],
+  );
 
   const enrollPin = useCallback(
     async (pin: string): Promise<boolean> => {
@@ -112,7 +152,8 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
 
   const removePin = useCallback(() => {
     clearSecurityPin();
-    updateSettings({ hasPin: false });
+    clearBiometricCredential();
+    updateSettings({ hasPin: false, hasBiometric: false, enabled: false });
     triggerHaptic("light");
   }, [updateSettings]);
 
@@ -188,6 +229,7 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
       value={{
         isLocked,
         isBiometricSupported,
+        biometryKind,
         securitySettings,
         unlockWithBiometric,
         unlockWithPin,
