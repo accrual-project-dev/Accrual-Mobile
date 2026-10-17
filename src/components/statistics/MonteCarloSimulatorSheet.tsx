@@ -163,7 +163,7 @@ export function MonteCarloSimulatorSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-24 space-y-4 safe-area-bottom select-none">
+      <div className="p-4 sm:p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+24px),32px)] space-y-4 select-none">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
@@ -790,7 +790,7 @@ export function MonteCarloSimulatorSheet({
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle size={16} style={{ color: "var(--text-primary)" }} />
                 <h4 className="text-[13px] font-bold text-[var(--text-primary)]">
-                  {isIndonesian ? "Risiko Urutan Imbal Hasil (SORR)" : "Sequence of Returns Risk (SORR)"}
+                  {isIndonesian ? "Risiko Urutan Imbal Hasil" : "Sequence of Returns Risk (SORR)"}
                 </h4>
               </div>
               <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)] mb-3">
@@ -870,11 +870,11 @@ export function MonteCarloSimulatorSheet({
                   </div>
                   <div>
                     <span className="text-[12px] font-bold text-[var(--text-primary)] block">
-                      {isIndonesian ? "Protokol Cadangan Likuid (Cash Cushion)" : "Liquid Cash Cushion Playbook"}
+                      {isIndonesian ? "Protokol Cadangan Likuiditas" : "Liquid Cash Cushion Playbook"}
                     </span>
                     <span className="text-[10px] text-[var(--text-tertiary)] block">
                       {isIndonesian
-                        ? "Penyangga 18–24 bulan untuk menetralkan risiko SORR"
+                        ? "Penyangga 18–24 bulan untuk menetralkan risiko krisis pasar dini"
                         : "18–24 months buffer to neutralize early SORR risks"}
                     </span>
                   </div>

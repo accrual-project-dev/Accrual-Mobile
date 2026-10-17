@@ -189,7 +189,7 @@ export function MonteCarloCard({
             className="text-[10px] font-bold uppercase tracking-wider mb-1"
             style={{ color: "var(--text-tertiary)" }}
           >
-            {isIndonesian ? "Target Median 20Y (P50)" : "Median 20Y Target"}
+            {isIndonesian ? "Target Median 20 Tahun (P50)" : "Median 20Y Target"}
           </p>
           <p
             className="text-[18px] font-semibold tracking-tight truncate tabular-nums"

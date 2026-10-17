@@ -145,7 +145,7 @@ export function FirePlannerSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-24 space-y-4 safe-area-bottom select-none">
+      <div className="p-4 sm:p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+24px),32px)] space-y-4 select-none">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
@@ -322,7 +322,7 @@ export function FirePlannerSheet({
           {/* Safe Withdrawal Rate Selector */}
           <div className="pt-2 border-t border-[var(--glass-border)] flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-              {isIndonesian ? "Laju Penarikan Aman (SWR)" : "Safe Withdrawal Rate (SWR)"}
+              {isIndonesian ? "Laju Penarikan Aman" : "Safe Withdrawal Rate (SWR)"}
             </span>
             <div className="flex items-center gap-1.5">
               {[0.03, 0.035, 0.04, 0.045].map((rate) => (
@@ -350,10 +350,10 @@ export function FirePlannerSheet({
           <div className="pt-2 border-t border-[var(--glass-border)] flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-                {isIndonesian ? "Imbal Hasil Riil (Setelah Inflasi)" : "Net Real Return (Post-Inflation)"}
+                {isIndonesian ? "Imbal Hasil Riil Bersih" : "Net Real Return (Post-Inflation)"}
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)]">
-                {isIndonesian ? "Return bersih di atas inflasi tahunan" : "Net return above annual inflation"}
+                {isIndonesian ? "Imbal hasil bersih di atas inflasi tahunan" : "Net return above annual inflation"}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -544,7 +544,7 @@ export function FirePlannerSheet({
               </div>
               <div>
                 <span className="text-[12px] font-bold text-[var(--text-primary)] block">
-                  {isIndonesian ? "Mitigasi Risiko Krisis Dini (SORR)" : "Early Downturn Shield (SORR)"}
+                  {isIndonesian ? "Mitigasi Risiko Krisis Pasar Dini" : "Early Downturn Shield (SORR)"}
                 </span>
                 <span className="text-[10px] text-[var(--text-tertiary)] block">
                   {isIndonesian
@@ -668,12 +668,12 @@ export function FirePlannerSheet({
           <div className="space-y-1 text-[11px] leading-relaxed text-[var(--text-tertiary)]">
             <p>
               {isIndonesian
-                ? "Aturan Penarikan Aman 4% (Trinity Study) telah memperhitungkan inflasi secara dinamis: penarikan di tahun pertama adalah 4%, lalu dinaikkan setiap tahun mengikuti laju inflasi agar daya beli tidak berkurang selama 30+ tahun masa pensiun."
+                ? "Aturan Penarikan Aman 4% (Kajian Trinity) telah memperhitungkan inflasi secara dinamis: penarikan di tahun pertama adalah 4%, lalu dinaikkan setiap tahun mengikuti laju inflasi agar daya beli tidak berkurang selama 30+ tahun masa pensiun."
                 : "The 4% Safe Withdrawal Rule (Trinity Study) dynamically accounts for inflation: year one starts at 4%, then withdrawals adjust upward annually to match inflation for 30+ years."}
             </p>
             <p>
               {isIndonesian
-                ? "Fase akumulasi di atas menggunakan Imbal Hasil Riil (Real Return = Return Nominal dikurangi Inflasi). Seluruh proyeksi dan target disajikan dalam nilai rupiah hari ini (daya beli konstan)."
+                ? "Fase akumulasi di atas menggunakan Imbal Hasil Riil (imbal hasil setelah dikurangi inflasi tahunan). Seluruh proyeksi dan target disajikan dalam nilai daya beli konstan hari ini."
                 : "The accumulation phase above calculates with Real Return (Nominal Return minus Inflation). Projections and targets are presented in today's constant purchasing power."}
             </p>
           </div>

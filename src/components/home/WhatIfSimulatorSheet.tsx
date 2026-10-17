@@ -884,8 +884,8 @@ export function WhatIfSimulatorSheet({
                 }}
               >
                 {runwayData.runwayDelta >= 0
-                  ? `+${runwayData.runwayDelta} ${isIndonesian ? "Bulan" : "Mos"}`
-                  : `${runwayData.runwayDelta} ${isIndonesian ? "Bulan" : "Mos"}`}
+                  ? `+${runwayData.runwayDelta} ${isIndonesian ? "Bulan" : "Months"}`
+                  : `${runwayData.runwayDelta} ${isIndonesian ? "Bulan" : "Months"}`}
               </span>
             </div>
 
@@ -1024,7 +1024,7 @@ export function WhatIfSimulatorSheet({
                     className="text-[10px] block mt-0.5"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {isIndonesian ? "Beban baru: " : "New burn: "}
+                    {isIndonesian ? "Pengeluaran baru: " : "New burn: "}
                     <strong className="tabular-nums" style={{ color: "var(--text-secondary)" }}>
                       {amountDisplay(row.adjustedExpense)}
                     </strong>

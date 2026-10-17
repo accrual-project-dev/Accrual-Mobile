@@ -277,7 +277,7 @@ export function runMonteCarloSimulation(
     type: "fat",
     label: "Fat FIRE",
     description: isId
-      ? "Memberikan buffer kemewahan, perjalanan internasional, dan dana cadangan melimpah (140%)."
+      ? "Memberikan ruang kemewahan, perjalanan internasional, dan dana cadangan melimpah (140%)."
       : "Affords luxury buffer, international travel, and generous contingencies (140%).",
     targetAmount: fatFireTarget,
     currentProgressPct: Math.min(100, Number(((initialNetWorth / fatFireTarget) * 100).toFixed(1))),
@@ -466,7 +466,7 @@ export function calculateCashBufferRecommendation({
   const isId = language === "id";
   const recommendationText = isId
     ? adequacyStatus === "Optimal"
-      ? `Ketahanan likuiditas prima (${currentCoverageMonths} bulan pengeluaran). Dana penyangga melebihi batas aman 24 bulan untuk mitigasi krisis dini (SORR).`
+      ? `Ketahanan likuiditas prima (${currentCoverageMonths} bulan pengeluaran). Dana penyangga melebihi batas aman 24 bulan untuk mitigasi krisis pasar dini.`
       : adequacyStatus === "Adequate"
         ? `Cakupan likuiditas cukup (${currentCoverageMonths} bulan). Disarankan menambah cadangan hingga 18–24 bulan pengeluaran sebelum memasuki fase penarikan.`
         : `Defisit dana penyangga (${currentCoverageMonths} bulan). Sangat disarankan mengamankan 18–24 bulan biaya hidup dalam instrumen pasar uang bebas risiko.`
