@@ -6,7 +6,7 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Sparkles, Pencil, X, Users, ArrowRight } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import type { TransactionType } from "../../types";
@@ -42,6 +42,7 @@ export function DynamicIslandHUD({
 }: DynamicIslandHUDProps) {
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
+  const { formatWithPreferred } = useCurrency();
 
   const isDark = theme !== "light";
   const isPartnerSync = data?.source === "partner_sync";
@@ -630,7 +631,7 @@ export function DynamicIslandHUD({
                       }}
                     >
                       {amountPrefix}
-                      {formatRupiah(data.amount)}
+                      {formatWithPreferred(data.amount)}
                     </span>
 
                     {(data.categoryName || data.walletName || data.note) && (

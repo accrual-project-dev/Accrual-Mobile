@@ -46,7 +46,7 @@ export function MonteCarloSimulatorSheet({
   hideBalance = false,
 }: MonteCarloSimulatorSheetProps) {
   const { isIndonesian } = useLanguage();
-  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const { formatWithPreferred, formatCompactWithPreferred, currencyMeta } = useCurrency();
 
   // Parameters
   const [horizonYears, setHorizonYears] = useState<number>(20);
@@ -387,9 +387,9 @@ export function MonteCarloSimulatorSheet({
               className="w-full accent-[var(--text-primary)] cursor-pointer"
             />
             <div className="flex justify-between text-[9px] font-bold text-[var(--text-tertiary)] mt-0.5">
-              <span>{isIndonesian ? "Rp 500 Rb" : "Rp 500K"}</span>
-              <span>{isIndonesian ? "Rp 12,5 Jt" : "Rp 12.5M"}</span>
-              <span>{isIndonesian ? "Rp 25 Jt" : "Rp 25M"}</span>
+              <span>{formatCompactWithPreferred(500000)}</span>
+              <span>{formatCompactWithPreferred(12500000)}</span>
+              <span>{formatCompactWithPreferred(25000000)}</span>
             </div>
           </div>
 

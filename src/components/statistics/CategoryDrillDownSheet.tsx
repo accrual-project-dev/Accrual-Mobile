@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
 import type { CategoryMoMShift } from "../../lib/financialMath";
 import { IconRenderer } from "../ui/IconRenderer";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 
 interface CategoryDrillDownSheetProps {
   isOpen: boolean;
@@ -19,12 +20,14 @@ export function CategoryDrillDownSheet({
 }: CategoryDrillDownSheetProps) {
   const navigate = useNavigate();
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
+  const { isStealthMode } = usePrivacy();
 
   if (!shift) return null;
 
   const handleViewTransactions = () => {
     onClose();
-    navigate(`/transactions?category=${encodeURIComponent(shift.categoryId)}`);
+    navigate(`/history?category=${encodeURIComponent(shift.categoryId)}`);
   };
 
   return (
@@ -77,7 +80,7 @@ export function CategoryDrillDownSheet({
               style={{ color: "var(--text-primary)" }}
             >
               {shift.isIncrease ? "+" : ""}
-              {formatRupiah(shift.deltaAmount)}
+              {isStealthMode ? "••••••••" : formatWithPreferred(shift.deltaAmount)}
             </p>
             <p
               className="text-[11px] font-bold"
@@ -104,7 +107,7 @@ export function CategoryDrillDownSheet({
               className="amount text-[14px] font-semibold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              {formatRupiah(shift.currentTotal)}
+              {isStealthMode ? "••••••••" : formatWithPreferred(shift.currentTotal)}
             </p>
           </div>
           <div
@@ -121,7 +124,7 @@ export function CategoryDrillDownSheet({
               className="amount text-[14px] font-semibold mt-0.5"
               style={{ color: "var(--text-secondary)" }}
             >
-              {formatRupiah(shift.previousTotal)}
+              {isStealthMode ? "••••••••" : formatWithPreferred(shift.previousTotal)}
             </p>
           </div>
         </div>
@@ -160,7 +163,7 @@ export function CategoryDrillDownSheet({
                     className="amount font-semibold text-[13px]"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {formatRupiah(c.amount)}
+                    {isStealthMode ? "••••••••" : formatWithPreferred(c.amount)}
                   </p>
                 </div>
               ))}

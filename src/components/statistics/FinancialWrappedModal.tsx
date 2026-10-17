@@ -11,13 +11,13 @@ import {
   Pause,
 } from "lucide-react";
 import type { Transaction, Category } from "../../lib/types";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { format, parseISO, getDay } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 import {
   buildCascadeCategories,
   buildSpendingHeatmap,
@@ -55,7 +55,11 @@ export function FinancialWrappedModal({
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
-  const { formatWithPreferred, formatCompactWithPreferred } = useCurrency();
+  const { formatWithPreferred, formatCompactWithPreferred, currencyMeta } = useCurrency();
+  const { isStealthMode } = usePrivacy();
+  const formatMoney = (amount: number) => {
+    return isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(amount);
+  };
   const { liquidCapital, marketAssets, fixedAssets, totalAssets } =
     useWalletBalances();
 
@@ -1193,7 +1197,7 @@ export function FinancialWrappedModal({
                                         : "2px",
                                     opacity: pt.inflow > 0 ? 1 : 0.2,
                                   }}
-                                  title={`${isIndonesian ? "Pemasukan" : "Inflow"}: +${formatRupiah(pt.inflow)}`}
+                                  title={`${isIndonesian ? "Pemasukan" : "Inflow"}: +${formatMoney(pt.inflow)}`}
                                 />
 
                                 {/* Outflow Bar (Frosted Accent) */}
@@ -1210,7 +1214,7 @@ export function FinancialWrappedModal({
                                         : "2px",
                                     opacity: pt.outflow > 0 ? 1 : 0.2,
                                   }}
-                                  title={`${isIndonesian ? "Pengeluaran" : "Outflow"}: -${formatRupiah(pt.outflow)}`}
+                                  title={`${isIndonesian ? "Pengeluaran" : "Outflow"}: -${formatMoney(pt.outflow)}`}
                                 />
                               </div>
 
@@ -1250,7 +1254,7 @@ export function FinancialWrappedModal({
                         />
                         <span>
                           {isIndonesian ? "Pemasukan: +" : "Inflow: +"}
-                          {formatRupiah(stats.totalIncome)}
+                          {formatMoney(stats.totalIncome)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1261,7 +1265,7 @@ export function FinancialWrappedModal({
                         />
                         <span>
                           {isIndonesian ? "Pengeluaran: -" : "Outflow: -"}
-                          {formatRupiah(stats.totalExpense)}
+                          {formatMoney(stats.totalExpense)}
                         </span>
                       </div>
                     </div>
@@ -1315,7 +1319,7 @@ export function FinancialWrappedModal({
                       }`}
                     >
                       -
-                      {formatRupiah(
+                      {formatMoney(
                         Math.max(
                           ...stats.periodicCashflow.map((p) => p.outflow),
                           0,
@@ -1341,7 +1345,7 @@ export function FinancialWrappedModal({
                       }`}
                     >
                       {stats.netCashflow >= 0 ? "+" : ""}
-                      {formatRupiah(stats.netCashflow)} ({stats.savingsRate}%)
+                      {formatMoney(stats.netCashflow)} ({stats.savingsRate}%)
                     </span>
                   </div>
                 </motion.div>
@@ -2103,7 +2107,7 @@ export function FinancialWrappedModal({
                                     <div
                                       key={day.dayOfYear}
                                       className={`w-1.5 h-1.5 rounded-[1.5px] transition-all relative ${intensityClasses[day.intensity]}`}
-                                      title={`${day.dateStr}: ${formatRupiah(day.amount)}`}
+                                      title={`${day.dateStr}: ${formatMoney(day.amount)}`}
                                     />
                                   );
                                 })}
@@ -2164,7 +2168,7 @@ export function FinancialWrappedModal({
                                   style={{
                                     height: ms.amount > 0 ? "26px" : "8px",
                                   }}
-                                  title={`${ms.monthName}: ${formatRupiah(ms.amount)} (${ms.activeDaysCount} ${isIndonesian ? "hari aktif" : "active days"})`}
+                                  title={`${ms.monthName}: ${formatMoney(ms.amount)} (${ms.activeDaysCount} ${isIndonesian ? "hari aktif" : "active days"})`}
                                 />
                                 <span
                                   className={`text-[8px]  ${
@@ -2243,7 +2247,7 @@ export function FinancialWrappedModal({
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
                           >
-                            {formatRupiah(stats.annualHeatmap.peakDay.amount)}
+                            {formatMoney(stats.annualHeatmap.peakDay.amount)}
                           </p>
                         </div>
                       )}
@@ -2306,7 +2310,7 @@ export function FinancialWrappedModal({
                             <div
                               key={day.day}
                               className={`aspect-square rounded-xl flex flex-col items-center justify-center text-[11px] transition-all relative ${intensityClasses[day.intensity]}`}
-                              title={`${day.dateStr}: ${formatRupiah(day.amount)}`}
+                              title={`${day.dateStr}: ${formatMoney(day.amount)}`}
                             >
                               <span>{day.day}</span>
                             </div>
@@ -2410,7 +2414,7 @@ export function FinancialWrappedModal({
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
                           >
-                            {formatRupiah(stats.monthlyHeatmap.peakDay.amount)}
+                            {formatMoney(stats.monthlyHeatmap.peakDay.amount)}
                           </p>
                         </div>
                       )}
@@ -2814,7 +2818,7 @@ export function FinancialWrappedModal({
                               fontFamily="monospace"
                             >
                               +
-                              {formatRupiah(
+                              {formatMoney(
                                 stats.runway.terminalProjectedSurplus,
                               )}
                             </text>
@@ -2861,7 +2865,7 @@ export function FinancialWrappedModal({
                           isDark ? "text-white" : "text-[#09090B]"
                         }`}
                       >
-                        +{formatRupiah(stats.runway.monthlyPace)}
+                        +{formatMoney(stats.runway.monthlyPace)}
                         <span
                           className={`text-[10px] font-normal ${
                             isDark ? "text-zinc-400" : "text-zinc-600"
@@ -2887,7 +2891,7 @@ export function FinancialWrappedModal({
                           isDark ? "text-white" : "text-[#09090B]"
                         }`}
                       >
-                        +{formatRupiah(stats.runway.terminalProjectedSurplus)}
+                        +{formatMoney(stats.runway.terminalProjectedSurplus)}
                       </p>
                     </div>
                   </div>
@@ -3094,7 +3098,7 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {formatRupiah(stats.maxSingleExpense)}
+                          {formatMoney(stats.maxSingleExpense)}
                         </p>
                       </div>
                     </div>

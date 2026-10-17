@@ -21,7 +21,7 @@ import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import type { Category, Wallet, TransactionType } from "../../lib/types";
 import type { ParsedStatementItem } from "../../lib/statementParser";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
@@ -53,6 +53,7 @@ export function BatchTransactionReviewSheet({
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { formatWithPreferred } = useCurrency();
 
   const { data: bills = [] } = useBills();
   const markBillPaid = useMarkBillPaid();
@@ -398,7 +399,7 @@ export function BatchTransactionReviewSheet({
             {selectedCount} {isIndonesian ? "dari" : "of"} {items.length}{" "}
             {isIndonesian ? "dipilih" : "selected"}
             {totalSelectedAmount > 0
-              ? ` · ${formatRupiah(totalSelectedAmount)}`
+              ? ` · ${formatWithPreferred(totalSelectedAmount)}`
               : ""}
           </span>
         </div>
@@ -481,7 +482,7 @@ export function BatchTransactionReviewSheet({
                         }}
                       >
                         {isOutflow ? "−" : "+"}
-                        {formatRupiah(it.amount)}
+                        {formatWithPreferred(it.amount)}
                       </span>
                     </div>
 
@@ -1066,7 +1067,7 @@ export function BatchTransactionReviewSheet({
                             </span>
                             {w.balance !== undefined && (
                               <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums block">
-                                {formatRupiah(w.balance)}
+                                {formatWithPreferred(w.balance)}
                               </span>
                             )}
                           </div>
