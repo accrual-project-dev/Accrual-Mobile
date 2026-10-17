@@ -20,11 +20,13 @@ import { MonochromeIconPickerModal } from "../ui/MonochromeIconPickerModal";
 import { AssetDetailSheet } from "./AssetDetailSheet";
 import { StakingYieldModal } from "./StakingYieldModal";
 import { autoSuggestIcon } from "../../lib/iconRegistry";
-import { formatRupiah, formatLiveAmountInput } from "../../lib/utils";
+import { formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 import {
   useWallets,
   saveWalletClassification,
@@ -136,6 +138,8 @@ export function AssetValuationSheet({
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const { isStealthMode } = usePrivacy();
   const { data: wallets = [], refetch: refetchWallets } = useWallets();
   const { balancesByName } = useWalletBalances();
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
@@ -516,8 +520,8 @@ export function AssetValuationSheet({
         saveUsdtPref(nextPref, user?.id);
         showToast(
           isIndonesian
-            ? `Kurs live diperbarui: ${formatRupiah(rate)}/USDT`
-            : `Live rate updated: ${formatRupiah(rate)}/USDT`,
+            ? `Kurs live diperbarui: ${formatWithPreferred(rate)}/USDT`
+            : `Live rate updated: ${formatWithPreferred(rate)}/USDT`,
           "add",
           () => {},
         );
@@ -817,7 +821,7 @@ export function AssetValuationSheet({
               )}
               <span className="">
                 {totalFloatingProfit >= 0 ? "+" : ""}
-                {formatRupiah(totalFloatingProfit)} (
+                {formatWithPreferred(totalFloatingProfit)} (
                 {totalFloatingProfitPct >= 0 ? "+" : ""}
                 {totalFloatingProfitPct.toFixed(2)}%)
               </span>
@@ -825,20 +829,22 @@ export function AssetValuationSheet({
           </div>
 
           <p className="amount text-[32px] sm:text-[36px] font-semibold tracking-tight text-[var(--text-primary)] leading-none my-1">
-            {formatRupiah(totalMarketValuation)}
+            {isStealthMode
+              ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+              : formatWithPreferred(totalMarketValuation)}
           </p>
 
           <div className="flex items-center justify-between pt-3 mt-3 border-t border-[var(--glass-border)]/40 text-[11.5px]">
             <span className="text-[var(--text-tertiary)]">
               {isIndonesian ? "Modal Pokok: " : "Cost Basis: "}
               <strong className="font-semibold text-[var(--text-secondary)] ">
-                {formatRupiah(totalCostBasis)}
+                {formatWithPreferred(totalCostBasis)}
               </strong>
             </span>
             <span className="text-[var(--text-tertiary)]">
               {isIndonesian ? "Kurs USDT: " : "Live USD: "}
               <strong className=" font-semibold text-[var(--text-secondary)]">
-                {formatRupiah(usdtPref.rate)}
+                {formatWithPreferred(usdtPref.rate)}
               </strong>
             </span>
           </div>
@@ -871,8 +877,10 @@ export function AssetValuationSheet({
                     : "USDT Wallet Balance Detected"}
                 </p>
                 <p className="text-[11px] text-[var(--text-tertiary)]  truncate">
-                  {formatRupiah(recordedCryptoBalance)} (~{suggestedUsdtUnits}{" "}
-                  USDT)
+                  {isStealthMode
+                    ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                    : formatWithPreferred(recordedCryptoBalance)}{" "}
+                  (~{suggestedUsdtUnits} USDT)
                 </p>
               </div>
             </div>
@@ -981,7 +989,9 @@ export function AssetValuationSheet({
                   </span>
                 </div>
                 <span className="text-[12px]  font-semibold text-[var(--text-primary)]">
-                  {formatRupiah(liquidSubtotal.totalMarketValue)}
+                  {isStealthMode
+                    ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                    : formatWithPreferred(liquidSubtotal.totalMarketValue)}
                 </span>
               </div>
 
@@ -1032,13 +1042,15 @@ export function AssetValuationSheet({
 
                     <div className="text-right shrink-0">
                       <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap text-[var(--text-primary)] ">
-                        {usdtPref.units > 0
-                          ? formatRupiah(usdtMarketValue)
-                          : `~${formatRupiah(recordedCryptoBalance)}`}
+                        {isStealthMode
+                          ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                          : usdtPref.units > 0
+                            ? formatWithPreferred(usdtMarketValue)
+                            : `~${formatWithPreferred(recordedCryptoBalance)}`}
                       </span>
                       <span className="text-[10.5px] font-semibold mt-1 inline-block whitespace-nowrap  text-[var(--text-secondary)]">
                         {usdtPref.units > 0
-                          ? `${usdtFloatingPnL >= 0 ? "+" : ""}${formatRupiah(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`
+                          ? `${usdtFloatingPnL >= 0 ? "+" : ""}${formatWithPreferred(usdtFloatingPnL)} (${usdtFloatingPnLPct >= 0 ? "+" : ""}${usdtFloatingPnLPct.toFixed(1)}%)`
                           : isIndonesian
                             ? `Ketuk untuk kalibrasi (${suggestedUsdtUnits} USDT)`
                             : `Tap to calibrate (${suggestedUsdtUnits} USDT)`}
@@ -1075,8 +1087,8 @@ export function AssetValuationSheet({
                             </div>
                             <p className="text-[10.5px] leading-tight text-[var(--text-secondary)]">
                               {isIndonesian
-                                ? `Penarikan P2P terbaru (${reconciliationAudit.unreconciledTxs[0]?.date || "18 Sep"} · ${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) belum dikurangkan dari unit kepemilikan.`
-                                : `Recent P2P withdrawal (${reconciliationAudit.unreconciledTxs[0]?.date || "Sep 18"} · ${formatRupiah(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) has not been deducted from holding units yet.`}
+                                ? `Penarikan P2P terbaru (${reconciliationAudit.unreconciledTxs[0]?.date || "18 Sep"} · ${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) belum dikurangkan dari unit kepemilikan.`
+                                : `Recent P2P withdrawal (${reconciliationAudit.unreconciledTxs[0]?.date || "Sep 18"} · ${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) has not been deducted from holding units yet.`}
                             </p>
                           </div>
                           <button
@@ -1235,13 +1247,21 @@ export function AssetValuationSheet({
 
                     <div className="text-right shrink-0">
                       <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap text-[var(--text-primary)] ">
-                        {formatRupiah(val.marketValue)}
+                        {isStealthMode
+                          ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                          : formatWithPreferred(val.marketValue)}
                       </span>
-                      <span className="text-[10.5px] font-semibold mt-1 inline-block whitespace-nowrap  text-[var(--text-secondary)]">
-                        {val.floatingPnL >= 0 ? "+" : ""}
-                        {formatRupiah(val.floatingPnL)} (
-                        {val.floatingPnLPct >= 0 ? "+" : ""}
-                        {val.floatingPnLPct.toFixed(1)}%)
+                      <span className="text-[10.5px] font-semibold mt-1 inline-block whitespace-nowrap text-[var(--text-secondary)]">
+                        {isStealthMode ? (
+                          "••••••••"
+                        ) : (
+                          <>
+                            {val.floatingPnL >= 0 ? "+" : ""}
+                            {formatWithPreferred(val.floatingPnL)} (
+                            {val.floatingPnLPct >= 0 ? "+" : ""}
+                            {val.floatingPnLPct.toFixed(1)}%)
+                          </>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -1269,8 +1289,10 @@ export function AssetValuationSheet({
                     {fixedHoldings.length}
                   </span>
                 </div>
-                <span className="text-[12px]  font-semibold text-[var(--text-primary)]">
-                  {formatRupiah(fixedSubtotal.totalMarketValue)}
+                <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                  {isStealthMode
+                    ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                    : formatWithPreferred(fixedSubtotal.totalMarketValue)}
                 </span>
               </div>
 
@@ -1324,13 +1346,21 @@ export function AssetValuationSheet({
 
                     <div className="text-right shrink-0">
                       <span className="text-[14px] font-semibold amount leading-none block whitespace-nowrap text-[var(--text-primary)] ">
-                        {formatRupiah(val.marketValue)}
+                        {isStealthMode
+                          ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                          : formatWithPreferred(val.marketValue)}
                       </span>
-                      <span className="text-[10.5px] font-semibold mt-1 inline-block whitespace-nowrap  text-[var(--text-secondary)]">
-                        {val.floatingPnL >= 0 ? "+" : ""}
-                        {formatRupiah(val.floatingPnL)} (
-                        {val.floatingPnLPct >= 0 ? "+" : ""}
-                        {val.floatingPnLPct.toFixed(1)}%)
+                      <span className="text-[10.5px] font-semibold mt-1 inline-block whitespace-nowrap text-[var(--text-secondary)]">
+                        {isStealthMode ? (
+                          "••••••••"
+                        ) : (
+                          <>
+                            {val.floatingPnL >= 0 ? "+" : ""}
+                            {formatWithPreferred(val.floatingPnL)} (
+                            {val.floatingPnLPct >= 0 ? "+" : ""}
+                            {val.floatingPnLPct.toFixed(1)}%)
+                          </>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -1891,7 +1921,7 @@ export function AssetValuationSheet({
               {formCurrency === "USD" && formBuyPrice && (
                 <p className="text-[10px] text-[var(--text-tertiary)]  mt-1 px-1">
                   ≈{" "}
-                  {formatRupiah(
+                  {formatWithPreferred(
                     parseCleanNumber(formBuyPrice) * usdtPref.rate,
                   )}
                 </p>
@@ -1939,7 +1969,7 @@ export function AssetValuationSheet({
             {formCurrency === "USD" && formCurrentPrice && (
               <p className="text-[10px] text-[var(--text-tertiary)]  mt-1 px-1">
                 ≈{" "}
-                {formatRupiah(
+                {formatWithPreferred(
                   parseCleanNumber(formCurrentPrice) * usdtPref.rate,
                 )}
               </p>

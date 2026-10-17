@@ -14,7 +14,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
 import {
-  formatRupiah,
   formatHoldingUnits,
   formatLiveAmountInput,
 } from "../../lib/utils";
@@ -22,6 +21,7 @@ import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { useCategories } from "../../hooks/useCategories";
 import {
@@ -72,6 +72,7 @@ export function StakingYieldModal({
   const isDark = theme !== "light";
   const addTx = useAddTransaction();
   const { data: categories = [] } = useCategories();
+  const { formatWithPreferred } = useCurrency();
 
   const effectiveRate = liveRate > 0 ? liveRate : 16415;
   const availableUnits = holdingUnits > 0 ? holdingUnits : 0;
@@ -366,7 +367,7 @@ export function StakingYieldModal({
     return wallets.map((w) => ({
       value: w.id,
       label: w.name,
-      sublabel: `${w.classification || "wallet"} · ${formatRupiah(Number(w.balance || 0))}`,
+      sublabel: `${w.classification || "wallet"} · ${formatWithPreferred(Number(w.balance || 0))}`,
       icon: w.icon,
     }));
   }, [wallets]);
@@ -404,7 +405,7 @@ export function StakingYieldModal({
       }
       const note =
         claimNote.trim() ||
-        `${isIndonesian ? "Bunga Harian" : "Daily Interest"} ${activeBankWallet?.name || "SeaBank"} (+${formatRupiah(amount)})`;
+        `${isIndonesian ? "Bunga Harian" : "Daily Interest"} ${activeBankWallet?.name || "SeaBank"} (+${formatWithPreferred(amount)})`;
 
       addTx.mutate({
         wallet_id: selectedBankWalletId || activeBankWallet?.id,
@@ -417,8 +418,8 @@ export function StakingYieldModal({
 
       showToast(
         isIndonesian
-          ? `Bunga harian ${formatRupiah(amount)} berhasil dicatat ke ${activeBankWallet?.name || "bank"}`
-          : `Daily interest ${formatRupiah(amount)} recorded to ${activeBankWallet?.name || "bank"}`,
+          ? `Bunga harian ${formatWithPreferred(amount)} berhasil dicatat ke ${activeBankWallet?.name || "bank"}`
+          : `Daily interest ${formatWithPreferred(amount)} recorded to ${activeBankWallet?.name || "bank"}`,
         "add",
         () => {},
       );
@@ -436,7 +437,7 @@ export function StakingYieldModal({
       }
       const note =
         claimNote.trim() ||
-        `${isIndonesian ? "Kupon SBN" : "SBN Coupon"} ${selectedBondSymbol} (+${formatRupiah(amount)})`;
+        `${isIndonesian ? "Kupon SBN" : "SBN Coupon"} ${selectedBondSymbol} (+${formatWithPreferred(amount)})`;
 
       addTx.mutate({
         wallet_id: bondPayoutWalletId || selectedBankWalletId,
@@ -449,8 +450,8 @@ export function StakingYieldModal({
 
       showToast(
         isIndonesian
-          ? `Kupon SBN ${selectedBondSymbol} sebesar ${formatRupiah(amount)} berhasil dicatat`
-          : `SBN coupon of ${formatRupiah(amount)} for ${selectedBondSymbol} recorded`,
+          ? `Kupon SBN ${selectedBondSymbol} sebesar ${formatWithPreferred(amount)} berhasil dicatat`
+          : `SBN coupon of ${formatWithPreferred(amount)} for ${selectedBondSymbol} recorded`,
         "add",
         () => {},
       );
@@ -469,7 +470,7 @@ export function StakingYieldModal({
       }
       const note =
         claimNote.trim() ||
-        `${isIndonesian ? "Dividen Saham" : "Stock Dividend"} ${selectedStockSymbol} (+${formatRupiah(amount)})`;
+        `${isIndonesian ? "Dividen Saham" : "Stock Dividend"} ${selectedStockSymbol} (+${formatWithPreferred(amount)})`;
 
       addTx.mutate({
         wallet_id: dividendPayoutWalletId || selectedBankWalletId,
@@ -482,8 +483,8 @@ export function StakingYieldModal({
 
       showToast(
         isIndonesian
-          ? `Dividen ${selectedStockSymbol} sebesar ${formatRupiah(amount)} berhasil dicatat`
-          : `Dividend of ${formatRupiah(amount)} for ${selectedStockSymbol} recorded`,
+          ? `Dividen ${selectedStockSymbol} sebesar ${formatWithPreferred(amount)} berhasil dicatat`
+          : `Dividend of ${formatWithPreferred(amount)} for ${selectedStockSymbol} recorded`,
         "add",
         () => {},
       );
@@ -499,7 +500,7 @@ export function StakingYieldModal({
       }
       const note =
         claimNote.trim() ||
-        `${isIndonesian ? "Bunga Deposito" : "Deposit Interest"} (+${formatRupiah(amount)})`;
+        `${isIndonesian ? "Bunga Deposito" : "Deposit Interest"} (+${formatWithPreferred(amount)})`;
 
       addTx.mutate({
         wallet_id: depositPayoutWalletId || selectedBankWalletId,
@@ -512,8 +513,8 @@ export function StakingYieldModal({
 
       showToast(
         isIndonesian
-          ? `Bunga deposito ${formatRupiah(amount)} berhasil dicatat`
-          : `Deposit interest ${formatRupiah(amount)} recorded`,
+          ? `Bunga deposito ${formatWithPreferred(amount)} berhasil dicatat`
+          : `Deposit interest ${formatWithPreferred(amount)} recorded`,
         "add",
         () => {},
       );
@@ -559,8 +560,8 @@ export function StakingYieldModal({
 
         showToast(
           isIndonesian
-            ? `Pencairan yield +${unitsToClaim} ${targetSymbol} (${formatRupiah(idrAmount)}) berhasil dicatat`
-            : `Yield payout +${unitsToClaim} ${targetSymbol} (${formatRupiah(idrAmount)}) recorded`,
+            ? `Pencairan yield +${unitsToClaim} ${targetSymbol} (${formatWithPreferred(idrAmount)}) berhasil dicatat`
+            : `Yield payout +${unitsToClaim} ${targetSymbol} (${formatWithPreferred(idrAmount)}) recorded`,
           "add",
           () => {},
         );
@@ -621,8 +622,8 @@ export function StakingYieldModal({
 
         showToast(
           isIndonesian
-            ? `Bunga majemuk +${unitsToClaim} ${targetSymbol} (+${formatRupiah(idrAmount)}) berhasil ditambahkan ke saldo aset`
-            : `Auto-compounded +${unitsToClaim} ${targetSymbol} (+${formatRupiah(idrAmount)}) to asset holdings`,
+            ? `Bunga majemuk +${unitsToClaim} ${targetSymbol} (+${formatWithPreferred(idrAmount)}) berhasil ditambahkan ke saldo aset`
+            : `Auto-compounded +${unitsToClaim} ${targetSymbol} (+${formatWithPreferred(idrAmount)}) to asset holdings`,
           "add",
           () => {},
         );
@@ -996,7 +997,7 @@ export function StakingYieldModal({
                             </span>
                           </div>
                           <span className="text-[16px] font-bold text-[var(--text-primary)] amount ">
-                            +{formatRupiah(bankProjections.daily)}
+                            +{formatWithPreferred(bankProjections.daily)}
                           </span>
                         </div>
 
@@ -1008,7 +1009,7 @@ export function StakingYieldModal({
                                 : "Monthly Yield"}
                             </span>
                             <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount ">
-                              +{formatRupiah(bankProjections.monthly)}
+                              +{formatWithPreferred(bankProjections.monthly)}
                             </span>
                           </div>
                           <div className="text-right">
@@ -1018,7 +1019,7 @@ export function StakingYieldModal({
                                 : "Annual Yield"}
                             </span>
                             <span className="text-[13px] font-semibold text-[var(--text-secondary)] amount ">
-                              +{formatRupiah(bankProjections.yearly)}
+                              +{formatWithPreferred(bankProjections.yearly)}
                             </span>
                           </div>
                         </div>
@@ -1142,7 +1143,7 @@ export function StakingYieldModal({
                             </span>
                           </div>
                           <span className="text-[16px] font-bold text-[var(--text-primary)] amount">
-                            +{formatRupiah(bondProjections.monthlyNet)}
+                            +{formatWithPreferred(bondProjections.monthlyNet)}
                           </span>
                         </div>
 
@@ -1152,7 +1153,7 @@ export function StakingYieldModal({
                               {isIndonesian ? "Kupon Bersih / Tahun" : "Net Annual Coupon"}
                             </span>
                             <span className="font-semibold text-[var(--text-secondary)] amount">
-                              +{formatRupiah(bondProjections.annualNet)}
+                              +{formatWithPreferred(bondProjections.annualNet)}
                             </span>
                           </div>
                           <div className="text-right">
@@ -1160,7 +1161,7 @@ export function StakingYieldModal({
                               {isIndonesian ? "Pajak PPh Final (10%)" : "Final Tax (10%)"}
                             </span>
                             <span className="font-semibold text-[var(--text-tertiary)] amount">
-                              -{formatRupiah(bondProjections.taxMonthly)} / {isIndonesian ? "bln" : "mo"}
+                              -{formatWithPreferred(bondProjections.taxMonthly)} / {isIndonesian ? "bln" : "mo"}
                             </span>
                           </div>
                         </div>
@@ -1371,7 +1372,7 @@ export function StakingYieldModal({
                             {isIndonesian ? "Bunga per Bulan" : "Monthly Yield"}
                           </span>
                           <span className="font-semibold text-[var(--text-primary)] amount ">
-                            +{formatRupiah(depositProjections.monthlyNet)}
+                            +{formatWithPreferred(depositProjections.monthlyNet)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-[11.5px] pt-2 border-t border-[var(--glass-border)]/40">
@@ -1381,7 +1382,7 @@ export function StakingYieldModal({
                               : "Total at Maturity"}
                           </span>
                           <span className="font-bold text-[var(--text-primary)] amount ">
-                            +{formatRupiah(depositProjections.maturityNet)}
+                            +{formatWithPreferred(depositProjections.maturityNet)}
                           </span>
                         </div>
                       </div>
@@ -1502,7 +1503,7 @@ export function StakingYieldModal({
                           <span className="font-bold text-[var(--text-primary)] amount">
                             +{cryptoProjections.daily.units} {selectedCryptoSymbol}{" "}
                             <span className="text-[10px] text-[var(--text-tertiary)] font-normal">
-                              (+{formatRupiah(cryptoProjections.daily.idr)})
+                              (+{formatWithPreferred(cryptoProjections.daily.idr)})
                             </span>
                           </span>
                         </div>
@@ -1513,7 +1514,7 @@ export function StakingYieldModal({
                           <span className="font-semibold text-[var(--text-secondary)] amount">
                             +{cryptoProjections.yearly.units} {selectedCryptoSymbol}{" "}
                             <span className="text-[10px] text-[var(--text-tertiary)] font-normal">
-                              (+{formatRupiah(cryptoProjections.yearly.idr)})
+                              (+{formatWithPreferred(cryptoProjections.yearly.idr)})
                             </span>
                           </span>
                         </div>

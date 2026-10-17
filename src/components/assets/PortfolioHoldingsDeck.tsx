@@ -7,7 +7,8 @@ import {
   X,
   Coins,
 } from "lucide-react";
-import { formatRupiah, formatHoldingUnits } from "../../lib/utils";
+import { formatHoldingUnits } from "../../lib/utils";
+import { formatCurrencyAmount } from "../../lib/currency";
 import { triggerHaptic } from "../../lib/haptics";
 import { IconRenderer } from "../ui/IconRenderer";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -62,7 +63,7 @@ function formatNativeQuote(
     h.symbol?.toUpperCase() === "GOLD" ||
     h.symbol?.toUpperCase() === "EMAS";
 
-  const fallback = formatFn || formatRupiah;
+  const fallback = formatFn || ((val: number) => formatCurrencyAmount(val, "IDR"));
 
   if (isGold) {
     const p = h.native_price || h.current_price || 0;

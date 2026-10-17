@@ -12,9 +12,10 @@ import {
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useAllTransactions } from "../../hooks/useTransactions";
 import { resolveWalletClassification } from "../../hooks/useWallets";
@@ -39,6 +40,8 @@ export function CashAccountDetailSheet({
   zIndex,
 }: CashAccountDetailSheetProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const { isStealthMode } = usePrivacy();
   const navigate = useNavigate();
   const { balancesById, liquidAssets } = useWalletBalances();
   const { data: allTxs = [] } = useAllTransactions();
@@ -176,7 +179,9 @@ export function CashAccountDetailSheet({
             className="text-[26px] font-bold tracking-tight leading-tight mb-4"
             style={{ color: "var(--text-primary)" }}
           >
-            {formatRupiah(currentBalance)}
+            {isStealthMode
+              ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+              : formatWithPreferred(currentBalance)}
           </div>
 
           {/* Allocation Metric Bar */}
@@ -290,7 +295,10 @@ export function CashAccountDetailSheet({
                           color: isIncoming ? "var(--text-primary)" : "var(--text-secondary)",
                         }}
                       >
-                        {isIncoming ? "+" : "—"} {formatRupiah(Number(tx.amount || 0))}
+                        {isIncoming ? "+" : "—"}{" "}
+                        {isStealthMode
+                          ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                          : formatWithPreferred(Number(tx.amount || 0))}
                       </span>
                     </div>
                   </div>
