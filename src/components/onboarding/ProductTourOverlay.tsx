@@ -68,7 +68,7 @@ export const TOUR_STEPS: TourStep[] = [
     highlightsId: [
       "Modal Likuid Operasional",
       "Plafon Belanja Aman",
-      "Ruang Kas Bersama (Spaces)",
+      "Ruang Kas Bersama",
     ],
     highlightsEn: [
       "Liquid Operating Capital",
@@ -121,7 +121,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleId: "Aset: Struktur Modal & Valuasi",
     titleEn: "Assets: Capital Solvency & USDT",
     descId:
-      "Evaluasi neraca 4 pilar: Kas Likuid (Tier 1), Portofolio Investasi (Tier 2), Aset Riil Fisik (Tier 3), dan Liabilitas Utang dengan valuasi kurs kripto USDT live.",
+      "Evaluasi neraca 4 pilar: Kas Likuid Utama, Portofolio Investasi, Aset Riil Berwujud, dan Liabilitas Utang dengan valuasi kurs kripto USDT live.",
     descEn:
       "Comprehensive 4-pillar balance sheet: Liquid Cash (Tier 1), Investment Holdings (Tier 2), Real Tangibles (Tier 3), and Liabilities with live USDT pricing.",
     icon: Landmark,
@@ -211,14 +211,14 @@ export const TOUR_STEPS: TourStep[] = [
     titleId: "Statistik: Analitik & Laporan",
     titleEn: "Statistics: Diagnostics & Reports",
     descId:
-      "Diagnostik mendalam rasio tabungan, velocity pengeluaran, burn rate, kilas balik tahunan (Wrapped), serta ekspor laporan Neraca Keuangan resmi format Excel dan PDF.",
+      "Diagnostik mendalam rasio tabungan, laju konsumsi kas harian, kilas balik tahunan, serta ekspor laporan Neraca Keuangan resmi format Excel dan PDF.",
     descEn:
       "Deep diagnostics of savings velocity, burn rate, cashflow trajectory, annual Wrapped review, and official Balance Sheet export to Excel and PDF.",
     icon: PieChart,
     highlightsId: [
-      "Velocity Pengeluaran & Burn Rate",
-      "Ekspor Neraca Resmi (PDF/Excel)",
-      "Kilas Balik Finansial (Wrapped)",
+      "Laju Konsumsi Kas & Pengeluaran",
+      "Ekspor Laporan Neraca Resmi",
+      "Kilas Balik Finansial Tahunan",
     ],
     highlightsEn: [
       "Spending Velocity & Burn Rate",
@@ -226,7 +226,7 @@ export const TOUR_STEPS: TourStep[] = [
       "Annual Financial Wrapped Review",
     ],
     proTipId:
-      "Buka Kilas Balik Finansial (Wrapped) untuk analisis menyeluruh dan unduh laporan resmi.",
+      "Buka Kilas Balik Finansial Tahunan untuk analisis menyeluruh dan unduh laporan resmi.",
     proTipEn:
       "Open Financial Wrapped for a multi-slide dossier and download your official report.",
     actionLabelId: "Mulai Eksplorasi Analisis",
@@ -503,7 +503,7 @@ export function ProductTourOverlay({
           className="fixed left-4 right-4 z-40 max-w-[380px] mx-auto pointer-events-auto transition-all duration-300"
           style={{
             top: isTargetAtBottom
-              ? "max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)"
+              ? "max(calc(env(safe-area-inset-top, 0px) + 18px), 28px)"
               : "auto",
             bottom: !isTargetAtBottom
               ? "max(calc(env(safe-area-inset-bottom, 0px) + 84px), 96px)"

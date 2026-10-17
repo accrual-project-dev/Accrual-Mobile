@@ -407,7 +407,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
         classification: "liquid",
       },
       {
-        name: isIndo ? "Dompet Digital (Wise)" : "Digital Wallet (Wise)",
+        name: isIndo ? "Dompet Digital Wise" : "Wise Digital Wallet",
         icon: "Globe",
         classification: "liquid",
       },
@@ -458,7 +458,12 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     );
 
     try {
-      await seedOnboardingWallets(user?.id, standardWallets);
+      await seedOnboardingWallets(
+        user?.id,
+        standardWallets,
+        undefined,
+        isIndonesian,
+      );
     } catch (err) {
       console.warn("[OnboardingModal] Failed quick seeding wallets:", err);
     }
@@ -606,6 +611,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
         user?.id,
         chosenAccountConfigs,
         convertedStartingBalance,
+        isIndonesian,
       );
     } catch (err) {
       console.warn("[OnboardingModal] Failed to seed wallets:", err);
@@ -1016,7 +1022,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       : "text-white/50 hover:text-white"
                   }`}
                 >
-                  Lokal (IDR)
+                  {isIndonesian ? "Lokal" : "Domestic"}
                 </button>
                 <button
                   type="button"
@@ -1030,7 +1036,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
                       : "text-white/50 hover:text-white"
                   }`}
                 >
-                  Global (USD/EUR)
+                  {isIndonesian ? "Internasional" : "Global"}
                 </button>
               </div>
 

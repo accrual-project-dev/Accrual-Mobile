@@ -37,7 +37,7 @@ export function getArchetypeItems(isIndonesian: boolean): ArchetypeItem[] {
         ? "Pencatatan cepat tanpa hambatan untuk memantau pengeluaran harian."
         : "Fast, distraction-free logging to monitor everyday burn rate.",
       badge: isIndonesian ? "Minimalis" : "Minimalist",
-      metric: isIndonesian ? "Rp 140 Rb / hari" : "Rp 140K / day",
+      metric: isIndonesian ? "Rp 140 Rb / hari" : "$15 / day",
       subMetric: isIndonesian
         ? "Masukan suara & kamera sub-detik"
         : "Sub-second voice & camera entry",
@@ -63,15 +63,15 @@ export function getArchetypeItems(isIndonesian: boolean): ArchetypeItem[] {
     },
     {
       key: "domain",
-      chipLabel: isIndonesian ? "Pemisahan Space" : "Dual Space",
-      title: isIndonesian ? "Pemisahan Space Pribadi & Usaha" : "Dual Space Separation",
+      chipLabel: isIndonesian ? "Pemisahan Ruang Kas" : "Dual Space",
+      title: isIndonesian ? "Pemisahan Ruang Kas Pribadi & Usaha" : "Dual Space Separation",
       desc: isIndonesian
         ? "Pisahkan secara tegas kas pribadi dari pembukuan bisnis dan proyek sampingan."
         : "Strictly partition personal living outlays from venture & side-project books.",
       badge: isIndonesian ? "Terpartisi" : "Partitioned",
       metric: isIndonesian ? "Pribadi ↔ Bisnis" : "Personal ↔ Venture",
       subMetric: isIndonesian
-        ? "Isolasi space tanpa percampuran dana"
+        ? "Isolasi ruang kas tanpa percampuran dana"
         : "Zero co-mingling space isolation",
       widgetPreset: "executive",
       icon: Layers,
@@ -278,7 +278,9 @@ export function ArchetypeCardSelector({
                     <span className="text-white/60 font-medium">
                       {isIndonesian ? "Batas Belanja Kategori" : "Category Spending Cap"}
                     </span>
-                    <span className="text-white font-semibold amount">Rp 3.2M / Rp 5.0M</span>
+                    <span className="text-white font-semibold amount">
+                      {isIndonesian ? "Rp 3,2 Jt / Rp 5,0 Jt" : "$3.2K / $5.0K"}
+                    </span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
                     <div
@@ -302,10 +304,10 @@ export function ArchetypeCardSelector({
                 <div className="w-full grid grid-cols-2 gap-2">
                   <div className="p-2.5 rounded-[13px] bg-white/[0.04] border border-white/10">
                     <span className="text-[9.5px] font-medium text-white/50 block mb-0.5">
-                      {isIndonesian ? "Space Pribadi" : "Personal Space"}
+                      {isIndonesian ? "Ruang Kas Pribadi" : "Personal Space"}
                     </span>
                     <span className="text-[13px] font-semibold text-white amount block">
-                      Rp 8.450.000
+                      {isIndonesian ? "Rp 8.450.000" : "$8,450.00"}
                     </span>
                     <span className="text-[8.5px] text-white/40 block mt-0.5">
                       {isIndonesian ? "Kebutuhan & Gaya Hidup" : "Living & Lifestyle"}
@@ -313,10 +315,10 @@ export function ArchetypeCardSelector({
                   </div>
                   <div className="p-2.5 rounded-[13px] bg-white/[0.04] border border-white/10">
                     <span className="text-[9.5px] font-medium text-white/50 block mb-0.5">
-                      {isIndonesian ? "Space Usaha" : "Business Space"}
+                      {isIndonesian ? "Ruang Kas Usaha" : "Business Space"}
                     </span>
                     <span className="text-[13px] font-semibold text-white amount block">
-                      Rp 24.120.000
+                      {isIndonesian ? "Rp 24.120.000" : "$24,120.00"}
                     </span>
                     <span className="text-[8.5px] text-white/40 block mt-0.5">
                       {isIndonesian ? "Proyek & Operasional" : "Projects & Business"}
@@ -366,11 +368,11 @@ export function ArchetypeCardSelector({
               {currentItem.visualType === "executive_grid" && (
                 <div className="w-full grid grid-cols-3 gap-1.5">
                   {[
-                    { label: isIndonesian ? "Arus Kas" : "Cashflow", val: "+14.2M" },
-                    { label: isIndonesian ? "Beban Harian" : "Burn Rate", val: "140K/d" },
+                    { label: isIndonesian ? "Arus Kas" : "Cashflow", val: isIndonesian ? "+14,2 Jt" : "+$1.2K" },
+                    { label: isIndonesian ? "Beban Harian" : "Burn Rate", val: isIndonesian ? "140 Rb/hr" : "$15/d" },
                     { label: isIndonesian ? "Aliran Sankey" : "Sankey Flow", val: isIndonesian ? "Aktif" : "Active" },
                     { label: isIndonesian ? "Proteksi Utang" : "Debt Guard", val: isIndonesian ? "0 Risiko" : "0 Risk" },
-                    { label: isIndonesian ? "Ketahanan" : "Runway", val: "22 Mo" },
+                    { label: isIndonesian ? "Ketahanan" : "Runway", val: isIndonesian ? "22 Bln" : "22 Mo" },
                     { label: isIndonesian ? "Alokasi" : "Allocation", val: isIndonesian ? "Seimbang" : "Balanced" },
                   ].map((cell, i) => (
                     <div

@@ -405,13 +405,17 @@ export async function seedOnboardingWallets(
   userId: string | undefined,
   selectedWallets: OnboardingWalletChoice[],
   initialBalance?: number,
+  isIndonesian: boolean = false,
 ): Promise<Wallet[]> {
   const isGuest =
     !userId ||
     userId === "guest_local_user" ||
     localStorage.getItem("trouvaille_guest_mode") === "true";
   const now = new Date().toISOString();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const fullIsoOccurredOn = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
+  const initialNote = isIndonesian
+    ? "Saldo Awal Pembukaan Akun"
+    : "Initial Starting Balance";
 
   const seeded: Wallet[] = selectedWallets.map((w) => ({
     id: generateUUID(),
@@ -436,9 +440,9 @@ export async function seedOnboardingWallets(
         user_id: "guest_local_user",
         type: "adjustment",
         amount: initialBalance,
-        occurred_on: today,
+        occurred_on: fullIsoOccurredOn,
         created_at: now,
-        note: "Initial Starting Balance",
+        note: initialNote,
         wallet_id: primaryWallet.id,
         to_wallet_id: null,
         category_id: null,
@@ -490,8 +494,8 @@ export async function seedOnboardingWallets(
           user_id: userId,
           type: "adjustment",
           amount: initialBalance,
-          occurred_on: today,
-          note: "Initial Starting Balance",
+          occurred_on: fullIsoOccurredOn,
+          note: initialNote,
           wallet_id: primaryWallet.id,
           category_id: null,
         });
