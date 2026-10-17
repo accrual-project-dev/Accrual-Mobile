@@ -10,7 +10,6 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import { format, isToday } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import type { WidgetSize } from "../../lib/widgetLayoutTypes";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { getBillDueStatusLabel, getDaysUntilDue } from "../../hooks/useBills";
 import { resolveTransactionCategory } from "../../lib/categoryResolver";
@@ -198,8 +197,8 @@ function HomeWidgetRendererComponent({
                   pctChange: 0,
                   title: isIndonesian ? "Stabilitas Pengeluaran" : "Spending Stability",
                   subtitle: isIndonesian
-                    ? `Konsistensi pengeluaran Anda dievaluasi sebagai ${intel.expenseVolatility.stability === "VOLATILE" ? "Tinggi (Volatil)" : intel.expenseVolatility.stability === "MODERATE" ? "Moderat" : "Stabil"} dengan rata-rata belanja ${formatRupiah(dailyAverage)}/hari.`
-                    : `Your spending consistency is evaluated as ${intel.expenseVolatility.stability} with a daily average outlay of ${formatRupiah(dailyAverage)}/day.`,
+                    ? `Konsistensi pengeluaran Anda dievaluasi sebagai ${intel.expenseVolatility.stability === "VOLATILE" ? "Tinggi (Volatil)" : intel.expenseVolatility.stability === "MODERATE" ? "Moderat" : "Stabil"} dengan rata-rata belanja ${formatWithPreferred(dailyAverage)}/hari.`
+                    : `Your spending consistency is evaluated as ${intel.expenseVolatility.stability} with a daily average outlay of ${formatWithPreferred(dailyAverage)}/day.`,
                   badge: isIndonesian
                     ? intel.expenseVolatility.stability === "VOLATILE"
                       ? "VOLATIL"
@@ -239,8 +238,8 @@ function HomeWidgetRendererComponent({
                     pctChange: 0,
                     title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
                     subtitle: isIndonesian
-                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
-                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatWithPreferred(intel.totalIncome)} dan pengeluaran ${formatWithPreferred(intel.totalExpense)}.`
+                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatWithPreferred(intel.totalIncome)} inflow and ${formatWithPreferred(intel.totalExpense)} outflow.`,
                     badge: isIndonesian ? "Bulan Ini" : "Current Month",
                     ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
                   },
@@ -293,8 +292,8 @@ function HomeWidgetRendererComponent({
                     pctChange: 0,
                     title: isIndonesian ? "Arus Kas Bersih" : "Net Cashflow",
                     subtitle: isIndonesian
-                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatRupiah(intel.totalIncome)} dan pengeluaran ${formatRupiah(intel.totalExpense)}.`
-                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatRupiah(intel.totalIncome)} inflow and ${formatRupiah(intel.totalExpense)} outflow.`,
+                      ? `Bulan ini ditutup dengan ${intel.netCashflow >= 0 ? "surplus" : "defisit"} setelah pemasukan ${formatWithPreferred(intel.totalIncome)} dan pengeluaran ${formatWithPreferred(intel.totalExpense)}.`
+                      : `This month closes at ${intel.netCashflow >= 0 ? "a surplus" : "a deficit"} after ${formatWithPreferred(intel.totalIncome)} inflow and ${formatWithPreferred(intel.totalExpense)} outflow.`,
                     badge: isIndonesian ? "Bulan Ini" : "Current Month",
                     ctaLabel: isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown",
                   },
@@ -310,8 +309,8 @@ function HomeWidgetRendererComponent({
                     pctChange: exp.pctChange,
                     title: isIndonesian ? "Total Pengeluaran" : "Total Outflow",
                     subtitle: isIndonesian
-                      ? `Pengeluaran bulan berjalan adalah ${formatRupiah(intel.totalExpense)}. Dibandingkan bulan sebelumnya, perubahannya ${exp.delta >= 0 ? "meningkat" : "menurun"} sebesar ${formatRupiah(Math.abs(exp.delta))}.`
-                      : `Current-month spending is ${formatRupiah(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatRupiah(Math.abs(exp.delta))}.`,
+                      ? `Pengeluaran bulan berjalan adalah ${formatWithPreferred(intel.totalExpense)}. Dibandingkan bulan sebelumnya, perubahannya ${exp.delta >= 0 ? "meningkat" : "menurun"} sebesar ${formatWithPreferred(Math.abs(exp.delta))}.`
+                      : `Current-month spending is ${formatWithPreferred(intel.totalExpense)}. Compared with the previous month, the change is ${exp.delta >= 0 ? "an increase" : "a decrease"} of ${formatWithPreferred(Math.abs(exp.delta))}.`,
                     badge: isIndonesian ? "Bulan Ini" : "Current Month",
                     ctaLabel: isIndonesian ? "Lihat Rincian Analisis" : "View Analytics Breakdown",
                   },
@@ -736,7 +735,7 @@ function HomeWidgetRendererComponent({
                       className="amount text-[14px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {formatRupiah(Number(bill.amount))}
+                      {formatWithPreferred(Number(bill.amount))}
                     </p>
                     <button
                       type="button"
@@ -810,7 +809,7 @@ function HomeWidgetRendererComponent({
                 className="amount text-[14px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                {formatRupiah(
+                {formatWithPreferred(
                   upcomingBills.reduce(
                     (s: number, b: any) => s + Number(b.amount || 0),
                     0,
@@ -1024,7 +1023,7 @@ function HomeWidgetRendererComponent({
                       : tx.type === "expense"
                         ? "-"
                         : ""}
-                    {formatRupiah(Number(tx.amount))}
+                    {formatWithPreferred(Number(tx.amount))}
                   </span>
                 </div>
               );
@@ -1071,8 +1070,8 @@ function HomeWidgetRendererComponent({
                     ? `Kategori Utama: ${topCat.name}`
                     : `Top Category: ${topCat.name}`,
                   subtitle: isIndonesian
-                    ? `${topCat.name} adalah pendorong pengeluaran tertinggi Anda bulan ini (${formatRupiah(topCat.total)}), menyumbang ${pct}% dari total belanja bulanan.`
-                    : `${topCat.name} is your highest expense driver this month (${formatRupiah(topCat.total)}), making up ${pct}% of total monthly spending.`,
+                    ? `${topCat.name} adalah pendorong pengeluaran tertinggi Anda bulan ini (${formatWithPreferred(topCat.total)}), menyumbang ${pct}% dari total belanja bulanan.`
+                    : `${topCat.name} is your highest expense driver this month (${formatWithPreferred(topCat.total)}), making up ${pct}% of total monthly spending.`,
                   badge: isIndonesian
                     ? `${pct}% dari Total`
                     : `${pct}% of Total`,
@@ -1135,7 +1134,7 @@ function HomeWidgetRendererComponent({
                         className="font-semibold amount"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {formatRupiah(cat.total)}
+                        {formatWithPreferred(cat.total)}
                       </span>
                       <span
                         className="text-[10px] font-medium"
@@ -1323,15 +1322,15 @@ function HomeWidgetRendererComponent({
                 totalPrevious: 0,
                 delta: netRetention,
                 pctChange: 0,
-                displayValue: `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netRetention))}`,
+                displayValue: `${isSurplus ? "+" : "-"}${formatWithPreferred(Math.abs(netRetention))}`,
                 title: isIndonesian ? "Telemetri Tabungan" : "Savings Telemetry",
                 subtitle: isSurplus
                   ? isIndonesian
-                    ? `Retensi modal bersih adalah ${intel.savingsRate.toFixed(1)}% dari total arus kas masuk bulanan (${formatRupiah(currentMonthStats.income)}). Modal yang tersimpan: ${formatRupiah(netRetention)}.`
-                    : `Net capital retention is ${intel.savingsRate.toFixed(1)}% of total monthly inflow (${formatRupiah(currentMonthStats.income)}). Retained capital: ${formatRupiah(netRetention)}.`
+                    ? `Retensi modal bersih adalah ${intel.savingsRate.toFixed(1)}% dari total arus kas masuk bulanan (${formatWithPreferred(currentMonthStats.income)}). Modal yang tersimpan: ${formatWithPreferred(netRetention)}.`
+                    : `Net capital retention is ${intel.savingsRate.toFixed(1)}% of total monthly inflow (${formatWithPreferred(currentMonthStats.income)}). Retained capital: ${formatWithPreferred(netRetention)}.`
                   : isIndonesian
-                    ? `Pengeluaran (${formatRupiah(currentMonthStats.expense)}) melebihi pemasukan (${formatRupiah(currentMonthStats.income)}) bulan ini dengan defisit ${formatRupiah(Math.abs(netRetention))}.`
-                    : `Outflow (${formatRupiah(currentMonthStats.expense)}) exceeds inflow (${formatRupiah(currentMonthStats.income)}) this month by a deficit of ${formatRupiah(Math.abs(netRetention))}.`,
+                    ? `Pengeluaran (${formatWithPreferred(currentMonthStats.expense)}) melebihi pemasukan (${formatWithPreferred(currentMonthStats.income)}) bulan ini dengan defisit ${formatWithPreferred(Math.abs(netRetention))}.`
+                    : `Outflow (${formatWithPreferred(currentMonthStats.expense)}) exceeds inflow (${formatWithPreferred(currentMonthStats.income)}) this month by a deficit of ${formatWithPreferred(Math.abs(netRetention))}.`,
                 badge: isSurplus
                   ? isIndonesian
                     ? `${intel.savingsRate.toFixed(0)}% Ditabung`
@@ -1364,7 +1363,7 @@ function HomeWidgetRendererComponent({
                         ? "Defisit Kas Bersih"
                         : "Net Cash Deficit",
                     amount: Math.abs(netRetention),
-                    valueText: `${isSurplus ? "+" : "-"}${formatRupiah(Math.abs(netRetention))}`,
+                    valueText: `${isSurplus ? "+" : "-"}${formatWithPreferred(Math.abs(netRetention))}`,
                     detail: isSurplus
                       ? isIndonesian
                         ? "Modal tersimpan dalam periode"
@@ -1406,13 +1405,13 @@ function HomeWidgetRendererComponent({
                 totalPrevious: 0,
                 delta: 0,
                 pctChange: 0,
-                displayValue: formatRupiah(total7d),
+                displayValue: formatWithPreferred(total7d),
                 title: isIndonesian
                   ? "Laju Pengeluaran 7-Hari"
                   : "7-Day Spending Velocity",
                 subtitle: isIndonesian
-                  ? `Total pengeluaran selama 7 hari terakhir adalah ${formatRupiah(total7d)} dengan rata-rata harian ${formatRupiah(Math.round(total7d / 7))}. Pengeluaran tertinggi pada ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`
-                  : `Total outflow over the last 7 days is ${formatRupiah(total7d)} with a daily average of ${formatRupiah(Math.round(total7d / 7))}. Peak spending was on ${peak7d.dayLabel} (${formatRupiah(peak7d.amount)}).`,
+                  ? `Total pengeluaran selama 7 hari terakhir adalah ${formatWithPreferred(total7d)} dengan rata-rata harian ${formatWithPreferred(Math.round(total7d / 7))}. Pengeluaran tertinggi pada ${peak7d.dayLabel} (${formatWithPreferred(peak7d.amount)}).`
+                  : `Total outflow over the last 7 days is ${formatWithPreferred(total7d)} with a daily average of ${formatWithPreferred(Math.round(total7d / 7))}. Peak spending was on ${peak7d.dayLabel} (${formatWithPreferred(peak7d.amount)}).`,
                 badge: isIndonesian ? "7 Hari Terakhir" : "Last 7 Days",
                 hideGrid: true,
                 items: last7DaysOutlays.map((d) => ({
@@ -1452,13 +1451,13 @@ function HomeWidgetRendererComponent({
                 totalPrevious: 0,
                 delta: -currentMonthStats.expense,
                 pctChange: 0,
-                displayValue: formatRupiah(currentMonthStats.expense),
+                displayValue: formatWithPreferred(currentMonthStats.expense),
                 title: isIndonesian
                   ? "Alokasi Pengeluaran Kategori"
                   : "Category Expense Allocation",
                 subtitle: isIndonesian
-                  ? `Total pengeluaran kotor bulan ini adalah ${formatRupiah(currentMonthStats.expense)}. Pemasukan tercatat sebesar ${formatRupiah(currentMonthStats.income)}, menghasilkan saldo bersih bulanan ${formatRupiah(currentMonthStats.income - currentMonthStats.expense)}.`
-                  : `Total gross outflow this month is ${formatRupiah(currentMonthStats.expense)}. Inflow is recorded at ${formatRupiah(currentMonthStats.income)}, resulting in a net monthly balance of ${formatRupiah(currentMonthStats.income - currentMonthStats.expense)}.`,
+                  ? `Total pengeluaran kotor bulan ini adalah ${formatWithPreferred(currentMonthStats.expense)}. Pemasukan tercatat sebesar ${formatWithPreferred(currentMonthStats.income)}, menghasilkan saldo bersih bulanan ${formatWithPreferred(currentMonthStats.income - currentMonthStats.expense)}.`
+                  : `Total gross outflow this month is ${formatWithPreferred(currentMonthStats.expense)}. Inflow is recorded at ${formatWithPreferred(currentMonthStats.income)}, resulting in a net monthly balance of ${formatWithPreferred(currentMonthStats.income - currentMonthStats.expense)}.`,
                 badge: isIndonesian ? "Pengeluaran Kotor" : "Gross Outflow",
                 hideGrid: true,
                 items: categoryDonutData.map((c) => ({
@@ -1502,8 +1501,8 @@ function HomeWidgetRendererComponent({
                   ? "Matriks Aktivitas Bulanan"
                   : "Monthly Activity Matrix",
                 subtitle: isIndonesian
-                  ? `Anda mencatat transaksi pada ${activeSpendDaysCount} dari ${heatmapDaysData.length} hari bulan ini (frekuensi aktif ${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}%). Total pengeluaran mencapai ${formatRupiah(currentMonthStats.expense)} dengan pengeluaran harian puncak pada Hari ke-${peak.day} (${formatRupiah(peak.amount || 0)}).`
-                  : `You recorded transactions on ${activeSpendDaysCount} out of ${heatmapDaysData.length} days this month (${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}% active frequency). Total outflow reached ${formatRupiah(currentMonthStats.expense)} with peak daily spend on Day ${peak.day} (${formatRupiah(peak.amount || 0)}).`,
+                  ? `Anda mencatat transaksi pada ${activeSpendDaysCount} dari ${heatmapDaysData.length} hari bulan ini (frekuensi aktif ${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}%). Total pengeluaran mencapai ${formatWithPreferred(currentMonthStats.expense)} dengan pengeluaran harian puncak pada Hari ke-${peak.day} (${formatWithPreferred(peak.amount || 0)}).`
+                  : `You recorded transactions on ${activeSpendDaysCount} out of ${heatmapDaysData.length} days this month (${Math.round((activeSpendDaysCount / heatmapDaysData.length) * 100)}% active frequency). Total outflow reached ${formatWithPreferred(currentMonthStats.expense)} with peak daily spend on Day ${peak.day} (${formatWithPreferred(peak.amount || 0)}).`,
                 badge: `${activeSpendDaysCount} ${isIndonesian ? "Hari Aktif" : "Active Days"}`,
                 hideGrid: true,
                 items: [

@@ -1,5 +1,4 @@
 import { Info, Activity } from "lucide-react";
-import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -21,7 +20,7 @@ export function SavingsRingCard({
 }) {
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isDark = theme !== "light";
   const boundedRate = Math.min(100, Math.max(0, rate));
   const radius = size === "half" ? 26 : 38;
@@ -87,7 +86,7 @@ export function SavingsRingCard({
               isSurplus ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
             }`}
           >
-            {formatRupiah(Math.abs(netRetention))}
+            {formatWithPreferred(Math.abs(netRetention))}
           </span>
         </div>
       </CompactShell>
@@ -161,7 +160,7 @@ export function SavingsRingCard({
                 {isIndonesian ? "Pemasukan" : "Inflow"}
               </span>
               <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-                +{formatRupiah(inflow)}
+                +{formatWithPreferred(inflow)}
               </span>
             </div>
             <div
@@ -172,7 +171,7 @@ export function SavingsRingCard({
                 {isIndonesian ? "Pengeluaran" : "Outflow"}
               </span>
               <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-                -{formatRupiah(outflow)}
+                -{formatWithPreferred(outflow)}
               </span>
             </div>
             <div
@@ -188,7 +187,7 @@ export function SavingsRingCard({
                 }`}
               >
                 {isSurplus ? "+" : "-"}
-                {formatRupiah(Math.abs(netRetention))}
+                {formatWithPreferred(Math.abs(netRetention))}
               </span>
             </div>
           </div>
@@ -198,7 +197,7 @@ export function SavingsRingCard({
             <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
               <span>{isIndonesian ? "Target Tabungan 20% Standar" : "Standard 20% Savings Rule Target"}</span>
               <span className="font-semibold text-[var(--text-primary)]">
-                {formatRupiah(targetSavings)}
+                {formatWithPreferred(targetSavings)}
               </span>
             </div>
             <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/[0.06] dark:bg-white/10">
@@ -215,11 +214,11 @@ export function SavingsRingCard({
         <span>
           {isSurplus
             ? isIndonesian
-              ? `Surplus modal bersih ${formatRupiah(netRetention)} berhasil dipertahankan.`
-              : `Net capital surplus of ${formatRupiah(netRetention)} preserved.`
+              ? `Surplus modal bersih ${formatWithPreferred(netRetention)} berhasil dipertahankan.`
+              : `Net capital surplus of ${formatWithPreferred(netRetention)} preserved.`
             : isIndonesian
-              ? `Pengeluaran melampaui pemasukan bulan ini sebesar ${formatRupiah(Math.abs(netRetention))}.`
-              : `Outflow exceeds inflow this month by ${formatRupiah(Math.abs(netRetention))}.`}
+              ? `Pengeluaran melampaui pemasukan bulan ini sebesar ${formatWithPreferred(Math.abs(netRetention))}.`
+              : `Outflow exceeds inflow this month by ${formatWithPreferred(Math.abs(netRetention))}.`}
         </span>
         <span className="font-semibold text-[var(--text-secondary)]">
           {isSurplus

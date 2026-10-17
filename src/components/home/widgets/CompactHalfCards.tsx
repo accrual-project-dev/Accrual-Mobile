@@ -1,5 +1,4 @@
 import { Zap, Clock, SlidersHorizontal, ChevronRight } from "lucide-react";
-import { formatRupiah } from "../../../lib/utils";
 import { CompactShell } from "./CompactShell";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import { useCurrency } from "../../../contexts/CurrencyContext";
@@ -16,7 +15,7 @@ export function CompactSpendingStabilityHalf({
   onOpenDetail?: () => void;
 }) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
 
   const localizedLevel = isIndonesian
@@ -46,7 +45,7 @@ export function CompactSpendingStabilityHalf({
           </span>
         </div>
         <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
-          {formatRupiah(dailyAvg)}
+          {formatWithPreferred(dailyAvg)}
         </p>
       </div>
 
@@ -80,7 +79,7 @@ export function CompactCashflowPulseHalf({
   onOpenDetail?: () => void;
 }) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
   const isSurplus = netCashflow >= 0;
 
@@ -108,7 +107,7 @@ export function CompactCashflowPulseHalf({
         </div>
         <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
           {isSurplus ? "+" : ""}
-          {formatRupiah(netCashflow)}
+          {formatWithPreferred(netCashflow)}
         </p>
       </div>
 
@@ -244,7 +243,7 @@ export function CompactBillsHalf({
   onOpenDetail?: () => void;
 }) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
 
   const badgeLabel =
@@ -271,7 +270,7 @@ export function CompactBillsHalf({
           </span>
         </div>
         <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
-          {formatRupiah(nextBillAmount)}
+          {formatWithPreferred(nextBillAmount)}
         </p>
       </div>
 
@@ -303,7 +302,7 @@ export function CompactTopCategoriesHalf({
   onOpenDetail?: () => void;
 }) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
 
   return (
@@ -325,7 +324,7 @@ export function CompactTopCategoriesHalf({
           </span>
         </div>
         <p className="text-[16px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1">
-          {formatRupiah(topCategoryAmount)}
+          {formatWithPreferred(topCategoryAmount)}
         </p>
       </div>
 
@@ -360,6 +359,7 @@ export function CompactCategoryBudgetsHalf({
   onOpenManage?: () => void;
 }) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
 
   return (
     <CompactShell
@@ -393,9 +393,14 @@ export function CompactCategoryBudgetsHalf({
             </div>
 
             <p className="text-[14px] font-semibold amount text-[var(--text-primary)] leading-tight mt-1 truncate">
-              {hideBalance ? "••••" : formatRupiah(topEnvelope.spent)}
+              {hideBalance
+                ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                : formatWithPreferred(topEnvelope.spent)}
               <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1">
-                / {hideBalance ? "••••" : formatRupiah(topEnvelope.budgetAmount)}
+                /{" "}
+                {hideBalance
+                  ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                  : formatWithPreferred(topEnvelope.budgetAmount)}
               </span>
             </p>
           </div>

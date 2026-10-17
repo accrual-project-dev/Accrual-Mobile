@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Info, PieChart } from "lucide-react";
-import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -40,7 +39,7 @@ export function CategoryDonutCard({
 }) {
   const { theme } = useTheme();
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
   const isDark = theme === "dark";
 
@@ -106,7 +105,7 @@ export function CategoryDonutCard({
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
           <span className="truncate max-w-[70px]">{topCat.name}</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
-            {formatRupiah(topCat.amount)}
+            {formatWithPreferred(topCat.amount)}
           </span>
         </div>
       </CompactShell>
@@ -153,7 +152,7 @@ export function CategoryDonutCard({
               color: "var(--text-primary)",
             }}
           >
-            Total: {formatRupiah(totalExpense)}
+            Total: {formatWithPreferred(totalExpense)}
           </span>
           {onOpenDetail && (
             <button
@@ -230,7 +229,7 @@ export function CategoryDonutCard({
                 </div>
                 <div className="text-right shrink-0">
                   <span className="font-semibold amount text-[var(--text-primary)]">
-                    {formatRupiah(c.amount)}
+                    {formatWithPreferred(c.amount)}
                   </span>
                   <span className="text-[10px] text-[var(--text-tertiary)] ml-1 font-medium">
                     {c.pct.toFixed(0)}%

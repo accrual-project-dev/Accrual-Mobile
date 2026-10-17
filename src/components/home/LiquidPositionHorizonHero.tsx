@@ -8,7 +8,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 
 export type StockRange = "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL";
@@ -36,7 +36,7 @@ interface LiquidPositionHorizonHeroProps {
   isColdLoading?: boolean;
 }
 
-const GlassTooltip = ({ active, payload, label }: any) => {
+const GlassTooltip = ({ active, payload, label, formatWithPreferred }: any) => {
   if (active && payload && payload.length) {
     const val = payload[0].value;
     return (
@@ -51,7 +51,7 @@ const GlassTooltip = ({ active, payload, label }: any) => {
           {label}
         </p>
         <p className="text-[12px] font-bold text-[var(--text-primary)] tabular-nums mt-0.5">
-          {formatRupiah(val)}
+          {formatWithPreferred ? formatWithPreferred(val) : val}
         </p>
       </div>
     );
@@ -81,6 +81,7 @@ export function LiquidPositionHorizonHero({
   onToggleHideBalance,
   isColdLoading = false,
 }: LiquidPositionHorizonHeroProps) {
+  const { formatWithPreferred, formatCompactWithPreferred, currencyMeta, preferredCurrency } = useCurrency();
   const isPositive = assetTrendPositive(assetData.diff);
 
   function assetTrendPositive(diff: number): boolean {
@@ -171,8 +172,8 @@ export function LiquidPositionHorizonHero({
         ) : (
           <h2 className="amount text-[28px] sm:text-[32px] font-bold tracking-tight text-[var(--text-primary)] leading-none tabular-nums">
             {hideBalance
-              ? "Rp ••••••••"
-              : formatRupiah(assetData.currentBalance)}
+              ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+              : formatWithPreferred(assetData.currentBalance)}
           </h2>
         )}
       </div>
@@ -199,7 +200,7 @@ export function LiquidPositionHorizonHero({
             <span>
               {hideBalance
                 ? "••••"
-                : `${isPositive ? "+" : ""}${formatRupiah(assetData.diff)}`}
+                : `${isPositive ? "+" : ""}${formatWithPreferred(assetData.diff)}`}
             </span>
             <span className="font-normal text-[var(--text-tertiary)]">
               (
@@ -212,7 +213,7 @@ export function LiquidPositionHorizonHero({
         )}
 
         <span className="text-[10px] font-medium text-[var(--text-tertiary)]">
-          {stockRangeLabels[stockRange]} · IDR
+          {stockRangeLabels[stockRange]} · {currencyMeta?.code || preferredCurrency || "IDR"}
         </span>
       </div>
 
@@ -325,7 +326,7 @@ export function LiquidPositionHorizonHero({
                 tickFormatter={formatAxisY}
                 dx={-2}
               />
-              <Tooltip content={<GlassTooltip />} />
+              <Tooltip content={(props) => <GlassTooltip {...props} formatWithPreferred={formatWithPreferred} />} />
               <Area
                 type="monotone"
                 dataKey="balance"
@@ -362,9 +363,7 @@ export function LiquidPositionHorizonHero({
           <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {hideBalance
               ? "••••"
-              : assetData.highBalance >= 1000
-                ? "Rp " + formatAxisY(assetData.highBalance)
-                : formatRupiah(assetData.highBalance)}
+              : formatCompactWithPreferred(assetData.highBalance)}
           </span>
         </div>
 
@@ -376,9 +375,7 @@ export function LiquidPositionHorizonHero({
           <span className="amount text-[11px] sm:text-[11.5px] font-semibold text-[var(--text-primary)] mt-0.5 block truncate tabular-nums">
             {hideBalance
               ? "••••"
-              : assetData.lowBalance >= 1000
-                ? "Rp " + formatAxisY(assetData.lowBalance)
-                : formatRupiah(assetData.lowBalance)}
+              : formatCompactWithPreferred(assetData.lowBalance)}
           </span>
         </div>
 
@@ -391,8 +388,8 @@ export function LiquidPositionHorizonHero({
             {hideBalance
               ? "••••"
               : assetData.periodInflow > 0
-                ? "+Rp " + formatAxisY(assetData.periodInflow)
-                : "Rp 0"}
+                ? `+${formatCompactWithPreferred(assetData.periodInflow)}`
+                : `${currencyMeta?.symbol || "Rp"} 0`}
           </span>
         </div>
 
@@ -405,8 +402,8 @@ export function LiquidPositionHorizonHero({
             {hideBalance
               ? "••••"
               : assetData.periodOutflow > 0
-                ? "-Rp " + formatAxisY(assetData.periodOutflow)
-                : "Rp 0"}
+                ? `-${formatCompactWithPreferred(assetData.periodOutflow)}`
+                : `${currencyMeta?.symbol || "Rp"} 0`}
           </span>
         </div>
       </div>

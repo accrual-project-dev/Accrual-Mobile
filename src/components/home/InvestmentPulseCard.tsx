@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, TrendingUp, ChevronRight } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { usePrivacy } from "../../contexts/PrivacyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -20,6 +20,7 @@ export function InvestmentPulseCard() {
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
+  const { formatWithPreferred, currencyMeta } = useCurrency();
 
   const { totalValue, totalPnL, pnlPct, hasHoldings } = useMemo(() => {
     const holdings = getSavedHoldings(user?.id);
@@ -100,7 +101,7 @@ export function InvestmentPulseCard() {
               {isIndonesian ? "Total Nilai Portofolio" : "Total Portfolio Valuation"}
             </span>
             <p className="text-[24px] sm:text-[26px] font-light tracking-tight leading-none text-[var(--text-primary)] amount truncate">
-              {isStealthMode ? "••••••••" : formatRupiah(totalValue)}
+              {isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(totalValue)}
             </p>
           </div>
 
@@ -120,7 +121,7 @@ export function InvestmentPulseCard() {
             <span>
               {isStealthMode
                 ? "••••"
-                : `${totalPnL >= 0 ? "+" : ""}${formatRupiah(totalPnL)}`}
+                : `${totalPnL >= 0 ? "+" : ""}${formatWithPreferred(totalPnL)}`}
             </span>
             <span className="opacity-80">
               ({isStealthMode ? "••••" : `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`})

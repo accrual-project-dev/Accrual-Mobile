@@ -1,6 +1,6 @@
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import type {
   ModelFlowValues,
   PersonalFinancialModelInsights,
@@ -16,14 +16,6 @@ interface PersonalFinancialModelSheetProps {
   insights: PersonalFinancialModelInsights;
 }
 
-function amount(value: number, hide: boolean, forceSign = false) {
-  if (hide) return "Rp ••••••••";
-  if (forceSign) {
-    return `${value >= 0 ? "+" : "-"}${formatRupiah(Math.abs(value))}`;
-  }
-  return formatRupiah(value);
-}
-
 export function PersonalFinancialModelSheet({
   isOpen,
   onClose,
@@ -34,7 +26,16 @@ export function PersonalFinancialModelSheet({
   insights,
 }: PersonalFinancialModelSheetProps) {
   const { language } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const isIndonesian = language === "id";
+
+  const amount = (value: number, hide: boolean, forceSign = false) => {
+    if (hide) return `${currencyMeta?.symbol || "Rp"} ••••••••`;
+    if (forceSign) {
+      return `${value >= 0 ? "+" : "-"}${formatWithPreferred(Math.abs(value))}`;
+    }
+    return formatWithPreferred(value);
+  };
 
   const rows: Array<{ key: keyof ModelFlowValues; label: string; negative?: boolean }> = [
     { key: "income", label: isIndonesian ? "Pemasukan" : "Income" },

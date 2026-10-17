@@ -1,5 +1,4 @@
 import { Info, Calendar } from "lucide-react";
-import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -31,7 +30,7 @@ export function MiniHeatmapCard({
 }) {
   const { theme } = useTheme();
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
   const isDark = theme === "dark";
 
@@ -65,7 +64,7 @@ export function MiniHeatmapCard({
                     ? isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)"
                     : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
           }}
-          title={isIndonesian ? `Hari ke-${d.day}: ${d.hasSpend ? `Aktif (${formatRupiah(d.amount || 0)})` : "Tenang"}` : `Day ${d.day}: ${d.hasSpend ? `Active (${formatRupiah(d.amount || 0)})` : "Quiet"}`}
+          title={isIndonesian ? `Hari ke-${d.day}: ${d.hasSpend ? `Aktif (${formatWithPreferred(d.amount || 0)})` : "Tenang"}` : `Day ${d.day}: ${d.hasSpend ? `Active (${formatWithPreferred(d.amount || 0)})` : "Quiet"}`}
         />
       ))}
     </div>
@@ -156,7 +155,7 @@ export function MiniHeatmapCard({
             {isIndonesian ? "Total Pengeluaran" : "Total Outflow"}
           </span>
           <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {formatRupiah(totalMonthSpend)}
+            {formatWithPreferred(totalMonthSpend)}
           </span>
         </div>
         <div
@@ -167,7 +166,7 @@ export function MiniHeatmapCard({
             {isIndonesian ? "Laju Harian" : "Run Rate/d"}
           </span>
           <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {formatRupiah(effectiveDailyAvg)}
+            {formatWithPreferred(effectiveDailyAvg)}
           </span>
         </div>
         <div
@@ -178,7 +177,7 @@ export function MiniHeatmapCard({
             {isIndonesian ? "Rerata Hari Aktif" : "Active Day Avg"}
           </span>
           <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {formatRupiah(avgOnActiveDays)}
+            {formatWithPreferred(avgOnActiveDays)}
           </span>
         </div>
         <div
@@ -189,7 +188,7 @@ export function MiniHeatmapCard({
             {isIndonesian ? "Pengeluaran Puncak" : "Peak Outlay"}
           </span>
           <span className="text-[12px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {peakDay.amount ? formatRupiah(peakDay.amount) : "Rp 0"}
+            {peakDay.amount ? formatWithPreferred(peakDay.amount) : formatWithPreferred(0)}
           </span>
         </div>
       </div>
@@ -228,8 +227,8 @@ export function MiniHeatmapCard({
                 }}
                 title={
                   isIndonesian
-                    ? `Hari ke-${d.day}: ${hasSpend ? formatRupiah(d.amount || 0) : "Tidak ada transaksi"}`
-                    : `Day ${d.day}: ${hasSpend ? formatRupiah(d.amount || 0) : "No spend recorded"}`
+                    ? `Hari ke-${d.day}: ${hasSpend ? formatWithPreferred(d.amount || 0) : "Tidak ada transaksi"}`
+                    : `Day ${d.day}: ${hasSpend ? formatWithPreferred(d.amount || 0) : "No spend recorded"}`
                 }
               >
                 {/* Day Number */}

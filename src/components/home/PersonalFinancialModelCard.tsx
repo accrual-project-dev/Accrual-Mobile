@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, Layers3 } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -50,10 +49,14 @@ export function PersonalFinancialModelCard({
   onOpenDetails,
 }: PersonalFinancialModelCardProps) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const isIndonesian = language === "id";
+
+  const formatMoney = (amount: number) => {
+    return hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(amount);
+  };
 
   const [layer, setLayer] = useState<ModelLayer>("actual");
 
@@ -225,7 +228,7 @@ export function PersonalFinancialModelCard({
               className="text-[12px] font-semibold tabular-nums"
               style={{ color: "var(--text-primary)" }}
             >
-              {hideBalance ? "••••••" : formatRupiah(active.income)}
+              {formatMoney(active.income)}
             </span>
           </div>
 
@@ -240,7 +243,7 @@ export function PersonalFinancialModelCard({
               className="text-[12px] font-semibold tabular-nums"
               style={{ color: "var(--text-secondary)" }}
             >
-              {hideBalance ? "••••••" : formatRupiah(active.committedExpenses)}
+              {formatMoney(active.committedExpenses)}
             </span>
           </div>
 
@@ -255,7 +258,7 @@ export function PersonalFinancialModelCard({
               className="text-[12px] font-semibold tabular-nums"
               style={{ color: "var(--text-secondary)" }}
             >
-              {hideBalance ? "••••••" : formatRupiah(active.variableExpenses)}
+              {formatMoney(active.variableExpenses)}
             </span>
           </div>
 
@@ -282,7 +285,7 @@ export function PersonalFinancialModelCard({
                     : "var(--text-secondary)",
               }}
             >
-              {hideBalance ? "••••••" : formatRupiah(active.retainedCash)}
+              {formatMoney(active.retainedCash)}
             </span>
           </div>
         </div>

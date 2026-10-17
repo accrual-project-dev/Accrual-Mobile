@@ -6,8 +6,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 import type { CategoryMoMShift } from "../../lib/financialMath";
 
 interface MetricDrillDownSheetProps {
@@ -50,6 +51,12 @@ export function MetricDrillDownSheet({
 }: MetricDrillDownSheetProps) {
   const navigate = useNavigate();
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const { isStealthMode } = usePrivacy();
+
+  const formatMoney = (amount: number) => {
+    return isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(amount);
+  };
 
   if (!type || !data) return null;
 
@@ -142,7 +149,7 @@ export function MetricDrillDownSheet({
                   className="amount text-[14px] font-semibold mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {formatRupiah(data.budget || 0)}
+                  {formatMoney(data.budget || 0)}
                 </p>
               </div>
               <div
@@ -159,7 +166,7 @@ export function MetricDrillDownSheet({
                   className="amount text-[14px] font-semibold mt-0.5"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {formatRupiah(data.totalCurrent)}
+                  {formatMoney(data.totalCurrent)}
                 </p>
               </div>
             </div>
@@ -206,8 +213,8 @@ export function MetricDrillDownSheet({
                     {data.displayValue
                       ? data.displayValue
                       : data.delta > 0 && !data.title?.toLowerCase().includes("outflow") && !data.title?.toLowerCase().includes("expense") && !data.title?.toLowerCase().includes("spending")
-                        ? `+${formatRupiah(data.totalCurrent)}`
-                        : formatRupiah(data.totalCurrent)}
+                        ? `+${formatMoney(data.totalCurrent)}`
+                        : formatMoney(data.totalCurrent)}
                   </h4>
                 </div>
                 <span
@@ -251,7 +258,7 @@ export function MetricDrillDownSheet({
                       </span>
                       <div className="text-right">
                         <span className="font-semibold amount text-[var(--text-primary)]">
-                          {item.valueText || (item.amount !== undefined ? formatRupiah(item.amount) : "")}
+                          {item.valueText || (item.amount !== undefined ? formatMoney(item.amount) : "")}
                         </span>
                         {item.pct !== undefined && (
                           <span className="text-[10px] text-[var(--text-tertiary)] ml-1.5 font-medium">
@@ -294,7 +301,7 @@ export function MetricDrillDownSheet({
                     className="amount text-[14px] font-semibold mt-0.5"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {formatRupiah(data.totalCurrent)}
+                    {formatMoney(data.totalCurrent)}
                   </p>
                 </div>
                 <div
@@ -312,7 +319,7 @@ export function MetricDrillDownSheet({
                     style={{ color: "var(--text-primary)" }}
                   >
                     {data.delta >= 0 ? "+" : ""}
-                    {formatRupiah(data.delta)}
+                    {formatMoney(data.delta)}
                   </p>
                 </div>
               </div>
@@ -355,7 +362,7 @@ export function MetricDrillDownSheet({
                   style={{ color: "var(--text-primary)" }}
                 >
                   {data.delta >= 0 ? "+" : ""}
-                  {formatRupiah(data.delta)}
+                  {formatMoney(data.delta)}
                 </h4>
                 <p
                   className="text-[11px]"
@@ -402,7 +409,7 @@ export function MetricDrillDownSheet({
                           style={{ color: "var(--text-primary)" }}
                         >
                           {c.deltaAmount >= 0 ? "+" : ""}
-                          {formatRupiah(c.deltaAmount)}
+                          {formatMoney(c.deltaAmount)}
                         </span>
                         <span
                           className="text-[10px] ml-1 font-bold"

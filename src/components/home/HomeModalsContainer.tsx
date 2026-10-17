@@ -10,7 +10,7 @@ import { MetricDrillDownSheet } from "./MetricDrillDownSheet";
 import { WidgetCustomizationBar } from "../common";
 import type { Goal } from "../../hooks/useGoals";
 import { HOME_PRESETS, getLocalizedWidgetMeta } from "../../lib/widgetLayoutTypes";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 
 const BillManagementSheets = lazy(() =>
@@ -172,6 +172,7 @@ export function HomeModalsContainer({
   isTourOpen: _isTourOpen,
   onCloseTour: _onCloseTour,
 }: HomeModalsContainerProps) {
+  const { formatWithPreferred } = useCurrency();
   return (
     <>
       {/* Day Transactions Sheet */}
@@ -260,7 +261,7 @@ export function HomeModalsContainer({
                       : tx.type === "expense"
                         ? "-"
                         : ""}
-                    {formatRupiah(Number(tx.amount))}
+                    {formatWithPreferred(Number(tx.amount))}
                   </span>
                 </div>
               ))}

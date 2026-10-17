@@ -1,5 +1,4 @@
 import { Info, TrendingUp } from "lucide-react";
-import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -19,7 +18,7 @@ export function SpendingVelocityBarCard({
 }) {
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isDark = theme === "dark";
 
   const maxAmount = Math.max(1, ...dailyOutlays.map((d) => d.amount));
@@ -47,7 +46,7 @@ export function SpendingVelocityBarCard({
                       ? "rgba(255,255,255,0.25)"
                       : "rgba(0,0,0,0.18)",
               }}
-              title={`${d.dayLabel}: ${formatRupiah(d.amount)}`}
+              title={`${d.dayLabel}: ${formatWithPreferred(d.amount)}`}
             />
             <span className="text-[8px] font-semibold text-[var(--text-tertiary)]">
               {d.dayLabel}
@@ -65,7 +64,7 @@ export function SpendingVelocityBarCard({
         <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
           <span>{isIndonesian ? "Rerata Laju" : "Avg Pace"}</span>
           <span className="font-semibold text-[var(--text-primary)] amount">
-            {formatRupiah(dailyAverage)}/{isIndonesian ? "hr" : "d"}
+            {formatWithPreferred(dailyAverage)}/{isIndonesian ? "hr" : "d"}
           </span>
         </div>
       </CompactShell>
@@ -113,7 +112,7 @@ export function SpendingVelocityBarCard({
               color: "var(--text-primary)",
             }}
           >
-            {isIndonesian ? "Rerata" : "Avg"}: {formatRupiah(dailyAverage)}/{isIndonesian ? "hari" : "day"}
+            {isIndonesian ? "Rerata" : "Avg"}: {formatWithPreferred(dailyAverage)}/{isIndonesian ? "hari" : "day"}
           </span>
           {onOpenDetail && (
             <button
@@ -137,7 +136,7 @@ export function SpendingVelocityBarCard({
             {isIndonesian ? "Total Keluar 7 Hari" : "7-Day Total Outflow"}
           </span>
           <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {formatRupiah(total7d)}
+            {formatWithPreferred(total7d)}
           </span>
         </div>
         <div
@@ -148,7 +147,7 @@ export function SpendingVelocityBarCard({
             {isIndonesian ? "Rerata Laju Harian" : "7-Day Daily Run Rate"}
           </span>
           <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {formatRupiah(Math.round(total7d / 7))}/{isIndonesian ? "hr" : "d"}
+            {formatWithPreferred(Math.round(total7d / 7))}/{isIndonesian ? "hr" : "d"}
           </span>
         </div>
         <div
@@ -159,7 +158,7 @@ export function SpendingVelocityBarCard({
             {isIndonesian ? "Hari Belanja Tertinggi" : "Peak Outlay Day"}
           </span>
           <span className="text-[13px] font-semibold amount text-[var(--text-primary)] block mt-0.5">
-            {peakDay.dayLabel} ({formatRupiah(peakDay.amount)})
+            {peakDay.dayLabel} ({formatWithPreferred(peakDay.amount)})
           </span>
         </div>
       </div>
@@ -175,7 +174,7 @@ export function SpendingVelocityBarCard({
             }}
           >
             <span className="text-[8px] font-semibold text-white absolute right-0 -top-3.5 px-1 bg-zinc-800 dark:bg-zinc-800 rounded">
-              {isIndonesian ? "Rerata" : "Avg"}: {formatRupiah(dailyAverage)}
+              {isIndonesian ? "Rerata" : "Avg"}: {formatWithPreferred(dailyAverage)}
             </span>
           </div>
 
@@ -209,7 +208,7 @@ export function SpendingVelocityBarCard({
                       ? isDark ? "0 0 10px rgba(255, 255, 255, 0.35)" : "0 2px 8px rgba(0, 0, 0, 0.15)"
                       : "none",
                   }}
-                  title={`${d.dayLabel}: ${formatRupiah(d.amount)}`}
+                  title={`${d.dayLabel}: ${formatWithPreferred(d.amount)}`}
                 />
 
                 <span className="text-[9px] font-semibold text-[var(--text-tertiary)]">

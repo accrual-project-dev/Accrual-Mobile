@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ChevronRight, Droplets, ShieldCheck } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import type { LiquidityHorizonResult } from "../../hooks/useFinancialIntelligence";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -19,9 +18,13 @@ export function LiquidityHorizonCard({
 }: LiquidityHorizonCardProps) {
   const { language } = useLanguage();
   const { theme } = useTheme();
-  useCurrency();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const isDark = theme !== "light";
   const isIndonesian = language === "id";
+
+  const formatMoney = (amount: number) => {
+    return hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(amount);
+  };
 
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -198,9 +201,7 @@ export function LiquidityHorizonCard({
                   className="amount text-[12px] font-semibold mt-0.5 tabular-nums truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {hideBalance
-                    ? "Rp ••••••••"
-                    : formatRupiah(liquidityHorizon.liquidAssets)}
+                  {formatMoney(liquidityHorizon.liquidAssets)}
                 </p>
               </div>
 
@@ -215,9 +216,7 @@ export function LiquidityHorizonCard({
                   className="amount text-[12px] font-semibold mt-0.5 tabular-nums truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {hideBalance
-                    ? "Rp ••••••••"
-                    : formatRupiah(liquidityHorizon.typicalMonthlyOutflow)}
+                  {formatMoney(liquidityHorizon.typicalMonthlyOutflow)}
                 </p>
               </div>
             </div>
@@ -228,9 +227,7 @@ export function LiquidityHorizonCard({
               className="amount text-[20px] font-bold tabular-nums"
               style={{ color: "var(--text-primary)" }}
             >
-              {hideBalance
-                ? "Rp ••••••••"
-                : formatRupiah(liquidityHorizon.liquidAssets)}
+              {formatMoney(liquidityHorizon.liquidAssets)}
             </p>
             <p
               className="text-[11px] leading-relaxed mt-1"
@@ -280,9 +277,7 @@ export function LiquidityHorizonCard({
             {[
               {
                 label: isIndonesian ? "Aset Likuid" : "Liquid Assets",
-                value: hideBalance
-                  ? "Rp ••••••••"
-                  : formatRupiah(liquidityHorizon.liquidAssets),
+                value: formatMoney(liquidityHorizon.liquidAssets),
                 isAmount: true,
               },
               {
@@ -295,16 +290,12 @@ export function LiquidityHorizonCard({
               },
               {
                 label: isIndonesian ? "Pengeluaran Tipikal" : "Typical Outflow",
-                value: hideBalance
-                  ? "Rp ••••••••"
-                  : formatRupiah(liquidityHorizon.typicalMonthlyOutflow),
+                value: formatMoney(liquidityHorizon.typicalMonthlyOutflow),
                 isAmount: true,
               },
               {
                 label: isIndonesian ? "Pengeluaran Rutin" : "Committed Outflow",
-                value: hideBalance
-                  ? "Rp ••••••••"
-                  : formatRupiah(liquidityHorizon.typicalCommittedOutflow),
+                value: formatMoney(liquidityHorizon.typicalCommittedOutflow),
                 isAmount: true,
               },
             ].map((item, idx) => (
@@ -439,9 +430,7 @@ export function LiquidityHorizonCard({
                     className="amount text-[12.5px] font-bold tabular-nums shrink-0"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {hideBalance
-                      ? "Rp ••••••••"
-                      : formatRupiah(account.balance)}
+                    {formatMoney(account.balance)}
                   </span>
                 </div>
               ))

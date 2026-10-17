@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Activity, ChevronRight, Info } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
 import { BottomSheet } from "../ui/BottomSheet";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import type { ExpenseVolatilityResult } from "../../lib/financialMath";
 
 interface ExpenseVolatilityCardProps {
@@ -16,6 +16,7 @@ export function ExpenseVolatilityCard({
   hideBalance = false,
 }: ExpenseVolatilityCardProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const [detailOpen, setDetailOpen] = useState(false);
 
   const getStabilityLabel = (stability: string) => {
@@ -120,8 +121,8 @@ export function ExpenseVolatilityCard({
               style={{ color: "var(--text-primary)" }}
             >
               {hideBalance
-                ? "Rp ••••••••"
-                : `${formatRupiah(volatility.meanDailyExpense)}${isIndonesian ? "/hari" : "/day"}`}
+                ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                : `${formatWithPreferred(volatility.meanDailyExpense)}${isIndonesian ? "/hari" : "/day"}`}
             </p>
           </div>
           <div className="text-right">
@@ -136,8 +137,8 @@ export function ExpenseVolatilityCard({
               style={{ color: "var(--text-primary)" }}
             >
               {hideBalance
-                ? "Rp ••••••••"
-                : formatRupiah(volatility.peakDailyExpense)}
+                ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                : formatWithPreferred(volatility.peakDailyExpense)}
             </p>
           </div>
         </div>
@@ -243,8 +244,8 @@ export function ExpenseVolatilityCard({
                 style={{ color: "var(--text-primary)" }}
               >
                 {hideBalance
-                  ? "Rp ••••••••"
-                  : `±${formatRupiah(volatility.standardDeviation)}`}
+                  ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+                  : `±${formatWithPreferred(volatility.standardDeviation)}`}
               </p>
             </div>
             <div

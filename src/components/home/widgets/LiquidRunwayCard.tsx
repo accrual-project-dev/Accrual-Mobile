@@ -1,5 +1,4 @@
 import { Info, ShieldCheck } from "lucide-react";
-import { formatRupiah } from "../../../lib/utils";
 import type { WidgetSize } from "../../../lib/widgetLayoutTypes";
 import { CompactShell } from "./CompactShell";
 import { FinancialGlossaryTooltip } from "../../common/FinancialGlossaryTooltip";
@@ -20,7 +19,7 @@ export function LiquidRunwayCard({
   onOpenDetail?: () => void;
 }) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred } = useCurrency();
   const isIndonesian = language === "id";
 
   const status =
@@ -46,8 +45,8 @@ export function LiquidRunwayCard({
         label: isIndonesian ? "Tier 1: Jaring Pengaman (3 Bln)" : "Tier 1: Safety Net (3 Mos)",
         deficit,
         desc: isIndonesian
-          ? `Perlu ${formatRupiah(deficit)} lagi untuk mencapai jaring pengaman darurat 3 bulan.`
-          : `Need ${formatRupiah(deficit)} more to reach the 3-month emergency safety net.`,
+          ? `Perlu ${formatWithPreferred(deficit)} lagi untuk mencapai jaring pengaman darurat 3 bulan.`
+          : `Need ${formatWithPreferred(deficit)} more to reach the 3-month emergency safety net.`,
       };
     }
     if (runwayMonths < 6) {
@@ -56,8 +55,8 @@ export function LiquidRunwayCard({
         label: isIndonesian ? "Tier 2: Buffer Ideal (6 Bln)" : "Tier 2: Ideal Buffer (6 Mos)",
         deficit,
         desc: isIndonesian
-          ? `Perlu ${formatRupiah(deficit)} lagi untuk mencapai standar buffer 6 bulan.`
-          : `Need ${formatRupiah(deficit)} more to reach the standard 6-month buffer.`,
+          ? `Perlu ${formatWithPreferred(deficit)} lagi untuk mencapai standar buffer 6 bulan.`
+          : `Need ${formatWithPreferred(deficit)} more to reach the standard 6-month buffer.`,
       };
     }
     if (runwayMonths < 12) {
@@ -66,8 +65,8 @@ export function LiquidRunwayCard({
         label: isIndonesian ? "Tier 3: Cadangan Kuat (12 Bln)" : "Tier 3: Fortress Reserve (12 Mos)",
         deficit,
         desc: isIndonesian
-          ? `Perlu ${formatRupiah(deficit)} lagi untuk cadangan kuat 1 tahun penuh.`
-          : `Need ${formatRupiah(deficit)} more for a full 1-year fortress reserve.`,
+          ? `Perlu ${formatWithPreferred(deficit)} lagi untuk cadangan kuat 1 tahun penuh.`
+          : `Need ${formatWithPreferred(deficit)} more for a full 1-year fortress reserve.`,
       };
     }
     return {
@@ -110,7 +109,7 @@ export function LiquidRunwayCard({
           <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] pt-1 border-t border-black/5 dark:border-white/5 shrink-0">
             <span>{isIndonesian ? "Laju Pengeluaran" : "Monthly Burn Rate"}</span>
             <span className="font-semibold text-[var(--text-primary)] amount truncate max-w-[90px]">
-              {formatRupiah(monthlyBurn)}{isIndonesian ? "/bln" : "/m"}
+              {formatWithPreferred(monthlyBurn)}{isIndonesian ? "/bln" : "/m"}
             </span>
           </div>
         </CompactShell>
@@ -196,7 +195,7 @@ export function LiquidRunwayCard({
             {isIndonesian ? "Aset Likuid" : "Liquid Assets"}
           </span>
           <p className="text-[13px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
-            {formatRupiah(liquidAssets)}
+            {formatWithPreferred(liquidAssets)}
           </p>
         </div>
         <div
@@ -207,7 +206,7 @@ export function LiquidRunwayCard({
             {isIndonesian ? "Beban Bulanan" : "Monthly Burn"}
           </span>
           <p className="text-[13px] font-semibold amount text-[var(--text-primary)] mt-0.5 truncate">
-            {formatRupiah(monthlyBurn)}{isIndonesian ? "/bln" : "/m"}
+            {formatWithPreferred(monthlyBurn)}{isIndonesian ? "/bln" : "/m"}
           </p>
         </div>
       </div>
@@ -257,7 +256,7 @@ export function LiquidRunwayCard({
           {nextTierInfo.desc}
         </span>
         <span className="font-semibold text-[var(--text-secondary)] shrink-0 amount">
-          {isIndonesian ? "Cadangan: " : "Reserve: "}{formatRupiah(liquidAssets)}
+          {isIndonesian ? "Cadangan: " : "Reserve: "}{formatWithPreferred(liquidAssets)}
         </span>
       </div>
     </section>

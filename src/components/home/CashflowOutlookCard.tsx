@@ -4,7 +4,6 @@ import {
   CalendarRange,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
 import type { CashflowFloorResult } from "../../hooks/useFinancialIntelligence";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -25,7 +24,7 @@ export function CashflowOutlookCard({
   hideBalance = false,
 }: CashflowOutlookCardProps) {
   const { language } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const isIndonesian = language === "id";
@@ -93,7 +92,8 @@ export function CashflowOutlookCard({
     return { linePath, areaPath, lowestCoord, width, height };
   }, [forecast]);
 
-  const mask = (val: string) => (hideBalance ? "••••••••" : val);
+  const mask = (val: string) =>
+    hideBalance ? `${currencyMeta?.symbol || "Rp"} ••••••••` : val;
 
   return (
     <>
@@ -171,7 +171,7 @@ export function CashflowOutlookCard({
                   : `Projected Balance Track (${selectedHorizon} Days)`}
               </span>
               <span className="tabular-nums font-semibold" style={{ color: "var(--text-primary)" }}>
-                {mask(formatRupiah(forecast.currentBalance))}
+                {mask(formatWithPreferred(forecast.currentBalance))}
               </span>
             </div>
 
@@ -270,7 +270,7 @@ export function CashflowOutlookCard({
               className="amount text-[14px] font-bold tabular-nums mt-1"
               style={{ color: "var(--text-primary)" }}
             >
-              {mask(formatRupiah(forecast.lowestBalance))}
+              {mask(formatWithPreferred(forecast.lowestBalance))}
             </p>
             <p className="text-[10px] mt-1" style={{ color: "var(--text-secondary)" }}>
               {forecast.daysUntilLowest === 0
@@ -299,7 +299,7 @@ export function CashflowOutlookCard({
               style={{ color: "var(--text-primary)" }}
             >
               {mask(
-                `${forecast.netProjectedChange >= 0 ? "+" : ""}${formatRupiah(
+                `${forecast.netProjectedChange >= 0 ? "+" : ""}${formatWithPreferred(
                   forecast.netProjectedChange,
                 )}`,
               )}
@@ -360,12 +360,12 @@ export function CashflowOutlookCard({
                   <div className="text-right shrink-0">
                     {point.knownOutflow > 0 && (
                       <span className="tabular-nums font-bold text-[var(--text-primary)] block">
-                        -{mask(formatRupiah(point.knownOutflow))}
+                        -{mask(formatWithPreferred(point.knownOutflow))}
                       </span>
                     )}
                     {point.knownInflow > 0 && (
                       <span className="tabular-nums font-bold text-[var(--text-primary)] block">
-                        +{mask(formatRupiah(point.knownInflow))}
+                        +{mask(formatWithPreferred(point.knownInflow))}
                       </span>
                     )}
                   </div>
@@ -421,7 +421,7 @@ export function CashflowOutlookCard({
                 {isIndonesian ? "Awal" : "Start"}
               </p>
               <p className="amount text-[12px] font-bold tabular-nums mt-1 text-[var(--text-primary)]">
-                {mask(formatRupiah(forecast.currentBalance))}
+                {mask(formatWithPreferred(forecast.currentBalance))}
               </p>
             </div>
             <div
@@ -435,7 +435,7 @@ export function CashflowOutlookCard({
                 {isIndonesian ? "Terendah" : "Low"}
               </p>
               <p className="amount text-[12px] font-bold tabular-nums mt-1 text-[var(--text-primary)]">
-                {mask(formatRupiah(forecast.lowestBalance))}
+                {mask(formatWithPreferred(forecast.lowestBalance))}
               </p>
             </div>
             <div
@@ -450,7 +450,7 @@ export function CashflowOutlookCard({
               </p>
               <p className="amount text-[12px] font-bold tabular-nums mt-1 text-[var(--text-primary)]">
                 {mask(
-                  `${forecast.netProjectedChange >= 0 ? "+" : ""}${formatRupiah(
+                  `${forecast.netProjectedChange >= 0 ? "+" : ""}${formatWithPreferred(
                     forecast.netProjectedChange,
                   )}`,
                 )}
@@ -498,14 +498,14 @@ export function CashflowOutlookCard({
 
                 <div className="text-right shrink-0">
                   <span className="font-bold tabular-nums text-[var(--text-primary)] block">
-                    {mask(formatRupiah(point.projectedBalance))}
+                    {mask(formatWithPreferred(point.projectedBalance))}
                   </span>
                   {point.netDailyCashflow !== 0 && (
                     <span
                       className="text-[9.5px] tabular-nums block text-[var(--text-secondary)]"
                     >
                       {mask(
-                        `${point.netDailyCashflow > 0 ? "+" : ""}${formatRupiah(
+                        `${point.netDailyCashflow > 0 ? "+" : ""}${formatWithPreferred(
                           point.netDailyCashflow,
                         )}`,
                       )}

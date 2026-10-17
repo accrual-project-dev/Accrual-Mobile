@@ -10,10 +10,12 @@ import {
 import { X, CalendarDays } from "lucide-react";
 import { getDaysInMonth } from "date-fns";
 import type { Transaction } from "../../lib/types";
-import { formatRupiah, cn } from "../../lib/utils";
+import { cn } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePrivacy } from "../../contexts/PrivacyContext";
 
 interface MonthForecastSheetProps {
   isOpen: boolean;
@@ -42,7 +44,13 @@ export function MonthForecastSheet({
   const dragControls = useDragControls();
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const { isStealthMode } = usePrivacy();
   const isDark = theme !== "light";
+
+  const formatMoney = (amount: number) => {
+    return isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(amount);
+  };
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const chartRef = useRef<SVGSVGElement | null>(null);
 
@@ -357,7 +365,7 @@ export function MonthForecastSheet({
                   className="text-4xl sm:text-[42px] font-bold amount tracking-tight leading-tight tabular-nums"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {formatRupiah(displayHeroAmount)}
+                  {formatMoney(displayHeroAmount)}
                 </h1>
 
                 <p
@@ -635,7 +643,7 @@ export function MonthForecastSheet({
                     className="text-[17px] font-semibold amount mt-1 tabular-nums truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {formatRupiah(effectiveTotalExpense)}
+                    {formatMoney(effectiveTotalExpense)}
                   </p>
                 </div>
 
@@ -665,7 +673,7 @@ export function MonthForecastSheet({
                     className="text-[17px] font-semibold amount mt-1 tabular-nums truncate"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {formatRupiah(Math.round(effectiveDailyAvg))}
+                    {formatMoney(Math.round(effectiveDailyAvg))}
                   </p>
                 </div>
               </div>
