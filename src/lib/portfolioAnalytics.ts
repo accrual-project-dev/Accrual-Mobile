@@ -237,6 +237,73 @@ export function calculateUnrealizedGains(
   return items.sort((a, b) => b.floatingProfitPct - a.floatingProfitPct);
 }
 
+export interface RealizedGainItem {
+  id: string;
+  symbol: string;
+  name: string;
+  units: number;
+  pricePerUnit: number;
+  totalProceeds: number;
+  realizedPnL: number;
+  date: string;
+  note?: string;
+}
+
+/**
+ * Aggregates all liquidated holding activities and computes realized gain/loss per sale.
+ */
+export function calculateRealizedGains(
+  holdings: Array<{
+    id: string;
+    symbol: string;
+    name: string;
+    avg_buy_price: number;
+    activities?: Array<{
+      id: string;
+      type: "buy" | "sell" | "initial";
+      date: string;
+      units: number;
+      price_per_unit: number;
+      total_amount: number;
+      realized_pnl?: number;
+      note?: string;
+    }>;
+  }>,
+): { items: RealizedGainItem[]; totalRealizedPnL: number } {
+  const items: RealizedGainItem[] = [];
+  let totalRealizedPnL = 0;
+
+  holdings.forEach((h) => {
+    (h.activities || []).forEach((act) => {
+      if (act.type === "sell") {
+        let pnl = 0;
+        if (typeof act.realized_pnl === "number" && !isNaN(act.realized_pnl)) {
+          pnl = act.realized_pnl;
+        } else {
+          const proceeds = act.total_amount || (act.units * act.price_per_unit);
+          const cost = act.units * (h.avg_buy_price || 0);
+          pnl = proceeds - cost;
+        }
+        totalRealizedPnL += pnl;
+        items.push({
+          id: act.id,
+          symbol: h.symbol.toUpperCase(),
+          name: h.name,
+          units: act.units,
+          pricePerUnit: act.price_per_unit,
+          totalProceeds: act.total_amount || (act.units * act.price_per_unit),
+          realizedPnL: pnl,
+          date: act.date,
+          note: act.note,
+        });
+      }
+    });
+  });
+
+  items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  return { items, totalRealizedPnL };
+}
+
 /**
  * Formats concise single-line runway status without duplicate cards.
  */

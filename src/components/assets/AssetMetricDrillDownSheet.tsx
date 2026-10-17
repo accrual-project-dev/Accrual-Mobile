@@ -1,6 +1,6 @@
 import { BottomSheet } from "../ui/BottomSheet";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 export interface MetricDrillDownItem {
   label: string;
@@ -35,6 +35,8 @@ export function AssetMetricDrillDownSheet({
   isStealthMode,
   isIndonesian,
 }: AssetMetricDrillDownSheetProps) {
+  const { formatWithPreferred, currencyMeta } = useCurrency();
+
   return (
     <BottomSheet
       isOpen={Boolean(data)}
@@ -62,8 +64,8 @@ export function AssetMetricDrillDownSheet({
           </div>
           <p className=" text-2xl font-light text-[var(--text-primary)]">
             {isStealthMode
-              ? "••••••••"
-              : formatRupiah(data?.amount || 0)}
+              ? `${currencyMeta.symbol} ••••••••`
+              : formatWithPreferred(data?.amount || 0)}
           </p>
         </div>
 
@@ -111,8 +113,8 @@ export function AssetMetricDrillDownSheet({
                   <div className="text-right  shrink-0">
                     <p className="text-[12.5px] font-bold text-[var(--text-primary)]">
                       {isStealthMode
-                        ? "••••••••"
-                        : it.valueText || formatRupiah(it.amount || 0)}
+                        ? `${currencyMeta.symbol} ••••••••`
+                        : it.valueText || formatWithPreferred(it.amount || 0)}
                     </p>
                     {it.detail && (
                       <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">

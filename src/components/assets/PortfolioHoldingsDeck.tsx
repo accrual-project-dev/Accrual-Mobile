@@ -51,7 +51,10 @@ interface PortfolioHoldingsDeckProps {
   onOpenConsolidatedDrawer: () => void;
 }
 
-function formatNativeQuote(h: InvestmentHolding): string {
+function formatNativeQuote(
+  h: InvestmentHolding,
+  formatFn?: (val: number) => string,
+): string {
   const isGold =
     h.asset_type === "gold" ||
     h.symbol?.toUpperCase() === "ANTAM" ||
@@ -59,9 +62,11 @@ function formatNativeQuote(h: InvestmentHolding): string {
     h.symbol?.toUpperCase() === "GOLD" ||
     h.symbol?.toUpperCase() === "EMAS";
 
+  const fallback = formatFn || formatRupiah;
+
   if (isGold) {
     const p = h.native_price || h.current_price || 0;
-    return `${formatRupiah(p)}/g`;
+    return `${fallback(p)}/g`;
   }
   if (h.native_currency === "USD" || h.currency === "USD") {
     const val =
@@ -72,7 +77,7 @@ function formatNativeQuote(h: InvestmentHolding): string {
     const val = h.native_price || 1;
     return `${val.toFixed(2)} USDT`;
   }
-  return formatRupiah(h.native_price || h.current_price || 0);
+  return fallback(h.native_price || h.current_price || 0);
 }
 
 function getCategoryBadgeLabel(
@@ -530,6 +535,51 @@ export function PortfolioHoldingsDeck({
                           >
                             {categoryBadge}
                           </span>
+                          {/* Freshness Status Badge */}
+                          {h.is_custom_price || h.price_source === "manual" ? (
+                            <span
+                              className="px-1 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.06)"
+                                  : "rgba(0, 0, 0, 0.04)",
+                                borderColor: "var(--glass-border)",
+                                color: "var(--text-secondary)",
+                              }}
+                              title={isIndonesian ? "Harga kustom/manual" : "Custom/manual price"}
+                            >
+                              {isIndonesian ? "Manual" : "Custom"}
+                            </span>
+                          ) : h.price_source === "live" ? (
+                            <span
+                              className="px-1 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none flex items-center gap-0.5"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.04)"
+                                  : "rgba(0, 0, 0, 0.03)",
+                                borderColor: "var(--glass-border)",
+                                color: "var(--text-tertiary)",
+                              }}
+                              title={isIndonesian ? "Harga pasar live" : "Live market price"}
+                            >
+                              <span className="w-1 h-1 rounded-full bg-[var(--text-primary)] opacity-70" />
+                              Live
+                            </span>
+                          ) : h.price_source === "cache" ? (
+                            <span
+                              className="px-1 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.04)"
+                                  : "rgba(0, 0, 0, 0.03)",
+                                borderColor: "var(--glass-border)",
+                                color: "var(--text-tertiary)",
+                              }}
+                              title={isIndonesian ? "Harga offline/tersimpan" : "Cached offline price"}
+                            >
+                              {isIndonesian ? "Offline" : "Cached"}
+                            </span>
+                          ) : null}
                         </div>
                         <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-1 leading-none font-medium">
                           {h.name}
@@ -543,7 +593,7 @@ export function PortfolioHoldingsDeck({
                         {isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(totalVal)}
                       </div>
                       <div className="text-[9.5px] text-[var(--text-secondary)] font-medium tabular-nums mt-1 leading-none">
-                        {formatNativeQuote(h)}
+                        {formatNativeQuote(h, formatWithPreferred)}
                       </div>
                     </div>
                   </div>
@@ -675,6 +725,50 @@ export function PortfolioHoldingsDeck({
                           <span className="font-bold text-[11.5px] text-[var(--text-primary)] font-mono">
                             {h.symbol}
                           </span>
+                          {h.price_source === "manual" ? (
+                            <span
+                              className="px-1 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.04)"
+                                  : "rgba(0, 0, 0, 0.03)",
+                                borderColor: "var(--glass-border)",
+                                color: "var(--text-tertiary)",
+                              }}
+                              title={isIndonesian ? "Harga manual / terkunci" : "Manual custom price"}
+                            >
+                              {isIndonesian ? "Manual" : "Custom"}
+                            </span>
+                          ) : h.price_source === "live" ? (
+                            <span
+                              className="px-1 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none flex items-center gap-0.5"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.04)"
+                                  : "rgba(0, 0, 0, 0.03)",
+                                borderColor: "var(--glass-border)",
+                                color: "var(--text-tertiary)",
+                              }}
+                              title={isIndonesian ? "Harga pasar live" : "Live market price"}
+                            >
+                              <span className="w-1 h-1 rounded-full bg-[var(--text-primary)] opacity-70" />
+                              Live
+                            </span>
+                          ) : h.price_source === "cache" ? (
+                            <span
+                              className="px-1 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.04)"
+                                  : "rgba(0, 0, 0, 0.03)",
+                                borderColor: "var(--glass-border)",
+                                color: "var(--text-tertiary)",
+                              }}
+                              title={isIndonesian ? "Harga offline/tersimpan" : "Cached offline price"}
+                            >
+                              {isIndonesian ? "Offline" : "Cached"}
+                            </span>
+                          ) : null}
                           <span className="text-[9.5px] text-[var(--text-tertiary)] truncate max-w-[90px]">
                             {h.name}
                           </span>
@@ -706,7 +800,7 @@ export function PortfolioHoldingsDeck({
 
                       <td className="py-2 px-2.5 text-right">
                         <div className="tabular-nums font-semibold text-[var(--text-primary)]">
-                          {formatNativeQuote(h)}
+                          {formatNativeQuote(h, formatWithPreferred)}
                         </div>
                       </td>
 

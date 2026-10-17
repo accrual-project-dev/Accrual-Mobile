@@ -22,12 +22,13 @@ import {
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
-import { formatRupiah, formatHoldingUnits } from "../../lib/utils";
+import { formatHoldingUnits } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWallets } from "../../hooks/useWallets";
 import {
   useAddTransaction,
@@ -44,6 +45,7 @@ import {
   getHoldingActivities,
   generateAssetHistoryCurve,
   calculateHoldingValuation,
+  upsertHolding,
 } from "../../lib/marketPriceService";
 import type {
   InvestmentHolding,
@@ -86,8 +88,9 @@ const getStockRangeLabel = (range: string, isIndonesian: boolean): string => {
   return isIndonesian ? labels[range]?.id || range : labels[range]?.en || range;
 };
 
-const GlassTooltip = ({ active, payload, label }: any) => {
+const GlassTooltip = ({ active, payload, label, formatFn }: any) => {
   if (!active || !payload?.length) return null;
+  const val = payload[0]?.value ?? 0;
   return (
     <div
       className="px-2.5 py-1.5 rounded-xl text-left select-none shadow-xl border"
@@ -100,7 +103,7 @@ const GlassTooltip = ({ active, payload, label }: any) => {
         {label}
       </p>
       <p className="text-[12.5px] font-bold text-[var(--text-primary)] tabular-nums">
-        {formatRupiah(payload[0]?.value ?? 0)}
+        {formatFn ? formatFn(val) : String(val)}
       </p>
     </div>
   );
@@ -126,6 +129,7 @@ export function AssetDetailSheet({
   const isDark = theme !== "light";
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const { data: wallets = [] } = useWallets();
   const addTx = useAddTransaction();
   const { data: allTxs = [] } = useAllTransactions();
@@ -155,6 +159,13 @@ export function AssetDetailSheet({
   const [isEditingDirectUnits, setIsEditingDirectUnits] =
     useState<boolean>(false);
   const [directUnitsInput, setDirectUnitsInput] = useState<string>("");
+
+  // Custom Broker Price modal states
+  const [isEditingCustomPrice, setIsEditingCustomPrice] =
+    useState<boolean>(false);
+  const [isCustomPriceEnabled, setIsCustomPriceEnabled] =
+    useState<boolean>(false);
+  const [customPriceInput, setCustomPriceInput] = useState<string>("");
 
   // Valuation computations
   const valuation = useMemo(() => {
@@ -426,30 +437,48 @@ export function AssetDetailSheet({
 
     triggerHaptic("medium");
 
+    const now = new Date();
+    const timePart = format(now, "HH:mm:ss");
+    const occurredOnWithTime = inputDate.includes("T")
+      ? inputDate
+      : `${inputDate}T${timePart}`;
+
+    const costBasis = (holding.avg_buy_price || 0) * units;
+    const realizedPnL = actionModal === "sell" ? totalAmount - costBasis : undefined;
+
     const result = recordHoldingActivity(holding.id, {
       type: actionModal === "buy" ? "buy" : "sell",
       units,
       price_per_unit: price,
       total_amount: totalAmount,
-      date: inputDate,
+      date: occurredOnWithTime,
+      realized_pnl: realizedPnL,
       note:
         inputNote ||
         (actionModal === "buy"
-          ? `Buy ${holding.symbol}`
-          : `Sell ${holding.symbol}`),
+          ? (isIndonesian ? `Beli ${holding.symbol}` : `Buy ${holding.symbol}`)
+          : (isIndonesian ? `Jual ${holding.symbol}` : `Sell ${holding.symbol}`)),
     });
 
     if (linkToWallet && selectedWalletId) {
+      const pnlSign = (realizedPnL ?? 0) >= 0 ? "+" : "−";
+      const txNote =
+        inputNote ||
+        (actionModal === "buy"
+          ? (isIndonesian
+              ? `Beli ${formatHoldingUnits(units)} ${holding.symbol} @ ${formatWithPreferred(price)}`
+              : `Buy ${formatHoldingUnits(units)} ${holding.symbol} @ ${formatWithPreferred(price)}`)
+          : (isIndonesian
+              ? `Likuidasi ${formatHoldingUnits(units)} ${holding.symbol} (Pokok: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`
+              : `Liquidate ${formatHoldingUnits(units)} ${holding.symbol} (Principal: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`));
+
       addTx.mutate({
         type: actionModal === "buy" ? "expense" : "income",
         amount: totalAmount,
         category_id: null,
         wallet_id: selectedWalletId,
-        occurred_on: inputDate,
-        note:
-          actionModal === "buy"
-            ? `Invest: Buy ${holding.symbol}`
-            : `Liquidate: Sell ${holding.symbol}`,
+        occurred_on: occurredOnWithTime,
+        note: txNote,
       });
     }
 
@@ -467,8 +496,8 @@ export function AssetDetailSheet({
     } else {
       const pnlMsg =
         result.realizedPnL >= 0
-          ? `+${formatRupiah(result.realizedPnL)}`
-          : `-${formatRupiah(Math.abs(result.realizedPnL))}`;
+          ? `+${formatWithPreferred(result.realizedPnL)}`
+          : `-${formatWithPreferred(Math.abs(result.realizedPnL))}`;
       showToast(
         isIndonesian
           ? `Berhasil menjual ${formatHoldingUnits(units)} ${holding.symbol} (Realized P&L: ${pnlMsg})`
@@ -477,6 +506,45 @@ export function AssetDetailSheet({
         () => {},
       );
     }
+  };
+
+  const handleSaveCustomPrice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!holding) return;
+    triggerHaptic("medium");
+    const parsedPrice = parseFloat(customPriceInput.replace(/,/g, "."));
+    if (isCustomPriceEnabled && (isNaN(parsedPrice) || parsedPrice <= 0)) {
+      showToast(
+        isIndonesian ? "Harga manual tidak valid" : "Invalid custom price",
+        "delete",
+        () => {},
+      );
+      return;
+    }
+
+    const updatedHolding: InvestmentHolding = {
+      ...holding,
+      is_custom_price: isCustomPriceEnabled,
+      custom_price: isCustomPriceEnabled ? parsedPrice : undefined,
+      current_price: isCustomPriceEnabled ? parsedPrice : (holding.current_price || holding.avg_buy_price),
+      price_source: isCustomPriceEnabled ? "manual" : (holding.price_source === "manual" ? "cache" : holding.price_source),
+      last_price_updated_at: new Date().toISOString(),
+    };
+
+    upsertHolding(updatedHolding, user?.id);
+    setIsEditingCustomPrice(false);
+    onHoldingUpdated();
+    showToast(
+      isIndonesian
+        ? isCustomPriceEnabled
+          ? `Harga manual dikunci pada ${formatWithPreferred(parsedPrice)}`
+          : "Kunci harga manual dinonaktifkan (mengikuti pasar live)"
+        : isCustomPriceEnabled
+          ? `Custom price locked at ${formatWithPreferred(parsedPrice)}`
+          : "Custom price unlocked (resuming market feed)",
+      "update",
+      () => {},
+    );
   };
 
   const handleSaveDirectUnits = (e: React.FormEvent) => {
@@ -669,7 +737,7 @@ export function AssetDetailSheet({
             </span>
             <div className="flex items-baseline justify-between flex-wrap gap-2 mt-0.5">
               <h2 className="text-[26px] sm:text-[28px] font-bold tracking-tight text-[var(--text-primary)] tabular-nums leading-none">
-                {formatRupiah(valuation.marketValue)}
+                {formatWithPreferred(valuation.marketValue)}
               </h2>
               <div
                 className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 shrink-0 tabular-nums border"
@@ -687,8 +755,8 @@ export function AssetDetailSheet({
                   <ArrowDownRight size={13} strokeWidth={2.2} />
                 )}
                 <span>
-                  {isProfitable ? "+" : ""}
-                  {formatRupiah(valuation.floatingPnL)} (
+                  {isProfitable ? "+" : "−"}
+                  {formatWithPreferred(Math.abs(valuation.floatingPnL))} (
                   {isProfitable ? "+" : ""}
                   {valuation.floatingPnLPct.toFixed(2)}%)
                 </span>
@@ -704,7 +772,10 @@ export function AssetDetailSheet({
                 {holding.currency || "IDR"}
               </span>
               <span className="text-[var(--text-secondary)] font-medium tabular-nums">
-                {isIndonesian ? "Spot:" : "Live:"} {formatRupiah(currentPrice)}{" "}
+                {isIndonesian ? "Spot:" : "Live:"}{" "}
+                {holding.native_currency && holding.native_currency !== "IDR" && holding.native_price
+                  ? `${holding.native_currency} ${holding.native_price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${formatWithPreferred(currentPrice)})`
+                  : formatWithPreferred(currentPrice)}{" "}
                 / unit
               </span>
             </div>
@@ -815,7 +886,7 @@ export function AssetDetailSheet({
                     tickFormatter={formatAxisY}
                     dx={-2}
                   />
-                  <Tooltip content={<GlassTooltip />} />
+                  <Tooltip content={<GlassTooltip formatFn={formatWithPreferred} />} />
                   <Area
                     type="monotone"
                     dataKey="value"
@@ -887,7 +958,7 @@ export function AssetDetailSheet({
             </span>
             <div className="text-right">
               <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                {formatRupiah(valuation.costBasis)}
+                {formatWithPreferred(valuation.costBasis)}
               </span>
             </div>
           </div>
@@ -901,24 +972,63 @@ export function AssetDetailSheet({
               {isIndonesian ? "Harga Rata-rata (DCA)" : "Average Price"}
             </span>
             <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">
-              {formatRupiah(holding.avg_buy_price)}
+              {formatWithPreferred(holding.avg_buy_price)}
             </span>
           </div>
 
           {/* Gradient Divider 3 */}
           <div style={gradientDivider} />
 
-          {/* Row 4: Current Market Price */}
+          {/* Row 4: Current Market Price with Custom Broker Price Lock */}
           <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-              {isIndonesian ? "Harga Pasar Terkini" : "Market Price"}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                {isIndonesian ? "Harga Pasar Terkini" : "Market Price"}
+              </span>
+              {holding.is_custom_price ? (
+                <span
+                  className="px-1.5 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.05)"
+                      : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-tertiary)",
+                  }}
+                >
+                  {isIndonesian ? "Manual" : "Custom"}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setIsCustomPriceEnabled(holding.is_custom_price || false);
+                  setCustomPriceInput(
+                    holding.custom_price
+                      ? String(holding.custom_price)
+                      : String(holding.current_price || holding.avg_buy_price || ""),
+                  );
+                  setIsEditingCustomPrice(true);
+                }}
+                className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                title={
+                  isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"
+                }
+              >
+                <Edit3 size={11} strokeWidth={1.8} />
+              </button>
+            </div>
             <div className="text-right">
               <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                {formatRupiah(currentPrice)}
+                {formatWithPreferred(currentPrice)}
               </span>
               <span className="text-[9.5px] text-[var(--text-tertiary)] block mt-0.5">
-                Live Open Market API
+                {holding.is_custom_price
+                  ? (isIndonesian ? "Harga Manual Broker" : "Custom Broker Price")
+                  : (holding.price_source === "live"
+                      ? "Live Open Market API"
+                      : (isIndonesian ? "Harga Tersimpan (Offline)" : "Cached Offline Price"))}
               </span>
             </div>
           </div>
@@ -933,8 +1043,8 @@ export function AssetDetailSheet({
             </span>
             <div className="text-right">
               <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                {isProfitable ? "+" : ""}
-                {formatRupiah(valuation.floatingPnL)}
+                {isProfitable ? "+" : "−"}
+                {formatWithPreferred(Math.abs(valuation.floatingPnL))}
               </span>
               <span className="text-[9.5px] text-[var(--text-tertiary)] tabular-nums mt-0.5 block">
                 {isProfitable ? "+" : ""}
@@ -1054,7 +1164,7 @@ export function AssetDetailSheet({
                           </span>
                         </div>
                         <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-1 leading-none">
-                          @ {formatRupiah(act.price_per_unit)}
+                          @ {formatWithPreferred(act.price_per_unit)}
                         </p>
                       </div>
                     </div>
@@ -1062,12 +1172,17 @@ export function AssetDetailSheet({
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="text-right">
                         <p className="text-[12px] font-semibold text-[var(--text-primary)] tabular-nums leading-none">
-                          {formatRupiah(act.total_amount)}
+                          {formatWithPreferred(act.total_amount)}
                         </p>
                         <p className="text-[10px] text-[var(--text-secondary)] tabular-nums mt-1 leading-none">
                           {isBuy ? "+" : "−"}
                           {act.units.toLocaleString()} {holding.symbol}
                         </p>
+                        {act.type === "sell" && typeof act.realized_pnl === "number" && (
+                          <p className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums mt-0.5 leading-none">
+                            P&L: {act.realized_pnl >= 0 ? "+" : "−"}{formatWithPreferred(Math.abs(act.realized_pnl))}
+                          </p>
+                        )}
                       </div>
 
                       {act.type !== "initial" && (
@@ -1277,7 +1392,7 @@ export function AssetDetailSheet({
                             : "var(--text-tertiary)",
                       }}
                     >
-                      Auto API
+                      {isIndonesian ? "Otomatis" : "Auto API"}
                     </button>
                     <button
                       type="button"
@@ -1301,7 +1416,7 @@ export function AssetDetailSheet({
                             : "var(--text-tertiary)",
                       }}
                     >
-                      {isIndonesian ? "Broker Kustom" : "Custom"}
+                      {isIndonesian ? "Kustom" : "Custom"}
                     </button>
                   </div>
                 </div>
@@ -1563,6 +1678,162 @@ export function AssetDetailSheet({
                   }}
                 >
                   {isIndonesian ? "Simpan Saldo" : "Save Balance"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* 7. MODAL: MANUAL / CUSTOM BROKER PRICE CONFIGURATION         */}
+        {/* ============================================================ */}
+        {isEditingCustomPrice && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none">
+            <form
+              onSubmit={handleSaveCustomPrice}
+              className="w-full sm:max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in slide-in-from-bottom-5 duration-200"
+              style={{
+                background: isDark
+                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
+                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
+                border: controlBorder,
+              }}
+            >
+              <div className="flex items-center justify-between pb-1">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: controlBg,
+                      border: controlBorder,
+                    }}
+                  >
+                    <Edit3 size={14} className="text-[var(--text-primary)]" />
+                  </div>
+                  <div>
+                    <h3 className="text-[13.5px] font-bold text-[var(--text-primary)] leading-tight">
+                      {isIndonesian
+                        ? `Harga Broker ${holding.symbol}`
+                        : `Broker Price: ${holding.symbol}`}
+                    </h3>
+                    <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-none">
+                      {isIndonesian
+                        ? "Kunci harga khusus atau ikuti pasar live"
+                        : "Lock custom price or follow live market"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingCustomPrice(false)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
+                  style={{
+                    background: controlBg,
+                    border: controlBorder,
+                  }}
+                >
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </div>
+
+              {/* iOS Toggle Switch: Hierarchy Structure per Rule 3 */}
+              <div
+                className="p-3.5 rounded-2xl flex items-center justify-between gap-3 transition-all"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                }}
+              >
+                <div className="min-w-0 pr-2">
+                  <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">
+                    {isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-normal">
+                    {isIndonesian
+                      ? "Abaikan feed pasar live dan gunakan harga broker Anda"
+                      : "Bypass live market feed and use your broker price"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isCustomPriceEnabled}
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setIsCustomPriceEnabled(!isCustomPriceEnabled);
+                  }}
+                  className={`relative shrink-0 w-10 h-5.5 rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${
+                    isCustomPriceEnabled
+                      ? isDark ? "bg-white" : "bg-zinc-900"
+                      : isDark ? "bg-white/20" : "bg-black/20"
+                  }`}
+                >
+                  <span
+                    className={`inline-block w-4.5 h-4.5 rounded-full shadow-md transition-transform duration-200 ${
+                      isCustomPriceEnabled
+                        ? `translate-x-[19px] ${isDark ? "bg-black" : "bg-white"}`
+                        : `translate-x-[2px] ${isDark ? "bg-zinc-300" : "bg-white"}`
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Input: Custom Price when enabled */}
+              {isCustomPriceEnabled && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between px-0.5">
+                    <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                      {isIndonesian ? "Harga Unit Kustom" : "Custom Unit Price"}
+                    </label>
+                    <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
+                      {isIndonesian ? "Spot live:" : "Live spot:"} {formatWithPreferred(holding.current_price || holding.avg_buy_price || 0)}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={customPriceInput}
+                    onChange={(e) => setCustomPriceInput(e.target.value)}
+                    placeholder="e.g. 16500"
+                    className="w-full px-3.5 h-10 rounded-2xl text-[13px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                    style={{
+                      background: controlBg,
+                      border: controlBorder,
+                      boxShadow: controlShadow,
+                    }}
+                    autoFocus
+                  />
+                  <p className="text-[10px] text-[var(--text-tertiary)] px-0.5 pt-0.5">
+                    {isIndonesian
+                      ? "Valuasi portofolio akan dihitung berdasarkan harga kustom ini."
+                      : "Portfolio valuation will be computed based on this custom price."}
+                  </p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingCustomPrice(false)}
+                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
+                  style={{
+                    background: controlBg,
+                    border: controlBorder,
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {isIndonesian ? "Batal" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
+                  style={{
+                    background: isDark ? "#ffffff" : "#18181b",
+                    color: isDark ? "#000000" : "#ffffff",
+                  }}
+                >
+                  {isIndonesian ? "Simpan Harga" : "Save Price"}
                 </button>
               </div>
             </form>

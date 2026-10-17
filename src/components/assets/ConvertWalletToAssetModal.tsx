@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import {
-  formatRupiah,
   formatHoldingUnits,
   formatLiveAmountInput,
 } from "../../lib/utils";
@@ -264,7 +263,7 @@ export function ConvertWalletToAssetModal({
             <label className="text-[11px] font-semibold text-[var(--text-secondary)] flex items-center justify-between">
               <span>{isIndonesian ? "Kurs Valuasi Saat Ini (IDR / USDT)" : "Current Valuation Rate"}</span>
               <span className="text-[10px] text-[var(--text-tertiary)]">
-                {isIndonesian ? "Live API: " : "Live API: "}@{formatRupiah(effectiveRate)}
+                {isIndonesian ? "Live API: " : "Live API: "}@{formatWithPreferred(effectiveRate)}
               </span>
             </label>
             <div className="flex items-center gap-2">
@@ -345,7 +344,7 @@ export function ConvertWalletToAssetModal({
               {isIndonesian ? "Valuasi Portofolio" : "Portfolio Valuation"}
             </span>
             <p className="text-[14px] font-bold text-[var(--text-primary)] amount mt-0.5">
-              {formatRupiah(marketValuation)}
+              {formatWithPreferred(marketValuation)}
             </p>
           </div>
           <div className="text-right">
@@ -359,8 +358,8 @@ export function ConvertWalletToAssetModal({
                   unrealizedPnL >= 0 ? "var(--accent)" : "var(--text-secondary)",
               }}
             >
-              {unrealizedPnL >= 0 ? "+" : ""}
-              {formatRupiah(unrealizedPnL)} ({unrealizedPnLPct >= 0 ? "+" : ""}
+              {unrealizedPnL >= 0 ? "+" : "−"}
+              {formatWithPreferred(Math.abs(unrealizedPnL))} ({unrealizedPnLPct >= 0 ? "+" : ""}
               {unrealizedPnLPct.toFixed(1)}%)
             </p>
           </div>

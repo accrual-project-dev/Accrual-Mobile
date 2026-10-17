@@ -29,11 +29,12 @@ import {
   type UsdtValuationPref,
 } from "../../lib/marketPriceService";
 import type { InvestmentHolding, AssetType } from "../../lib/types";
-import { formatRupiah, formatLiveAmountInput } from "../../lib/utils";
+import { formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWallets } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useAddTransaction } from "../../hooks/useTransactions";
@@ -121,6 +122,7 @@ export function AddAssetModal({
 }: AddAssetModalProps) {
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -629,10 +631,12 @@ export function AddAssetModal({
 
     triggerHaptic("medium");
 
+    const isUSD = formCurrency === "USD";
     const liveRate = usdtRate > 0 ? usdtRate : 16415;
-    const buyPrice = formCurrency === "USD" ? rawBuy * liveRate : rawBuy;
-    const currentPrice =
-      formCurrency === "USD" ? rawCurrent * liveRate : rawCurrent;
+    const baseBuyPrice = isUSD ? Math.round(rawBuy * liveRate) : rawBuy;
+    const baseCurrentPrice = isUSD
+      ? Math.round(rawCurrent * liveRate)
+      : rawCurrent;
 
     const symbol =
       formSymbol.trim().toUpperCase() ||
@@ -657,16 +661,20 @@ export function AddAssetModal({
     // Deduct from wallet if requested
     if (!editingHolding && isDeductFromWallet && selectedDeductWalletId) {
       try {
-        const totalOutlay = buyPrice * units;
+        const totalOutlay = baseBuyPrice * units;
         if (totalOutlay > 0) {
+          const now = new Date();
+          const timeStr = now.toTimeString().slice(0, 8);
+          const occurredOnWithTime = formPurchaseDate
+            ? `${formPurchaseDate}T${timeStr}`
+            : now.toISOString();
+
           await addTx.mutateAsync({
             amount: totalOutlay,
             type: "expense",
             wallet_id: selectedDeductWalletId,
             category_id: null,
-            occurred_on: formPurchaseDate
-              ? `${formPurchaseDate}T12:00:00`
-              : new Date().toISOString(),
+            occurred_on: occurredOnWithTime,
             note: isIndonesian
               ? `Pembelian Aset: ${formName.trim()} (${units} ${symbol})`
               : `Asset Purchase: ${formName.trim()} (${units} ${symbol})`,
@@ -681,8 +689,8 @@ export function AddAssetModal({
     if (symbol === "USDT") {
       const updatedPref: UsdtValuationPref = {
         units,
-        costBasis: buyPrice * units,
-        rate: currentPrice || usdtRate,
+        costBasis: baseBuyPrice * units,
+        rate: baseCurrentPrice || usdtRate,
       };
       onSaveUsdtPref(updatedPref);
       showToast(
@@ -696,14 +704,6 @@ export function AddAssetModal({
       return;
     }
 
-    // Generic Investment Holding
-    const isUSD = formCurrency === "USD";
-    const effectiveRate = usdtRate > 0 ? usdtRate : 16415;
-    const baseBuyPrice = isUSD ? Math.round(buyPrice * effectiveRate) : buyPrice;
-    const baseCurrentPrice = isUSD
-      ? Math.round((currentPrice || buyPrice) * effectiveRate)
-      : (currentPrice || buyPrice);
-
     let finalSymbol = symbol;
     if (formType === "fixed_asset" && !editingHolding) {
       const currentHoldings = getSavedHoldings(userId);
@@ -713,6 +713,7 @@ export function AddAssetModal({
     }
 
     const newH: InvestmentHolding = {
+      ...(editingHolding || {}),
       id: editingHolding?.id || `h_${Date.now()}`,
       user_id: userId,
       symbol: finalSymbol,
@@ -722,7 +723,7 @@ export function AddAssetModal({
       avg_buy_price: baseBuyPrice,
       current_price: baseCurrentPrice,
       currency: formCurrency,
-      native_price: isUSD ? buyPrice : undefined,
+      native_price: isUSD ? rawCurrent : undefined,
       native_currency: isUSD ? "USD" : undefined,
       notes: finalPlatform ? `Platform: ${finalPlatform}` : undefined,
       last_price_updated_at: new Date().toISOString(),
@@ -731,6 +732,7 @@ export function AddAssetModal({
       purchase_date: formPurchaseDate || undefined,
       is_custom_price: priceMode === "custom",
       custom_price: priceMode === "custom" ? baseCurrentPrice : undefined,
+      price_source: priceMode === "custom" ? "manual" : "live",
     };
 
     onSaveHolding(newH);
@@ -1294,7 +1296,7 @@ export function AddAssetModal({
                       {formCurrency === "USD" && formBuyPrice && (
                         <p className="text-[9.5px] text-[var(--text-tertiary)]  mt-0.5 px-1">
                           ≈{" "}
-                          {formatRupiah(
+                          {formatWithPreferred(
                             parseCleanNumber(formBuyPrice) * usdtRate,
                           )}
                         </p>
@@ -1462,7 +1464,7 @@ export function AddAssetModal({
                     {formCurrency === "USD" && formCurrentPrice && (
                       <p className="text-[9.5px] text-[var(--text-tertiary)]  px-1">
                         ≈{" "}
-                        {formatRupiah(
+                        {formatWithPreferred(
                           parseCleanNumber(formCurrentPrice) * usdtRate,
                         )}
                       </p>
@@ -1873,7 +1875,7 @@ export function AddAssetModal({
                                       {w.name}
                                     </span>
                                     <span className="text-[10.5px]  text-[var(--text-secondary)] mt-1">
-                                      {formatRupiah(bal)}
+                                      {formatWithPreferred(bal)}
                                     </span>
                                   </button>
                                 );
@@ -1915,7 +1917,7 @@ export function AddAssetModal({
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                   })}`
-                                : formatRupiah(totalMarketValue)}
+                                : formatWithPreferred(totalMarketValue)}
                             </span>
                           </div>
 
@@ -1958,7 +1960,7 @@ export function AddAssetModal({
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
                                     })}`
-                                  : formatRupiah(
+                                  : formatWithPreferred(
                                       Math.abs(unrealizedDelta),
                                     )}{" "}
                                 ({unrealizedDelta >= 0 ? "+" : ""}

@@ -410,7 +410,7 @@ export function AssetsPage() {
               h.asset_type === "bond"),
         )
         .reduce(
-          (sum, h) => sum + h.units * (h.current_price || h.avg_buy_price),
+          (sum, h) => sum + calculateHoldingValuation(h).marketValue,
           0,
         ) + investmentUsdtValue
     );
@@ -425,7 +425,7 @@ export function AssetsPage() {
     const physicalGold = liquidHoldings
       .filter((h) => h.asset_type === "gold")
       .reduce(
-        (sum, h) => sum + h.units * (h.current_price || h.avg_buy_price),
+        (sum, h) => sum + calculateHoldingValuation(h).marketValue,
         0,
       );
     return fixedTangibles + physicalGold;

@@ -16,6 +16,7 @@ export interface HoldingValuation {
   marketValue: number;
   floatingPnL: number;
   floatingPnLPct: number;
+  effectivePrice?: number;
 }
 
 export interface PortfolioSummary {
@@ -23,6 +24,7 @@ export interface PortfolioSummary {
   totalMarketValue: number;
   totalFloatingPnL: number;
   totalFloatingPnLPct: number;
+  totalRealizedPnL?: number;
   byAssetType: Record<AssetType, { costBasis: number; marketValue: number; floatingPnL: number }>;
 }
 
@@ -623,29 +625,50 @@ export async function refreshAllPortfolioPrices(userId?: string): Promise<{
         holding: {
           ...h,
           current_price: h.custom_price,
+          price_source: "manual",
         },
-        changed: false,
+        changed: h.price_source !== "manual" || h.current_price !== h.custom_price,
       };
     }
 
     let newPrice: number | null = null;
+    let newNativePrice: number | null = null;
+    let quoteSource: string = "live";
+
     try {
       if (h.asset_type === "crypto") {
-        newPrice = await fetchCryptoPriceInIDR(h.symbol);
+        const quote = await fetchCryptoQuote(h.symbol);
+        if (quote) {
+          newPrice = quote.idr;
+          newNativePrice = quote.usd;
+          quoteSource = quote.source === "cache" ? "cache" : "live";
+        }
       } else if (h.asset_type === "stock") {
-        newPrice = await fetchStockPriceInIDR(h.symbol, false, h.currency === "IDR");
+        const quote = await fetchStockQuote(h.symbol, false, h.currency === "IDR");
+        if (quote) {
+          newPrice = quote.idr;
+          newNativePrice = quote.usd ?? quote.regularMarketPrice;
+          quoteSource = "live";
+        }
       } else if (h.asset_type === "gold" || h.symbol?.toUpperCase() === "ANTAM" || h.symbol?.toUpperCase() === "XAU") {
-        newPrice = await fetchGoldPriceInIDR();
+        const quote = await fetchGoldQuote();
+        if (quote) {
+          newPrice = quote.pricePerGramIDR;
+          newNativePrice = quote.usdPerTroyOz;
+          quoteSource = quote.source === "cache" ? "cache" : "live";
+        }
       }
     } catch {
-      // Keep current price on network fallback
+      quoteSource = "cache";
     }
 
-    if (newPrice && newPrice > 0 && Math.abs(newPrice - h.current_price) > 0.001) {
+    if (newPrice && newPrice > 0 && (Math.abs(newPrice - h.current_price) > 0.001 || h.price_source !== quoteSource)) {
       return {
         holding: {
           ...h,
           current_price: newPrice,
+          native_price: newNativePrice ?? h.native_price,
+          price_source: quoteSource,
           last_price_updated_at: new Date().toISOString(),
         },
         changed: true,
@@ -1311,7 +1334,12 @@ export function calculateAssetDepreciation(
 export function calculateHoldingValuation(holding: InvestmentHolding): HoldingValuation {
   const units = Number(holding.units || 0);
   let buyPrice = Number(holding.avg_buy_price || 0);
-  let currentPrice = Number(holding.current_price || buyPrice);
+
+  // Custom price override if user has locked a manual price
+  let currentPrice =
+    holding.is_custom_price && typeof holding.custom_price === "number" && holding.custom_price > 0
+      ? holding.custom_price
+      : Number(holding.current_price || buyPrice);
 
   // Self-healing legacy fallback: If holding was saved with USD buyPrice but IDR currentPrice (ratio > 500x)
   if (
@@ -1346,6 +1374,46 @@ export function calculateHoldingValuation(holding: InvestmentHolding): HoldingVa
     marketValue,
     floatingPnL,
     floatingPnLPct,
+    effectivePrice: currentPrice,
+  };
+}
+
+/**
+ * Calculates cumulative realized profit and loss across all liquidated positions.
+ */
+export function calculateTotalRealizedPnL(holdings: InvestmentHolding[]): {
+  totalRealizedPnL: number;
+  realizedSalesCount: number;
+  bySymbol: Record<string, number>;
+} {
+  let totalRealizedPnL = 0;
+  let realizedSalesCount = 0;
+  const bySymbol: Record<string, number> = {};
+
+  holdings.forEach((h) => {
+    const activities = getHoldingActivities(h);
+    const sym = h.symbol?.toUpperCase() || "UNKNOWN";
+    activities.forEach((act) => {
+      if (act.type === "sell") {
+        realizedSalesCount++;
+        let pnl = 0;
+        if (typeof act.realized_pnl === "number" && !isNaN(act.realized_pnl)) {
+          pnl = act.realized_pnl;
+        } else {
+          const proceeds = act.total_amount || (act.units * act.price_per_unit);
+          const costOfUnits = act.units * (h.avg_buy_price || 0);
+          pnl = proceeds - costOfUnits;
+        }
+        totalRealizedPnL += pnl;
+        bySymbol[sym] = (bySymbol[sym] || 0) + pnl;
+      }
+    });
+  });
+
+  return {
+    totalRealizedPnL,
+    realizedSalesCount,
+    bySymbol,
   };
 }
 
@@ -1385,11 +1453,14 @@ export function calculatePortfolioSummary(holdings: InvestmentHolding[]): Portfo
   const totalFloatingPnLPct =
     totalCostBasis > 0 ? (totalFloatingPnL / totalCostBasis) * 100 : 0;
 
+  const { totalRealizedPnL } = calculateTotalRealizedPnL(holdings);
+
   return {
     totalCostBasis,
     totalMarketValue,
     totalFloatingPnL,
     totalFloatingPnLPct,
+    totalRealizedPnL,
     byAssetType,
   };
 }
@@ -1454,6 +1525,7 @@ export function recordHoldingActivity(
     total_amount?: number;
     date?: string;
     note?: string;
+    realized_pnl?: number;
   },
   userId?: string,
 ): { updatedHolding: InvestmentHolding; realizedPnL: number } {
@@ -1487,24 +1559,11 @@ export function recordHoldingActivity(
     throw new Error(`Holding with id ${holdingId} not found`);
   }
 
+  const dateStr = activityInput.date || new Date().toISOString();
   const existingActivities = getHoldingActivities(target);
   const units = Math.max(0, Number(activityInput.units) || 0);
   const price = Math.max(0, Number(activityInput.price_per_unit) || 0);
   const totalNominal = activityInput.total_amount ? Number(activityInput.total_amount) : units * price;
-  const dateStr = activityInput.date || new Date().toISOString().split("T")[0];
-
-  const newActivity: HoldingActivity = {
-    id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    holding_id: target.id,
-    type: activityInput.type,
-    date: dateStr,
-    units,
-    price_per_unit: price,
-    total_amount: totalNominal,
-    note: activityInput.note || (activityInput.type === "buy" ? "DCA Purchase" : "Position Sell"),
-    created_at: new Date().toISOString(),
-  };
-
   let newUnits = target.units;
   let newAvgBuyPrice = target.avg_buy_price;
   let realizedPnL = 0;
@@ -1522,6 +1581,19 @@ export function recordHoldingActivity(
     newUnits = Math.max(0, target.units - units);
     // avg_buy_price per remaining unit remains unchanged on partial liquidation
   }
+
+  const newActivity: HoldingActivity = {
+    id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    holding_id: target.id,
+    type: activityInput.type,
+    date: dateStr,
+    units,
+    price_per_unit: price,
+    total_amount: totalNominal,
+    realized_pnl: activityInput.type === "sell" ? Math.round(realizedPnL * 100) / 100 : undefined,
+    note: activityInput.note || (activityInput.type === "buy" ? "DCA Purchase" : "Position Sell"),
+    created_at: new Date().toISOString(),
+  };
 
   const updatedHolding: InvestmentHolding = {
     ...target,

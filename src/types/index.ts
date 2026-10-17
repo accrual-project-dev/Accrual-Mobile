@@ -30,6 +30,7 @@ export interface HoldingActivity {
   units: number;
   price_per_unit: number;
   total_amount: number;
+  realized_pnl?: number;
   note?: string;
   created_at?: string;
 }
