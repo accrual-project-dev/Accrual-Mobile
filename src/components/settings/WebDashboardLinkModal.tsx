@@ -81,6 +81,9 @@ export function WebDashboardLinkModal({
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
   }, []);
 
@@ -99,7 +102,7 @@ export function WebDashboardLinkModal({
   // Process a raw QR string
   const handleProcessQrData = useCallback(
     (qrString: string) => {
-      const parsed = parseWebDashboardQr(qrString);
+      const parsed = parseWebDashboardQr(qrString, isIndonesian);
       if (parsed.valid && parsed.payload) {
         triggerSuccessHaptic();
         stopCameraStream();
@@ -231,6 +234,7 @@ export function WebDashboardLinkModal({
     if (!file) return;
 
     triggerHaptic("light");
+    stopCameraStream();
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -277,7 +281,10 @@ export function WebDashboardLinkModal({
     triggerHaptic("medium");
     setViewMode("authorizing");
 
-    const result = await authorizeWebDashboardSession(rawScannedQr, { session });
+    const result = await authorizeWebDashboardSession(rawScannedQr, {
+      session,
+      isIndonesian,
+    });
 
     if (result.success) {
       triggerSuccessHaptic();
@@ -331,7 +338,7 @@ export function WebDashboardLinkModal({
               : "Link Web Dashboard"
       }
     >
-      <div className="px-5 sm:px-6 space-y-4 pb-[calc(env(safe-area-inset-bottom,16px)+24px)] pt-1 select-none">
+      <div className="px-5 sm:px-6 space-y-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] pt-1 select-none">
         {/* Hidden file input for gallery upload */}
         <input
           type="file"
@@ -457,7 +464,7 @@ export function WebDashboardLinkModal({
                   </span>
                   <p style={{ color: "var(--text-tertiary)" }}>
                     {isIndonesian
-                      ? "Buka Accrual Web di browser laptop Anda dan pilih tab 'Scan with App'."
+                      ? "Buka Accrual Web di peramban komputer Anda dan pilih 'Pindai dengan Aplikasi'."
                       : "Open Accrual Web on your desktop browser and select 'Scan with App'."}
                   </p>
                 </div>
@@ -741,7 +748,7 @@ export function WebDashboardLinkModal({
                     style={{ color: "var(--text-primary)" }}
                   >
                     {session?.user?.email ||
-                      (isIndonesian ? "Pengguna masuk" : "Signed in user")}
+                      (isIndonesian ? "Pengguna tersambung" : "Signed in user")}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -840,7 +847,7 @@ export function WebDashboardLinkModal({
               style={{ color: "var(--text-tertiary)" }}
             >
               {isIndonesian
-                ? "Memancarkan token sesi terenkripsi via Supabase Realtime"
+                ? "Memancarkan token sesi terenkripsi melalui Supabase Realtime"
                 : "Broadcasting encrypted session token via Supabase Realtime"}
             </p>
           </div>

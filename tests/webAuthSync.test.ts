@@ -59,7 +59,25 @@ describe("webAuthSync - Web Dashboard Handshake Suite", () => {
   });
 
   describe("QR Parsing & Validation", () => {
-    it("successfully parses valid Trouvaille Web Dashboard QR JSON", () => {
+    it("successfully parses valid Accrual Web Dashboard QR JSON", () => {
+      const payload = {
+        app: "accrual",
+        version: "1.0",
+        action: "login",
+        sessionId: "sess-accrual-123",
+        channel: "accrual-qr-sess-accrual-123",
+        origin: "https://accrual.app",
+        createdAt: Date.now(),
+      };
+
+      const result = parseWebDashboardQr(JSON.stringify(payload));
+      expect(result.valid).toBe(true);
+      expect(result.payload?.sessionId).toBe("sess-accrual-123");
+      expect(result.payload?.origin).toBe("https://accrual.app");
+      expect(result.payload?.channel).toBe("accrual-qr-sess-accrual-123");
+    });
+
+    it("successfully parses valid legacy Trouvaille Web Dashboard QR JSON", () => {
       const payload = {
         app: "trouvaille",
         version: "1.0",
@@ -77,7 +95,7 @@ describe("webAuthSync - Web Dashboard Handshake Suite", () => {
       expect(result.payload?.channel).toBe("trouvaille-qr-sess-abc-123");
     });
 
-    it("rejects non-trouvaille QR codes", () => {
+    it("rejects non-accrual/non-trouvaille QR codes", () => {
       const payload = {
         app: "otherapp",
         action: "login",
@@ -86,7 +104,7 @@ describe("webAuthSync - Web Dashboard Handshake Suite", () => {
 
       const result = parseWebDashboardQr(JSON.stringify(payload));
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("bukan untuk aplikasi Trouvaille");
+      expect(result.error).toContain("bukan untuk aplikasi Accrual");
     });
 
     it("rejects payload with missing sessionId or wrong action", () => {

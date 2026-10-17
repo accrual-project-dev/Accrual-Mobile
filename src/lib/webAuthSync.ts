@@ -20,32 +20,48 @@ export interface LinkedWebSession {
 
 const LINKED_SESSIONS_STORAGE_KEY = "trouvaille_linked_web_sessions";
 
+function getSafeStorage(): Storage | null {
+  if (typeof localStorage !== "undefined") return localStorage;
+  if (typeof window !== "undefined" && window.localStorage) return window.localStorage;
+  return null;
+}
+
 /**
- * Validates and parses the QR Code string emitted by Trouvaille Web Dashboard.
+ * Validates and parses the QR Code string emitted by Accrual/Trouvaille Web Dashboard.
  */
-export function parseWebDashboardQr(qrContent: string): {
+export function parseWebDashboardQr(
+  qrContent: string,
+  isIndonesian: boolean = true,
+): {
   valid: boolean;
   payload?: WebDashboardQrPayload;
   error?: string;
 } {
   try {
     if (!qrContent || typeof qrContent !== "string") {
-      return { valid: false, error: "QR code content is empty" };
+      return {
+        valid: false,
+        error: isIndonesian ? "Isi QR Code kosong" : "QR code content is empty",
+      };
     }
 
     const data = JSON.parse(qrContent.trim());
 
-    if (data.app !== "trouvaille") {
+    if (data.app !== "accrual" && data.app !== "trouvaille") {
       return {
         valid: false,
-        error: "QR Code ini bukan untuk aplikasi Trouvaille",
+        error: isIndonesian
+          ? "QR Code ini bukan untuk aplikasi Accrual"
+          : "This QR code is not for Accrual application",
       };
     }
 
     if (data.action !== "login" || !data.sessionId) {
       return {
         valid: false,
-        error: "Payload QR Code tidak valid atau format sesi rusak",
+        error: isIndonesian
+          ? "Payload QR Code tidak valid atau format sesi rusak"
+          : "Invalid QR code payload or corrupted session",
       };
     }
 
@@ -53,7 +69,9 @@ export function parseWebDashboardQr(qrContent: string): {
     if (data.createdAt && Date.now() - data.createdAt > 600000) {
       return {
         valid: false,
-        error: "QR Code telah kedaluwarsa. Silakan muat ulang di Web Dashboard",
+        error: isIndonesian
+          ? "QR Code telah kedaluwarsa. Silakan muat ulang di Web Dashboard"
+          : "QR code has expired. Please refresh on the Web Dashboard",
       };
     }
 
@@ -64,7 +82,7 @@ export function parseWebDashboardQr(qrContent: string): {
         version: data.version || "1.0",
         action: data.action,
         sessionId: data.sessionId,
-        channel: data.channel || `trouvaille-qr-${data.sessionId}`,
+        channel: data.channel || `${data.app || "accrual"}-qr-${data.sessionId}`,
         origin: data.origin || "",
         createdAt: data.createdAt || Date.now(),
       },
@@ -72,25 +90,33 @@ export function parseWebDashboardQr(qrContent: string): {
   } catch {
     return {
       valid: false,
-      error: "Format QR Code tidak dikenali (bukan JSON Trouvaille)",
+      error: isIndonesian
+        ? "Format QR Code tidak dikenali (bukan JSON Accrual)"
+        : "Unrecognized QR code format (not Accrual JSON)",
     };
   }
 }
 
 /**
- * Authorizes a Trouvaille Web Dashboard session via Supabase Realtime broadcast.
+ * Authorizes an Accrual Web Dashboard session via Supabase Realtime broadcast.
  * Sends the active user's access & refresh tokens to the channel.
  */
 export async function authorizeWebDashboardSession(
   qrContent: string,
-  options?: { session?: any; timeoutMs?: number; requireConfirmation?: boolean }
+  options?: {
+    session?: any;
+    timeoutMs?: number;
+    requireConfirmation?: boolean;
+    isIndonesian?: boolean;
+  }
 ): Promise<{ success: boolean; error?: string; sessionInfo?: LinkedWebSession }> {
+  const isIndonesian = options?.isIndonesian ?? true;
   try {
-    const parseResult = parseWebDashboardQr(qrContent);
+    const parseResult = parseWebDashboardQr(qrContent, isIndonesian);
     if (!parseResult.valid || !parseResult.payload) {
       return {
         success: false,
-        error: parseResult.error || "QR Code tidak valid",
+        error: parseResult.error || (isIndonesian ? "QR Code tidak valid" : "Invalid QR code"),
       };
     }
 
@@ -164,7 +190,9 @@ export async function authorizeWebDashboardSession(
     if (!activeSession || !activeSession.access_token) {
       return {
         success: false,
-        error: "Anda belum login di aplikasi mobile. Silakan masuk terlebih dahulu.",
+        error: isIndonesian
+          ? "Anda belum login di aplikasi mobile. Silakan masuk terlebih dahulu."
+          : "You are not logged in on mobile. Please sign in first.",
       };
     }
 
@@ -194,7 +222,9 @@ export async function authorizeWebDashboardSession(
           } catch {}
           reject(
             new Error(
-              "Web Dashboard tidak merespons konfirmasi. Pastikan layar QR Web Dashboard tetap aktif dan tidak kedaluwarsa."
+              isIndonesian
+                ? "Web Dashboard tidak merespons konfirmasi. Pastikan layar QR Web Dashboard tetap aktif dan tidak kedaluwarsa."
+                : "Web Dashboard did not respond to confirmation. Ensure the QR screen remains active and has not expired."
             )
           );
         }
@@ -219,7 +249,10 @@ export async function authorizeWebDashboardSession(
           clearTimeout(timeoutTimer);
           reject(
             new Error(
-              payload?.error || "Otorisasi sesi ditolak oleh Web Dashboard"
+              payload?.error ||
+                (isIndonesian
+                  ? "Otorisasi sesi ditolak oleh Web Dashboard"
+                  : "Session authorization rejected by Web Dashboard")
             )
           );
         }
@@ -274,7 +307,9 @@ export async function authorizeWebDashboardSession(
             clearTimeout(timeoutTimer);
             reject(
               new Error(
-                "Gagal terhubung ke saluran sinkronisasi Supabase Realtime"
+                isIndonesian
+                  ? "Gagal terhubung ke saluran sinkronisasi Supabase Realtime"
+                  : "Failed to connect to Supabase Realtime sync channel"
               )
             );
           }
@@ -292,7 +327,7 @@ export async function authorizeWebDashboardSession(
     // 4. Record linked session history locally ONLY after successful verification
     const linkedSession: LinkedWebSession = {
       sessionId,
-      origin: origin || "Trouvaille Web Dashboard",
+      origin: origin || "Accrual Web Dashboard",
       channel: channelName,
       linkedAt: Date.now(),
       userEmail: activeSession.user?.email || "Unknown User",
@@ -306,7 +341,11 @@ export async function authorizeWebDashboardSession(
   } catch (err: any) {
     return {
       success: false,
-      error: err?.message || "Gagal memproses otorisasi Web Dashboard",
+      error:
+        err?.message ||
+        (isIndonesian
+          ? "Gagal memproses otorisasi Web Dashboard"
+          : "Failed to process Web Dashboard authorization"),
     };
   }
 }
@@ -315,8 +354,10 @@ export async function authorizeWebDashboardSession(
  * Retrieves the list of historically linked web dashboard sessions.
  */
 export function getLinkedWebSessions(): LinkedWebSession[] {
+  const storage = getSafeStorage();
+  if (!storage) return [];
   try {
-    const raw = localStorage.getItem(LINKED_SESSIONS_STORAGE_KEY);
+    const raw = storage.getItem(LINKED_SESSIONS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -329,14 +370,13 @@ export function getLinkedWebSessions(): LinkedWebSession[] {
  * Persists a new linked web session to local storage.
  */
 export function saveLinkedWebSession(session: LinkedWebSession): void {
+  const storage = getSafeStorage();
+  if (!storage) return;
   try {
     const current = getLinkedWebSessions();
     const filtered = current.filter((s) => s.sessionId !== session.sessionId);
     const updated = [session, ...filtered].slice(0, 10); // keep last 10
-    localStorage.setItem(
-      LINKED_SESSIONS_STORAGE_KEY,
-      JSON.stringify(updated)
-    );
+    storage.setItem(LINKED_SESSIONS_STORAGE_KEY, JSON.stringify(updated));
   } catch (e) {
     console.warn("[webAuthSync] Failed to save linked web session:", e);
   }
@@ -346,13 +386,12 @@ export function saveLinkedWebSession(session: LinkedWebSession): void {
  * Removes a linked web session from history.
  */
 export function removeLinkedWebSession(sessionId: string): void {
+  const storage = getSafeStorage();
+  if (!storage) return;
   try {
     const current = getLinkedWebSessions();
     const updated = current.filter((s) => s.sessionId !== sessionId);
-    localStorage.setItem(
-      LINKED_SESSIONS_STORAGE_KEY,
-      JSON.stringify(updated)
-    );
+    storage.setItem(LINKED_SESSIONS_STORAGE_KEY, JSON.stringify(updated));
   } catch (e) {
     console.warn("[webAuthSync] Failed to remove linked web session:", e);
   }
@@ -362,8 +401,10 @@ export function removeLinkedWebSession(sessionId: string): void {
  * Clears all linked web sessions from history.
  */
 export function clearAllLinkedWebSessions(): void {
+  const storage = getSafeStorage();
+  if (!storage) return;
   try {
-    localStorage.removeItem(LINKED_SESSIONS_STORAGE_KEY);
+    storage.removeItem(LINKED_SESSIONS_STORAGE_KEY);
   } catch (e) {
     console.warn("[webAuthSync] Failed to clear linked web sessions:", e);
   }
