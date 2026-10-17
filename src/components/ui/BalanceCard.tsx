@@ -4,7 +4,6 @@ import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useBills } from "../../hooks/useBills";
 import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic } from "../../lib/haptics";
-import { formatRupiah } from "../../lib/utils";
 import { BottomSheet } from "./BottomSheet";
 import { IconRenderer } from "./IconRenderer";
 import { CashAccountDetailSheet } from "../assets/CashAccountDetailSheet";
@@ -98,7 +97,8 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [showDormant, setShowDormant] = useState(false);
   const { isIndonesian } = useLanguage();
-  useCurrency();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const stealthMask = `${currencyMeta.symbol} ••••••••`;
   const { liquidAccounts, liquidCapital, allTxs } = useWalletBalances();
   const { data: bills = [] } = useBills();
   const { data: wallets = [] } = useWallets();
@@ -385,7 +385,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                     color: "var(--text-secondary)",
                   }}
                 >
-                  +{items.length - 5} more
+                  {isIndonesian ? `+${items.length - 5} lainnya` : `+${items.length - 5} more`}
                 </button>
               )}
             </div>
@@ -415,7 +415,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                     className="amount font-semibold"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {hideBalance ? "Rp ••••••••" : formatRupiah(safeToSpend)}
+                    {hideBalance ? stealthMask : formatWithPreferred(safeToSpend)}
                   </span>
                 </div>
                 <div
@@ -425,8 +425,8 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   <span>{isIndonesian ? "Komitmen: " : "Committed: "}</span>
                   <span className="amount font-bold text-[var(--text-secondary)]">
                     {hideBalance
-                      ? "Rp ••••••••"
-                      : formatRupiah(committedAmount)}
+                      ? stealthMask
+                      : formatWithPreferred(committedAmount)}
                   </span>
                 </div>
               </div>
@@ -469,7 +469,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                 className="amount text-[15px] font-bold leading-tight tabular-nums mt-0.5"
                 style={{ color: "var(--text-primary)" }}
               >
-                {hideBalance ? "Rp ••••••••" : formatRupiah(totalLiquidCapital)}
+                {hideBalance ? stealthMask : formatWithPreferred(totalLiquidCapital)}
               </p>
             </div>
           </div>
@@ -500,7 +500,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   className="amount font-bold tabular-nums"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {hideBalance ? "Rp ••••••••" : formatRupiah(safeToSpend)}
+                  {hideBalance ? stealthMask : formatWithPreferred(safeToSpend)}
                 </span>
               </div>
               <div className="text-right shrink-0 pl-2">
@@ -514,7 +514,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   className="amount font-medium tabular-nums"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {hideBalance ? "Rp ••••••••" : formatRupiah(committedAmount)}
+                  {hideBalance ? stealthMask : formatWithPreferred(committedAmount)}
                 </span>
               </div>
             </div>
@@ -608,7 +608,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                       className="amount text-[12.5px] font-bold tabular-nums leading-none truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {hideBalance ? "Rp ••••••••" : formatRupiah(acc.balance)}
+                      {hideBalance ? stealthMask : formatWithPreferred(acc.balance)}
                     </p>
                     <span
                       className="text-[8.5px] font-medium truncate opacity-60 max-w-[45%] text-right"
@@ -655,8 +655,8 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                   >
                     {zeroAccounts.length}{" "}
                     {isIndonesian
-                      ? "Akun Dorman (Rp 0)"
-                      : "Dormant Accounts (Rp 0)"}
+                      ? `Akun Dorman (${currencyMeta.symbol} 0)`
+                      : `Dormant Accounts (${currencyMeta.symbol} 0)`}
                   </span>
                 </div>
 
@@ -708,7 +708,7 @@ export function BalanceCard({ hideBalance = false }: BalanceCardProps) {
                         className="amount text-[9.5px] font-medium tabular-nums shrink-0 pl-1"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        Rp 0
+                        {formatWithPreferred(0)}
                       </span>
                     </div>
                   ))}

@@ -16,7 +16,7 @@ import {
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useCategories } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
-import { formatRupiah, formatLiveAmountInput } from "../../lib/utils";
+import { formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -53,6 +53,7 @@ export function WalletManagementSheets({
     currencyMeta,
     convertToIdr,
     convertFromIdr,
+    formatWithPreferred,
   } = useCurrency();
   const allowDecimals = currencyMeta.decimals > 0;
   const maxDecimals = currencyMeta.decimals;
@@ -310,14 +311,17 @@ export function WalletManagementSheets({
         ? correctEffectiveDate
         : format(new Date(), "yyyy-MM-dd");
 
+    const timePart = format(new Date(), "HH:mm:ss");
+    const fullOccurredOn = `${txDate}T${timePart}`;
+
     addTx.mutate(
       {
         type: isPositive ? "income" : "expense",
         amount: Math.abs(diff),
         wallet_id: walletIdToSave,
         note: noteToSave,
-        occurred_on: txDate,
-        created_at: new Date(`${txDate}T12:00:00Z`).toISOString(),
+        occurred_on: fullOccurredOn,
+        created_at: new Date(`${txDate}T${timePart}`).toISOString(),
         category_id: catIdToSave,
       },
       {
@@ -327,8 +331,8 @@ export function WalletManagementSheets({
           setCorrectEffectiveDate(format(new Date(), "yyyy-MM-dd"));
           showToast(
             isIndonesian
-              ? `Saldo disesuaikan ke ${formatRupiah(target)}`
-              : `Balance corrected to ${formatRupiah(target)}`,
+              ? `Saldo disesuaikan ke ${formatWithPreferred(target)}`
+              : `Balance corrected to ${formatWithPreferred(target)}`,
             "update",
           );
         },
@@ -369,7 +373,7 @@ export function WalletManagementSheets({
                 {isIndonesian ? "Akun Saya" : "My Accounts"}
               </p>
               <h2 className="amount  text-[28px] font-bold tracking-tight text-[var(--text-primary)] leading-tight mt-0.5">
-                {formatRupiah(totalAssets)}
+                {formatWithPreferred(totalAssets)}
               </h2>
               <p className="text-[11px] font-medium text-[var(--text-tertiary)] mt-0.5">
                 {wallets.length} {isIndonesian ? "akun terdaftar · Rekapitulasi Neraca" : "registered accounts · Balance Summary"}
@@ -603,7 +607,7 @@ export function WalletManagementSheets({
                                 color: isZero ? "var(--text-tertiary)" : "var(--text-primary)",
                               }}
                             >
-                              {formatRupiah(bal)}
+                              {formatWithPreferred(bal)}
                             </p>
                             <p
                               className="text-[10px] mt-0.5 font-medium"
@@ -749,7 +753,7 @@ export function WalletManagementSheets({
               >
                 {isIndonesian ? "Saldo Saat Ini: " : "Current Balance: "}
                 <span className="amount font-bold text-[var(--text-primary)]">
-                  {formatRupiah(correctWallet?.currentBalance || 0)}
+                  {formatWithPreferred(correctWallet?.currentBalance || 0)}
                 </span>
               </p>
             </div>
@@ -827,7 +831,7 @@ export function WalletManagementSheets({
                 }}
               >
                 {targetBalanceIdr - correctWallet.currentBalance > 0 ? "+" : ""}
-                {formatRupiah(targetBalanceIdr - correctWallet.currentBalance)}{" "}
+                {formatWithPreferred(targetBalanceIdr - correctWallet.currentBalance)}{" "}
                 <span className="text-[10px] font-bold uppercase">
                   {targetBalanceIdr - correctWallet.currentBalance > 0
                     ? "(+)"

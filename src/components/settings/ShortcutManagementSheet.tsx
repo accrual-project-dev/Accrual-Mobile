@@ -18,7 +18,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useToast } from "../../contexts/ToastContext";
-import { formatRupiah, formatLiveAmountInput, generateUUID } from "../../lib/utils";
+import { formatLiveAmountInput, generateUUID } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 
 interface ShortcutManagementSheetProps {
@@ -33,7 +33,7 @@ export function ShortcutManagementSheet({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
-  const { preferredCurrency, currencyMeta, convertToIdr, convertFromIdr } = useCurrency();
+  const { preferredCurrency, currencyMeta, convertToIdr, convertFromIdr, formatWithPreferred } = useCurrency();
   const { showToast } = useToast();
   const { shortcuts, saveShortcut, deleteShortcut } = useShortcuts();
   const { data: categories = [] } = useCategories();
@@ -562,7 +562,7 @@ export function ShortcutManagementSheet({
                           style={{ color: "var(--text-secondary)" }}
                         >
                           {s.amount > 0
-                            ? formatRupiah(s.amount)
+                            ? formatWithPreferred(s.amount)
                             : isIndonesian
                               ? "Nominal fleksibel"
                               : "Flexible amount"}

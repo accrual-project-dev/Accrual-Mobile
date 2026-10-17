@@ -4,9 +4,9 @@ import { Sparkles, X, ArrowRight, Layers } from "lucide-react";
 import type { Category, Wallet, Transaction } from "../../lib/types";
 import type { DetectedBankNotification } from "../../lib/bankNotificationParser";
 import type { ParsedStatementItem } from "../../lib/statementParser";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface ClipboardTransactionBannerProps {
   categories?: Category[];
@@ -30,6 +30,7 @@ export function ClipboardTransactionBanner({
   onReviewBatch,
 }: ClipboardTransactionBannerProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const [detectedSingle, setDetectedSingle] = useState<DetectedBankNotification | null>(null);
   const [detectedBatch, setDetectedBatch] = useState<DetectedBatch | null>(null);
 
@@ -160,7 +161,7 @@ export function ClipboardTransactionBanner({
                     style={{ color: "var(--text-primary)" }}
                   >
                     <span className="amount">
-                      {formatRupiah(detectedSingle.amount)}
+                      {formatWithPreferred(detectedSingle.amount)}
                     </span>
                     {detectedSingle.merchantOrNote && (
                       <span

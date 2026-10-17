@@ -21,22 +21,11 @@ import {
   useUpdateCategory,
   useDeleteCategory,
 } from "../../hooks/useCategories";
-import { formatRupiah } from "../../lib/utils";
+import { formatLiveAmountInput } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-
-function formatShortRupiah(num?: number | null, isIndonesian = false) {
-  if (!num || num <= 0) return isIndonesian ? "Tanpa Batas" : "No Limit";
-  if (num >= 1_000_000) {
-    const val = (num / 1_000_000).toFixed(1).replace(".0", "");
-    return isIndonesian ? `Rp ${val} Jt` : `Rp ${val}M`;
-  }
-  if (num >= 1_000) {
-    return `Rp ${num / 1_000}k`;
-  }
-  return `Rp ${num.toLocaleString("id-ID")}`;
-}
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 interface CategoryManagementSheetsProps {
   isOpen: boolean;
@@ -54,7 +43,36 @@ export function CategoryManagementSheets({
   const { showToast } = useToast();
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
+  const {
+    preferredCurrency,
+    currencyMeta,
+    convertToIdr,
+    convertFromIdr,
+    formatWithPreferred,
+    formatCompactWithPreferred,
+  } = useCurrency();
+  const allowDecimals = currencyMeta.decimals > 0;
+  const maxDecimals = currencyMeta.decimals;
   const isDark = theme !== "light";
+
+  const budgetPresets = useMemo(() => {
+    if (preferredCurrency === "IDR") {
+      return [
+        { label: "500k", val: 500000 },
+        { label: "1M", val: 1000000 },
+        { label: "2.5M", val: 2500000 },
+        { label: "5M", val: 5000000 },
+        { label: isIndonesian ? "Hapus" : "Clear", val: 0 },
+      ];
+    }
+    return [
+      { label: "50", val: 50 },
+      { label: "100", val: 100 },
+      { label: "250", val: 250 },
+      { label: "500", val: 500 },
+      { label: isIndonesian ? "Hapus" : "Clear", val: 0 },
+    ];
+  }, [preferredCurrency, isIndonesian]);
 
   const [viewMode, setViewMode] = useState<"list" | "edit" | "add">("list");
   const [manageCatTab, setManageCatTab] = useState<"expense" | "income">("expense");
@@ -107,8 +125,9 @@ export function CategoryManagementSheets({
   const handleSaveCategory = () => {
     if (!catName.trim() || isDuplicateCatName) return;
     const finalIcon = catIcon || autoSuggestIcon(catName) || "Tag";
-    const numBudget = catBudget.trim()
-      ? Number(catBudget.replace(/\D/g, ""))
+    const rawBudget = parseFloat(catBudget.replace(/,/g, ""));
+    const numBudget = !isNaN(rawBudget) && rawBudget > 0
+      ? Math.round(convertToIdr(rawBudget, preferredCurrency))
       : undefined;
     addCategory.mutate(
       {
@@ -133,8 +152,9 @@ export function CategoryManagementSheets({
 
   const handleUpdateCategory = () => {
     if (!editCategory?.name.trim()) return;
-    const numBudget = editCategoryBudget.trim()
-      ? Number(editCategoryBudget.replace(/\D/g, ""))
+    const rawBudget = parseFloat(editCategoryBudget.replace(/,/g, ""));
+    const numBudget = !isNaN(rawBudget) && rawBudget > 0
+      ? Math.round(convertToIdr(rawBudget, preferredCurrency))
       : null;
     updateCategory.mutate(
       {
@@ -161,13 +181,19 @@ export function CategoryManagementSheets({
   }) => {
     triggerHaptic("light");
     setQuickBudgetCategory(cat);
-    setQuickBudgetValue(cat.budget_amount ? String(cat.budget_amount) : "");
+    const converted = cat.budget_amount
+      ? (preferredCurrency === "IDR"
+          ? String(Math.round(cat.budget_amount))
+          : String(Math.round(convertFromIdr(cat.budget_amount) * 100) / 100))
+      : "";
+    setQuickBudgetValue(converted);
   };
 
   const handleSaveQuickBudget = () => {
     if (!quickBudgetCategory) return;
-    const numBudget = quickBudgetValue.trim()
-      ? Number(quickBudgetValue.replace(/\D/g, ""))
+    const rawBudget = parseFloat(quickBudgetValue.replace(/,/g, ""));
+    const numBudget = !isNaN(rawBudget) && rawBudget > 0
+      ? Math.round(convertToIdr(rawBudget, preferredCurrency))
       : null;
     updateCategory.mutate(
       {
@@ -180,7 +206,15 @@ export function CategoryManagementSheets({
         onSuccess: () => {
           setQuickBudgetCategory(null);
           setQuickBudgetValue("");
-          showToast(isIndonesian ? "Batas bulanan diperbarui" : "Monthly limit updated", "update", () => {});
+          showToast(
+            numBudget
+              ? (isIndonesian
+                  ? `Batas bulanan diperbarui: ${formatWithPreferred(numBudget)}`
+                  : `Monthly limit updated: ${formatWithPreferred(numBudget)}`)
+              : (isIndonesian ? "Batas bulanan dihapus" : "Monthly limit removed"),
+            "update",
+            () => {},
+          );
         },
       },
     );
@@ -440,9 +474,12 @@ export function CategoryManagementSheets({
                               budget_amount: cat.budget_amount,
                               type: cat.type,
                             });
-                            setEditCategoryBudget(
-                              cat.budget_amount ? String(cat.budget_amount) : "",
-                            );
+                            const converted = cat.budget_amount
+                              ? (preferredCurrency === "IDR"
+                                  ? String(Math.round(cat.budget_amount))
+                                  : String(Math.round(convertFromIdr(cat.budget_amount) * 100) / 100))
+                              : "";
+                            setEditCategoryBudget(converted);
                             setViewMode("edit");
                           }}
                           className="group relative min-w-0 p-3 rounded-[20px] transition-all cursor-pointer flex flex-col justify-between gap-2.5 active:scale-[0.98] select-none"
@@ -540,7 +577,7 @@ export function CategoryManagementSheets({
                                 />
                                 <span className="truncate">
                                   {hasBudget
-                                    ? formatShortRupiah(cat.budget_amount, isIndonesian)
+                                    ? formatCompactWithPreferred(cat.budget_amount || 0)
                                     : (isIndonesian ? "+ Batas" : "+ Limit")}
                                 </span>
                               </button>
@@ -613,26 +650,37 @@ export function CategoryManagementSheets({
                       className="text-[10px] font-semibold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      {isIndonesian ? "Batas Anggaran Bulanan (Opsional)" : "Monthly Budget Limit (Optional)"}
+                      {isIndonesian
+                        ? `Batas Anggaran Bulanan (${currencyMeta.code})`
+                        : `Monthly Budget Limit (${currencyMeta.code})`}
                     </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={
-                        editCategoryBudget
-                          ? formatRupiah(
-                              Number(editCategoryBudget.replace(/\D/g, "")),
-                            )
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setEditCategoryBudget(e.target.value.replace(/\D/g, ""))
-                      }
-                      placeholder={isIndonesian ? "cth. Rp 1.000.000 (kosongkan jika tanpa batas)" : "e.g. Rp 1.000.000 (leave blank for no limit)"}
-                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl border-0 border-none outline-none focus:outline-none appearance-none font-medium text-[13px] bg-[var(--glass-fill)] transition-all"
-                      style={{ color: "var(--text-primary)" }}
-                    />
+                    <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--glass-fill)]">
+                      <span className="text-[12px] font-semibold text-[var(--text-tertiary)]">
+                        {currencyMeta.symbol}
+                      </span>
+                      <input
+                        type="text"
+                        inputMode={allowDecimals ? "decimal" : "numeric"}
+                        value={editCategoryBudget}
+                        onChange={(e) =>
+                          setEditCategoryBudget(
+                            formatLiveAmountInput(
+                              e.target.value,
+                              isIndonesian && !allowDecimals,
+                              allowDecimals,
+                              maxDecimals,
+                            ).formatted
+                          )
+                        }
+                        placeholder={
+                          isIndonesian
+                            ? `cth. 100 (kosongkan jika tanpa batas)`
+                            : `e.g. 100 (leave blank for no limit)`
+                        }
+                        className="w-full min-w-0 bg-transparent outline-none font-medium text-[13px]"
+                        style={{ color: "var(--text-primary)" }}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -742,24 +790,37 @@ export function CategoryManagementSheets({
                       className="text-[10px] font-semibold uppercase tracking-wider block"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      {isIndonesian ? "Batas Anggaran Bulanan (Opsional)" : "Monthly Budget Limit (Optional)"}
+                      {isIndonesian
+                        ? `Batas Anggaran Bulanan (${currencyMeta.code})`
+                        : `Monthly Budget Limit (${currencyMeta.code})`}
                     </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={
-                        catBudget
-                          ? formatRupiah(Number(catBudget.replace(/\D/g, "")))
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setCatBudget(e.target.value.replace(/\D/g, ""))
-                      }
-                      placeholder={isIndonesian ? "cth. Rp 1.000.000 (kosongkan jika tanpa batas)" : "e.g. Rp 1.000.000 (leave blank for no limit)"}
-                      className="w-full min-w-0 px-3.5 py-2.5 rounded-xl border-0 border-none outline-none focus:outline-none appearance-none font-medium text-[13px] bg-[var(--glass-fill)] transition-all"
-                      style={{ color: "var(--text-primary)" }}
-                    />
+                    <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--glass-fill)]">
+                      <span className="text-[12px] font-semibold text-[var(--text-tertiary)]">
+                        {currencyMeta.symbol}
+                      </span>
+                      <input
+                        type="text"
+                        inputMode={allowDecimals ? "decimal" : "numeric"}
+                        value={catBudget}
+                        onChange={(e) =>
+                          setCatBudget(
+                            formatLiveAmountInput(
+                              e.target.value,
+                              isIndonesian && !allowDecimals,
+                              allowDecimals,
+                              maxDecimals,
+                            ).formatted
+                          )
+                        }
+                        placeholder={
+                          isIndonesian
+                            ? `cth. 100 (kosongkan jika tanpa batas)`
+                            : `e.g. 100 (leave blank for no limit)`
+                        }
+                        className="w-full min-w-0 bg-transparent outline-none font-medium text-[13px]"
+                        style={{ color: "var(--text-primary)" }}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -870,41 +931,37 @@ export function CategoryManagementSheets({
               className="text-[10px] font-semibold uppercase tracking-wider block"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isIndonesian ? "Nominal Batas Bulanan" : "Monthly Limit Amount"}
+              {isIndonesian
+                ? `Nominal Batas Bulanan (${currencyMeta.code})`
+                : `Monthly Limit Amount (${currencyMeta.code})`}
             </label>
             <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--glass-fill)]">
-              <span className="text-[12px]  font-semibold text-[var(--text-tertiary)]">
-                Rp
+              <span className="text-[12px] font-semibold text-[var(--text-tertiary)]">
+                {currencyMeta.symbol}
               </span>
               <input
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={
-                  quickBudgetValue
-                    ? formatRupiah(
-                        Number(quickBudgetValue.replace(/\D/g, "")),
-                      ).replace("Rp ", "")
-                    : ""
-                }
+                inputMode={allowDecimals ? "decimal" : "numeric"}
+                value={quickBudgetValue}
                 onChange={(e) =>
-                  setQuickBudgetValue(e.target.value.replace(/\D/g, ""))
+                  setQuickBudgetValue(
+                    formatLiveAmountInput(
+                      e.target.value,
+                      isIndonesian && !allowDecimals,
+                      allowDecimals,
+                      maxDecimals,
+                    ).formatted
+                  )
                 }
                 placeholder={isIndonesian ? "0 (kosongkan jika tanpa batas)" : "0 (leave empty for no cap)"}
-                className="w-full min-w-0 bg-transparent outline-none  font-medium text-[14px]"
+                className="w-full min-w-0 bg-transparent outline-none font-medium text-[14px]"
                 style={{ color: "var(--text-primary)" }}
               />
             </div>
 
             {/* Quick Presets */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-              {[
-                { label: "500k", val: 500000 },
-                { label: "1M", val: 1000000 },
-                { label: "2.5M", val: 2500000 },
-                { label: "5M", val: 5000000 },
-                { label: isIndonesian ? "Hapus" : "Clear", val: 0 },
-              ].map((p) => (
+              {budgetPresets.map((p) => (
                 <button
                   key={p.label}
                   type="button"
@@ -912,7 +969,7 @@ export function CategoryManagementSheets({
                     triggerHaptic("light");
                     setQuickBudgetValue(p.val === 0 ? "" : String(p.val));
                   }}
-                  className="px-2.5 py-1 rounded-lg text-[10.5px]  border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg text-[10.5px] border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
                   style={{
                     color:
                       p.val === 0
