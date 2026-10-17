@@ -143,7 +143,7 @@ export function DataExportVaultModal({
                       : "AES-256 Encrypted Vault"}
                   </h4>
                   <span className="text-[10px]  px-2 py-0.5 rounded border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--text-secondary)] font-medium">
-                    {isIndonesian ? "Database" : "Database"}
+                    {isIndonesian ? "Basis Data" : "Database"}
                   </span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">

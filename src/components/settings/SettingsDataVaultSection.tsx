@@ -544,7 +544,7 @@ export function SettingsDataVaultSection({
                       style={{ color: "var(--text-primary)" }}
                     >
                       {isIndonesian
-                        ? "Laporan & Cadangan Vault"
+                        ? "Laporan & Cadangan Brankas"
                         : "Report & Data Vault"}
                     </span>
                   </div>

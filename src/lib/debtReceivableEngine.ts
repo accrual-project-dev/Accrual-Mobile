@@ -41,10 +41,16 @@ export function generateUUID(): string {
  * Loads all debt and receivable records for the given user from localStorage.
  */
 export function getDebtReceivables(userId?: string | null): DebtReceivableRecord[] {
-  if (typeof window === "undefined" || !window.localStorage) return [];
+  const storage =
+    typeof localStorage !== "undefined"
+      ? localStorage
+      : typeof window !== "undefined"
+        ? window.localStorage
+        : null;
+  if (!storage) return [];
   const key = getDebtStorageKey(userId);
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -62,15 +68,23 @@ export function saveDebtReceivables(
   records: DebtReceivableRecord[],
   userId?: string | null,
 ): void {
-  if (typeof window === "undefined" || !window.localStorage) return;
+  const storage =
+    typeof localStorage !== "undefined"
+      ? localStorage
+      : typeof window !== "undefined"
+        ? window.localStorage
+        : null;
+  if (!storage) return;
   const key = getDebtStorageKey(userId);
   try {
-    localStorage.setItem(key, JSON.stringify(records));
-    window.dispatchEvent(
-      new CustomEvent("trouvaille:debt_updated", {
-        detail: { key, count: records.length },
-      }),
-    );
+    storage.setItem(key, JSON.stringify(records));
+    if (typeof window !== "undefined" && typeof CustomEvent !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("trouvaille:debt_updated", {
+          detail: { key, count: records.length },
+        }),
+      );
+    }
   } catch (err) {
     console.warn("[debtReceivableEngine] Failed to save debt storage:", err);
   }

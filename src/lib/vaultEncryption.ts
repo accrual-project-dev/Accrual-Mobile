@@ -5,6 +5,8 @@
 
 import type { Transaction, Wallet, Category, Bill, Goal } from "./types";
 import type { Shortcut } from "../hooks/useShortcuts";
+import type { DebtReceivableRecord } from "../types/debt";
+import { getDebtStorageKey, saveDebtReceivables } from "./debtReceivableEngine";
 import { supabase } from "./supabase";
 
 export interface VaultItemCounts {
@@ -13,10 +15,11 @@ export interface VaultItemCounts {
   categories: number;
   bills: number;
   goals: number;
+  debts?: number;
 }
 
 export interface EncryptedVaultPayload {
-  format: "trouvaille-vault";
+  format: "accrual-vault" | "trouvaille-vault";
   version: 1;
   createdAt: string;
   cipher: "AES-GCM-256";
@@ -42,6 +45,7 @@ export interface TrouvailleVaultData {
   goals: Goal[];
   budgetTarget?: number;
   shortcuts?: Shortcut[];
+  debts?: DebtReceivableRecord[];
 }
 
 // ----------------------------------------------------------------------
@@ -110,6 +114,7 @@ export async function encryptVault(
     goals: Array.isArray(data.goals) ? data.goals : [],
     budgetTarget: data.budgetTarget,
     shortcuts: Array.isArray(data.shortcuts) ? data.shortcuts : [],
+    debts: Array.isArray(data.debts) ? data.debts : [],
   };
 
   const plainJson = JSON.stringify(normalizedData);
@@ -148,7 +153,7 @@ export async function encryptVault(
   );
 
   return {
-    format: "trouvaille-vault",
+    format: "accrual-vault",
     version: 1,
     createdAt: new Date().toISOString(),
     cipher: "AES-GCM-256",
@@ -166,6 +171,7 @@ export async function encryptVault(
         categories: normalizedData.categories.length,
         bills: normalizedData.bills.length,
         goals: normalizedData.goals.length,
+        debts: normalizedData.debts?.length ?? 0,
       },
     },
   };
@@ -194,8 +200,8 @@ export async function decryptVault(
     payload = payloadOrString;
   }
 
-  if (payload.format !== "trouvaille-vault") {
-    throw new Error("Unrecognized vault format: Must be a .trouvaille backup file.");
+  if (payload.format !== "accrual-vault" && payload.format !== "trouvaille-vault") {
+    throw new Error("Unrecognized vault format: Must be a .accrual or .trouvaille backup file.");
   }
 
   if (payload.version !== 1) {
@@ -275,6 +281,7 @@ export function validateVaultData(data: any): TrouvailleVaultData {
     goals: Array.isArray(data.goals) ? data.goals : [],
     budgetTarget: typeof data.budgetTarget === "number" ? data.budgetTarget : undefined,
     shortcuts: Array.isArray(data.shortcuts) ? data.shortcuts : [],
+    debts: Array.isArray(data.debts) ? data.debts : [],
   };
 }
 
@@ -292,7 +299,7 @@ export function downloadVaultFile(
   const a = document.createElement("a");
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   a.href = url;
-  a.download = filename || `trouvaille_vault_${dateStr}.trouvaille`;
+  a.download = filename || `accrual_vault_${dateStr}.accrual`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -308,8 +315,8 @@ export async function parseVaultFile(file: File): Promise<EncryptedVaultPayload>
     throw new Error("Selected file is not valid JSON.");
   }
 
-  if (json.format !== "trouvaille-vault") {
-    throw new Error("Selected file is not a Trouvaille encrypted vault (.trouvaille).");
+  if (json.format !== "accrual-vault" && json.format !== "trouvaille-vault") {
+    throw new Error("Selected file is not a valid encrypted vault backup (.accrual or .trouvaille).");
   }
 
   return json as EncryptedVaultPayload;
@@ -330,6 +337,7 @@ export interface RestoreVaultResult {
   restoredCategories: number;
   restoredBills: number;
   restoredGoals: number;
+  restoredDebts?: number;
 }
 
 export async function restoreVaultData(
@@ -364,6 +372,7 @@ export async function restoreVaultData(
   let restoredBills = 0;
   let restoredTransactions = 0;
   let restoredGoals = 0;
+  let restoredDebts = 0;
 
   if (userId) {
     // ------------------------------------------------------------------
@@ -731,6 +740,43 @@ export async function restoreVaultData(
     }
   }
 
+  if (vaultData.debts && vaultData.debts.length > 0) {
+    try {
+      const debtKey = getDebtStorageKey(userId);
+      let existingDebts: DebtReceivableRecord[] = [];
+      if (mode === "merge") {
+        const raw = localStorage.getItem(debtKey);
+        if (raw) {
+          try {
+            existingDebts = JSON.parse(raw) || [];
+          } catch {}
+        }
+      }
+      const debtMap = new Map<string, DebtReceivableRecord>();
+      existingDebts.forEach((d) => debtMap.set(d.id, d));
+      for (const d of vaultData.debts) {
+        const rawWalletId = d.walletId || (d as any).wallet_id;
+        const remappedWalletId = rawWalletId ? walletIdMap[rawWalletId] || rawWalletId : null;
+        const remappedRepayments = (d.repayments || []).map((r) => {
+          const rawRepWalletId = r.walletId || (r as any).wallet_id;
+          return {
+            ...r,
+            walletId: rawRepWalletId ? walletIdMap[rawRepWalletId] || rawRepWalletId : null,
+          };
+        });
+        debtMap.set(d.id, {
+          ...d,
+          walletId: remappedWalletId,
+          repayments: remappedRepayments,
+        });
+        restoredDebts++;
+      }
+      saveDebtReceivables(Array.from(debtMap.values()), userId);
+    } catch (e) {
+      console.warn("Failed to restore debts to localStorage:", e);
+    }
+  }
+
   onProgress?.({
     stage: isIndonesian ? "Pemulihan selesai!" : "Restoration complete!",
     progress: 100,
@@ -742,6 +788,7 @@ export async function restoreVaultData(
     restoredCategories,
     restoredBills,
     restoredGoals,
+    restoredDebts,
   };
 }
 

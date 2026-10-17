@@ -22,6 +22,7 @@ import { useBills } from "../../hooks/useBills";
 import { useGoals } from "../../hooks/useGoals";
 import { useBudgetTarget } from "../../hooks/useBudgetTarget";
 import { useShortcuts } from "../../hooks/useShortcuts";
+import { getDebtReceivables } from "../../lib/debtReceivableEngine";
 import {
   fetchAllTransactionsFromSupabase,
   useAllTransactions,
@@ -166,6 +167,7 @@ export function EncryptedVaultModal({
       }
 
       // 2. Package vault data
+      const debts = getDebtReceivables(session?.user?.id || "guest");
       const vaultData: TrouvailleVaultData = {
         version: 1,
         exportedAt: new Date().toISOString(),
@@ -176,6 +178,7 @@ export function EncryptedVaultModal({
         goals,
         budgetTarget,
         shortcuts,
+        debts,
       };
 
       // 3. Encrypt payload
@@ -263,10 +266,16 @@ export function EncryptedVaultModal({
       ]);
 
       triggerSuccessHaptic();
+      const debtToastSuffix =
+        result.restoredDebts && result.restoredDebts > 0
+          ? isIndonesian
+            ? ` & ${result.restoredDebts} utang piutang`
+            : ` & ${result.restoredDebts} debts`
+          : "";
       showToast(
         isIndonesian
-          ? `Dipulihkan: ${result.restoredTransactions} transaksi & ${result.restoredWallets} rekening`
-          : `Restored ${result.restoredTransactions} transactions & ${result.restoredWallets} wallets`,
+          ? `Dipulihkan: ${result.restoredTransactions} transaksi & ${result.restoredWallets} rekening${debtToastSuffix}`
+          : `Restored ${result.restoredTransactions} transactions & ${result.restoredWallets} wallets${debtToastSuffix}`,
         "add",
         () => {},
       );
@@ -678,7 +687,7 @@ export function EncryptedVaultModal({
                       }}
                     >
                       {parsedPayload.metadata?.itemCounts?.transactions ?? 0}{" "}
-                      {isIndonesian ? "transaksi" : "txs"}
+                      {isIndonesian ? "transaksi" : "transactions"}
                     </span>
                     <span
                       className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -702,6 +711,20 @@ export function EncryptedVaultModal({
                       {parsedPayload.metadata?.itemCounts?.categories ?? 0}{" "}
                       {isIndonesian ? "kategori" : "categories"}
                     </span>
+                    {typeof parsedPayload.metadata?.itemCounts?.debts === "number" &&
+                      parsedPayload.metadata.itemCounts.debts > 0 && (
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {parsedPayload.metadata.itemCounts.debts}{" "}
+                          {isIndonesian ? "utang piutang" : "debts"}
+                        </span>
+                      )}
                   </div>
                 </div>
               ) : (

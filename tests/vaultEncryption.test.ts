@@ -111,13 +111,40 @@ describe("vaultEncryption", () => {
         note: "Coffee",
       },
     ],
+    debts: [
+      {
+        id: "debt-1",
+        type: "receivable",
+        personName: "Budi",
+        totalAmount: 1000000,
+        remainingAmount: 500000,
+        dueDate: "2026-10-30",
+        createdDate: "2026-09-01",
+        note: "Pinjaman modal",
+        status: "unpaid",
+        walletId: "w-1",
+        isAdministrativeOnly: false,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+        repayments: [
+          {
+            id: "rep-1",
+            amount: 500000,
+            date: "2026-09-15",
+            note: "Cicilan 1",
+            walletId: "w-1",
+            createdAt: "2026-09-15T10:00:00.000Z",
+          },
+        ],
+      },
+    ],
   };
 
   it("should encrypt and decrypt a complete vault payload round-trip with high fidelity", async () => {
     const passphrase = "TrouvailleLuxuryKey#2026!";
     const encrypted = await encryptVault(sampleVaultData, passphrase);
 
-    expect(encrypted.format).toBe("trouvaille-vault");
+    expect(encrypted.format).toBe("accrual-vault");
     expect(encrypted.version).toBe(1);
     expect(encrypted.cipher).toBe("AES-GCM-256");
     expect(encrypted.kdf).toBe("PBKDF2-SHA256");
@@ -127,6 +154,7 @@ describe("vaultEncryption", () => {
     expect(encrypted.metadata.itemCounts.categories).toBe(2);
     expect(encrypted.metadata.itemCounts.bills).toBe(1);
     expect(encrypted.metadata.itemCounts.goals).toBe(1);
+    expect(encrypted.metadata.itemCounts.debts).toBe(1);
 
     // Decrypt back
     const decrypted = await decryptVault(encrypted, passphrase);
@@ -139,6 +167,22 @@ describe("vaultEncryption", () => {
     expect(decrypted.goals[0].title).toBe("Emergency Fund");
     expect(decrypted.budgetTarget).toBe(7500000);
     expect(decrypted.shortcuts?.[0].title).toBe("Coffee");
+    expect(decrypted.debts).toHaveLength(1);
+    expect(decrypted.debts?.[0].personName).toBe("Budi");
+  });
+
+  it("should decrypt legacy format trouvaille-vault payload with 100% backward compatibility", async () => {
+    const passphrase = "LegacyKey2026!";
+    const encrypted = await encryptVault(sampleVaultData, passphrase);
+    const legacyPayload = {
+      ...encrypted,
+      format: "trouvaille-vault" as const,
+    };
+
+    const decrypted = await decryptVault(legacyPayload, passphrase);
+    expect(decrypted.transactions).toHaveLength(2);
+    expect(decrypted.wallets[0].name).toBe("BCA");
+    expect(decrypted.debts).toHaveLength(1);
   });
 
   it("should reject decryption with an incorrect passphrase", async () => {
@@ -253,12 +297,19 @@ describe("vaultEncryption", () => {
     expect(result.restoredWallets).toBe(1);
     expect(result.restoredCategories).toBe(2);
     expect(result.restoredGoals).toBe(1);
+    expect(result.restoredDebts).toBe(1);
     expect(stages.some((s) => s.includes("Pemulihan selesai"))).toBe(true);
 
     const savedTxs = JSON.parse(
       localStorage.getItem("TROUVAILLE_TX_BACKUP_V1") || "[]",
     );
     expect(savedTxs).toHaveLength(2);
+
+    const savedDebts = JSON.parse(
+      localStorage.getItem("trouvaille_debt_receivables_guest_v1") || "[]",
+    );
+    expect(savedDebts).toHaveLength(1);
+    expect(savedDebts[0].personName).toBe("Budi");
   });
 
   it("should accurately match full ISO timestamps (YYYY-MM-DDTHH:mm:ss) in doesTransactionMatchResetPeriod (Rule 8.1)", () => {
