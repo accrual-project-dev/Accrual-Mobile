@@ -17,7 +17,8 @@ interface CalendarUpcomingBillsSectionProps {
   onOpenReminderSettings: () => void;
   isIndonesian: boolean;
   dateLocale?: Locale;
-  displayRupiah: (val: number) => string;
+  displayCurrency?: (val: number) => string;
+  displayRupiah?: (val: number) => string;
 }
 
 export function CalendarUpcomingBillsSection({
@@ -31,8 +32,10 @@ export function CalendarUpcomingBillsSection({
   onOpenReminderSettings,
   isIndonesian,
   dateLocale,
+  displayCurrency,
   displayRupiah,
 }: CalendarUpcomingBillsSectionProps) {
+  const formatAmount = displayCurrency || displayRupiah || ((v: number) => String(v));
   const unpaidBills = bills.filter((b) => !b.is_paid);
   const paidBillsCount = bills.filter((b) => b.is_paid).length;
 
@@ -165,7 +168,7 @@ export function CalendarUpcomingBillsSection({
                         className="amount text-[13px] font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {displayRupiah(Number(b.amount))}
+                        {formatAmount(Number(b.amount))}
                       </span>
                     )}
                     <button

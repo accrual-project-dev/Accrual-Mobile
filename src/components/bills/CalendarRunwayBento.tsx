@@ -8,7 +8,8 @@ interface CalendarRunwayBentoProps {
   runwayTelemetry: MonthRunwayTelemetry;
   isIndonesian: boolean;
   dateLocale?: Locale;
-  displayRupiah: (val: number) => string;
+  displayCurrency?: (val: number) => string;
+  displayRupiah?: (val: number) => string;
 }
 
 export function CalendarRunwayBento({
@@ -16,8 +17,10 @@ export function CalendarRunwayBento({
   runwayTelemetry,
   isIndonesian,
   dateLocale,
+  displayCurrency,
   displayRupiah,
 }: CalendarRunwayBentoProps) {
+  const formatAmount = displayCurrency || displayRupiah || ((v: number) => String(v));
   return (
     <AnimatePresence>
       {viewMode === "runway" && (
@@ -51,7 +54,7 @@ export function CalendarRunwayBento({
                   className="text-[14px] font-semibold tracking-tight truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {displayRupiah(runwayTelemetry.lowestDipAmount)}
+                  {formatAmount(runwayTelemetry.lowestDipAmount)}
                 </p>
                 <p
                   className="text-[10px] mt-0.5 truncate"
@@ -104,7 +107,7 @@ export function CalendarRunwayBento({
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   {runwayTelemetry.nextPaydayAmount > 0
-                    ? `+${displayRupiah(runwayTelemetry.nextPaydayAmount)}`
+                    ? `+${formatAmount(runwayTelemetry.nextPaydayAmount)}`
                     : isIndonesian
                       ? "Cek transaksi rutin"
                       : "Check recurring"}

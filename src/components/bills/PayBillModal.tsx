@@ -5,7 +5,7 @@ import type { Bill } from "../../lib/types";
 import { useWallets } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 import {
   CheckCircle2,
@@ -37,6 +37,7 @@ export function PayBillModal({
   isPending = false,
 }: PayBillModalProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const { data: wallets = [] } = useWallets();
   const { balancesById } = useWalletBalances();
 
@@ -81,7 +82,7 @@ export function PayBillModal({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-10 space-y-4">
+      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),32px)] space-y-4">
         {/* Header Bar */}
         <div className="flex items-center gap-2.5">
           <div
@@ -123,7 +124,7 @@ export function PayBillModal({
                 {isIndonesian ? "Nominal" : "Amount"}
               </span>
               <p className="text-[16px] font-bold text-[var(--text-primary)] amount mt-0.5">
-                {formatRupiah(Number(bill.amount || 0))}
+                {formatWithPreferred(Number(bill.amount || 0))}
               </p>
             </div>
           </div>
@@ -221,7 +222,7 @@ export function PayBillModal({
                             {w.name}
                           </p>
                           <p className="text-[10px] font-medium text-[var(--text-tertiary)] truncate amount">
-                            {formatRupiah(bal)}
+                            {formatWithPreferred(bal)}
                           </p>
                         </div>
                       </button>

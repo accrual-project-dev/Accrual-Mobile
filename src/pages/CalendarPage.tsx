@@ -31,8 +31,7 @@ import {
   type DetectedRecurringItem,
 } from "../lib/financialMath";
 import { calculateMonthCalendarRunway } from "../lib/calendarForecasting";
-import { formatRupiah } from "../lib/utils";
-import { formatCompactRupiah } from "../lib/currency";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -55,6 +54,7 @@ export function CalendarPage() {
   const isDark = theme !== "light";
   const { isStealthMode, toggleStealthMode } = usePrivacy();
   const { t, isIndonesian } = useLanguage();
+  const { preferredCurrency, currencyMeta, formatWithPreferred, formatCompactWithPreferred } = useCurrency();
   const { showToast } = useToast();
   const [payingBill, setPayingBill] = useState<Bill | null>(null);
   const [isManageBillsOpen, setIsManageBillsOpen] = useState(false);
@@ -62,9 +62,9 @@ export function CalendarPage() {
 
   const dateLocale = isIndonesian ? idLocale : undefined;
   const displayRupiah = (val: number) =>
-    isStealthMode ? "Rp ••••••••" : formatRupiah(val);
+    isStealthMode ? `${currencyMeta.symbol} ••••••••` : formatWithPreferred(val);
   const displayCompact = (val: number) =>
-    isStealthMode ? "••••" : formatCompactRupiah(val);
+    isStealthMode ? "••••" : formatCompactWithPreferred(val);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -223,6 +223,7 @@ export function CalendarPage() {
       recurringItems: detectedRecurring,
       dailyBaselineBurn,
       referenceDate: new Date(),
+      currency: preferredCurrency,
     });
   }, [
     currentDate,
@@ -231,6 +232,7 @@ export function CalendarPage() {
     liquidAssets,
     detectedRecurring,
     dailyBaselineBurn,
+    preferredCurrency,
   ]);
 
   const monthStart = startOfMonth(currentDate);
@@ -454,6 +456,7 @@ export function CalendarPage() {
         runwayTelemetry={runwayTelemetry}
         isIndonesian={isIndonesian}
         dateLocale={dateLocale}
+        displayCurrency={displayRupiah}
         displayRupiah={displayRupiah}
       />
 
@@ -490,6 +493,7 @@ export function CalendarPage() {
         onOpenReminderSettings={() => setIsReminderSheetOpen(true)}
         isIndonesian={isIndonesian}
         dateLocale={dateLocale}
+        displayCurrency={displayRupiah}
         displayRupiah={displayRupiah}
       />
 
@@ -503,6 +507,7 @@ export function CalendarPage() {
         onPayBill={(bill) => setPayingBill(bill)}
         isIndonesian={isIndonesian}
         dateLocale={dateLocale}
+        displayCurrency={displayRupiah}
         displayRupiah={displayRupiah}
       />
 
@@ -515,7 +520,7 @@ export function CalendarPage() {
           isPending={markBillPaidMutation.isPending}
           onConfirmPaid={({ bill, recordTransaction, walletId }) => {
             markBillPaidMutation.mutate(
-              { bill, paid: true, recordTransaction, walletId },
+              { bill, paid: true, recordTransaction, walletId, isIndonesian },
               {
                 onSuccess: () => {
                   setPayingBill(null);

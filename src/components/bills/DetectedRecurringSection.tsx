@@ -1,6 +1,6 @@
 import { Check, Clock3, MinusCircle } from "lucide-react"
-import { formatRupiah } from "../../lib/utils"
 import { useLanguage } from "../../contexts/LanguageContext"
+import { useCurrency } from "../../contexts/CurrencyContext"
 import type { DetectedRecurringItem } from "../../hooks/useFinancialIntelligence"
 
 interface DetectedRecurringSectionProps {
@@ -14,6 +14,7 @@ const SUPPORTED_REPEAT = new Set(["weekly", "monthly", "yearly"])
 
 export function DetectedRecurringSection({ items, confirmingId = null, onConfirm, onIgnore }: DetectedRecurringSectionProps) {
   const { isIndonesian } = useLanguage()
+  const { formatWithPreferred } = useCurrency()
 
   if (items.length === 0) return null
 
@@ -70,10 +71,10 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
                   {item.categoryName} · {item.occurrencesCount} {isIndonesian ? "kali terjadi · berikutnya" : "occurrences · next"} {item.nextExpectedDate}
                 </p>
                 <p className="amount text-[15px] font-semibold mt-2" style={{ color: "var(--text-primary)" }}>
-                  {formatRupiah(item.typicalAmount)}
+                  {formatWithPreferred(item.typicalAmount)}
                 </p>
                 <div className="flex items-start gap-2 mt-2">
-                  <Clock3 size={13} className="mt-0.5 shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                  <Clock3 size={13} strokeWidth={1.5} className="mt-0.5 shrink-0" style={{ color: "var(--text-tertiary)" }} />
                   <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     {requiresManualCadence
                       ? (isIndonesian
@@ -89,10 +90,10 @@ export function DetectedRecurringSection({ items, confirmingId = null, onConfirm
               <button
                 onClick={() => onConfirm(item)}
                 disabled={confirmingId === item.id}
-                className="flex-1 text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
-                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                className="flex-1 text-[11px] font-semibold px-3 py-2 rounded-full flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60 cursor-pointer shadow-xs"
+                style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
               >
-                <Check size={12} />
+                <Check size={12} strokeWidth={2} />
                 <span>
                   {confirmingId === item.id
                     ? (isIndonesian ? "Mengonfirmasi..." : "Confirming...")

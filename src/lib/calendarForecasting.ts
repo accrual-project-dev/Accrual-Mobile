@@ -86,6 +86,7 @@ export interface CalendarRunwayOptions {
   recurringItems?: DetectedRecurringItem[];
   dailyBaselineBurn?: number;
   referenceDate?: Date;
+  currency?: string;
 }
 
 /**
@@ -153,12 +154,14 @@ export function calculateMonthCalendarRunway(
   const refDateStr = format(referenceDate, "yyyy-MM-dd");
   const refDateParsed = parseISO(refDateStr);
 
-  // Recurring salaries
+  // Recurring salaries (adaptive threshold: 50 for foreign currencies like USD/EUR, 500,000 for IDR)
+  const isForeign = options.currency && options.currency !== "IDR";
+  const minSalaryThreshold = isForeign ? 50 : 500000;
   const recurringSalaries = recurringItems.filter(
     (r) =>
       r.type === "income" &&
       (r.status === "confirmed" || r.status === "detected") &&
-      r.typicalAmount >= 500000,
+      r.typicalAmount >= minSalaryThreshold,
   );
 
   let runningBalance = currentLiquidAssets;
@@ -274,14 +277,27 @@ export function calculateMonthCalendarRunway(
       runningBalance += netProjectedDailyChange;
     }
 
-    // Solvency status rating
+    // Solvency status rating based on Burn-based Runway Days (< 7d: tight, < 21d: adequate, >= 21d: surplus)
     let solvencyStatus: CalendarDayForecast["solvencyStatus"] = "surplus";
     if (runningBalance < 0) {
       solvencyStatus = "danger";
-    } else if (runningBalance < 1500000) {
-      solvencyStatus = "tight";
-    } else if (runningBalance < 5000000) {
-      solvencyStatus = "adequate";
+    } else if (effectiveDailyBurn > 0) {
+      const runwayDays = runningBalance / effectiveDailyBurn;
+      if (runwayDays < 7) {
+        solvencyStatus = "tight";
+      } else if (runwayDays < 21) {
+        solvencyStatus = "adequate";
+      } else {
+        solvencyStatus = "surplus";
+      }
+    } else {
+      const tightFloor = isForeign ? 100 : 1500000;
+      const adequateFloor = isForeign ? 350 : 5000000;
+      if (runningBalance < tightFloor) {
+        solvencyStatus = "tight";
+      } else if (runningBalance < adequateFloor) {
+        solvencyStatus = "adequate";
+      }
     }
 
     // Track lowest dip among today and future dates
@@ -330,14 +346,27 @@ export function calculateMonthCalendarRunway(
     }
   }
 
-  // Compute lowest dip health status
+  // Compute lowest dip health status based on Burn-based Runway Days (< 7d: caution, < 21d: adequate, >= 21d: fortress)
   let lowestDipStatus: MonthRunwayTelemetry["lowestDipStatus"] = "fortress";
   if (lowestDipAmount < 0) {
     lowestDipStatus = "critical";
-  } else if (lowestDipAmount < 1500000) {
-    lowestDipStatus = "caution";
-  } else if (lowestDipAmount < 5000000) {
-    lowestDipStatus = "adequate";
+  } else if (effectiveDailyBurn > 0) {
+    const runwayDays = lowestDipAmount / effectiveDailyBurn;
+    if (runwayDays < 7) {
+      lowestDipStatus = "caution";
+    } else if (runwayDays < 21) {
+      lowestDipStatus = "adequate";
+    } else {
+      lowestDipStatus = "fortress";
+    }
+  } else {
+    const cautionFloor = isForeign ? 100 : 1500000;
+    const adequateFloor = isForeign ? 350 : 5000000;
+    if (lowestDipAmount < cautionFloor) {
+      lowestDipStatus = "caution";
+    } else if (lowestDipAmount < adequateFloor) {
+      lowestDipStatus = "adequate";
+    }
   }
 
   const projectedMonthEndBalance = runningBalance;

@@ -5,6 +5,7 @@ import type { Bill, RepeatRule } from "../lib/types";
 import {
   format,
   parseISO,
+  isValid,
   addDays,
   addWeeks,
   addMonths,
@@ -177,10 +178,16 @@ export function useBillsDueOn(date: string) {
 }
 
 export function getDaysUntilDue(dueDate: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = parseISO(dueDate);
-  return Math.ceil((due.getTime() - today.getTime()) / 86400000);
+  if (!dueDate) return 0;
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = parseISO(dueDate);
+    if (!isValid(due)) return 0;
+    return Math.ceil((due.getTime() - today.getTime()) / 86400000);
+  } catch {
+    return 0;
+  }
 }
 
 export function getBillDueStatusLabel(dueDate: string, isIndonesian?: boolean): string {
@@ -198,23 +205,28 @@ export function getBillDueStatusLabel(dueDate: string, isIndonesian?: boolean): 
 }
 
 export function getNextDueDate(bill: Bill): string | null {
-  if (bill.repeat_rule === "none") return null;
-  const due = parseISO(bill.due_date);
-  let next: Date;
-  switch (bill.repeat_rule) {
-    case "weekly":
-      next = addWeeks(due, 1);
-      break;
-    case "monthly":
-      next = addMonths(due, 1);
-      break;
-    case "yearly":
-      next = addYears(due, 1);
-      break;
-    default:
-      return null;
+  if (bill.repeat_rule === "none" || !bill.due_date) return null;
+  try {
+    const due = parseISO(bill.due_date);
+    if (!isValid(due)) return null;
+    let next: Date;
+    switch (bill.repeat_rule) {
+      case "weekly":
+        next = addWeeks(due, 1);
+        break;
+      case "monthly":
+        next = addMonths(due, 1);
+        break;
+      case "yearly":
+        next = addYears(due, 1);
+        break;
+      default:
+        return null;
+    }
+    return format(next, "yyyy-MM-dd");
+  } catch {
+    return null;
   }
-  return format(next, "yyyy-MM-dd");
 }
 
 export function useAddBill() {
@@ -350,11 +362,15 @@ export function useMarkBillPaid() {
       paid,
       recordTransaction = true,
       walletId,
+      note,
+      isIndonesian = true,
     }: {
       bill: Bill;
       paid: boolean;
       recordTransaction?: boolean;
       walletId?: string;
+      note?: string;
+      isIndonesian?: boolean;
     }) => {
       const updateData: Partial<Bill> = { is_paid: paid };
       const { data, error } = await supabase
@@ -368,13 +384,19 @@ export function useMarkBillPaid() {
       // Auto-record expense transaction in ledger when marking bill as paid
       if (paid && recordTransaction && Number(bill.amount) > 0) {
         try {
+          const txNote =
+            note ||
+            (isIndonesian
+              ? `Pembayaran tagihan: ${bill.title}`
+              : `Bill payment: ${bill.title}`);
+
           await addTransaction.mutateAsync({
             amount: Number(bill.amount),
             type: "expense",
             category_id: bill.category_id || null,
             wallet_id: walletId || bill.wallet_id || null,
             occurred_on: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
-            note: `Pembayaran tagihan: ${bill.title}`,
+            note: txNote,
           });
         } catch (err) {
           console.warn("[useMarkBillPaid] Auto-record ledger transaction warning:", err);

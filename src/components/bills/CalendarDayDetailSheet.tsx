@@ -22,7 +22,8 @@ interface CalendarDayDetailSheetProps {
   onPayBill: (bill: Bill) => void;
   isIndonesian: boolean;
   dateLocale?: Locale;
-  displayRupiah: (val: number) => string;
+  displayCurrency?: (val: number) => string;
+  displayRupiah?: (val: number) => string;
 }
 
 export function CalendarDayDetailSheet({
@@ -34,8 +35,10 @@ export function CalendarDayDetailSheet({
   onPayBill,
   isIndonesian,
   dateLocale,
+  displayCurrency,
   displayRupiah,
 }: CalendarDayDetailSheetProps) {
+  const formatAmount = displayCurrency || displayRupiah || ((v: number) => String(v));
   return (
     <BottomSheet isOpen={!!selectedDay} onClose={onClose}>
       <div
@@ -126,7 +129,7 @@ export function CalendarDayDetailSheet({
                     className="amount text-[22px] tracking-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {displayRupiah(selectedDayForecast.projectedBalance)}
+                    {formatAmount(selectedDayForecast.projectedBalance)}
                   </p>
                   <p
                     className="text-[11px] mt-1"
@@ -162,7 +165,7 @@ export function CalendarDayDetailSheet({
                       className="amount text-[16px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {displayRupiah(selectedDayForecast.expectedInflowsTotal)}
+                      {formatAmount(selectedDayForecast.expectedInflowsTotal)}
                     </p>
                   </div>
 
@@ -188,7 +191,7 @@ export function CalendarDayDetailSheet({
                       className="amount text-[16px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {displayRupiah(
+                      {formatAmount(
                         selectedDayForecast.billsTotal +
                           selectedDayForecast.estimatedBurn,
                       )}
@@ -250,7 +253,7 @@ export function CalendarDayDetailSheet({
                             className="text-[13px] font-semibold"
                             style={{ color: "var(--text-primary)" }}
                           >
-                            {displayRupiah(b.amount)}
+                            {formatAmount(b.amount)}
                           </span>
                           {!b.isPaid && (
                             <button
@@ -322,7 +325,7 @@ export function CalendarDayDetailSheet({
                           </div>
                         </div>
                         <span className="text-[13px] font-semibold text-[var(--text-primary)]">
-                          +{displayRupiah(inf.amount)}
+                          +{formatAmount(inf.amount)}
                         </span>
                       </div>
                     ))}
@@ -353,7 +356,7 @@ export function CalendarDayDetailSheet({
                       className="amount text-[17px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {displayRupiah(selectedDayForecast.actualInflow)}
+                      {formatAmount(selectedDayForecast.actualInflow)}
                     </p>
                   </div>
 
@@ -377,7 +380,7 @@ export function CalendarDayDetailSheet({
                       className="amount text-[17px] font-semibold"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {displayRupiah(selectedDayForecast.actualOutflow)}
+                      {formatAmount(selectedDayForecast.actualOutflow)}
                     </p>
                   </div>
                 </div>
@@ -436,7 +439,7 @@ export function CalendarDayDetailSheet({
                             className="text-[13px] font-semibold"
                             style={{ color: "var(--text-primary)" }}
                           >
-                            {displayRupiah(b.amount)}
+                            {formatAmount(b.amount)}
                           </span>
                           {!b.isPaid && (
                             <button
@@ -529,7 +532,7 @@ export function CalendarDayDetailSheet({
                           }}
                         >
                           {tx.type === "income" ? "+" : "-"}
-                          {displayRupiah(Number(tx.amount))}
+                          {formatAmount(Number(tx.amount))}
                         </span>
                       </div>
                     ))

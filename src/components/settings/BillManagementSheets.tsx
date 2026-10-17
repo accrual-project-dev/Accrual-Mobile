@@ -21,7 +21,7 @@ import {
   type DetectedRecurringItem,
 } from "../../lib/financialMath";
 import type { RepeatRule } from "../../lib/types";
-import { formatRupiah } from "../../lib/utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { format, parseISO } from "date-fns";
@@ -36,6 +36,7 @@ export function BillManagementSheets({
   onClose,
 }: BillManagementSheetsProps) {
   const { isIndonesian } = useLanguage();
+  const { preferredCurrency, currencyMeta, formatWithPreferred } = useCurrency();
   const { data: bills = [] } = useBills();
   const { data: wallets = [] } = useWallets();
   const addBill = useAddBill();
@@ -343,7 +344,7 @@ export function BillManagementSheets({
                                 : isIndonesian ? "Tahunan" : "Yearly"}
                         </span>{" "}
                         · {isIndonesian ? `Jatuh tempo ${b.due_date}` : `Due ${b.due_date}`} ·{" "}
-                        <span className="amount">{formatRupiah(Number(b.amount || 0))}</span>
+                        <span className="amount">{formatWithPreferred(Number(b.amount || 0))}</span>
                       </p>
                     </div>
                   </div>
@@ -493,18 +494,18 @@ export function BillManagementSheets({
               className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block px-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              {isIndonesian ? "Nominal Tagihan (IDR)" : "Nominal Amount (IDR)"}
+              {isIndonesian ? `Nominal Tagihan (${preferredCurrency})` : `Nominal Amount (${preferredCurrency})`}
             </label>
             <input
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={billAmount ? formatRupiah(Number(billAmount)) : ""}
+              value={billAmount ? formatWithPreferred(Number(billAmount)) : ""}
               onChange={(e) => {
                 const raw = e.target.value.replace(/[^0-9]/g, "");
                 setBillAmount(raw);
               }}
-              placeholder="Rp 0"
+              placeholder={`${currencyMeta.symbol} 0`}
               className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
               style={{
                 background: "var(--bg-elevated)",
@@ -711,7 +712,7 @@ export function BillManagementSheets({
           isPending={markBillPaid.isPending}
           onConfirmPaid={({ bill, recordTransaction, walletId }) => {
             markBillPaid.mutate(
-              { bill, paid: true, recordTransaction, walletId },
+              { bill, paid: true, recordTransaction, walletId, isIndonesian },
               {
                 onSuccess: () => {
                   setPayingBill(null);

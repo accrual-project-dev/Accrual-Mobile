@@ -69,6 +69,8 @@ export function findBestMatchingBill(
   txTitle: string,
   txAmount: number,
   bills: Bill[],
+  isIndonesian: boolean = true,
+  currency: string = "IDR",
 ): MatchedBillResult | null {
   if (!txTitle || !bills || bills.length === 0 || txAmount <= 0) {
     return null;
@@ -78,6 +80,9 @@ export function findBestMatchingBill(
   const candidateBills = bills.filter((b) => !b.is_paid);
   if (candidateBills.length === 0) return null;
 
+  const isForeign = currency !== "IDR";
+  const maxAdminFeeTolerance = isForeign ? 2 : 5000;
+
   let bestMatch: MatchedBillResult | null = null;
 
   for (const bill of candidateBills) {
@@ -86,7 +91,7 @@ export function findBestMatchingBill(
 
     const billAmt = Number(bill.amount) || 0;
     let confidence = 0.5;
-    let matchReason = "Nama tagihan sesuai";
+    let matchReason = isIndonesian ? "Nama tagihan sesuai" : "Matching bill title";
     let exactAmountMatch = false;
 
     if (billAmt > 0) {
@@ -95,21 +100,27 @@ export function findBestMatchingBill(
       if (diff === 0) {
         // Exact amount match
         confidence = 0.95;
-        matchReason = "Nama & nominal tagihan cocok persis";
+        matchReason = isIndonesian
+          ? "Nama & nominal tagihan cocok persis"
+          : "Exact bill title & amount match";
         exactAmountMatch = true;
-      } else if (diff <= 5000) {
-        // Common admin fee discrepancy (Rp 1.000 - Rp 5.000)
+      } else if (diff <= maxAdminFeeTolerance) {
+        // Common admin fee discrepancy
         confidence = 0.85;
-        matchReason = "Nama cocok, selisih nominal wajar (biaya admin)";
+        matchReason = isIndonesian
+          ? "Nama cocok, selisih nominal wajar (biaya admin)"
+          : "Matching title with typical admin fee variance";
       } else {
-        // Variable bill (e.g. PLN pascabayar / PAM / Pulsa)
+        // Variable bill (e.g. PLN pascabayar / PAM / Pulsa / Utilities)
         confidence = 0.65;
-        matchReason = "Nama tagihan cocok (nominal bervariasi)";
+        matchReason = isIndonesian
+          ? "Nama tagihan cocok (nominal bervariasi)"
+          : "Matching bill title (variable amount)";
       }
     } else {
       // Bill with zero or unset nominal (variable amount bill)
       confidence = 0.75;
-      matchReason = "Nama tagihan cocok";
+      matchReason = isIndonesian ? "Nama tagihan cocok" : "Matching bill title";
     }
 
     if (!bestMatch || confidence > bestMatch.confidence) {
