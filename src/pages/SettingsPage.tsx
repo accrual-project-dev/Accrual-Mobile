@@ -44,7 +44,6 @@ import { useWallets, walletKeys } from "../hooks/useWallets";
 import { useGoals } from "../hooks/useGoals";
 import { useBudgetTarget } from "../hooks/useBudgetTarget";
 import { useDebtReceivables } from "../hooks/useDebtReceivables";
-import { formatRupiah } from "../lib/utils";
 import { format, isToday } from "date-fns";
 import { supabase } from "../lib/supabase";
 import {
@@ -234,7 +233,8 @@ export function SettingsPage({
   const { securitySettings, updateSettings: updateSecuritySettings } =
     useSecurityLock();
   const { isPrivacyShieldEnabled, togglePrivacyShield } = usePrivacy();
-  const { preferredCurrency, currencyMeta } = useCurrency();
+  const { preferredCurrency, currencyMeta, formatWithPreferred } =
+    useCurrency();
   const { language, isIndonesian, t } = useLanguage();
 
   // Search state
@@ -431,8 +431,8 @@ export function SettingsPage({
       } else {
         showToast(
           isIndonesian
-            ? "Izin notifikasi ditolak"
-            : "Notification permission denied",
+            ? "Izin notifikasi ditolak. Aktifkan di pengaturan perangkat."
+            : "Notification permission denied. Please enable in device settings.",
           "delete",
           () => {},
         );
@@ -486,8 +486,8 @@ export function SettingsPage({
       } else {
         showToast(
           isIndonesian
-            ? "Izin notifikasi ditolak"
-            : "Notification permission denied",
+            ? "Izin notifikasi ditolak. Aktifkan di pengaturan perangkat."
+            : "Notification permission denied. Please enable in device settings.",
           "delete",
           () => {},
         );
@@ -530,7 +530,7 @@ export function SettingsPage({
     };
   }, [refreshPendingCount]);
 
-  const handleDiscardPendingAndRestore = async () => {
+  const executeDiscardPendingAndRestore = async () => {
     triggerHaptic("heavy");
     setSyncStatus("syncing");
     try {
@@ -610,6 +610,24 @@ export function SettingsPage({
       );
       setTimeout(() => setSyncStatus("idle"), 3000);
     }
+  };
+
+  const handleDiscardPendingAndRestore = () => {
+    triggerHaptic("medium");
+    setConfirmModalConfig({
+      isOpen: true,
+      title: isIndonesian
+        ? "Batalkan Mutasi Tertunda?"
+        : "Discard Pending Mutations?",
+      description: isIndonesian
+        ? "Transaksi lokal yang belum tersimpan di cloud akan dibatalkan, dan saldo dompet akan dipulihkan sesuai catatan cloud."
+        : "Local offline transactions not yet synced to the cloud will be discarded, and wallet balances restored to cloud state.",
+      confirmLabel: isIndonesian ? "Buang & Reset" : "Discard & Reset",
+      cancelLabel: isIndonesian ? "Batal" : "Cancel",
+      onConfirm: async () => {
+        await executeDiscardPendingAndRestore();
+      },
+    });
   };
 
   const handleSafeSync = async () => {
@@ -1276,7 +1294,7 @@ export function SettingsPage({
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       {budgetTarget > 0
-                        ? formatRupiah(budgetTarget, preferredCurrency)
+                        ? formatWithPreferred(budgetTarget)
                         : isIndonesian
                           ? "Belum Diatur"
                           : "Not Set"}
