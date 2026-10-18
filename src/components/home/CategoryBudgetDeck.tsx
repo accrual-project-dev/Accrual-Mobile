@@ -343,11 +343,7 @@ export function CategoryBudgetDeck({
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${clampedPct}%`,
-                      background: env.isOverbudget
-                        ? isDark
-                          ? "#FFFFFF"
-                          : "#18181B"
-                        : "var(--text-primary)",
+                      background: "var(--text-primary)",
                     }}
                   />
                 </div>
@@ -390,7 +386,7 @@ export function CategoryBudgetDeck({
         <div
           className="p-5 space-y-4 select-none"
           style={{
-            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 32px)",
+            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           <div className="flex items-center gap-3">

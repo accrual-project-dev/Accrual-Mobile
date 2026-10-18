@@ -121,7 +121,7 @@ export function BudgetTargetSheet({
       <div
         className="p-5 space-y-5"
         style={{
-          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 32px)",
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
         }}
       >
         <div>
@@ -300,7 +300,7 @@ export function BudgetTargetSheet({
         <button
           onClick={handleSave}
           className="w-full py-2.5 rounded-xl font-semibold text-[13px] active:scale-98 transition-transform cursor-pointer"
-          style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+          style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
         >
           {isIndonesian ? "Simpan Pengaturan Anggaran" : "Save Budget Settings"}
         </button>
