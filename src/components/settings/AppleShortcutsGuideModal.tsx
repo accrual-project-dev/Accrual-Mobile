@@ -399,7 +399,7 @@ export function AppleShortcutsGuideModal({
         actionType: "copy",
         copyText: isIndonesian
           ? "Nominal: [Nominal]\nKategori: [Kategori]\nAkun: [Akun]\nTanggal: [Tanggal]\nCatatan: [Catatan]"
-          : "Nominal: [Amount]\nKategori: [Category]\nAkun: [Account]\nTanggal: [Date]\nCatatan: [Notes]",
+          : "Amount: [Amount]\nCategory: [Category]\nAccount: [Account]\nDate: [Date]\nNotes: [Notes]",
         copyLabel: isIndonesian ? "Format Teks Transaksi" : "Transaction Text Format",
         btnText: isIndonesian ? "Salin Format Teks" : "Copy Text Format",
       },
@@ -965,8 +965,12 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 15, height: 15, borderRadius: 4, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Camera size={8} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>Take Screenshot</span>
-                    <span style={{ marginLeft: "auto", fontSize: 6.5, color: "rgba(255,255,255,0.4)" }}>➔ Screenshot</span>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Ambil Jepretan Layar" : "Take Screenshot"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: 6.5, color: "rgba(255,255,255,0.4)" }}>
+                      ➔ {isIndonesian ? "Jepretan Layar" : "Screenshot"}
+                    </span>
                   </div>
                 </div>
 
@@ -979,9 +983,11 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 15, height: 15, borderRadius: 4, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <FileText size={8} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Extract Text from</span>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Ekstrak Teks dari" : "Extract Text from"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 600 }}>
-                      Screenshot
+                      {isIndonesian ? "Jepretan Layar" : "Screenshot"}
                     </span>
                   </div>
                 </div>
@@ -1033,8 +1039,12 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 12, height: 12, borderRadius: 3, background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <FileText size={6.5} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>Extract Text</span>
-                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>➔ Text</span>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Ekstrak Teks" : "Extract Text"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>
+                      ➔ {isIndonesian ? "Teks" : "Text"}
+                    </span>
                   </div>
                 </div>
 
@@ -1047,9 +1057,11 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 14, height: 14, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <LinkIcon size={7} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>URL Encode</span>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Enkode URL" : "URL Encode"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 600 }}>
-                      Text
+                      {isIndonesian ? "Teks" : "Text"}
                     </span>
                   </div>
                 </div>
@@ -1063,12 +1075,14 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 13, height: 13, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <ExternalLink size={7} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Buka" : "Open"}
+                    </span>
                   </div>
                   <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
                     <span style={{ color: "#2997ff" }}>accrual://add?text=</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
-                      URL Encoded Text
+                      {isIndonesian ? "Teks Terenkode URL" : "URL Encoded Text"}
                     </span>
                     <span style={{ color: "#2997ff" }}>&autosave=true</span>
                   </div>
@@ -1123,7 +1137,7 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Jepretan Layar" : "Screenshot"}
                   </div>
                   <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginTop: 2 }}>
-                    Shortcuts
+                    {isIndonesian ? "Pintasan" : "Shortcuts"}
                   </div>
                   <div style={{ padding: "6px 8px", background: "rgba(0,122,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 8, fontWeight: 700, color: "#60a5fa" }}>
@@ -1311,7 +1325,9 @@ export function AppleShortcutsGuideModal({
                     <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
                       {isIndonesian ? "Notifikasi Diterima" : "Notification Received"}
                     </span>
-                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>➔ Input</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>
+                      ➔ {isIndonesian ? "Masukan" : "Input"}
+                    </span>
                   </div>
                 </div>
 
@@ -1324,9 +1340,11 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 14, height: 14, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <LinkIcon size={7} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>URL Encode</span>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Enkode URL" : "URL Encode"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 600 }}>
-                      Shortcut Input
+                      {isIndonesian ? "Masukan Pintasan" : "Shortcut Input"}
                     </span>
                   </div>
                 </div>
@@ -1340,12 +1358,14 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 13, height: 13, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <ExternalLink size={7} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Buka" : "Open"}
+                    </span>
                   </div>
                   <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
                     <span style={{ color: "#2997ff" }}>accrual://add?text=</span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
-                      URL Encoded Text
+                      {isIndonesian ? "Teks Terenkode URL" : "URL Encoded Text"}
                     </span>
                     <span style={{ color: "#2997ff" }}>&autosave=true</span>
                   </div>
@@ -1477,13 +1497,13 @@ export function AppleShortcutsGuideModal({
 
                   <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
                     <span style={{ fontSize: 6.5, padding: "1.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.25)", color: "white", fontWeight: 600 }}>
-                      Makanan
+                      {isIndonesian ? "Makanan" : "Food"}
                     </span>
                     <span style={{ fontSize: 6.5, padding: "1.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
-                      Transport
+                      {isIndonesian ? "Transport" : "Transit"}
                     </span>
                     <span style={{ fontSize: 6.5, padding: "1.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.45)" }}>
-                      Kopi
+                      {isIndonesian ? "Kopi" : "Coffee"}
                     </span>
                   </div>
 
@@ -1553,7 +1573,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <ExternalLink size={9} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Buka" : "Open"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
                       accrual://add
                     </span>
@@ -1611,7 +1633,7 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "Jepretan Layar" : "Screenshot"}
                   </div>
                   <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginTop: 3 }}>
-                    Shortcuts
+                    {isIndonesian ? "Pintasan" : "Shortcuts"}
                   </div>
                   <div style={{ padding: "6px 8px", background: "rgba(0,122,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 8, fontWeight: 700, color: "#60a5fa" }}>
@@ -1671,7 +1693,9 @@ export function AppleShortcutsGuideModal({
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.04)", fontSize: 7 }}>
                       <span style={{ color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Kategori" : "Category"}</span>
-                      <span style={{ fontWeight: 700, color: "white" }}>Makanan</span>
+                      <span style={{ fontWeight: 700, color: "white" }}>
+                        {isIndonesian ? "Makanan" : "Food"}
+                      </span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 5px", borderRadius: 4, background: "rgba(255,255,255,0.04)", fontSize: 7 }}>
                       <span style={{ color: "rgba(255,255,255,0.45)" }}>{isIndonesian ? "Akun" : "Account"}</span>
@@ -1720,7 +1744,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 15, height: 15, borderRadius: 4, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <ExternalLink size={9} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ fontSize: 8.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Buka" : "Open"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
                       accrual://voice
                     </span>
@@ -1772,7 +1798,7 @@ export function AppleShortcutsGuideModal({
 
                 <div style={{ background: "#1c1c1e", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <div style={{ padding: "5px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 6.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
-                    Shortcuts
+                    {isIndonesian ? "Pintasan" : "Shortcuts"}
                   </div>
                   <div style={{ padding: "6px 8px", background: "rgba(0,122,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 8, fontWeight: 700, color: "#60a5fa" }}>
@@ -1862,17 +1888,21 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 15, height: 15, borderRadius: 4, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <MessageSquare size={7} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white", fontWeight: 600 }}>Ask for</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
-                      Number
+                    <span style={{ color: "white", fontWeight: 600 }}>
+                      {isIndonesian ? "Minta" : "Ask for"}
                     </span>
-                    <span style={{ color: "white", fontWeight: 600 }}>with</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
+                      {isIndonesian ? "Angka" : "Number"}
+                    </span>
+                    <span style={{ color: "white", fontWeight: 600 }}>
+                      {isIndonesian ? "dengan" : "with"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 5, padding: "1.5px 5px", fontSize: 8, fontWeight: 600 }}>
                       {isIndonesian ? "Berapa nominalnya?" : "How much was it?"}
                     </span>
                   </div>
                   <p style={{ fontSize: 6.5, color: "#60a5fa", marginTop: 4, fontWeight: 600 }}>
-                    ➔ Rename: <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 6.5 }}>Nominal</span>
+                    ➔ {isIndonesian ? "Ganti Nama:" : "Rename:"} <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 6.5 }}>{isIndonesian ? "Nominal" : "Amount"}</span>
                   </p>
                 </div>
               </div>
@@ -1908,8 +1938,12 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <MessageSquare size={5.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 6.5, color: "white" }}>Ask for Number</span>
-                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ Nominal</span>
+                    <span style={{ fontSize: 6.5, color: "white" }}>
+                      {isIndonesian ? "Minta Masukan Angka" : "Ask for Number"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>
+                      ➔ {isIndonesian ? "Nominal" : "Amount"}
+                    </span>
                   </div>
                 </div>
 
@@ -1920,7 +1954,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 11, height: 11, borderRadius: 3, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <FileText size={6} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white", fontWeight: 600 }}>Text</span>
+                    <span style={{ color: "white", fontWeight: 600 }}>
+                      {isIndonesian ? "Teks" : "Text"}
+                    </span>
                   </div>
                   <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.2 }}>
                     {isIndonesian ? "Makanan\nTransport\nBelanja..." : "Food\nTransport\nShopping..."}
@@ -1934,10 +1970,14 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 11, height: 11, borderRadius: 3, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Scissors size={6} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white" }}>Split</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>Text</span>
-                    <span style={{ color: "white" }}>by</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>New Lines</span>
+                    <span style={{ color: "white" }}>{isIndonesian ? "Pisahkan" : "Split"}</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
+                      {isIndonesian ? "Teks" : "Text"}
+                    </span>
+                    <span style={{ color: "white" }}>{isIndonesian ? "dengan" : "by"}</span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
+                      {isIndonesian ? "Baris Baru" : "New Lines"}
+                    </span>
                   </div>
                 </div>
 
@@ -1948,7 +1988,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <List size={6} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white" }}>Choose from</span>
+                    <span style={{ color: "white" }}>
+                      {isIndonesian ? "Pilih dari" : "Choose from"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
                       {isIndonesian ? "Kategori" : "Category"}
                     </span>
@@ -1987,8 +2029,12 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <List size={5.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 6.5, color: "white" }}>Choose Category</span>
-                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>➔ Kategori</span>
+                    <span style={{ fontSize: 6.5, color: "white" }}>
+                      {isIndonesian ? "Pilih Kategori" : "Choose Category"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "#60a5fa" }}>
+                      ➔ {isIndonesian ? "Kategori" : "Category"}
+                    </span>
                   </div>
                 </div>
 
@@ -1999,7 +2045,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 11, height: 11, borderRadius: 3, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <FileText size={6} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white", fontWeight: 600 }}>Text</span>
+                    <span style={{ color: "white", fontWeight: 600 }}>
+                      {isIndonesian ? "Teks" : "Text"}
+                    </span>
                   </div>
                   <p style={{ fontSize: 6.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.2 }}>
                     {isIndonesian ? "Cash\nBCA\nMandiri..." : "Cash\nChecking\nCredit Card..."}
@@ -2013,7 +2061,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 11, height: 11, borderRadius: 3, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <List size={6} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white" }}>Choose from</span>
+                    <span style={{ color: "white" }}>
+                      {isIndonesian ? "Pilih dari" : "Choose from"}
+                    </span>
                     <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 3px", fontSize: 6.5 }}>
                       {isIndonesian ? "Akun" : "Account"}
                     </span>
@@ -2135,7 +2185,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <MessageSquare size={5.5} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white" }}>Ask for Text</span>
+                    <span style={{ color: "white" }}>
+                      {isIndonesian ? "Minta Masukan Teks" : "Ask for Text"}
+                    </span>
                     <span style={{ color: "white", opacity: 0.6, fontSize: 6.5 }}>
                       {isIndonesian ? "(Catatan)" : "(Notes)"}
                     </span>
@@ -2150,10 +2202,12 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <FileText size={5.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>Text</span>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Teks" : "Text"}
+                    </span>
                   </div>
                   <div style={{ background: "#18181a", borderRadius: 4, padding: "3px 4px", fontSize: 5.5, lineHeight: 1.35, color: "rgba(255,255,255,0.85)" }}>
-                    <div>Nominal: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>Nominal</span></div>
+                    <div>{isIndonesian ? "Nominal" : "Amount"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Nominal" : "Amount"}</span></div>
                     <div>{isIndonesian ? "Kategori" : "Category"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Kategori" : "Category"}</span></div>
                     <div>{isIndonesian ? "Akun" : "Account"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Akun" : "Account"}</span></div>
                     <div>{isIndonesian ? "Tanggal" : "Date"}: <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 1.5px" }}>{isIndonesian ? "Tanggal" : "Date"}</span></div>
@@ -2191,7 +2245,9 @@ export function AppleShortcutsGuideModal({
                 <div style={{ background: "#242426", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", padding: "3.5px 6px", opacity: 0.45 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 6 }}>
                     <span style={{ color: "rgba(255,255,255,0.7)" }}>{isIndonesian ? "Teks Transaksi Siap" : "Transaction Text Ready"}</span>
-                    <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>Text</span>
+                    <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px" }}>
+                      {isIndonesian ? "Teks" : "Text"}
+                    </span>
                   </div>
                 </div>
 
@@ -2203,7 +2259,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <LinkIcon size={5.5} className="text-white" />
                     </div>
-                    <span style={{ color: "white", fontWeight: 600 }}>URL Encode</span>
+                    <span style={{ color: "white", fontWeight: 600 }}>
+                      {isIndonesian ? "Enkode URL" : "URL Encode"}
+                    </span>
                     <span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0.5px 2px", fontSize: 6 }}>
                       {isIndonesian ? "Teks" : "Text"}
                     </span>
@@ -2218,12 +2276,14 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 10, height: 10, borderRadius: 2.5, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <ExternalLink size={5.5} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>Open</span>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Buka" : "Open"}
+                    </span>
                     <span style={{ fontSize: 6.5, color: "#2997ff" }}>accrual://add?</span>
                   </div>
                   
                   <div style={{ background: "#18181a", borderRadius: 4, padding: "3.5px 5px", fontSize: 6, lineHeight: 1.4, wordBreak: "break-all" }}>
-                    <span style={{ color: "#2997ff" }}>text=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 2px" }}>{isIndonesian ? "Teks Terenkode" : "URL Encoded Text"}</span>
+                    <span style={{ color: "#2997ff" }}>text=</span><span style={{ background: "#0f274a", color: "#2997ff", borderRadius: 2, padding: "0 2px" }}>{isIndonesian ? "Teks Terenkode URL" : "URL Encoded Text"}</span>
                     <span style={{ color: "#2997ff" }}>&autosave=true</span>
                   </div>
                 </div>
@@ -2410,7 +2470,9 @@ export function AppleShortcutsGuideModal({
                     <span style={{ fontSize: 7, fontWeight: 600, color: "white" }}>
                       {isIndonesian ? "Notifikasi Diterima" : "Notification Received"}
                     </span>
-                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>➔ Input</span>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.4)" }}>
+                      ➔ {isIndonesian ? "Masukan" : "Input"}
+                    </span>
                   </div>
                 </div>
 
@@ -2423,7 +2485,9 @@ export function AppleShortcutsGuideModal({
                     <div style={{ width: 13, height: 13, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <ExternalLink size={7} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>Open Website / URL</span>
+                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
+                      {isIndonesian ? "Buka Situs Web / URL" : "Open Website / URL"}
+                    </span>
                   </div>
                   <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
                     <span style={{ color: "#2997ff" }}>accrual://add?text=</span>

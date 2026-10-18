@@ -98,7 +98,7 @@ export function ShortcutManagementSheet({
     if (!title.trim()) {
       showToast(
         isIndonesian ? "Masukkan nama preset" : "Enter a preset title",
-        "delete",
+        "error",
       );
       return;
     }
@@ -107,6 +107,12 @@ export function ShortcutManagementSheet({
         ? Math.round(convertToIdr(amountRaw, preferredCurrency))
         : 0;
 
+    const trimmedNote = note.trim();
+    const finalNote =
+      trimmedNote === "-" || trimmedNote === "--"
+        ? ""
+        : trimmedNote || title.trim();
+
     saveShortcut({
       id: editingId || generateUUID(),
       title: title.trim(),
@@ -114,7 +120,7 @@ export function ShortcutManagementSheet({
       amount: baseIdrAmount,
       category_id: categoryId,
       wallet_id: walletId,
-      note: note.trim() || title.trim(),
+      note: finalNote,
     });
     triggerHaptic("medium");
     setIsFormOpen(false);
@@ -132,7 +138,12 @@ export function ShortcutManagementSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="px-5 pt-2 pb-10 space-y-4">
+      <div
+        className="px-5 pt-2 space-y-4"
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -170,6 +181,8 @@ export function ShortcutManagementSheet({
             <button
               type="button"
               onClick={openNewForm}
+              aria-label={isIndonesian ? "Tambah preset baru" : "Add new preset"}
+              title={isIndonesian ? "Tambah preset baru" : "Add new preset"}
               className="px-3 py-1.5 rounded-full text-[11.5px] font-semibold flex items-center gap-1 active:scale-95 transition-all cursor-pointer shrink-0"
               style={{
                 background: "var(--text-primary)",
@@ -207,6 +220,8 @@ export function ShortcutManagementSheet({
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
+                aria-label={isIndonesian ? "Tutup formulir preset" : "Close preset form"}
+                title={isIndonesian ? "Tutup" : "Close"}
                 className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
                 style={{
                   background: "var(--glass-fill)",
@@ -478,6 +493,8 @@ export function ShortcutManagementSheet({
             <button
               type="button"
               onClick={openNewForm}
+              aria-label={isIndonesian ? "Buat preset pertama" : "Create first preset"}
+              title={isIndonesian ? "Buat preset pertama" : "Create first preset"}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold active:scale-95 transition-all cursor-pointer mt-1"
               style={{
                 background: "var(--glass-fill)",
@@ -506,9 +523,12 @@ export function ShortcutManagementSheet({
                     border: "1px solid var(--glass-border)",
                   }}
                 >
-                  <div
+                  <button
+                    type="button"
                     onClick={() => openEditForm(s)}
-                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                    aria-label={isIndonesian ? `Ubah preset ${s.title}` : `Edit preset ${s.title}`}
+                    title={isIndonesian ? `Ubah preset ${s.title}` : `Edit preset ${s.title}`}
+                    className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer bg-transparent border-0 p-0"
                   >
                     <div
                       className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
@@ -571,7 +591,7 @@ export function ShortcutManagementSheet({
                         {wal ? ` · ${wal.name}` : ""}
                       </div>
                     </div>
-                  </div>
+                  </button>
 
                   <div className="flex items-center gap-1 shrink-0">
                     <button
@@ -582,6 +602,7 @@ export function ShortcutManagementSheet({
                         background: "var(--glass-fill)",
                         color: "var(--text-secondary)",
                       }}
+                      aria-label={isIndonesian ? `Ubah preset ${s.title}` : `Edit preset ${s.title}`}
                       title={isIndonesian ? "Ubah" : "Edit"}
                     >
                       <PenLine size={13.5} strokeWidth={1.75} />
@@ -601,6 +622,7 @@ export function ShortcutManagementSheet({
                         background: "var(--glass-fill)",
                         color: "var(--text-tertiary)",
                       }}
+                      aria-label={isIndonesian ? `Hapus preset ${s.title}` : `Delete preset ${s.title}`}
                       title={isIndonesian ? "Hapus" : "Delete"}
                     >
                       <Trash2 size={13.5} strokeWidth={1.75} />
