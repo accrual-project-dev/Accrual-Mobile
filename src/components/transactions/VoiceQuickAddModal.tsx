@@ -582,7 +582,7 @@ export function VoiceQuickAddModal({
     (wallets.length > 0 ? wallets[0] : null);
   const resolvedToWallet =
     resolvedType === "transfer"
-      ? wallets.find((w) => w.id === parsed.toWalletId) ||
+      ? wallets.find((w) => w.id === parsed.toWalletId && w.id !== resolvedWallet?.id) ||
         wallets.find((w) => w.id !== resolvedWallet?.id) ||
         null
       : null;
@@ -608,10 +608,15 @@ export function VoiceQuickAddModal({
     triggerSuccessHaptic();
 
     const txDate = parsed.date || new Date();
+    const rawNote =
+      parsed.note || (transcript.trim() ? transcript.trim() : null);
+    const cleanNote =
+      rawNote === "-" || rawNote === "--" ? null : rawNote;
+
     const payload = {
       type: resolvedType,
       amount: parsed.amount,
-      note: parsed.note || (transcript.trim() ? transcript.trim() : null),
+      note: cleanNote,
       occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
       created_at: txDate.toISOString(),
       category_id:
@@ -637,7 +642,7 @@ export function VoiceQuickAddModal({
             (isIndonesian
               ? "Gagal menyimpan transaksi"
               : "Failed to save transaction"),
-          "delete",
+          "error",
           () => {},
         );
       },
@@ -669,14 +674,17 @@ export function VoiceQuickAddModal({
             null
           : null;
       const txDate = item.date || new Date();
+      const rawItemNote =
+        item.note ||
+        item.categoryName ||
+        (transcript.trim() ? transcript.trim() : null);
+      const cleanItemNote =
+        rawItemNote === "-" || rawItemNote === "--" ? null : rawItemNote;
 
       return {
         type: itemType,
         amount: item.amount || 0,
-        note:
-          item.note ||
-          item.categoryName ||
-          (transcript.trim() ? transcript.trim() : null),
+        note: cleanItemNote,
         occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
         created_at: txDate.toISOString(),
         category_id: itemType === "transfer" ? null : itemCat?.id || null,
@@ -701,7 +709,7 @@ export function VoiceQuickAddModal({
             (isIndonesian
               ? "Gagal menyimpan transaksi"
               : "Failed to save transactions"),
-          "delete",
+          "error",
           () => {},
         );
       },
@@ -809,6 +817,7 @@ export function VoiceQuickAddModal({
                 type="button"
                 onClick={() => handleSelectVoiceLang("id")}
                 aria-label="Bahasa Indonesia"
+                title="Bahasa Indonesia"
                 className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold font-mono transition-all cursor-pointer ${
                   voiceLang === "id"
                     ? isDark
@@ -823,6 +832,7 @@ export function VoiceQuickAddModal({
                 type="button"
                 onClick={() => handleSelectVoiceLang("en")}
                 aria-label="English"
+                title="English"
                 className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold font-mono transition-all cursor-pointer ${
                   voiceLang === "en"
                     ? isDark
@@ -839,6 +849,7 @@ export function VoiceQuickAddModal({
               type="button"
               onClick={onClose}
               aria-label={isIndonesian ? "Tutup" : "Close"}
+              title={isIndonesian ? "Tutup" : "Close"}
               className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
               style={{
                 background: isDark
@@ -991,10 +1002,11 @@ export function VoiceQuickAddModal({
 
                   <div className="w-full space-y-2 pr-0.5">
                     {parsedList.map((item, idx) => (
-                      <div
+                      <button
                         key={idx}
+                        type="button"
                         onClick={() => handleOpenForm(idx)}
-                        className="flex items-center justify-between px-4 py-3 rounded-2xl transition-all cursor-pointer active:scale-[0.98] group"
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all cursor-pointer active:scale-[0.98] group text-left"
                         style={{
                           background: isDark
                             ? "rgba(255, 255, 255, 0.05)"
@@ -1004,6 +1016,16 @@ export function VoiceQuickAddModal({
                             : "1px solid rgba(0, 0, 0, 0.06)",
                           boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
                         }}
+                        title={
+                          isIndonesian
+                            ? `Ubah transaksi ${idx + 1}`
+                            : `Edit transaction ${idx + 1}`
+                        }
+                        aria-label={
+                          isIndonesian
+                            ? `Ubah transaksi ${idx + 1}: ${item.note || item.categoryName || `Item ${idx + 1}`} ${formatCurrency(item.amount || 0, preferredCurrency)}`
+                            : `Edit transaction ${idx + 1}: ${item.note || item.categoryName || `Item ${idx + 1}`} ${formatCurrency(item.amount || 0, preferredCurrency)}`
+                        }
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <span
@@ -1056,7 +1078,8 @@ export function VoiceQuickAddModal({
                               ? formatCurrency(item.amount, preferredCurrency)
                               : formatCurrency(0, preferredCurrency)}
                           </span>
-                          <div
+                          <span
+                            aria-hidden="true"
                             className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity"
                             style={{
                               background: isDark
@@ -1064,28 +1087,29 @@ export function VoiceQuickAddModal({
                                 : "rgba(0, 0, 0, 0.05)",
                               color: "var(--text-secondary)",
                             }}
-                            title={
-                              isIndonesian
-                                ? "Ubah transaksi ini"
-                                : "Edit this transaction"
-                            }
                           >
                             <Pen size={12} strokeWidth={1.8} />
-                          </div>
+                          </span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
               ) : (
                 /* ── SINGLE TRANSACTION HERO CARD ── */
-                <div
+                <button
+                  type="button"
                   onClick={() => handleOpenForm(0)}
                   className="w-full flex flex-col items-center gap-3 cursor-pointer active:scale-[0.98] transition-all p-2 rounded-2xl"
                   title={
                     isIndonesian
                       ? "Ketuk untuk mengubah transaksi"
                       : "Click to edit transaction"
+                  }
+                  aria-label={
+                    isIndonesian
+                      ? `Ketuk untuk mengubah transaksi: ${formatCurrency(parsed.amount || 0, preferredCurrency)}`
+                      : `Click to edit transaction: ${formatCurrency(parsed.amount || 0, preferredCurrency)}`
                   }
                 >
                   {/* Hero Amount */}
@@ -1195,7 +1219,7 @@ export function VoiceQuickAddModal({
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
               )
             ) : null}
           </div>
@@ -1242,6 +1266,7 @@ export function VoiceQuickAddModal({
                     : "1px solid rgba(0, 0, 0, 0.08)",
                 }}
                 title={isIndonesian ? "Ubah formulir" : "Edit in form"}
+                aria-label={isIndonesian ? "Ubah formulir" : "Edit in form"}
               >
                 <Pen size={14} strokeWidth={1.8} />
                 {isIndonesian ? "Ubah" : "Edit"}
@@ -1257,6 +1282,16 @@ export function VoiceQuickAddModal({
                     background: "var(--accent)",
                     color: "var(--accent-ink)",
                   }}
+                  title={
+                    isIndonesian
+                      ? "Simpan semua transaksi"
+                      : "Save all transactions"
+                  }
+                  aria-label={
+                    isIndonesian
+                      ? "Simpan semua transaksi"
+                      : "Save all transactions"
+                  }
                 >
                   <Check size={16} strokeWidth={2.5} />
                   {isSubmitting
@@ -1277,6 +1312,12 @@ export function VoiceQuickAddModal({
                     background: "var(--accent)",
                     color: "var(--accent-ink)",
                   }}
+                  title={
+                    isIndonesian ? "Simpan transaksi" : "Save transaction"
+                  }
+                  aria-label={
+                    isIndonesian ? "Simpan transaksi" : "Save transaction"
+                  }
                 >
                   <Check size={16} strokeWidth={2.5} />
                   {isSubmitting

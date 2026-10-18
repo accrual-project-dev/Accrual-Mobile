@@ -174,7 +174,7 @@ export function TransactionKeypadSheet({
               ? "0 -16px 44px -8px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
               : "0 -12px 36px -6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.95)",
             paddingBottom:
-              "max(calc(env(safe-area-inset-bottom, 0px) + 8px), 14px)",
+              "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
           }}
         >
           {/* Top Specular Rim Lighting Reflection */}
@@ -190,13 +190,25 @@ export function TransactionKeypadSheet({
 
           {/* ── Area Atas Keypad: Ketuk untuk Menutup ── */}
           <div
+            role="button"
+            tabIndex={0}
             onClick={() => {
               triggerHaptic("light");
               onClose();
             }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                triggerHaptic("light");
+                onClose();
+              }
+            }}
             className="w-full pt-2.5 pb-2 flex flex-col items-center justify-center cursor-pointer group active:opacity-60 transition-opacity"
             title={
               isIndonesian ? "Ketuk untuk sembunyikan keypad" : "Tap to dismiss"
+            }
+            aria-label={
+              isIndonesian ? "Sembunyikan keypad" : "Dismiss keypad"
             }
           >
             <div
@@ -228,6 +240,16 @@ export function TransactionKeypadSheet({
                     ? "1px solid rgba(255, 255, 255, 0.16)"
                     : "1px solid rgba(0, 0, 0, 0.08)",
                 }}
+                title={
+                  isIndonesian
+                    ? "Terapkan hasil perhitungan"
+                    : "Apply evaluated result"
+                }
+                aria-label={
+                  isIndonesian
+                    ? "Terapkan hasil perhitungan"
+                    : "Apply evaluated result"
+                }
               >
                 <Equal size={10} strokeWidth={2.5} />
                 <span>
@@ -251,6 +273,7 @@ export function TransactionKeypadSheet({
                 color: isDark ? "#ffffff" : "#18181b",
               }}
               title={isIndonesian ? "Hapus Semua" : "All Clear"}
+              aria-label={isIndonesian ? "Hapus Semua" : "All Clear"}
             >
               AC
             </button>
@@ -264,6 +287,7 @@ export function TransactionKeypadSheet({
                 boxShadow: keyNumShadow,
               }}
               title={isIndonesian ? "Hapus satu digit" : "Backspace"}
+              aria-label={isIndonesian ? "Hapus satu digit" : "Backspace"}
             >
               <Delete size={18} strokeWidth={1.8} />
             </button>
@@ -276,7 +300,8 @@ export function TransactionKeypadSheet({
                 border: keyOpBorder,
                 boxShadow: keyNumShadow,
               }}
-              title="Persen (%)"
+              title={isIndonesian ? "Persen (%)" : "Percent (%)"}
+              aria-label={isIndonesian ? "Persen" : "Percent"}
             >
               %
             </button>
@@ -291,6 +316,8 @@ export function TransactionKeypadSheet({
                   ? "0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 #ffffff"
                   : "0 2px 8px rgba(0,0,0,0.15)",
               }}
+              title={isIndonesian ? "Selesai" : "Done"}
+              aria-label={isIndonesian ? "Selesai" : "Done"}
             >
               <Check size={13} strokeWidth={3} />
               <span>{isIndonesian ? "Selesai" : "Done"}</span>
@@ -300,6 +327,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("1")}
+              aria-label="1"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -312,6 +340,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("2")}
+              aria-label="2"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -324,6 +353,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("3")}
+              aria-label="3"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -336,6 +366,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("÷")}
+              aria-label={isIndonesian ? "Bagi" : "Divide"}
               className="h-11 rounded-2xl text-[19px] font-semibold flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyOpBg,
@@ -350,6 +381,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("4")}
+              aria-label="4"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -362,6 +394,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("5")}
+              aria-label="5"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -374,6 +407,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("6")}
+              aria-label="6"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -386,6 +420,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("×")}
+              aria-label={isIndonesian ? "Kali" : "Multiply"}
               className="h-11 rounded-2xl text-[19px] font-semibold flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyOpBg,
@@ -400,6 +435,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("7")}
+              aria-label="7"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -412,6 +448,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("8")}
+              aria-label="8"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -424,6 +461,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("9")}
+              aria-label="9"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -436,6 +474,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("-")}
+              aria-label={isIndonesian ? "Kurang" : "Subtract"}
               className="h-11 rounded-2xl text-[19px] font-semibold flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyOpBg,
@@ -450,6 +489,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("000")}
+              aria-label="000"
               className="h-11 rounded-2xl text-[16px] font-semibold flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -462,6 +502,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("0")}
+              aria-label="0"
               className="h-11 rounded-2xl text-[20px] font-medium flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -474,6 +515,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey(isIndonesian ? "," : ".")}
+              aria-label={isIndonesian ? "Koma" : "Decimal point"}
               className="h-11 rounded-2xl text-[20px] font-bold flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyNumBg,
@@ -486,6 +528,7 @@ export function TransactionKeypadSheet({
             <button
               type="button"
               onClick={() => handleKey("+")}
+              aria-label={isIndonesian ? "Tambah" : "Add"}
               className="h-11 rounded-2xl text-[19px] font-semibold flex items-center justify-center active:scale-[0.93] transition-all text-[var(--text-primary)] cursor-pointer"
               style={{
                 background: keyOpBg,

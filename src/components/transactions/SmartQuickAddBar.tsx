@@ -236,6 +236,9 @@ export function SmartQuickAddBar({
             title={
               isIndonesian ? "Hapus teks tambah cepat" : "Clear quick add"
             }
+            aria-label={
+              isIndonesian ? "Hapus teks tambah cepat" : "Clear quick add"
+            }
           >
             <X size={13} strokeWidth={1.75} />
           </button>
@@ -271,6 +274,15 @@ export function SmartQuickAddBar({
                   ? "Dikte dengan suara"
                   : "Dictate with voice"
             }
+            aria-label={
+              isListening
+                ? isIndonesian
+                  ? "Berhenti mendengarkan"
+                  : "Stop listening"
+                : isIndonesian
+                  ? "Dikte dengan suara"
+                  : "Dictate with voice"
+            }
           >
             {isListening ? (
               <MicOff size={14} strokeWidth={1.75} />
@@ -290,6 +302,24 @@ export function SmartQuickAddBar({
               background: "var(--accent)",
               color: "var(--accent-ink)",
             }}
+            title={
+              isMulti && onBatchApply
+                ? isIndonesian
+                  ? `Simpan Semua (${parsedList.length})`
+                  : `Save All (${parsedList.length})`
+                : isIndonesian
+                  ? "Isi formulir transaksi"
+                  : "Fill transaction form"
+            }
+            aria-label={
+              isMulti && onBatchApply
+                ? isIndonesian
+                  ? `Simpan Semua (${parsedList.length})`
+                  : `Save All (${parsedList.length})`
+                : isIndonesian
+                  ? "Isi formulir transaksi"
+                  : "Fill transaction form"
+            }
           >
             <Check size={12} strokeWidth={2} />
             {isMulti && onBatchApply
