@@ -769,11 +769,12 @@ export function ReceiptScanModal({
       return;
     }
 
-    const finalDescription = note.trim()
-      ? note.trim()
-      : merchant.trim()
-        ? merchant.trim()
-        : null;
+    const rawNote = note.trim();
+    const cleanNote = rawNote === "-" || rawNote === "--" ? "" : rawNote;
+    const rawMerchant = merchant.trim();
+    const cleanMerchant =
+      rawMerchant === "-" || rawMerchant === "--" ? "" : rawMerchant;
+    const finalDescription = cleanNote || cleanMerchant || null;
 
     // Build timestamp with selected time
     const [h, m] = time.split(":").map(Number);
@@ -815,8 +816,8 @@ export function ReceiptScanModal({
 
       const adminTxDate = new Date(txDate.getTime() + 1000);
       const feeNote = isIndonesian
-        ? `Biaya transfer ${merchant.trim() || ""}`.trim()
-        : `Transfer fee ${merchant.trim() || ""}`.trim();
+        ? `Biaya transfer ${cleanMerchant || ""}`.trim()
+        : `Transfer fee ${cleanMerchant || ""}`.trim();
 
       addTx.mutate({
         type: "expense",
@@ -833,8 +834,8 @@ export function ReceiptScanModal({
     triggerSuccessHaptic();
 
     // Persist learned merchant category to memory (Pilar 1)
-    if (merchant.trim() && effectiveCatId && effectiveCategory) {
-      saveMerchantMemory(merchant.trim(), effectiveCatId, effectiveCategory.name);
+    if (cleanMerchant && effectiveCatId && effectiveCategory) {
+      saveMerchantMemory(cleanMerchant, effectiveCatId, effectiveCategory.name);
     } else if (finalDescription && effectiveCatId && effectiveCategory) {
       saveMerchantMemory(finalDescription, effectiveCatId, effectiveCategory.name);
     }
@@ -886,12 +887,18 @@ export function ReceiptScanModal({
 
   const handleOpenInFullForm = () => {
     triggerHaptic("light");
-    const finalDescription = note.trim()
-      ? merchant.trim() &&
-        merchant.trim().toLowerCase() !== note.trim().toLowerCase()
-        ? `${merchant.trim()} • ${note.trim()}`
-        : note.trim()
-      : merchant.trim() ||
+    const rawNote = note.trim();
+    const cleanNote = rawNote === "-" || rawNote === "--" ? "" : rawNote;
+    const rawMerchant = merchant.trim();
+    const cleanMerchant =
+      rawMerchant === "-" || rawMerchant === "--" ? "" : rawMerchant;
+
+    const finalDescription = cleanNote
+      ? cleanMerchant &&
+        cleanMerchant.toLowerCase() !== cleanNote.toLowerCase()
+        ? `${cleanMerchant} • ${cleanNote}`
+        : cleanNote
+      : cleanMerchant ||
         (type === "transfer"
           ? "Transfer"
           : isIndonesian
@@ -986,7 +993,7 @@ export function ReceiptScanModal({
               paddingTop:
                 "max(calc(env(safe-area-inset-top, 0px) + 12px), 20px)",
               paddingBottom:
-                "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px)",
+                "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
             }}
           >
             {/* ============================================================
@@ -1053,6 +1060,8 @@ export function ReceiptScanModal({
                     : "inset 0 1px 0 rgba(255,255,255,1), 0 3px 10px rgba(15,23,42,0.08)",
                   color: "var(--text-primary)",
                 }}
+                title={isIndonesian ? "Tutup" : "Close"}
+                aria-label={isIndonesian ? "Tutup" : "Close"}
               >
                 <X size={15} strokeWidth={2} />
               </button>
@@ -1154,7 +1163,24 @@ export function ReceiptScanModal({
                           ? "bg-white text-zinc-950 border-white shadow-md shadow-white/20"
                           : "bg-black/60 text-white/90 border-white/15 hover:bg-black/80"
                       }`}
-                      title={isTorchOn ? "Turn Flash Off" : "Turn Flash On"}
+                      title={
+                        isTorchOn
+                          ? isIndonesian
+                            ? "Matikan Lampu Kilat"
+                            : "Turn Flash Off"
+                          : isIndonesian
+                            ? "Nyalakan Lampu Kilat"
+                            : "Turn Flash On"
+                      }
+                      aria-label={
+                        isTorchOn
+                          ? isIndonesian
+                            ? "Matikan Lampu Kilat"
+                            : "Turn Flash Off"
+                          : isIndonesian
+                            ? "Nyalakan Lampu Kilat"
+                            : "Turn Flash On"
+                      }
                     >
                       <Flashlight size={11} strokeWidth={2} />
                       <span className="text-[10px] font-semibold tracking-wide">
@@ -1752,10 +1778,15 @@ export function ReceiptScanModal({
                             ? "Ketuk untuk melihat struk asli"
                             : "Tap to inspect original receipt"
                         }
+                        aria-label={
+                          isIndonesian
+                            ? "Ketuk untuk melihat struk asli"
+                            : "Tap to inspect original receipt"
+                        }
                       >
                         <img
                           src={imagePreview}
-                          alt="Original Receipt"
+                          alt={isIndonesian ? "Struk Asli" : "Original Receipt"}
                           className="w-full h-full object-cover filter brightness-95 group-hover:scale-105 transition-transform duration-300"
                         />
 
@@ -2461,7 +2492,7 @@ export function ReceiptScanModal({
                       }}
                     >
                       <SlidersHorizontal size={13} strokeWidth={1.75} />
-                      <span>{isIndonesian ? "Kustomisasi Form" : "Customize Form"}</span>
+                      <span>{isIndonesian ? "Kustomisasi Formulir" : "Customize Form"}</span>
                     </button>
 
                     <button
@@ -2514,13 +2545,15 @@ export function ReceiptScanModal({
                 type="button"
                 onClick={() => setInspectPhotoOpen(false)}
                 className="absolute -top-12 right-0 w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/80 hover:bg-white/20 active:scale-95 transition-all"
+                title={isIndonesian ? "Tutup" : "Close"}
+                aria-label={isIndonesian ? "Tutup" : "Close"}
               >
                 <X size={16} strokeWidth={2} />
               </button>
 
               <img
                 src={imagePreview}
-                alt="Original Receipt"
+                alt={isIndonesian ? "Struk Asli" : "Original Receipt"}
                 className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/15"
               />
 
@@ -2546,9 +2579,11 @@ export function ReceiptScanModal({
         title={isIndonesian ? "Pilih Kategori" : "Select Category"}
       >
         <div
-          className="px-4 pt-1 pb-8"
+          className="px-4 pt-1"
           style={{
             fontFamily: "Urbanist, -apple-system, sans-serif",
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           {/* Search */}
@@ -2594,6 +2629,8 @@ export function ReceiptScanModal({
                     : "rgba(15,23,42,0.055)",
                   color: "var(--text-tertiary)",
                 }}
+                title={isIndonesian ? "Hapus pencarian" : "Clear search"}
+                aria-label={isIndonesian ? "Hapus pencarian" : "Clear search"}
               >
                 <X size={12} strokeWidth={2} />
               </button>
@@ -2719,9 +2756,11 @@ export function ReceiptScanModal({
         title={isIndonesian ? "Pilih Akun" : "Select Account"}
       >
         <div
-          className="px-4 pt-1 pb-8"
+          className="px-4 pt-1"
           style={{
             fontFamily: "Urbanist, -apple-system, sans-serif",
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           {/* Search */}
@@ -2767,6 +2806,8 @@ export function ReceiptScanModal({
                     : "rgba(15,23,42,0.055)",
                   color: "var(--text-tertiary)",
                 }}
+                title={isIndonesian ? "Hapus pencarian" : "Clear search"}
+                aria-label={isIndonesian ? "Hapus pencarian" : "Clear search"}
               >
                 <X size={12} strokeWidth={2} />
               </button>
@@ -2891,9 +2932,11 @@ export function ReceiptScanModal({
         }
       >
         <div
-          className="px-4 pt-1 pb-8"
+          className="px-4 pt-1"
           style={{
             fontFamily: "Urbanist, -apple-system, sans-serif",
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           {/* Search */}
@@ -2939,6 +2982,8 @@ export function ReceiptScanModal({
                     : "rgba(15,23,42,0.055)",
                   color: "var(--text-tertiary)",
                 }}
+                title={isIndonesian ? "Hapus pencarian" : "Clear search"}
+                aria-label={isIndonesian ? "Hapus pencarian" : "Clear search"}
               >
                 <X size={12} strokeWidth={2} />
               </button>
@@ -3097,9 +3142,11 @@ export function ReceiptScanModal({
         title={permissionPrompt.title}
       >
         <div
-          className="p-4 pb-8 space-y-4"
+          className="p-4 space-y-4"
           style={{
             fontFamily: "Urbanist, -apple-system, sans-serif",
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           {/* Permission header */}
