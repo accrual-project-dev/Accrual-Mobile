@@ -44,7 +44,7 @@ export function MonthForecastSheet({
   const dragControls = useDragControls();
   const { theme } = useTheme();
   const { isIndonesian } = useLanguage();
-  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const { formatWithPreferred, currencyMeta, convertFromIdr, preferredCurrency } = useCurrency();
   const { isStealthMode } = usePrivacy();
   const isDark = theme !== "light";
 
@@ -248,15 +248,16 @@ export function MonthForecastSheet({
         : forecastCumulative.get(activeInspectDay) || 0
       : effectiveProjectedTotal;
 
-  // Axis scale labels
-  const yLabelTop =
-    Math.round(maxVal / 1000000) > 0
-      ? `${(maxVal / 1000000).toFixed(1)}M`
-      : `${Math.round(maxVal / 1000)}K`;
-  const yLabelMid =
-    Math.round(maxVal / 2000000) > 0
-      ? `${(maxVal / 2000000).toFixed(1)}M`
-      : `${Math.round(maxVal / 2000)}K`;
+  // Axis scale labels (dynamically scaled to preferred currency)
+  const maxValInPreferred =
+    preferredCurrency === "IDR" ? maxVal : convertFromIdr(maxVal, preferredCurrency);
+  const formatAxisCompact = (val: number) => {
+    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `${Math.round(val / 1000)}K`;
+    return `${Math.round(val)}`;
+  };
+  const yLabelTop = formatAxisCompact(maxValInPreferred);
+  const yLabelMid = formatAxisCompact(maxValInPreferred / 2);
 
   if (typeof document === "undefined") return null;
 
@@ -305,7 +306,7 @@ export function MonthForecastSheet({
                 : "0 -20px 50px rgba(20, 25, 40, 0.08), inset 0 1.5px 0 #ffffff",
               maxHeight: "92dvh",
               paddingBottom:
-                "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
+                "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
               fontFamily: "'Urbanist', sans-serif",
             }}
           >

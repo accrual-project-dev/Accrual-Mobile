@@ -97,7 +97,7 @@ export function CashAccountDetailSheet({
       <div
         className="px-5 space-y-6"
         style={{
-          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 32px)",
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
         }}
       >
         {/* ── 1. Header: Account Icon & Identity ── */}
@@ -280,7 +280,7 @@ export function CashAccountDetailSheet({
                           className="text-[12.5px] font-semibold truncate leading-tight"
                           style={{ color: "var(--text-primary)" }}
                         >
-                          {tx.note || (isTransfer ? (isIndonesian ? "Transfer Saldo" : "Balance Transfer") : (isIndonesian ? "Mutasi Keuangan" : "Financial Mutation"))}
+                          {(tx.note && tx.note.trim() !== "-" && tx.note.trim() !== "--" ? tx.note.trim() : null) || (isTransfer ? (isIndonesian ? "Transfer Saldo" : "Balance Transfer") : (isIndonesian ? "Mutasi Keuangan" : "Financial Mutation"))}
                         </p>
                         <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
                           {displayDate}

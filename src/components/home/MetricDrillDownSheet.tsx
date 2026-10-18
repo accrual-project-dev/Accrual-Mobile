@@ -86,7 +86,12 @@ export function MetricDrillDownSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="px-5 space-y-4 pb-6 select-none">
+      <div
+        className="px-5 space-y-4 select-none"
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
         {isBudgetRisk ? (
           <>
             <div
@@ -178,10 +183,10 @@ export function MetricDrillDownSheet({
                   onClose();
                   navigate("/settings");
                 }}
-                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform"
+                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer"
                 style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
                 }}
               >
                 <span>{isIndonesian ? "Sesuaikan Batas Anggaran" : "Adjust Budget Limit"}</span>
@@ -431,10 +436,10 @@ export function MetricDrillDownSheet({
                   onClose();
                   navigate("/statistics");
                 }}
-                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform"
+                className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer"
                 style={{
-                  background: "var(--accent)",
-                  color: "var(--accent-ink)",
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
                 }}
               >
                 <span>{isIndonesian ? "Lihat Analisis Lengkap" : "View Full Analytics Breakdown"}</span>

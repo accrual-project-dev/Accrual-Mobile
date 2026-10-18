@@ -43,7 +43,12 @@ export function AssetMetricDrillDownSheet({
       onClose={onClose}
       title={data?.title || ""}
     >
-      <div className="p-5 space-y-4 select-none">
+      <div
+        className="p-5 space-y-4 select-none"
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
         {/* Header Metric Box */}
         <div
           className="p-4 rounded-2xl border border-[var(--glass-border)] space-y-1.5"

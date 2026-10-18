@@ -20,7 +20,7 @@ export function CategoryDrillDownSheet({
 }: CategoryDrillDownSheetProps) {
   const navigate = useNavigate();
   const { isIndonesian } = useLanguage();
-  const { formatWithPreferred } = useCurrency();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
   const { isStealthMode } = usePrivacy();
 
   if (!shift) return null;
@@ -36,7 +36,12 @@ export function CategoryDrillDownSheet({
       onClose={onClose}
       title={isIndonesian ? `Penyebab Perubahan ${shift.name}` : `Why ${shift.name} Changed`}
     >
-      <div className="px-5 space-y-4 pb-6 select-none">
+      <div
+        className="px-5 space-y-4 select-none"
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
         {/* Category Header Card */}
         <div
           className="p-4 rounded-2xl flex items-center justify-between"
@@ -80,7 +85,7 @@ export function CategoryDrillDownSheet({
               style={{ color: "var(--text-primary)" }}
             >
               {shift.isIncrease ? "+" : ""}
-              {isStealthMode ? "••••••••" : formatWithPreferred(shift.deltaAmount)}
+              {isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(shift.deltaAmount)}
             </p>
             <p
               className="text-[11px] font-bold"
@@ -107,7 +112,7 @@ export function CategoryDrillDownSheet({
               className="amount text-[14px] font-semibold mt-0.5"
               style={{ color: "var(--text-primary)" }}
             >
-              {isStealthMode ? "••••••••" : formatWithPreferred(shift.currentTotal)}
+              {isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(shift.currentTotal)}
             </p>
           </div>
           <div
@@ -124,7 +129,7 @@ export function CategoryDrillDownSheet({
               className="amount text-[14px] font-semibold mt-0.5"
               style={{ color: "var(--text-secondary)" }}
             >
-              {isStealthMode ? "••••••••" : formatWithPreferred(shift.previousTotal)}
+              {isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(shift.previousTotal)}
             </p>
           </div>
         </div>
@@ -163,7 +168,7 @@ export function CategoryDrillDownSheet({
                     className="amount font-semibold text-[13px]"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {isStealthMode ? "••••••••" : formatWithPreferred(c.amount)}
+                    {isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(c.amount)}
                   </p>
                 </div>
               ))}
@@ -178,8 +183,8 @@ export function CategoryDrillDownSheet({
             onClick={handleViewTransactions}
             className="w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer select-none"
             style={{
-              background: "var(--accent)",
-              color: "var(--accent-ink)",
+              background: "var(--text-primary)",
+              color: "var(--bg-base)",
             }}
           >
             <span>

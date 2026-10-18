@@ -65,7 +65,12 @@ export function PersonalFinancialModelSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-12 space-y-4">
+      <div
+        className="p-5 space-y-4"
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
         <div>
           <h3 className="font-semibold text-[18px]" style={{ color: "var(--text-primary)" }}>
             {isIndonesian ? "Model Finansial Personal" : "Personal Financial Model"}
@@ -163,7 +168,7 @@ export function PersonalFinancialModelSheet({
           </p>
           <p>
             <strong style={{ color: "var(--text-primary)" }}>
-              {isIndonesian ? "Arah Sasaran (Goals):" : "Goal Trajectory:"}
+              {isIndonesian ? "Arah Sasaran:" : "Goal Trajectory:"}
             </strong>{" "}
             {insights.goalTrajectory}
           </p>
