@@ -63,6 +63,7 @@ export const USER_SESSION_STORAGE_KEYS = [
   "trouvaille_debt_receivables_guest_v1",
   "trouvaille_budget_target",
   "trouvaille_budget_period_start",
+  "trouvaille_avatar",
   "accrual_subscription_state_v1",
 ] as const;
 

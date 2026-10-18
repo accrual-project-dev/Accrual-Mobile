@@ -138,7 +138,8 @@ export function ProfileMenuModal({
               select-none
               box-border
 
-              max-w-none
+              max-w-md
+              mx-auto
             "
             style={{
               top: "max(calc(env(safe-area-inset-top, 0px) + 18px), 28px)",
@@ -580,6 +581,7 @@ export function ProfileMenuModal({
                     : "inset 0 1px 0 rgba(255,255,255,0.75)",
                 }}
                 title={isIndonesian ? "Pemberitahuan" : "Notifications"}
+                aria-label={isIndonesian ? "Pemberitahuan" : "Notifications"}
               >
                 <Bell size={13} strokeWidth={1.65} />
 
@@ -660,7 +662,8 @@ export function ProfileMenuModal({
                       ? "inset 0 1px 0 rgba(255,255,255,0.06)"
                       : "inset 0 1px 0 rgba(255,255,255,0.75)",
                   }}
-                  title={isIndonesian ? "Web Dashboard" : "Web Dashboard"}
+                  title={isIndonesian ? "Dasbor Web" : "Web Dashboard"}
+                  aria-label={isIndonesian ? "Dasbor Web" : "Web Dashboard"}
                 >
                   <Laptop size={13} strokeWidth={1.65} />
                 </button>
@@ -707,7 +710,7 @@ export function ProfileMenuModal({
                   color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.48)",
                 }}
                 title={isIndonesian ? "Tutup" : "Close"}
-                aria-label="Close"
+                aria-label={isIndonesian ? "Tutup" : "Close"}
               >
                 <X size={12} strokeWidth={2} />
               </button>

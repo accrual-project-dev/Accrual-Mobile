@@ -115,7 +115,13 @@ export function ResetPasswordModal({ isOpen, onClose }: ResetPasswordModalProps)
 
   return (
     <BottomSheet isOpen={isOpen} onClose={handleClose}>
-      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] space-y-5">
+      <div
+        className="p-5 space-y-5"
+        style={{
+          paddingBottom:
+            "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
         {/* Header Icon & Title */}
         <div className="text-center">
           <div
@@ -138,8 +144,8 @@ export function ResetPasswordModal({ isOpen, onClose }: ResetPasswordModalProps)
             style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian
-              ? "Buat kata sandi baru yang aman untuk akun Trouvaille Anda."
-              : "Create a new, secure password for your Trouvaille account."}
+              ? "Buat kata sandi baru yang aman untuk akun Accrual Anda."
+              : "Create a new, secure password for your Accrual account."}
           </p>
         </div>
 
@@ -281,7 +287,7 @@ export function ResetPasswordModal({ isOpen, onClose }: ResetPasswordModalProps)
               className="w-full py-3.5 px-4 rounded-2xl font-semibold text-[13.5px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: "var(--text-primary)",
-                color: "var(--bg-primary)",
+                color: "var(--bg-base)",
               }}
             >
               {loading ? (

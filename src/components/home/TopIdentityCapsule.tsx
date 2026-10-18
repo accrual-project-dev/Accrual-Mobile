@@ -98,7 +98,7 @@ export function TopIdentityCapsule({
                 </span>
               </div>
               <p className="text-[11px] font-normal text-[var(--text-tertiary)] leading-none mt-1 truncate">
-                {t("home.financialOverview", "Financial Overview")}
+                {t("home.financialOverview", isIndonesian ? "Ringkasan Finansial" : "Financial Overview")}
               </p>
             </div>
           </button>
@@ -121,7 +121,15 @@ export function TopIdentityCapsule({
                   ? "Beralih ke Mode Terang"
                   : "Switch to Light Mode"
             }
-            aria-label="Toggle Theme"
+            aria-label={
+              theme === "light"
+                ? isIndonesian
+                  ? "Beralih ke Mode Gelap"
+                  : "Switch to Dark Mode"
+                : isIndonesian
+                  ? "Beralih ke Mode Terang"
+                  : "Switch to Light Mode"
+            }
           >
             {theme === "light" ? (
               <Moon
@@ -150,7 +158,11 @@ export function TopIdentityCapsule({
                 ? "Kustomisasi Widget Dashboard"
                 : "Customize Dashboard Widgets"
             }
-            aria-label="Customize Widgets"
+            aria-label={
+              isIndonesian
+                ? "Kustomisasi Widget Dashboard"
+                : "Customize Dashboard Widgets"
+            }
           >
             <SlidersHorizontal
               size={14}
@@ -166,8 +178,8 @@ export function TopIdentityCapsule({
               onNavigateSettings();
             }}
             className="w-8 h-8 rounded-full flex items-center justify-center glass-surface border border-[var(--glass-border)] active:scale-95 transition-transform cursor-pointer select-none"
-            title={t("settings.title", "Settings")}
-            aria-label="Settings"
+            title={t("settings.title", isIndonesian ? "Pengaturan" : "Settings")}
+            aria-label={t("settings.title", isIndonesian ? "Pengaturan" : "Settings")}
           >
             <Settings
               size={14}

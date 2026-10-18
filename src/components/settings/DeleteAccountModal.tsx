@@ -107,7 +107,13 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
 
   return (
     <BottomSheet isOpen={isOpen} onClose={handleClose}>
-      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] space-y-5">
+      <div
+        className="p-5 space-y-5"
+        style={{
+          paddingBottom:
+            "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+        }}
+      >
         {/* Header Icon */}
         <div className="text-center">
           <div
@@ -227,7 +233,7 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
                   : "var(--bg-elevated)",
               color:
                 isConfirmed && !isDeleting
-                  ? "var(--bg-primary)"
+                  ? "var(--bg-base)"
                   : "var(--text-tertiary)",
               border: "1px solid var(--glass-border)",
             }}

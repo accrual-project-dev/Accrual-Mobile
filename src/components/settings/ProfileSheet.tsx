@@ -595,7 +595,7 @@ export function ProfileSheet({
                 <>
                   <HardDrive size={11} strokeWidth={1.8} />
                   <span>
-                    {isIndonesian ? "Brankas Lokal" : "Local Vault (Offline)"}
+                    {isIndonesian ? "Brankas Lokal" : "Local Vault"}
                   </span>
                 </>
               ) : (
@@ -617,7 +617,7 @@ export function ProfileSheet({
               </span>
               <span className="font-medium text-[var(--text-primary)] truncate max-w-[210px]">
                 {session?.user?.email ||
-                  (isIndonesian ? "Pengguna Tamu" : "Guest User (Offline)")}
+                  (isIndonesian ? "Pengguna Tamu" : "Guest User")}
               </span>
             </div>
 
