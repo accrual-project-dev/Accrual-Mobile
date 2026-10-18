@@ -277,5 +277,84 @@ describe("Financial Wrapped Analytics & Chart Engines", () => {
       expect(projection.points[1].amount).toBe(4000000); // +1 Mo
       expect(projection.terminalProjectedSurplus).toBeGreaterThan(20000000); // +6 Mo
     });
+
+    it("safely clamps negative cashflow deficit to zero surplus", () => {
+      const totalIncome = 3000000;
+      const totalExpense = 8000000; // Deficit
+
+      const projection = buildRunwayProjection(totalIncome, totalExpense);
+
+      expect(projection.monthlyPace).toBe(0);
+      expect(projection.terminalProjectedSurplus).toBe(0);
+      projection.points.forEach((pt) => {
+        expect(pt.amount).toBe(0);
+      });
+    });
+  });
+
+  describe("Heatmap Edge Cases & Accounting Isolation", () => {
+    it("excludes [Correction], Saldo Awal, and Opening Balance from spending heatmap", () => {
+      const mockTxs: Transaction[] = [
+        {
+          id: "tx-real",
+          user_id: "u1",
+          amount: 150000,
+          category_id: "c1",
+          wallet_id: "w1",
+          to_wallet_id: null,
+          type: "expense",
+          note: "Real lunch",
+          occurred_on: "2026-05-10",
+          created_at: "2026-05-10T10:00:00Z",
+        },
+        {
+          id: "tx-corr-1",
+          user_id: "u1",
+          amount: 5000000,
+          category_id: "c1",
+          wallet_id: "w1",
+          to_wallet_id: null,
+          type: "expense",
+          note: "[Correction] Adjust wallet balance",
+          occurred_on: "2026-05-10",
+          created_at: "2026-05-10T11:00:00Z",
+        },
+        {
+          id: "tx-corr-2",
+          user_id: "u1",
+          amount: 2000000,
+          category_id: "c1",
+          wallet_id: "w1",
+          to_wallet_id: null,
+          type: "expense",
+          note: "Saldo Awal Penyesuaian",
+          occurred_on: "2026-05-10",
+          created_at: "2026-05-10T12:00:00Z",
+        },
+      ];
+
+      const heatmap = buildSpendingHeatmap(mockTxs, 2026, 5);
+      const day10 = heatmap.days.find((d) => d.day === 10);
+
+      // Only real lunch (150000) should be included, not the 7M in corrections
+      expect(day10?.amount).toBe(150000);
+      expect(heatmap.peakDay?.amount).toBe(150000);
+    });
+
+    it("handles leap year (2024 has 366 days) vs standard year (2026 has 365 days)", () => {
+      const leapHeatmap = buildAnnualSpendingHeatmap([], 2024);
+      expect(leapHeatmap.days).toHaveLength(366);
+
+      const standardHeatmap = buildAnnualSpendingHeatmap([], 2026);
+      expect(standardHeatmap.days).toHaveLength(365);
+    });
+
+    it("handles month mode week buckets: 28 days yields 4 buckets, 31 days yields 5 buckets", () => {
+      const febCashflow = buildPeriodicCashflowData([], "month", 2026, 2); // 28 days
+      expect(febCashflow).toHaveLength(4);
+
+      const janCashflow = buildPeriodicCashflowData([], "month", 2026, 1); // 31 days
+      expect(janCashflow).toHaveLength(5);
+    });
   });
 });

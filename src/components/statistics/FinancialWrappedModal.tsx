@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Activity,
   Pause,
+  Share2,
 } from "lucide-react";
 import type { Transaction, Category } from "../../lib/types";
 import { triggerHaptic } from "../../lib/haptics";
@@ -18,6 +19,7 @@ import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { usePrivacy } from "../../contexts/PrivacyContext";
+import { useToast } from "../../contexts/ToastContext";
 import {
   buildCascadeCategories,
   buildSpendingHeatmap,
@@ -57,8 +59,19 @@ export function FinancialWrappedModal({
   const isDark = theme !== "light";
   const { formatWithPreferred, formatCompactWithPreferred, currencyMeta } = useCurrency();
   const { isStealthMode } = usePrivacy();
+  const { showToast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
+  const posterRef = useRef<HTMLDivElement>(null);
+
   const formatMoney = (amount: number) => {
     return isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(amount);
+  };
+  const formatCompactMoney = (amount: number) => {
+    return isStealthMode
+      ? `${currencyMeta?.symbol || "Rp"} ••••••••`
+      : amount >= 1_000_000
+      ? formatCompactWithPreferred(amount)
+      : formatWithPreferred(amount);
   };
   const { liquidCapital, marketAssets, fixedAssets, totalAssets } =
     useWalletBalances();
@@ -159,6 +172,59 @@ export function FinancialWrappedModal({
       return t.occurred_on.startsWith(yearKey);
     });
   }, [transactions, mode, monthKey, yearKey]);
+
+  const handleSharePoster = async () => {
+    if (!posterRef.current || isExporting) return;
+    triggerHaptic("medium");
+    setIsExporting(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(posterRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      const blob = await new Promise<Blob | null>((res) =>
+        canvas.toBlob(res, "image/png"),
+      );
+      if (!blob) throw new Error("Failed to create blob");
+      const filename = `Accrual-Wrapped-${periodTitle.replace(/\s+/g, "-")}.png`;
+      const file = new File([blob], filename, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Accrual Wrapped · ${periodTitle}`,
+          text: `Accrual Financial Wrapped · ${periodTitle}`,
+        });
+        showToast(
+          isIndonesian ? "Berhasil dibagikan!" : "Successfully shared!",
+          "info",
+        );
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(
+          isIndonesian ? "Poster berhasil diunduh!" : "Poster downloaded!",
+          "info",
+        );
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        showToast(
+          isIndonesian ? "Gagal membagikan poster" : "Failed to share poster",
+          "error",
+        );
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Aggregates & Insights
   const stats = useMemo(() => {
@@ -655,7 +721,7 @@ export function FinancialWrappedModal({
             className="absolute top-0 left-0 right-0 z-40 px-4 pb-2 flex flex-col gap-2"
             style={{
               paddingTop:
-                "max(calc(env(safe-area-inset-top, 0px) + 12px), 24px)",
+                "max(calc(env(safe-area-inset-top, 0px) + 14px), 26px)",
             }}
           >
             {/* Multi-segment story progress line */}
@@ -986,7 +1052,7 @@ export function FinancialWrappedModal({
                         isDark ? "text-white" : "text-[#09090B]"
                       }`}
                     >
-                      {formatWithPreferred(stats.turnover)}
+                      {formatMoney(stats.turnover)}
                     </p>
                   </div>
 
@@ -1009,7 +1075,7 @@ export function FinancialWrappedModal({
                           isDark ? "text-white" : "text-[#09090B]"
                         }`}
                       >
-                        ~{formatWithPreferred(stats.avgDaily)}
+                        ~{formatMoney(stats.avgDaily)}
                       </span>
                     </div>
 
@@ -1441,9 +1507,7 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {stats.turnover >= 1_000_000
-                            ? formatCompactWithPreferred(stats.turnover)
-                            : formatWithPreferred(stats.turnover)}
+                          {formatCompactMoney(stats.turnover)}
                         </span>
                       </div>
                     </div>
@@ -1520,12 +1584,11 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {stats.netCashflow >= 0 ? "+" : "-"}
-                          {Math.abs(stats.netCashflow) >= 1_000_000
-                            ? formatCompactWithPreferred(
+                          {isStealthMode
+                            ? formatMoney(stats.netCashflow)
+                            : `${stats.netCashflow >= 0 ? "+" : "-"}${formatCompactMoney(
                                 Math.abs(stats.netCashflow),
-                              )
-                            : formatWithPreferred(Math.abs(stats.netCashflow))}
+                              )}`}
                         </span>
                       </div>
                     </div>
@@ -1746,7 +1809,7 @@ export function FinancialWrappedModal({
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
                           >
-                            {formatWithPreferred(totalAssetVal)}
+                            {formatMoney(totalAssetVal)}
                           </span>
                         </div>
 
@@ -1787,9 +1850,9 @@ export function FinancialWrappedModal({
                             className={`text-xs sm:text-sm font-bold block truncate mt-0.5 ${
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
-                            title={formatWithPreferred(liquidCapital)}
+                            title={formatMoney(liquidCapital)}
                           >
-                            {formatWithPreferred(liquidCapital)}
+                            {formatMoney(liquidCapital)}
                           </span>
                         </div>
                         <div>
@@ -1804,9 +1867,9 @@ export function FinancialWrappedModal({
                             className={`text-xs sm:text-sm font-bold block truncate mt-0.5 ${
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
-                            title={formatWithPreferred(fixedAssets)}
+                            title={formatMoney(fixedAssets)}
                           >
-                            {formatWithPreferred(fixedAssets)}
+                            {formatMoney(fixedAssets)}
                           </span>
                         </div>
                         <div>
@@ -1821,9 +1884,9 @@ export function FinancialWrappedModal({
                             className={`text-xs sm:text-sm font-bold block truncate mt-0.5 ${
                               isDark ? "text-white" : "text-[#09090B]"
                             }`}
-                            title={formatWithPreferred(marketAssets)}
+                            title={formatMoney(marketAssets)}
                           >
-                            {formatWithPreferred(marketAssets)}
+                            {formatMoney(marketAssets)}
                           </span>
                         </div>
                       </div>
@@ -3007,7 +3070,9 @@ export function FinancialWrappedModal({
                                 isDark ? "text-zinc-400" : "text-zinc-600"
                               }`}
                             >
-                              {val > 0
+                              {isStealthMode
+                                ? "••••"
+                                : val > 0
                                 ? val >= 1000000
                                   ? `${(val / 1000000).toFixed(1)}m`
                                   : `${Math.round(val / 1000)}k`
@@ -3277,6 +3342,7 @@ export function FinancialWrappedModal({
                 >
                   {/* Luxury Report Poster */}
                   <div
+                    ref={posterRef}
                     className={`p-5 rounded-3xl backdrop-blur-3xl relative overflow-hidden text-left border ${
                       isDark
                         ? "bg-gradient-to-b from-white/[0.08] to-white/[0.02] border-white/[0.16]"
@@ -3363,7 +3429,7 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          +{formatWithPreferred(stats.totalIncome)}
+                          +{formatMoney(stats.totalIncome)}
                         </p>
                       </div>
 
@@ -3388,7 +3454,7 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          -{formatWithPreferred(stats.totalExpense)}
+                          -{formatMoney(stats.totalExpense)}
                         </p>
                       </div>
 
@@ -3411,8 +3477,9 @@ export function FinancialWrappedModal({
                             isDark ? "text-white" : "text-[#09090B]"
                           }`}
                         >
-                          {stats.netCashflow >= 0 ? "+" : ""}
-                          {formatWithPreferred(stats.netCashflow)}
+                          {isStealthMode
+                            ? formatMoney(stats.netCashflow)
+                            : `${stats.netCashflow >= 0 ? "+" : ""}${formatMoney(stats.netCashflow)}`}
                         </p>
                       </div>
 
@@ -3462,22 +3529,54 @@ export function FinancialWrappedModal({
                     </div>
                   </div>
 
-                  {/* Done / Close Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerHaptic("light");
-                      onClose();
-                    }}
-                    className={`w-full py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg relative z-50 pointer-events-auto ${
-                      isDark
-                        ? "bg-white text-black hover:bg-zinc-100"
-                        : "bg-black text-white hover:bg-zinc-900"
-                    }`}
-                  >
-                    <span>{isIndonesian ? "Selesai" : "Done"}</span>
-                  </button>
+                  {/* Share Poster & Done Buttons */}
+                  <div className="flex items-center gap-2.5 relative z-50 pointer-events-auto">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSharePoster();
+                      }}
+                      disabled={isExporting}
+                      aria-label={
+                        isIndonesian ? "Bagikan poster rekap" : "Share recap poster"
+                      }
+                      className={`flex-1 py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg border ${
+                        isDark
+                          ? "bg-white/10 text-white border-white/20 hover:bg-white/15"
+                          : "bg-black/5 text-black border-black/15 hover:bg-black/10"
+                      } ${isExporting ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >
+                      <Share2 size={15} strokeWidth={2} />
+                      <span>
+                        {isExporting
+                          ? isIndonesian
+                            ? "Memproses..."
+                            : "Processing..."
+                          : isIndonesian
+                            ? "Bagikan Poster"
+                            : "Share Poster"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerHaptic("light");
+                        onClose();
+                      }}
+                      aria-label={
+                        isIndonesian ? "Selesai melihat rekap" : "Done viewing recap"
+                      }
+                      className={`flex-1 py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg ${
+                        isDark
+                          ? "bg-white text-black hover:bg-zinc-100"
+                          : "bg-black text-white hover:bg-zinc-900"
+                      }`}
+                    >
+                      <span>{isIndonesian ? "Selesai" : "Done"}</span>
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
