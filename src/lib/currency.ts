@@ -65,9 +65,29 @@ export interface ExchangeRatesData {
 const STORAGE_KEY = "trouvaille_exchange_rates_v1";
 const PREFERRED_CURRENCY_KEY = "trouvaille_preferred_currency";
 
+const memoryStorage: Record<string, string> = {};
+
+function safeGetStorage(key: string): string | null {
+  try {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(key);
+    }
+  } catch {}
+  return memoryStorage[key] ?? null;
+}
+
+function safeSetStorage(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(key, value);
+    }
+  } catch {}
+  memoryStorage[key] = value;
+}
+
 export function getCachedRates(): ExchangeRatesData {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeGetStorage(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.rates && parsed.rates.USD) {
@@ -86,7 +106,7 @@ export function getCachedRates(): ExchangeRatesData {
 
 export function saveCachedRates(data: ExchangeRatesData): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    safeSetStorage(STORAGE_KEY, JSON.stringify(data));
   } catch {
     // ignore storage quota errors
   }
@@ -157,6 +177,198 @@ export function convertCurrency(
   return targetAmount;
 }
 
+/**
+ * Calculate the exact cross exchange rate between any two currencies.
+ * E.g., calculateCrossRate("USD", "IDR") => 15850 (1 USD = 15850 IDR)
+ * E.g., calculateCrossRate("USD", "SGD") => 1.341 (1 USD = 1.341 SGD)
+ */
+export function calculateCrossRate(
+  from: SupportedCurrency,
+  to: SupportedCurrency,
+  customRates?: Record<SupportedCurrency, number>
+): number {
+  if (from === to) return 1;
+  const rates = customRates || getCachedRates().rates;
+  const rateFrom = rates[from] || DEFAULT_RATES[from] || 1;
+  const rateTo = rates[to] || DEFAULT_RATES[to] || 1;
+
+  if (rateFrom <= 0) return 1;
+  return rateTo / rateFrom;
+}
+
+/**
+ * Generate a complete cross rate matrix across specified currencies.
+ */
+export function getCrossRateMatrix(
+  currencies: SupportedCurrency[] = ["IDR", "USD", "SGD", "EUR", "JPY", "MYR", "USDT"],
+  customRates?: Record<SupportedCurrency, number>
+): Record<string, number> {
+  const matrix: Record<string, number> = {};
+  currencies.forEach((from) => {
+    currencies.forEach((to) => {
+      const key = `${from}_${to}`;
+      matrix[key] = calculateCrossRate(from, to, customRates);
+    });
+  });
+  return matrix;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Foreign Asset Revaluation Engine (Audit #42)
+// Implements IFRS/IAS 21 compliant Foreign Currency Asset Revaluation
+// Decomposes total holding PnL into pure asset capital gain vs FX movement
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ForeignAssetRevaluationParams {
+  units: number;
+  nativeCostPrice: number;
+  nativeCurrentPrice: number;
+  nativeCurrency: SupportedCurrency;
+  baseCurrency?: SupportedCurrency;
+  costExchangeRate?: number;
+  currentExchangeRate?: number;
+  rates?: Record<SupportedCurrency, number>;
+  isIndonesian?: boolean;
+}
+
+export interface ForeignAssetRevaluationResult {
+  units: number;
+  nativeCurrency: SupportedCurrency;
+  baseCurrency: SupportedCurrency;
+  nativeCostBasis: number;
+  nativeMarketValue: number;
+  nativeGain: number;
+  nativeGainPct: number;
+  costExchangeRate: number;
+  currentExchangeRate: number;
+  fxRateChangePct: number;
+  baseCostBasis: number;
+  baseMarketValue: number;
+  totalBaseGain: number;
+  totalBaseGainPct: number;
+  assetCapitalGainBase: number;
+  currencyFxGainBase: number;
+  fxContributionPct: number;
+  fxGainType: "GAIN" | "LOSS" | "NEUTRAL";
+  statusBadge: string;
+  verdict: string;
+}
+
+export function calculateForeignAssetRevaluation({
+  units,
+  nativeCostPrice,
+  nativeCurrentPrice,
+  nativeCurrency,
+  baseCurrency = "IDR",
+  costExchangeRate,
+  currentExchangeRate,
+  rates,
+  isIndonesian = true,
+}: ForeignAssetRevaluationParams): ForeignAssetRevaluationResult {
+  const safeUnits = Math.max(0, Number(units) || 0);
+  const safeCostPrice = Math.max(0, Number(nativeCostPrice) || 0);
+  const safeCurrentPrice = Math.max(0, Number(nativeCurrentPrice) || 0);
+
+  const activeRates = rates || getCachedRates().rates;
+
+  // Derive current exchange rate (Base currency per 1 Native currency unit)
+  const derivedCurrentRate =
+    currentExchangeRate && currentExchangeRate > 0
+      ? currentExchangeRate
+      : calculateCrossRate(nativeCurrency, baseCurrency, activeRates);
+
+  const safeCurrentRate = derivedCurrentRate > 0 ? derivedCurrentRate : 1;
+  const safeCostRate =
+    costExchangeRate && costExchangeRate > 0
+      ? costExchangeRate
+      : safeCurrentRate;
+
+  // Native Currency Computations
+  const nativeCostBasis = safeUnits * safeCostPrice;
+  const nativeMarketValue = safeUnits * safeCurrentPrice;
+  const nativeGain = nativeMarketValue - nativeCostBasis;
+  const nativeGainPct =
+    nativeCostBasis > 0 ? (nativeGain / nativeCostBasis) * 100 : 0;
+
+  // Base Currency (e.g. IDR) Computations
+  const baseCostBasis = nativeCostBasis * safeCostRate;
+  const baseMarketValue = nativeMarketValue * safeCurrentRate;
+  const totalBaseGain = baseMarketValue - baseCostBasis;
+  const totalBaseGainPct =
+    baseCostBasis > 0 ? (totalBaseGain / baseCostBasis) * 100 : 0;
+
+  // Decompose Total Gain:
+  // Asset Capital Gain = (P_curr - P_cost) * Q * R_cost
+  // FX Gain = P_curr * Q * (R_curr - R_cost)
+  const assetCapitalGainBase = (safeCurrentPrice - safeCostPrice) * safeUnits * safeCostRate;
+  const currencyFxGainBase = nativeMarketValue * (safeCurrentRate - safeCostRate);
+
+  const fxRateDiff = safeCurrentRate - safeCostRate;
+  const fxRateChangePct =
+    safeCostRate > 0 ? (fxRateDiff / safeCostRate) * 100 : 0;
+
+  const fxContributionPct =
+    totalBaseGain !== 0
+      ? (currencyFxGainBase / Math.abs(totalBaseGain)) * 100
+      : 0;
+
+  let fxGainType: "GAIN" | "LOSS" | "NEUTRAL" = "NEUTRAL";
+  let statusBadge = isIndonesian ? "KURS NETRAL (0%)" : "NEUTRAL FX (0%)";
+  let verdict = "";
+
+  if (nativeCurrency === baseCurrency) {
+    statusBadge = isIndonesian ? "MATA UANG DASAR" : "BASE CURRENCY";
+    verdict = isIndonesian
+      ? "Aset didenominasi dalam mata uang dasar; tidak terdapat eksposur risiko fluktuasi nilai tukar."
+      : "Asset is denominated in base currency; zero foreign exchange volatility exposure.";
+  } else if (currencyFxGainBase > 0) {
+    fxGainType = "GAIN";
+    statusBadge = isIndonesian
+      ? `LABA KURS (+${fxRateChangePct.toFixed(1)}%)`
+      : `FX GAIN (+${fxRateChangePct.toFixed(1)}%)`;
+    verdict = isIndonesian
+      ? `Apresiasi nilai tukar ${nativeCurrency} menambah laba portofolio sebesar ${formatCurrencyAmount(currencyFxGainBase, baseCurrency)}.`
+      : `Exchange rate appreciation in ${nativeCurrency} contributed ${formatCurrencyAmount(currencyFxGainBase, baseCurrency)} to portfolio return.`;
+  } else if (currencyFxGainBase < 0) {
+    fxGainType = "LOSS";
+    statusBadge = isIndonesian
+      ? `RUGI KURS (${fxRateChangePct.toFixed(1)}%)`
+      : `FX LOSS (${fxRateChangePct.toFixed(1)}%)`;
+    verdict = isIndonesian
+      ? `Pelemahan kurs ${nativeCurrency} menggerus imbal hasil aset sebesar ${formatCurrencyAmount(Math.abs(currencyFxGainBase), baseCurrency)}.`
+      : `Exchange rate depreciation in ${nativeCurrency} reduced asset returns by ${formatCurrencyAmount(Math.abs(currencyFxGainBase), baseCurrency)}.`;
+  } else {
+    fxGainType = "NEUTRAL";
+    statusBadge = isIndonesian ? "KURS STABIL" : "STABLE FX";
+    verdict = isIndonesian
+      ? `Kurs nilai tukar ${nativeCurrency} terhadap ${baseCurrency} tidak mengalami perubahan sejak perolehan aset.`
+      : `Exchange rate for ${nativeCurrency} to ${baseCurrency} remained unchanged since acquisition.`;
+  }
+
+  return {
+    units: safeUnits,
+    nativeCurrency,
+    baseCurrency,
+    nativeCostBasis: Number(nativeCostBasis.toFixed(2)),
+    nativeMarketValue: Number(nativeMarketValue.toFixed(2)),
+    nativeGain: Number(nativeGain.toFixed(2)),
+    nativeGainPct: Number(nativeGainPct.toFixed(2)),
+    costExchangeRate: Number(safeCostRate.toFixed(4)),
+    currentExchangeRate: Number(safeCurrentRate.toFixed(4)),
+    fxRateChangePct: Number(fxRateChangePct.toFixed(2)),
+    baseCostBasis: Math.round(baseCostBasis),
+    baseMarketValue: Math.round(baseMarketValue),
+    totalBaseGain: Math.round(totalBaseGain),
+    totalBaseGainPct: Number(totalBaseGainPct.toFixed(2)),
+    assetCapitalGainBase: Math.round(assetCapitalGainBase),
+    currencyFxGainBase: Math.round(currencyFxGainBase),
+    fxContributionPct: Number(fxContributionPct.toFixed(1)),
+    fxGainType,
+    statusBadge,
+    verdict,
+  };
+}
+
 const FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
 
 export function getCachedNumberFormatter(
@@ -211,12 +423,10 @@ export function formatStoredCurrency(
   options?: { showCode?: boolean }
 ): string {
   try {
-    if (typeof localStorage !== "undefined") {
-      const pref = localStorage.getItem(PREFERRED_CURRENCY_KEY) as SupportedCurrency;
-      if (pref && CURRENCY_METADATA[pref]) {
-        const converted = convertCurrency(idrAmount, "IDR", pref);
-        return formatCurrencyAmount(converted, pref, options);
-      }
+    const pref = safeGetStorage(PREFERRED_CURRENCY_KEY) as SupportedCurrency;
+    if (pref && CURRENCY_METADATA[pref]) {
+      const converted = convertCurrency(idrAmount, "IDR", pref);
+      return formatCurrencyAmount(converted, pref, options);
     }
   } catch {}
   return formatCurrencyAmount(idrAmount, "IDR", options);
@@ -363,6 +573,24 @@ export function useCurrency() {
     [preferredCurrency, ratesData.rates]
   );
 
+  const getCrossRate = useCallback(
+    (from: SupportedCurrency, to: SupportedCurrency) => {
+      return calculateCrossRate(from, to, ratesData.rates);
+    },
+    [ratesData.rates]
+  );
+
+  const revalueForeignAsset = useCallback(
+    (params: Omit<ForeignAssetRevaluationParams, "rates">) => {
+      return calculateForeignAssetRevaluation({
+        ...params,
+        rates: ratesData.rates,
+        baseCurrency: params.baseCurrency || preferredCurrency,
+      });
+    },
+    [preferredCurrency, ratesData.rates]
+  );
+
   return useMemo(
     () => ({
       preferredCurrency,
@@ -375,6 +603,8 @@ export function useCurrency() {
       convertToIdr,
       formatWithPreferred,
       formatCompactWithPreferred,
+      getCrossRate,
+      revalueForeignAsset,
     }),
     [
       preferredCurrency,
@@ -387,6 +617,8 @@ export function useCurrency() {
       convertToIdr,
       formatWithPreferred,
       formatCompactWithPreferred,
+      getCrossRate,
+      revalueForeignAsset,
     ]
   );
 }

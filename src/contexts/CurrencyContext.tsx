@@ -6,9 +6,19 @@ import {
   CURRENCY_METADATA,
   DEFAULT_RATES,
   formatCurrencyAmount,
+  calculateCrossRate,
+  calculateForeignAssetRevaluation,
+  type ForeignAssetRevaluationParams,
+  type ForeignAssetRevaluationResult,
 } from "../lib/currency";
 
-export { formatCurrencyAmount };
+export {
+  formatCurrencyAmount,
+  calculateCrossRate,
+  calculateForeignAssetRevaluation,
+  type ForeignAssetRevaluationParams,
+  type ForeignAssetRevaluationResult,
+};
 
 export interface CurrencyContextValue {
   preferredCurrency: SupportedCurrency;
@@ -22,6 +32,10 @@ export interface CurrencyContextValue {
   convertToIdr: (foreignAmount: number, sourceCurr?: SupportedCurrency) => number;
   formatWithPreferred: (idrAmount: number, options?: { showCode?: boolean }) => string;
   formatCompactWithPreferred: (idrAmount: number) => string;
+  getCrossRate: (from: SupportedCurrency, to: SupportedCurrency) => number;
+  revalueForeignAsset: (
+    params: Omit<ForeignAssetRevaluationParams, "rates">
+  ) => ForeignAssetRevaluationResult;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
@@ -70,6 +84,16 @@ export function useCurrency(): CurrencyContextValue {
         if (abs >= 1_000) return Math.round(amt / 1_000) + "k";
         return Math.round(amt).toString();
       },
+      getCrossRate: (from: SupportedCurrency, to: SupportedCurrency) =>
+        calculateCrossRate(from, to, DEFAULT_RATES),
+      revalueForeignAsset: (
+        params: Omit<ForeignAssetRevaluationParams, "rates">
+      ) =>
+        calculateForeignAssetRevaluation({
+          ...params,
+          rates: DEFAULT_RATES,
+          baseCurrency: params.baseCurrency || "IDR",
+        }),
     };
   }
   return context;

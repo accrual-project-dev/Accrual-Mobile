@@ -15,7 +15,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import type { InvestmentHolding } from "../../lib/types";
 import type { UsdtValuationPref } from "../../lib/marketPriceService";
-import { calculateHoldingValuation } from "../../lib/marketPriceService";
+import { calculateHoldingValuation, USD_IDR_ESTIMATE } from "../../lib/marketPriceService";
 
 export interface DisplayHoldingItem extends InvestmentHolding {
   valuation: {
@@ -71,7 +71,7 @@ function formatNativeQuote(
   }
   if (h.native_currency === "USD" || h.currency === "USD") {
     const val =
-      h.native_price || (h.current_price ? h.current_price / 16300 : 0);
+      h.native_price || (h.current_price ? h.current_price / USD_IDR_ESTIMATE : 0);
     return `$${val >= 100 ? val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : val.toFixed(2)}`;
   }
   if (h.native_currency === "USDT") {
