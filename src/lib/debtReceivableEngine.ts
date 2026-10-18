@@ -114,6 +114,23 @@ export function calculateDebtStatus(
 }
 
 /**
+ * Sanitizes user note input by stripping placeholders like "-" and "--" (Rule 8.1).
+ */
+export function sanitizeNote(note?: string | null): string | null {
+  if (!note) return null;
+  const trimmed = note.trim();
+  if (
+    trimmed === "-" ||
+    trimmed === "--" ||
+    trimmed === "—" ||
+    trimmed === ""
+  ) {
+    return null;
+  }
+  return trimmed;
+}
+
+/**
  * Creates and saves a new debt or receivable record.
  */
 export function addDebtReceivableRecord(
@@ -146,7 +163,7 @@ export function addDebtReceivableRecord(
     remainingAmount: safeTotal,
     dueDate: input.dueDate || null,
     createdDate,
-    note: input.note ? input.note.trim() : null,
+    note: sanitizeNote(input.note),
     status: safeTotal === 0 ? "settled" : "unpaid",
     walletId: input.walletId || null,
     walletName: input.walletName || null,
@@ -184,6 +201,10 @@ export function updateDebtReceivableRecord(
     totalAmount: newTotal,
     remainingAmount,
     status,
+    note:
+      updates.note !== undefined
+        ? sanitizeNote(updates.note)
+        : current.note,
     updatedAt: new Date().toISOString(),
   };
 
@@ -247,7 +268,7 @@ export function addDebtRepayment(
     walletId: repaymentInput.walletId || null,
     walletName: repaymentInput.walletName || null,
     txId: repaymentInput.txId || null,
-    note: repaymentInput.note ? repaymentInput.note.trim() : null,
+    note: sanitizeNote(repaymentInput.note),
     createdAt: nowIso,
   };
 

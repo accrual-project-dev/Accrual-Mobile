@@ -630,8 +630,8 @@ export function DebtReceivablesSheet({
                 }}
                 className="h-9 px-3.5 rounded-xl font-semibold text-[11.5px] flex items-center gap-1.5 shrink-0 active:scale-95 transition-all cursor-pointer shadow-xs"
                 style={{
-                  background: isDark ? "#ffffff" : "#18181b",
-                  color: isDark ? "#000000" : "#ffffff",
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
                 }}
               >
                 <Plus size={13} strokeWidth={2.2} />
@@ -850,7 +850,7 @@ export function DebtReceivablesSheet({
                 }}
               >
                 <span className="text-[12px] font-semibold text-[var(--text-secondary)]">
-                  Rp
+                  {currencyMeta.symbol}
                 </span>
                 <input
                   type="text"
@@ -998,8 +998,8 @@ export function DebtReceivablesSheet({
                 onClick={handleSaveNewRecord}
                 className="flex-1 h-11 rounded-xl text-[12px] font-semibold active:scale-95 transition-all cursor-pointer shadow-xs"
                 style={{
-                  background: isDark ? "#ffffff" : "#18181b",
-                  color: isDark ? "#000000" : "#ffffff",
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
                 }}
               >
                 {isIndonesian ? "Simpan Catatan" : "Save Record"}
@@ -1234,8 +1234,8 @@ export function DebtReceivablesSheet({
                 onClick={handleConfirmRepayment}
                 className="flex-1 h-11 rounded-xl text-[12px] font-semibold active:scale-95 transition-all cursor-pointer shadow-xs"
                 style={{
-                  background: isDark ? "#ffffff" : "#18181b",
-                  color: isDark ? "#000000" : "#ffffff",
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
                 }}
               >
                 {isIndonesian ? "Simpan Pembayaran" : "Confirm Payment"}
@@ -1407,8 +1407,8 @@ export function DebtReceivablesSheet({
                 onClick={handleSaveEditRecord}
                 className="flex-1 h-9 rounded-xl font-semibold text-[11.5px] active:scale-95 transition-all cursor-pointer shadow-xs"
                 style={{
-                  background: isDark ? "#ffffff" : "#18181b",
-                  color: isDark ? "#000000" : "#ffffff",
+                  background: "var(--text-primary)",
+                  color: "var(--bg-base)",
                 }}
               >
                 {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
@@ -1600,7 +1600,7 @@ export function DebtReceivablesSheet({
                         className="h-full rounded-full transition-all duration-500"
                         style={{
                           width: `${repaidPct}%`,
-                          background: isDark ? "#ffffff" : "#18181b",
+                          background: "var(--text-primary)",
                         }}
                       />
                     </div>
@@ -1615,8 +1615,8 @@ export function DebtReceivablesSheet({
                           onClick={() => handleOpenRepayModal(record)}
                           className="px-2.5 py-1 rounded-lg text-[10.5px] font-semibold active:scale-95 transition-all cursor-pointer shadow-2xs"
                           style={{
-                            background: isDark ? "#ffffff" : "#18181b",
-                            color: isDark ? "#000000" : "#ffffff",
+                            background: "var(--text-primary)",
+                            color: "var(--bg-base)",
                           }}
                         >
                           {isIndonesian ? "Catat Pelunasan" : "Record Repayment"}
@@ -1721,8 +1721,8 @@ export function DebtReceivablesSheet({
             onClick={onClose}
             className="w-full h-11 rounded-2xl font-semibold text-[12.5px] flex items-center justify-center transition-all active:scale-[0.985] cursor-pointer shadow-xs"
             style={{
-              background: isDark ? "#ffffff" : "#18181b",
-              color: isDark ? "#000000" : "#ffffff",
+              background: "var(--text-primary)",
+              color: "var(--bg-base)",
             }}
           >
             {isIndonesian ? "Selesai" : "Done"}

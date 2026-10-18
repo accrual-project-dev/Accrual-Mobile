@@ -135,6 +135,7 @@ export async function clearAllLocalUserSessionData(
           k.startsWith("trouvaille_wallets_") ||
           k.startsWith("trouvaille_transactions_") ||
           k.startsWith("trouvaille_categories_") ||
+          k.startsWith("trouvaille_debt_receivables_") ||
           k.startsWith("trouvaille_") ||
           k.startsWith("accrual_") ||
           k.startsWith("accrual:")
