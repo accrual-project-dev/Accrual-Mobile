@@ -27,9 +27,13 @@ const BILL_ALIAS_GROUPS: string[][] = [
   ["pdam", "air", "tagihan air", "tirtanadi", "aetra", "palyja"],
   ["bpjs", "bpjs kesehatan", "bpjs ketenagakerjaan"],
   ["indihome", "telkom", "wifi", "internet", "biznet", "myrepublic", "first media", "cbn"],
-  ["netflix", "spotify", "youtube premium", "disney", "disney+", "hbo", "vidio", "prime video", "apple"],
-  ["kost", "kos", "kontrakan", "sewa kos", "sewa rumah"],
-  ["asuransi", "prudential", "allianz", "manulife", "axa"],
+  ["telkomsel", "by u", "by.u", "indosat", "im3", "xl", "tri", "three", "smartfren", "pulsa", "paket data"],
+  ["netflix", "spotify", "youtube", "youtube premium", "disney", "disney+", "hbo", "vidio", "prime video", "apple music", "apple tv", "deezer"],
+  ["chatgpt", "openai", "midjourney", "claude", "anthropic", "icloud", "google one", "google storage", "dropbox", "github", "cursor", "copilot", "vercel", "aws"],
+  ["kost", "kos", "kontrakan", "sewa kos", "sewa rumah", "ipl", "maintenance fee", "service charge", "apartemen"],
+  ["gym", "fitness", "celebrity fitness", "fitness first", "gold's gym", "refit", "f45"],
+  ["asuransi", "prudential", "allianz", "manulife", "axa", "sinarmas", "aia", "sequis"],
+  ["pbb", "samsat", "stnk", "pajak", "pbb p2"],
 ];
 
 function areTitlesRelated(txTitle: string, billTitle: string): boolean {

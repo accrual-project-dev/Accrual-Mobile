@@ -177,10 +177,10 @@ export function useBillsDueOn(date: string) {
   return (bills ?? []).filter((b) => b.due_date === date && !b.is_paid);
 }
 
-export function getDaysUntilDue(dueDate: string): number {
+export function getDaysUntilDue(dueDate: string, referenceDate = new Date()): number {
   if (!dueDate) return 0;
   try {
-    const today = new Date();
+    const today = new Date(referenceDate);
     today.setHours(0, 0, 0, 0);
     const due = parseISO(dueDate);
     if (!isValid(due)) return 0;
@@ -190,8 +190,12 @@ export function getDaysUntilDue(dueDate: string): number {
   }
 }
 
-export function getBillDueStatusLabel(dueDate: string, isIndonesian?: boolean): string {
-  const days = getDaysUntilDue(dueDate);
+export function getBillDueStatusLabel(
+  dueDate: string,
+  isIndonesian?: boolean,
+  referenceDate = new Date(),
+): string {
+  const days = getDaysUntilDue(dueDate, referenceDate);
   if (days < 0) {
     const abs = Math.abs(days);
     return isIndonesian
@@ -227,6 +231,107 @@ export function getNextDueDate(bill: Bill): string | null {
   } catch {
     return null;
   }
+}
+
+export interface CashflowObligationSummary {
+  totalMonthlyCommitment: number;
+  totalPendingAmount: number;
+  totalPaidAmount: number;
+  totalPendingCount: number;
+  totalPaidCount: number;
+  upcoming7DaysCount: number;
+  upcoming7DaysAmount: number;
+  overdueCount: number;
+  overdueAmount: number;
+}
+
+export function calculateCashflowObligations(
+  bills: Bill[],
+  referenceDate = new Date()
+): CashflowObligationSummary {
+  const refYear = referenceDate.getFullYear();
+  const refMonth = referenceDate.getMonth();
+
+  let totalMonthlyCommitment = 0;
+  let totalPendingAmount = 0;
+  let totalPaidAmount = 0;
+  let totalPendingCount = 0;
+  let totalPaidCount = 0;
+  let upcoming7DaysCount = 0;
+  let upcoming7DaysAmount = 0;
+  let overdueCount = 0;
+  let overdueAmount = 0;
+
+  for (const b of bills) {
+    const amount = Number(b.amount) || 0;
+    if (amount <= 0) continue;
+
+    // 1. Calculate normalized monthly commitment (run-rate burn)
+    switch (b.repeat_rule) {
+      case "weekly":
+        totalMonthlyCommitment += (amount * 52) / 12;
+        break;
+      case "monthly":
+        totalMonthlyCommitment += amount;
+        break;
+      case "yearly":
+        totalMonthlyCommitment += amount / 12;
+        break;
+      case "none":
+      default: {
+        // If one-off bill is due in reference month, include it
+        if (b.due_date) {
+          try {
+            const due = parseISO(b.due_date);
+            if (isValid(due) && due.getFullYear() === refYear && due.getMonth() === refMonth) {
+              totalMonthlyCommitment += amount;
+            }
+          } catch {}
+        }
+        break;
+      }
+    }
+
+    // 2. Settlement status
+    if (b.is_paid) {
+      totalPaidCount += 1;
+      totalPaidAmount += amount;
+    } else {
+      totalPendingCount += 1;
+      totalPendingAmount += amount;
+
+      if (b.due_date) {
+        const days = getDaysUntilDue(b.due_date, referenceDate);
+        if (days < 0) {
+          overdueCount += 1;
+          overdueAmount += amount;
+        } else if (days <= 7) {
+          upcoming7DaysCount += 1;
+          upcoming7DaysAmount += amount;
+        }
+      }
+    }
+  }
+
+  return {
+    totalMonthlyCommitment: Math.round(totalMonthlyCommitment),
+    totalPendingAmount: Math.round(totalPendingAmount),
+    totalPaidAmount: Math.round(totalPaidAmount),
+    totalPendingCount,
+    totalPaidCount,
+    upcoming7DaysCount,
+    upcoming7DaysAmount: Math.round(upcoming7DaysAmount),
+    overdueCount,
+    overdueAmount: Math.round(overdueAmount),
+  };
+}
+
+export function useBillObligations(referenceDate = new Date()): CashflowObligationSummary {
+  const { data: bills = [] } = useBills();
+  return useMemo(
+    () => calculateCashflowObligations(bills, referenceDate),
+    [bills, referenceDate]
+  );
 }
 
 export function useAddBill() {
