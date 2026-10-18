@@ -518,9 +518,9 @@ export function CalendarPage() {
           bill={payingBill}
           onClose={() => setPayingBill(null)}
           isPending={markBillPaidMutation.isPending}
-          onConfirmPaid={({ bill, recordTransaction, walletId }) => {
+          onConfirmPaid={({ bill, recordTransaction, walletId, occurredOn }) => {
             markBillPaidMutation.mutate(
-              { bill, paid: true, recordTransaction, walletId, isIndonesian },
+              { bill, paid: true, recordTransaction, walletId, isIndonesian, occurredOn },
               {
                 onSuccess: () => {
                   setPayingBill(null);

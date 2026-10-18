@@ -364,6 +364,7 @@ export function useMarkBillPaid() {
       walletId,
       note,
       isIndonesian = true,
+      occurredOn,
     }: {
       bill: Bill;
       paid: boolean;
@@ -371,6 +372,7 @@ export function useMarkBillPaid() {
       walletId?: string;
       note?: string;
       isIndonesian?: boolean;
+      occurredOn?: string;
     }) => {
       const updateData: Partial<Bill> = { is_paid: paid };
       const { data, error } = await supabase
@@ -395,7 +397,7 @@ export function useMarkBillPaid() {
             type: "expense",
             category_id: bill.category_id || null,
             wallet_id: walletId || bill.wallet_id || null,
-            occurred_on: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
+            occurred_on: occurredOn || format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
             note: txNote,
           });
         } catch (err) {

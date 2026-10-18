@@ -710,9 +710,9 @@ export function BillManagementSheets({
           bill={payingBill}
           onClose={() => setPayingBill(null)}
           isPending={markBillPaid.isPending}
-          onConfirmPaid={({ bill, recordTransaction, walletId }) => {
+          onConfirmPaid={({ bill, recordTransaction, walletId, occurredOn }) => {
             markBillPaid.mutate(
-              { bill, paid: true, recordTransaction, walletId, isIndonesian },
+              { bill, paid: true, recordTransaction, walletId, isIndonesian, occurredOn },
               {
                 onSuccess: () => {
                   setPayingBill(null);

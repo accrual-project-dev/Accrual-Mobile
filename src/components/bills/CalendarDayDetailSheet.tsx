@@ -6,10 +6,11 @@ import {
   Coins,
   ShieldCheck,
 } from "lucide-react";
-import { format, type Locale } from "date-fns";
+import { format, isYesterday, isTomorrow, isToday, type Locale } from "date-fns";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { triggerHaptic } from "../../lib/haptics";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import type { CalendarDayForecast } from "../../lib/calendarForecasting";
 import type { Bill, Transaction } from "../../lib/types";
 
@@ -38,14 +39,16 @@ export function CalendarDayDetailSheet({
   displayCurrency,
   displayRupiah,
 }: CalendarDayDetailSheetProps) {
-  const formatAmount = displayCurrency || displayRupiah || ((v: number) => String(v));
+  const { formatWithPreferred } = useCurrency();
+  const formatAmount = displayCurrency || displayRupiah || formatWithPreferred;
+
   return (
     <BottomSheet isOpen={!!selectedDay} onClose={onClose}>
       <div
         className="px-5"
         style={{
           paddingBottom:
-            "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 28px)",
+            "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
         }}
       >
         {selectedDay && selectedDayForecast && (
@@ -65,17 +68,25 @@ export function CalendarDayDetailSheet({
                   className="text-[12px] font-medium"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  {selectedDayForecast.isToday
+                  {isToday(selectedDay)
                     ? isIndonesian
                       ? "Hari Ini"
                       : "Today"
-                    : selectedDayForecast.isFuture
+                    : isTomorrow(selectedDay)
                       ? isIndonesian
-                        ? "Proyeksi Masa Depan"
-                        : "Future Projection"
-                      : isIndonesian
-                        ? "Transaksi Lampau"
-                        : "Past Transactions"}
+                        ? "Besok • Proyeksi"
+                        : "Tomorrow • Projection"
+                      : isYesterday(selectedDay)
+                        ? isIndonesian
+                          ? "Kemarin • Transaksi Lampau"
+                          : "Yesterday • Past Transactions"
+                        : selectedDayForecast.isFuture
+                          ? isIndonesian
+                            ? "Proyeksi Masa Depan"
+                            : "Future Projection"
+                          : isIndonesian
+                            ? "Transaksi Lampau"
+                            : "Past Transactions"}
                 </p>
               </div>
 
@@ -218,7 +229,7 @@ export function CalendarDayDetailSheet({
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className="w-8 h-8 rounded-xl flex items-center justify-center"
+                            className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)]"
                             style={{
                               background: "var(--bg-elevated)",
                               border: "1px solid var(--glass-border)",
@@ -404,7 +415,7 @@ export function CalendarDayDetailSheet({
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className="w-8 h-8 rounded-xl flex items-center justify-center"
+                            className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)]"
                             style={{
                               background: "var(--bg-elevated)",
                               border: "1px solid var(--glass-border)",
@@ -497,13 +508,18 @@ export function CalendarDayDetailSheet({
                         style={{ border: "1px solid var(--glass-border)" }}
                       >
                         <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-lg text-[var(--text-primary)]"
                           style={{
                             background: "var(--bg-elevated)",
                             border: "1px solid var(--glass-border)",
                           }}
                         >
-                          <IconRenderer icon={tx.categories?.emoji ?? "??"} />
+                          <IconRenderer
+                            icon={
+                              tx.categories?.emoji ||
+                              "Tag"
+                            }
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p

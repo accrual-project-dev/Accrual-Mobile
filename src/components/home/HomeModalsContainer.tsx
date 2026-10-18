@@ -315,9 +315,9 @@ export function HomeModalsContainer({
             bill={payingBill}
             onClose={onClosePayingBill}
             isPending={markBillPaid.isPending}
-            onConfirmPaid={({ bill, recordTransaction, walletId }) => {
+            onConfirmPaid={({ bill, recordTransaction, walletId, occurredOn }) => {
               markBillPaid.mutate(
-                { bill, paid: true, recordTransaction, walletId },
+                { bill, paid: true, recordTransaction, walletId, isIndonesian, occurredOn },
                 {
                   onSuccess: () => {
                     onClosePayingBill();

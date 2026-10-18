@@ -17,15 +17,18 @@ import {
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
+export interface PayBillSettlementParams {
+  bill: Bill;
+  recordTransaction: boolean;
+  walletId?: string;
+  occurredOn?: string;
+}
+
 interface PayBillModalProps {
   isOpen: boolean;
   onClose: () => void;
   bill: Bill | null;
-  onConfirmPaid: (params: {
-    bill: Bill;
-    recordTransaction: boolean;
-    walletId?: string;
-  }) => void;
+  onConfirmPaid: (params: PayBillSettlementParams) => void;
   isPending?: boolean;
 }
 
@@ -65,6 +68,7 @@ export function PayBillModal({
       bill,
       recordTransaction: paymentMode === "personal",
       walletId: paymentMode === "personal" ? selectedWalletId : undefined,
+      occurredOn: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
     });
   };
 
@@ -82,7 +86,7 @@ export function PayBillModal({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),32px)] space-y-4">
+      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)] space-y-4">
         {/* Header Bar */}
         <div className="flex items-center gap-2.5">
           <div
@@ -175,8 +179,8 @@ export function PayBillModal({
                   </h5>
                   <p className="text-[11px] text-[var(--text-tertiary)]">
                     {isIndonesian
-                      ? "Potong saldo akun dan catat pengeluaran di space"
-                      : "Deduct account balance and record expense"}
+                      ? "Potong saldo akun dan catat transaksi pengeluaran"
+                      : "Deduct account balance and record expense transaction"}
                   </p>
                 </div>
               </div>
@@ -231,6 +235,16 @@ export function PayBillModal({
                 </div>
               </div>
             )}
+
+            {paymentMode === "personal" && wallets.length === 0 && (
+              <div className="pt-2 border-t border-[var(--glass-border)] text-center py-2">
+                <p className="text-[11px] text-[var(--text-tertiary)]">
+                  {isIndonesian
+                    ? "Belum ada akun dompet aktif. Tambahkan akun terlebih dahulu atau gunakan opsi pembayaran pihak ketiga."
+                    : "No active accounts found. Please add an account first or settle via third party."}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Option 2: Paid by Someone Else */}
@@ -261,7 +275,7 @@ export function PayBillModal({
                 </h5>
                 <p className="text-[11px] text-[var(--text-tertiary)]">
                   {isIndonesian
-                    ? "Tandai lunas tanpa memotong saldo akun & tanpa catat transaksi"
+                    ? "Tandai lunas tanpa memotong saldo akun & tanpa mencatat transaksi"
                     : "Mark as paid without recording any transaction or debiting funds"}
                 </p>
               </div>
