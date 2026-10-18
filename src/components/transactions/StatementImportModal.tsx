@@ -824,6 +824,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                 border: "1px solid var(--glass-border)",
                 color: "var(--text-secondary)",
               }}
+              title={isIndonesian ? "Tutup" : "Close"}
+              aria-label={isIndonesian ? "Tutup" : "Close"}
             >
               <X size={15} />
             </button>
@@ -842,6 +844,10 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
               className="flex-1 overflow-y-auto p-5 space-y-4"
+              style={{
+                paddingBottom:
+                  "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+              }}
             >
               {/* Compact Inset Bar: Destination Wallet + Compact Privacy Badge */}
               <div
@@ -1319,7 +1325,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               <div
                 className="p-4 border-t border-[var(--glass-border)] shrink-0 flex items-center gap-2"
                 style={{
-                  paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px)",
+                  paddingBottom:
+                    "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
                 }}
               >
                 <button
@@ -1693,7 +1700,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               <div
                 className="p-4 border-t border-[var(--glass-border)] shrink-0 flex items-center gap-2"
                 style={{
-                  paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px)",
+                  paddingBottom:
+                    "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
                 }}
               >
                 <button
@@ -1780,7 +1788,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
         <div
           className="grid grid-cols-3 gap-2.5 p-2"
           style={{
-            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)",
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           {categories.map((cat) => (
@@ -1820,7 +1829,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
         <div
           className="space-y-3 p-2"
           style={{
-            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)",
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           {/* Search Box */}
@@ -1971,7 +1981,8 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
         <div
           className="space-y-2 p-2"
           style={{
-            paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)",
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
           }}
         >
           {wallets

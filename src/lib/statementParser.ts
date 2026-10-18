@@ -558,35 +558,33 @@ export function parseStatementText(
       }
 
       // Arrow Transfer in Description check (e.g. "BCA → Mandiri", "ShopeePay -> Cash", "BNI ke Blu")
-      if (type !== "transfer") {
-        const arrowCleanedDesc = sanitizeTransferArrowText(description || cleanDesc);
-        const arrowParts = arrowCleanedDesc.split(" → ");
-        if (arrowParts.length === 2 && arrowParts[0].trim() && arrowParts[1].trim()) {
-          const srcCandidate = arrowParts[0].trim();
-          const dstCandidate = arrowParts[1].trim();
+      const arrowCleanedDesc = sanitizeTransferArrowText(description || cleanDesc);
+      const arrowParts = arrowCleanedDesc.split(" → ");
+      if (arrowParts.length === 2 && arrowParts[0].trim() && arrowParts[1].trim()) {
+        const srcCandidate = arrowParts[0].trim();
+        const dstCandidate = arrowParts[1].trim();
 
-          const matchedSrc = wallets.find(
-            (w) => w.name.toLowerCase().trim() === srcCandidate.toLowerCase()
-          );
-          const matchedDst = wallets.find(
-            (w) => w.name.toLowerCase().trim() === dstCandidate.toLowerCase()
-          );
+        const matchedSrc = wallets.find(
+          (w) => w.name.toLowerCase().trim() === srcCandidate.toLowerCase()
+        );
+        const matchedDst = wallets.find(
+          (w) => w.name.toLowerCase().trim() === dstCandidate.toLowerCase()
+        );
 
-          if (matchedSrc || matchedDst) {
-            type = "transfer";
-            if (matchedSrc) {
-              itemWalletId = matchedSrc.id;
-              itemWalletName = matchedSrc.name;
-            } else if (!itemWalletName) {
-              itemWalletName = srcCandidate;
-            }
+        if (matchedSrc || matchedDst || type === "transfer") {
+          type = "transfer";
+          if (matchedSrc) {
+            itemWalletId = matchedSrc.id;
+            itemWalletName = matchedSrc.name;
+          } else if (!itemWalletName) {
+            itemWalletName = srcCandidate;
+          }
 
-            if (matchedDst) {
-              destinationWalletId = matchedDst.id;
-              destinationWalletName = matchedDst.name;
-            } else {
-              destinationWalletName = dstCandidate;
-            }
+          if (matchedDst) {
+            destinationWalletId = matchedDst.id;
+            destinationWalletName = matchedDst.name;
+          } else if (!destinationWalletName) {
+            destinationWalletName = dstCandidate;
           }
         }
       }
@@ -832,25 +830,23 @@ export function parseStatementText(
     let destinationWalletName: string | null = null;
 
     // Arrow Transfer in Description check
-    if ((type as TransactionType) !== "transfer") {
-      const arrowCleanedDesc = sanitizeTransferArrowText(description || cleanDesc);
-      const arrowParts = arrowCleanedDesc.split(" → ");
-      if (arrowParts.length === 2 && arrowParts[0].trim() && arrowParts[1].trim()) {
-        const srcCandidate = arrowParts[0].trim();
-        const dstCandidate = arrowParts[1].trim();
+    const arrowCleanedDesc = sanitizeTransferArrowText(description || cleanDesc);
+    const arrowParts = arrowCleanedDesc.split(" → ");
+    if (arrowParts.length === 2 && arrowParts[0].trim() && arrowParts[1].trim()) {
+      const srcCandidate = arrowParts[0].trim();
+      const dstCandidate = arrowParts[1].trim();
 
-        const matchedDst = wallets.find(
-          (w) => w.name.toLowerCase().trim() === dstCandidate.toLowerCase()
-        );
-        const matchedSrc = wallets.find(
-          (w) => w.name.toLowerCase().trim() === srcCandidate.toLowerCase()
-        );
+      const matchedDst = wallets.find(
+        (w) => w.name.toLowerCase().trim() === dstCandidate.toLowerCase()
+      );
+      const matchedSrc = wallets.find(
+        (w) => w.name.toLowerCase().trim() === srcCandidate.toLowerCase()
+      );
 
-        if (matchedSrc || matchedDst) {
-          type = "transfer";
-          destinationWalletId = matchedDst ? matchedDst.id : null;
-          destinationWalletName = matchedDst ? matchedDst.name : dstCandidate;
-        }
+      if (matchedSrc || matchedDst || (type as TransactionType) === "transfer") {
+        type = "transfer";
+        destinationWalletId = matchedDst ? matchedDst.id : null;
+        destinationWalletName = matchedDst ? matchedDst.name : dstCandidate;
       }
     }
 
