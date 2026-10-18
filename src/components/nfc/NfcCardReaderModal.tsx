@@ -10,91 +10,26 @@ import {
   TrainTrack,
   Bus,
 } from "lucide-react";
-import { formatRupiah } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWallets } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useCategories } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
 import { format } from "date-fns";
+import {
+  INDONESIAN_CARD_PRESETS,
+  type EmoneyCardData,
+  matchWalletForEmoneyCard,
+  calculateNfcSyncDelta,
+  formatNfcTapTimestamp,
+  isWebNfcAvailable,
+} from "../../lib/emoneyNfc";
 
-export interface EmoneyCardData {
-  id: string;
-  cardType: "flazz" | "emoney" | "tapcash" | "brizzi" | "jakcard";
-  issuerName: string;
-  productName: string;
-  cardUid: string;
-  balance: number;
-  lastTapLocation: string;
-  lastTapTransitType: "mrt" | "toll" | "bus";
-  lastTapAmount: number;
-  lastTapTimestamp: string;
-}
-
-export const INDONESIAN_CARD_PRESETS: EmoneyCardData[] = [
-  {
-    id: "flazz-bca-1",
-    cardType: "flazz",
-    issuerName: "Bank Central Asia",
-    productName: "Flazz BCA Gen 2",
-    cardUid: "6011 8291 0021 8243",
-    balance: 142500,
-    lastTapLocation: "Stasiun MRT Bundaran HI",
-    lastTapTransitType: "mrt",
-    lastTapAmount: 4000,
-    lastTapTimestamp: "Today, 08:45 WIB",
-  },
-  {
-    id: "mandiri-emoney-1",
-    cardType: "emoney",
-    issuerName: "Bank Mandiri",
-    productName: "Mandiri E-Money",
-    cardUid: "6032 1083 4912 7701",
-    balance: 87000,
-    lastTapLocation: "Gerbang Tol Cilandak Barat",
-    lastTapTransitType: "toll",
-    lastTapAmount: 17000,
-    lastTapTimestamp: "Yesterday, 19:10 WIB",
-  },
-  {
-    id: "bni-tapcash-1",
-    cardType: "tapcash",
-    issuerName: "Bank Negara Indonesia",
-    productName: "BNI TapCash",
-    cardUid: "6019 4432 9811 3042",
-    balance: 53500,
-    lastTapLocation: "Halte TransJakarta Tosari",
-    lastTapTransitType: "bus",
-    lastTapAmount: 3500,
-    lastTapTimestamp: "2 days ago, 12:20 WIB",
-  },
-  {
-    id: "bri-brizzi-1",
-    cardType: "brizzi",
-    issuerName: "Bank Rakyat Indonesia",
-    productName: "BRI Brizzi",
-    cardUid: "6023 5519 8203 1194",
-    balance: 210000,
-    lastTapLocation: "Stasiun LRT Dukuh Atas",
-    lastTapTransitType: "mrt",
-    lastTapAmount: 5000,
-    lastTapTimestamp: "3 days ago, 17:35 WIB",
-  },
-  {
-    id: "jakcard-dki-1",
-    cardType: "jakcard",
-    issuerName: "Bank DKI",
-    productName: "JakCard Commuter",
-    cardUid: "6041 9012 3345 8892",
-    balance: 34000,
-    lastTapLocation: "Monumen Nasional (Monas)",
-    lastTapTransitType: "bus",
-    lastTapAmount: 3500,
-    lastTapTimestamp: "Sep 15, 14:15 WIB",
-  },
-];
+// Re-export for 100% backward compatibility
+export { INDONESIAN_CARD_PRESETS, type EmoneyCardData };
 
 interface NfcCardReaderModalProps {
   isOpen: boolean;
@@ -103,6 +38,7 @@ interface NfcCardReaderModalProps {
 
 export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps) {
   const { isIndonesian } = useLanguage();
+  const { formatWithPreferred } = useCurrency();
   const { showToast } = useToast();
   const { data: wallets = [] } = useWallets();
   const { balancesById, balancesByName } = useWalletBalances();
@@ -117,7 +53,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
 
   // Check Web NFC support on mount
   useEffect(() => {
-    if (typeof window !== "undefined" && "NDEFReader" in window) {
+    if (isWebNfcAvailable()) {
       setHasNfcHardware(true);
     }
   }, []);
@@ -129,11 +65,12 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
       setDetectedCard(null);
 
       // Attempt live Web NFC if available
-      if (typeof window !== "undefined" && "NDEFReader" in window) {
+      if (isWebNfcAvailable()) {
         try {
           const controller = new AbortController();
           ndefAbortRef.current = controller;
           const ndef = new (window as any).NDEFReader();
+
           ndef.scan({ signal: controller.signal }).then(() => {
             ndef.onreading = (event: any) => {
               triggerHaptic("heavy");
@@ -180,21 +117,12 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
     if (!detectedCard || isSyncing) return;
     triggerHaptic("medium");
 
-    // Check if wallet exists with matching name
-    const targetWallet = wallets.find((w) =>
-      w.name.toLowerCase().includes(detectedCard.cardType) ||
-      w.name.toLowerCase().includes(detectedCard.issuerName.toLowerCase().replace("bank ", "")) ||
-      w.name.toLowerCase().includes("flazz") ||
-      w.name.toLowerCase().includes("e-money") ||
-      w.name.toLowerCase().includes("emoney") ||
-      w.name.toLowerCase().includes("tapcash") ||
-      w.name.toLowerCase().includes("brizzi") ||
-      w.name.toLowerCase().includes("jakcard")
-    );
+    // Match wallet using smartcard recognition helper
+    const targetWallet = matchWalletForEmoneyCard(wallets, detectedCard);
 
     if (targetWallet) {
       const currentBal = balancesById[targetWallet.id] ?? balancesByName[targetWallet.name.toLowerCase()] ?? 0;
-      const delta = detectedCard.balance - currentBal;
+      const delta = calculateNfcSyncDelta(detectedCard.balance, currentBal);
 
       if (delta !== 0) {
         setIsSyncing(true);
@@ -204,15 +132,15 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
             type: "adjustment",
             wallet_id: targetWallet.id,
             category_id: null,
-            occurred_on: format(new Date(), "yyyy-MM-dd"),
+            occurred_on: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
             note: delta > 0
               ? `NFC Balance Sync ${detectedCard.productName} (+)`
               : `NFC Balance Sync ${detectedCard.productName} (-)`,
           });
           showToast(
             isIndonesian
-              ? `Saldo ${targetWallet.name} disinkronkan ke ${formatRupiah(detectedCard.balance)}`
-              : `Synchronized ${targetWallet.name} to ${formatRupiah(detectedCard.balance)}`,
+              ? `Saldo ${targetWallet.name} disinkronkan ke ${formatWithPreferred(detectedCard.balance)}`
+              : `Synchronized ${targetWallet.name} to ${formatWithPreferred(detectedCard.balance)}`,
             "add",
             () => {}
           );
@@ -228,8 +156,8 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
       } else {
         showToast(
           isIndonesian
-            ? `Saldo ${targetWallet.name} sudah sesuai (${formatRupiah(detectedCard.balance)})`
-            : `${targetWallet.name} is already up to date (${formatRupiah(detectedCard.balance)})`,
+            ? `Saldo ${targetWallet.name} sudah sesuai (${formatWithPreferred(detectedCard.balance)})`
+            : `${targetWallet.name} is already up to date (${formatWithPreferred(detectedCard.balance)})`,
           "update",
           () => {}
         );
@@ -237,8 +165,8 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
     } else {
       showToast(
         isIndonesian
-          ? `Terverifikasi ${detectedCard.productName}: ${formatRupiah(detectedCard.balance)}. Tambahkan rekening "${detectedCard.productName}" untuk menautkan`
-          : `Verified ${detectedCard.productName}: ${formatRupiah(detectedCard.balance)}. Add wallet "${detectedCard.productName}" to link`,
+          ? `Terverifikasi ${detectedCard.productName}: ${formatWithPreferred(detectedCard.balance)}. Tambahkan rekening "${detectedCard.productName}" untuk menautkan`
+          : `Verified ${detectedCard.productName}: ${formatWithPreferred(detectedCard.balance)}. Add wallet "${detectedCard.productName}" to link`,
         "update",
         () => {}
       );
@@ -249,14 +177,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
     if (!detectedCard) return;
     triggerHaptic("medium");
 
-    const cardWallet = wallets.find((w) =>
-      w.name.toLowerCase().includes(detectedCard.cardType) ||
-      w.name.toLowerCase().includes("flazz") ||
-      w.name.toLowerCase().includes("e-money") ||
-      w.name.toLowerCase().includes("tapcash") ||
-      w.name.toLowerCase().includes("brizzi") ||
-      w.name.toLowerCase().includes("jakcard")
-    );
+    const cardWallet = matchWalletForEmoneyCard(wallets, detectedCard);
     const targetWallet = cardWallet || wallets[0];
 
     const transportCategory = categories.find((c) =>
@@ -272,13 +193,13 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
         type: "expense",
         wallet_id: targetWallet?.id || null,
         category_id: transportCategory?.id || null,
-        occurred_on: format(new Date(), "yyyy-MM-dd"),
+        occurred_on: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
         note: `${detectedCard.lastTapLocation} (${detectedCard.productName}) #transit`,
       });
       showToast(
         isIndonesian
-          ? `Tarif transit dicatat ${formatRupiah(detectedCard.lastTapAmount)} dari ${targetWallet ? targetWallet.name : "Rekening"}`
-          : `Logged transit fare ${formatRupiah(detectedCard.lastTapAmount)} from ${targetWallet ? targetWallet.name : "Wallet"}`,
+          ? `Tarif transit dicatat ${formatWithPreferred(detectedCard.lastTapAmount)} dari ${targetWallet ? targetWallet.name : "Rekening"}`
+          : `Logged transit fare ${formatWithPreferred(detectedCard.lastTapAmount)} from ${targetWallet ? targetWallet.name : "Wallet"}`,
         "add",
         () => {}
       );
@@ -297,7 +218,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 animate-fadeIn select-none">
       <div
-        className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),20px)] sm:pb-5 space-y-4 max-h-[92dvh] overflow-y-auto animate-slideUp"
+        className="w-full max-w-md rounded-t-[28px] sm:rounded-[28px] p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)] sm:pb-5 space-y-4 max-h-[92dvh] overflow-y-auto animate-slideUp"
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
@@ -311,7 +232,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: "var(--glass-fill)", border: "1px solid var(--glass-border)" }}
             >
-              <Radio size={16} strokeWidth={1.75} className="text-white animate-pulse" />
+              <Radio size={16} strokeWidth={1.75} className="text-[var(--text-primary)] animate-pulse" />
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-[var(--text-primary)] leading-tight">
@@ -320,7 +241,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
                 <span>{isIndonesian ? "Pembaca Kartu Transit & Tol Indonesia" : "Indonesian Transit & Toll Smartcard Reader"}</span>
                 {hasNfcHardware && (
-                  <span className="px-1.5 py-0.2 rounded text-[9px]  font-semibold bg-white/10 text-[var(--text-primary)] border border-white/15">
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-white/10 text-[var(--text-primary)] border border-white/15">
                     {isIndonesian ? "NFC Aktif" : "Web NFC Live"}
                   </span>
                 )}
@@ -352,7 +273,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                   border: "1px solid var(--glass-border)",
                 }}
               >
-                <CreditCard size={24} strokeWidth={1.5} className="text-white" />
+                <CreditCard size={24} strokeWidth={1.5} className="text-[var(--text-primary)]" />
               </div>
             </div>
 
@@ -403,13 +324,13 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                 <span className="text-[10px] text-zinc-400 font-medium block">
                   {isIndonesian ? "Saldo Kartu Tersimpan" : "Stored Card Balance"}
                 </span>
-                <p className="text-[26px] font-bold  tracking-tight text-white">
-                  {formatRupiah(detectedCard.balance)}
+                <p className="text-[26px] font-bold tracking-tight text-white">
+                  {formatWithPreferred(detectedCard.balance)}
                 </p>
               </div>
 
               {/* Masked UID */}
-              <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]  text-zinc-400">
+              <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px] text-zinc-400">
                 <span>{detectedCard.cardUid}</span>
                 <span className="text-[10px] uppercase font-bold text-zinc-300">
                   {isIndonesian ? "KETUK NFC" : "NFC TAP"}
@@ -440,14 +361,14 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                     {detectedCard.lastTapLocation}
                   </span>
                   <span className="text-[10px] text-[var(--text-tertiary)] block mt-0.5">
-                    {detectedCard.lastTapTimestamp}
+                    {formatNfcTapTimestamp(detectedCard.lastTapTimestamp, isIndonesian)}
                   </span>
                 </div>
               </div>
 
               <div className="text-right shrink-0">
-                <span className="text-[12px] font-semibold  text-[var(--text-primary)] block">
-                  -{formatRupiah(detectedCard.lastTapAmount)}
+                <span className="text-[12px] font-semibold text-[var(--text-primary)] block">
+                  -{formatWithPreferred(detectedCard.lastTapAmount)}
                 </span>
                 <span className="text-[9px] uppercase font-bold text-[var(--text-tertiary)]">
                   {isIndonesian ? "Tarif Perjalanan" : "Trip Fare"}
@@ -460,7 +381,8 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
               <button
                 type="button"
                 onClick={handleSyncToWallet}
-                className="w-full py-3 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-2 bg-white text-black active:scale-98 transition-transform cursor-pointer shadow-sm"
+                className="w-full py-3 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-transform cursor-pointer shadow-sm"
+                style={{ background: "var(--text-primary)", color: "var(--bg-base)" }}
               >
                 <Wallet size={15} strokeWidth={2} />
                 <span>{isIndonesian ? "Sinkronkan Saldo ke Rekening" : "Sync Balance to Wallet"}</span>
@@ -479,8 +401,8 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                 >
                   <span>
                     {isIndonesian
-                      ? `Catat Tarif (${formatRupiah(detectedCard.lastTapAmount)})`
-                      : `Log Fare (${formatRupiah(detectedCard.lastTapAmount)})`}
+                      ? `Catat Tarif (${formatWithPreferred(detectedCard.lastTapAmount)})`
+                      : `Log Fare (${formatWithPreferred(detectedCard.lastTapAmount)})`}
                   </span>
                 </button>
                 <button
@@ -530,12 +452,12 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
                     <span className="text-[11px] font-semibold text-[var(--text-primary)] truncate">
                       {p.productName}
                     </span>
-                    <span className="text-[9px]  text-[var(--text-tertiary)]">
+                    <span className="text-[9px] text-[var(--text-tertiary)]">
                       {p.cardType.toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-[10px]  font-medium text-[var(--text-secondary)] block">
-                    {formatRupiah(p.balance)}
+                  <span className="text-[10px] font-medium text-[var(--text-secondary)] block">
+                    {formatWithPreferred(p.balance)}
                   </span>
                 </button>
               );
@@ -547,7 +469,7 @@ export function NfcCardReaderModal({ isOpen, onClose }: NfcCardReaderModalProps)
         <button
           type="button"
           onClick={onClose}
-          className="w-full py-2.5 rounded-xl text-[12px] font-medium text-[var(--text-tertiary)] hover:text-white active:scale-98 transition-colors cursor-pointer"
+          className="w-full py-2.5 rounded-xl text-[12px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-98 transition-colors cursor-pointer"
         >
           {isIndonesian ? "Tutup Pembaca" : "Close Reader"}
         </button>
