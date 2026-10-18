@@ -348,8 +348,8 @@ export function SpaceProvider({ children }: { children: React.ReactNode }) {
     if (cleanCustom.length > 0 && !list.some((s) => s.id === "all")) {
       list.push({
         id: "all",
-        name: "All Ledgers",
-        description: "Consolidated balance sheet across all financial ledgers",
+        name: "All Spaces",
+        description: "Consolidated balance sheet across all financial spaces",
         icon: "Layers",
         isDefault: false,
         is_default: false,

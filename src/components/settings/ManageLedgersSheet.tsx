@@ -447,22 +447,18 @@ export function ManageLedgersSheet({
                     : transactionCounts[ledger.id] || 0;
 
                   const displayLedgerName =
-                    isConsolidated && ledger.name === "All Ledgers"
+                    isConsolidated
                       ? isIndonesian
                         ? "Semua Space"
                         : "All Spaces"
-                      : ledger.id === "personal" &&
-                          ledger.name === "Personal Space"
+                      : ledger.id === "personal"
                         ? isIndonesian
                           ? "Space Pribadi"
                           : "Personal Space"
                         : ledger.name;
 
                   const displayLedgerDesc =
-                    isConsolidated &&
-                    (!ledger.description ||
-                      ledger.description ===
-                        "Consolidated balance sheet across all financial ledgers")
+                    isConsolidated
                       ? isIndonesian
                         ? "Seluruh space aktif terkonsolidasi"
                         : "All active spaces consolidated"
@@ -507,16 +503,12 @@ export function ManageLedgersSheet({
                           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all"
                           style={{
                             background: isActive
-                              ? isDark
-                                ? "#ffffff"
-                                : "#18181b"
+                              ? "var(--text-primary)"
                               : isDark
                                 ? "rgba(255, 255, 255, 0.06)"
                                 : "rgba(0, 0, 0, 0.04)",
                             color: isActive
-                              ? isDark
-                                ? "#000000"
-                                : "#ffffff"
+                              ? "var(--bg-base)"
                               : "var(--text-secondary)",
                             border: isActive
                               ? "none"
@@ -666,19 +658,13 @@ export function ManageLedgersSheet({
                           className="w-5 h-5 rounded-full flex items-center justify-center border transition-all ml-1 shrink-0"
                           style={{
                             background: isActive
-                              ? isDark
-                                ? "#ffffff"
-                                : "#18181b"
+                              ? "var(--text-primary)"
                               : "transparent",
                             color: isActive
-                              ? isDark
-                                ? "#000000"
-                                : "#ffffff"
+                              ? "var(--bg-base)"
                               : "transparent",
                             borderColor: isActive
-                              ? isDark
-                                ? "#ffffff"
-                                : "#18181b"
+                              ? "var(--text-primary)"
                               : "var(--glass-border)",
                           }}
                         >
@@ -814,19 +800,13 @@ export function ManageLedgersSheet({
                         className="w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95"
                         style={{
                           background: isSelected
-                            ? isDark
-                              ? "#ffffff"
-                              : "#18181b"
+                            ? "var(--text-primary)"
                             : controlBg,
                           color: isSelected
-                            ? isDark
-                              ? "#000000"
-                              : "#ffffff"
+                            ? "var(--bg-base)"
                             : "var(--text-secondary)",
                           border: isSelected
-                            ? isDark
-                              ? "1px solid #ffffff"
-                              : "1px solid #18181b"
+                            ? "1px solid var(--text-primary)"
                             : controlBorder,
                           boxShadow: isSelected
                             ? "0 3px 10px rgba(0,0,0,0.25)"
@@ -860,19 +840,13 @@ export function ManageLedgersSheet({
                         className="px-3 py-1.5 rounded-full text-[11px] font-semibold font-mono transition-all cursor-pointer select-none shrink-0"
                         style={{
                           background: isSelected
-                            ? isDark
-                              ? "#ffffff"
-                              : "#18181b"
+                            ? "var(--text-primary)"
                             : controlBg,
                           color: isSelected
-                            ? isDark
-                              ? "#000000"
-                              : "#ffffff"
+                            ? "var(--bg-base)"
                             : "var(--text-tertiary)",
                           border: isSelected
-                            ? isDark
-                              ? "1px solid #ffffff"
-                              : "1px solid #18181b"
+                            ? "1px solid var(--text-primary)"
                             : controlBorder,
                           boxShadow: isSelected
                             ? "0 2px 8px rgba(0,0,0,0.2)"
@@ -970,8 +944,8 @@ export function ManageLedgersSheet({
                   type="submit"
                   className="flex-1 h-11 rounded-full text-[13px] font-semibold active:scale-95 transition-all cursor-pointer text-center shadow-sm"
                   style={{
-                    background: isDark ? "#ffffff" : "#18181b",
-                    color: isDark ? "#000000" : "#ffffff",
+                    background: "var(--text-primary)",
+                    color: "var(--bg-base)",
                   }}
                 >
                   {viewState === "create"
@@ -1059,19 +1033,13 @@ export function ManageLedgersSheet({
                   className="w-5 h-5 rounded-full flex items-center justify-center border transition-all shrink-0 ml-2"
                   style={{
                     background: reassignToPersonal
-                      ? isDark
-                        ? "#ffffff"
-                        : "#18181b"
+                      ? "var(--text-primary)"
                       : "transparent",
                     color: reassignToPersonal
-                      ? isDark
-                        ? "#000000"
-                        : "#ffffff"
+                      ? "var(--bg-base)"
                       : "transparent",
                     borderColor: reassignToPersonal
-                      ? isDark
-                        ? "#ffffff"
-                        : "#18181b"
+                      ? "var(--text-primary)"
                       : "var(--glass-border)",
                   }}
                 >
@@ -1097,8 +1065,8 @@ export function ManageLedgersSheet({
                   onClick={handleConfirmDelete}
                   className="flex-1 h-11 rounded-full text-[13px] font-semibold active:scale-95 transition-all cursor-pointer text-center shadow-sm"
                   style={{
-                    background: isDark ? "#ffffff" : "#18181b",
-                    color: isDark ? "#000000" : "#ffffff",
+                    background: "var(--text-primary)",
+                    color: "var(--bg-base)",
                   }}
                 >
                   {isIndonesian ? "Hapus Sekarang" : "Confirm Delete"}

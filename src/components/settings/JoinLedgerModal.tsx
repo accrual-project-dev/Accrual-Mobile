@@ -551,7 +551,7 @@ export function JoinLedgerModal({
 }: JoinLedgerModalProps) {
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="px-5 sm:px-6 pb-[calc(env(safe-area-inset-bottom,16px)+24px)] select-none">
+      <div className="px-5 sm:px-6 pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)] select-none">
         <JoinLedgerContent
           initialCode={initialCode}
           onSuccess={() => onClose()}

@@ -293,7 +293,7 @@ export function SharedLedgerDetailSheet({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="px-5 sm:px-6 space-y-6 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] select-none">
+      <div className="px-5 sm:px-6 space-y-6 pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)] select-none">
         
         {/* Header Capsule */}
         <div className="text-center pt-1">
@@ -610,14 +610,14 @@ export function SharedLedgerDetailSheet({
                 <button
                   type="button"
                   onClick={() => setConfirmKickMember(null)}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)]"
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)] active:scale-95 transition-all cursor-pointer"
                 >
                   {isIndonesian ? "Batal" : "Cancel"}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleKickMember(confirmKickMember)}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)]"
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] active:scale-95 transition-all cursor-pointer shadow-sm"
                 >
                   {isIndonesian ? "Keluarkan" : "Remove"}
                 </button>
@@ -648,14 +648,14 @@ export function SharedLedgerDetailSheet({
                 <button
                   type="button"
                   onClick={() => setConfirmLeaveOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)]"
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)] active:scale-95 transition-all cursor-pointer"
                 >
                   {isIndonesian ? "Batal" : "Cancel"}
                 </button>
                 <button
                   type="button"
                   onClick={handleLeaveLedger}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)]"
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] active:scale-95 transition-all cursor-pointer shadow-sm"
                 >
                   {isIndonesian ? "Keluar" : "Leave"}
                 </button>
