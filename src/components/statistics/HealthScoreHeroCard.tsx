@@ -115,25 +115,29 @@ export function HealthScoreHeroCard({
             className="text-[11px] font-semibold"
             style={{ color: "var(--text-primary)" }}
           >
-            {healthScore >= 85
+            {totalIncome === 0 && totalExpense === 0
               ? isIndonesian
-                ? "Prima (AAA)"
-                : "Excellent (AAA)"
-              : healthScore >= 70
+                ? "Kalibrasi (—)"
+                : "Calibrating (—)"
+              : healthScore >= 85
                 ? isIndonesian
-                  ? "Sehat (AA)"
-                  : "Good (AA)"
-                : healthScore >= 50
+                  ? "Prima (AAA)"
+                  : "Excellent (AAA)"
+                : healthScore >= 70
                   ? isIndonesian
-                    ? "Moderat (A)"
-                    : "Moderate (A)"
-                  : healthScore >= 16
+                    ? "Sehat (AA)"
+                    : "Good (AA)"
+                  : healthScore >= 50
                     ? isIndonesian
-                      ? "Defisit (BB)"
-                      : "Deficit (BB)"
-                    : isIndonesian
-                      ? "Kritis (C)"
-                      : "Critical (C)"}
+                      ? "Moderat (A)"
+                      : "Moderate (A)"
+                    : healthScore >= 16
+                      ? isIndonesian
+                        ? "Defisit (BB)"
+                        : "Deficit (BB)"
+                      : isIndonesian
+                        ? "Kritis (C)"
+                        : "Critical (C)"}
           </span>
         </div>
       </div>
@@ -230,7 +234,7 @@ export function HealthScoreHeroCard({
             style={{ color: "var(--text-primary)" }}
           >
             {hideBalance
-              ? "••••••"
+              ? "••••••••"
               : `${netFlow >= 0 ? "+" : "-"}${formatWithPreferred(Math.abs(netFlow))}`}
           </span>
         </div>

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { WidgetCustomizationBar } from "../common";
 import { CashflowSankeySection } from "./CashflowSankeySection";
@@ -157,6 +157,38 @@ export function StatisticsModalsContainer({
   activeStatsPresetKey,
   setActiveStatsPresetKey,
 }: StatisticsModalsContainerProps) {
+  const liquidAssets = useMemo(() => {
+    return (wallets || [])
+      .filter(
+        (w) =>
+          w.classification !== "investment" &&
+          w.classification !== "loan" &&
+          w.classification !== "credit" &&
+          w.classification !== "fixed_asset"
+      )
+      .reduce((sum, w) => sum + Math.max(0, Number(w.balance || 0)), 0);
+  }, [wallets]);
+
+  const totalLiabilities = useMemo(() => {
+    return (wallets || []).reduce(
+      (sum, w) =>
+        sum +
+        Math.abs(Math.min(0, Number(w.balance || 0))) +
+        (w.classification === "loan" || w.classification === "credit"
+          ? Math.max(0, Number(w.balance || 0))
+          : 0),
+      0
+    );
+  }, [wallets]);
+
+  const monthlyDebtService = useMemo(() => {
+    return totalLiabilities > 0 ? Math.round(totalLiabilities * 0.03) : 0;
+  }, [totalLiabilities]);
+
+  const walletBalances = useMemo(() => {
+    return (wallets || []).map((w) => Number(w.balance || 0));
+  }, [wallets]);
+
   return (
     <>
       {/* Cashflow Sankey Flow Diagram BottomSheet */}
@@ -203,6 +235,9 @@ export function StatisticsModalsContainer({
           rangeTitle={rangeTitle}
           baselines={range === "month" ? personalBaselines : undefined}
           categoryShifts={range === "month" ? categoryShifts : []}
+          liquidAssets={liquidAssets}
+          monthlyDebtService={monthlyDebtService}
+          walletBalances={walletBalances}
         />
 
         <FinancialWrappedModal

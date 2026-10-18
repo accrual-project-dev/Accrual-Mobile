@@ -3546,4 +3546,412 @@ export function filterTransactionsByBudgetPeriod(
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Financial Health Diagnostic & Wealth Milestones Telemetry Engine (Audit #41)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface EmergencyFundCushionResult {
+  months: number;
+  tier: "FORTRESS" | "HEALTHY" | "MODERATE" | "CRITICAL";
+  badgeLabel: string;
+  verdict: string;
+}
+
+export function calculateEmergencyFundCushion(
+  liquidAssets: number,
+  monthlyBurnRate: number,
+  isIndonesian: boolean = true
+): EmergencyFundCushionResult {
+  const safeLiquid = Math.max(0, Number(liquidAssets) || 0);
+  const safeBurn = Math.max(1, Number(monthlyBurnRate) || 0);
+  const rawMonths = safeLiquid / safeBurn;
+  const months = isFinite(rawMonths) ? Number(rawMonths.toFixed(1)) : 0;
+
+  if (months >= 6.0) {
+    return {
+      months,
+      tier: "FORTRESS",
+      badgeLabel: isIndonesian ? "BENTENG MODAL (≥6 BLN)" : "FORTRESS BUFFER (≥6 MO)",
+      verdict: isIndonesian
+        ? `Cadangan likuid Anda sangat kokoh (${months} bulan), mampu menopang operasional secara mandiri tanpa pemasukan baru.`
+        : `Your liquid reserves are exceptionally resilient (${months} months), capable of sustaining operations without new income.`,
+    };
+  }
+
+  if (months >= 3.0) {
+    return {
+      months,
+      tier: "HEALTHY",
+      badgeLabel: isIndonesian ? "BANTALAN SEHAT (3–6 BLN)" : "HEALTHY BUFFER (3–6 MO)",
+      verdict: isIndonesian
+        ? `Cadangan kas likuid (${months} bulan) memenuhi standar keselamatan institusional untuk meredam risiko pengeluaran darurat.`
+        : `Liquid cash reserves (${months} months) satisfy institutional safety standards to absorb unforeseen emergency shocks.`,
+    };
+  }
+
+  if (months >= 1.0) {
+    return {
+      months,
+      tier: "MODERATE",
+      badgeLabel: isIndonesian ? "BANTALAN CUKUP (1–3 BLN)" : "MODERATE BUFFER (1–3 MO)",
+      verdict: isIndonesian
+        ? `Cadangan kas likuid menopang ${months} bulan pengeluaran. Disarankan untuk menambah alokasi bantalan dana darurat.`
+        : `Liquid reserves sustain ${months} months of outflows. Expanding emergency fund allocations is advised.`,
+    };
+  }
+
+  return {
+    months,
+    tier: "CRITICAL",
+    badgeLabel: isIndonesian ? "BANTALAN KRITIS (<1 BLN)" : "CRITICAL BUFFER (<1 MO)",
+    verdict: isIndonesian
+      ? `Cadangan kas likuid di bawah 1 bulan pengeluaran (${months} bulan). Prioritaskan akumulasi dana darurat untuk ketahanan.`
+      : `Liquid reserves cover less than 1 month of outflows (${months} months). Prioritize emergency cash buffer accumulation.`,
+  };
+}
+
+export interface DtiRatioResult {
+  ratioPct: number;
+  tier: "DEBT_FREE" | "CONSERVATIVE" | "MANAGEABLE" | "ELEVATED" | "CRITICAL";
+  badgeLabel: string;
+  verdict: string;
+}
+
+export function calculateDtiRatio(
+  monthlyDebtService: number,
+  monthlyIncome: number,
+  isIndonesian: boolean = true
+): DtiRatioResult {
+  const safeDebt = Math.max(0, Number(monthlyDebtService) || 0);
+  const safeIncome = Math.max(0, Number(monthlyIncome) || 0);
+
+  if (safeDebt === 0) {
+    return {
+      ratioPct: 0,
+      tier: "DEBT_FREE",
+      badgeLabel: isIndonesian ? "BEBAS UTANG (0%)" : "DEBT FREE (0%)",
+      verdict: isIndonesian
+        ? "Arus kas Anda 100% bebas dari beban cicilan utang atau pinjaman."
+        : "Your cashflow is 100% unencumbered by debt service or loan obligations.",
+    };
+  }
+
+  if (safeIncome === 0) {
+    return {
+      ratioPct: 100,
+      tier: "CRITICAL",
+      badgeLabel: isIndonesian ? "BEBAN KRITIS (>50%)" : "CRITICAL DEBT (>50%)",
+      verdict: isIndonesian
+        ? "Terdapat kewajiban cicilan utang tanpa pemasukan tercatat pada periode ini."
+        : "Debt servicing obligations exist with zero recorded income for this period.",
+    };
+  }
+
+  const rawRatio = (safeDebt / safeIncome) * 100;
+  const ratioPct = isFinite(rawRatio) ? Number(rawRatio.toFixed(1)) : 0;
+
+  if (ratioPct <= 20) {
+    return {
+      ratioPct,
+      tier: "CONSERVATIVE",
+      badgeLabel: isIndonesian ? "KONSERVATIF (≤20%)" : "CONSERVATIVE (≤20%)",
+      verdict: isIndonesian
+        ? `Beban utang sangat rendah (${ratioPct}% pemasukan), berada jauh di bawah ambang batas risiko.`
+        : `Debt burden is very low (${ratioPct}% of income), well within institutional safety boundaries.`,
+    };
+  }
+
+  if (ratioPct <= 36) {
+    return {
+      ratioPct,
+      tier: "MANAGEABLE",
+      badgeLabel: isIndonesian ? "TERKENDALI (20–36%)" : "MANAGEABLE (20–36%)",
+      verdict: isIndonesian
+        ? `Porsi cicilan utang terkendali (${ratioPct}% pemasukan) dan masih menyisakan ruang pembentukan modal.`
+        : `Debt servicing is manageable (${ratioPct}% of income), leaving adequate capacity for capital growth.`,
+    };
+  }
+
+  if (ratioPct <= 50) {
+    return {
+      ratioPct,
+      tier: "ELEVATED",
+      badgeLabel: isIndonesian ? "BEBAN TINGGI (36–50%)" : "ELEVATED DEBT (36–50%)",
+      verdict: isIndonesian
+        ? `Cicilan utang menyerap porsi signifikan (${ratioPct}% pemasukan). Batasi komitmen pinjaman baru.`
+        : `Debt repayments absorb a significant share (${ratioPct}% of income). Avoid new debt commitments.`,
+    };
+  }
+
+  return {
+    ratioPct,
+    tier: "CRITICAL",
+    badgeLabel: isIndonesian ? "BEBAN KRITIS (>50%)" : "CRITICAL DEBT (>50%)",
+    verdict: isIndonesian
+      ? `Beban utang melampaui separuh pemasukan (${ratioPct}%). Prioritaskan strategi pelunasan terarah (Snowball/Avalanche).`
+      : `Debt servicing exceeds half of monthly income (${ratioPct}%). Prioritize structured debt reduction (Snowball/Avalanche).`,
+  };
+}
+
+export interface AssetDiversificationResult {
+  score: number;
+  tier: "OPTIMAL" | "MODERATE" | "CONCENTRATED";
+  badgeLabel: string;
+  verdict: string;
+}
+
+export function calculateAssetDiversification(
+  walletBalances: number[] = [],
+  isIndonesian: boolean = true
+): AssetDiversificationResult {
+  const positiveBalances = walletBalances.filter((b) => Number(b) > 0);
+  const total = positiveBalances.reduce((sum, b) => sum + b, 0);
+
+  if (positiveBalances.length <= 1 || total <= 0) {
+    return {
+      score: positiveBalances.length === 1 ? 25 : 0,
+      tier: "CONCENTRATED",
+      badgeLabel: isIndonesian ? "TERKONSENTRASI (<35)" : "CONCENTRATED (<35)",
+      verdict: isIndonesian
+        ? "Aset likuid terkonsentrasi pada satu tempat simpanan. Pertimbangkan diversifikasi penyedia kas."
+        : "Liquid assets are concentrated in a single depository. Consider diversifying account providers.",
+    };
+  }
+
+  // Herfindahl-Hirschman Index (HHI) for capital concentration
+  const hhi = positiveBalances.reduce((sum, b) => {
+    const share = b / total;
+    return sum + share * share;
+  }, 0);
+
+  // Convert HHI to 0-100 score where higher is more diversified
+  const rawScore = Math.round((1 - hhi) * 100);
+  const score = Math.max(0, Math.min(100, rawScore));
+
+  if (score >= 65) {
+    return {
+      score,
+      tier: "OPTIMAL",
+      badgeLabel: isIndonesian ? "TERDIVERSIFIKASI (≥65)" : "OPTIMAL SPREAD (≥65)",
+      verdict: isIndonesian
+        ? `Penyebaran aset likuid merata (skor ${score}), memitigasi risiko konsentrasi pihak ketiga.`
+        : `Liquid assets are well balanced (score ${score}), mitigating single-counterparty risk.`,
+    };
+  }
+
+  if (score >= 35) {
+    return {
+      score,
+      tier: "MODERATE",
+      badgeLabel: isIndonesian ? "MODERAT (35–64)" : "MODERATE SPREAD (35–64)",
+      verdict: isIndonesian
+        ? `Penyebaran aset cukup seimbang (skor ${score}), namun sebagian besar likuiditas bertumpu pada 1–2 akun.`
+        : `Asset spread is reasonable (score ${score}), though majority liquidity rests in 1–2 accounts.`,
+    };
+  }
+
+  return {
+    score,
+    tier: "CONCENTRATED",
+    badgeLabel: isIndonesian ? "TERKONSENTRASI (<35)" : "CONCENTRATED (<35)",
+    verdict: isIndonesian
+      ? `Likuiditas sangat terkonsentrasi (skor ${score}). Sebar cadangan kas ke beberapa instrumen terpercaya.`
+      : `Liquidity is heavily concentrated (score ${score}). Spread cash reserves across multiple trusted venues.`,
+  };
+}
+
+export interface FinancialHealthDiagnosticParams {
+  healthScore: number;
+  savingsRate: number;
+  totalIncome: number;
+  totalExpense: number;
+  liquidAssets?: number;
+  totalAssets?: number;
+  totalLiabilities?: number;
+  monthlyDebtService?: number;
+  walletBalances?: number[];
+  baselines?: PersonalBaselineResult;
+  categoryShifts?: CategoryMoMShift[];
+  isIndonesian?: boolean;
+}
+
+export interface StrategicDirective {
+  title: string;
+  body: string;
+}
+
+export interface FinancialHealthDiagnosticResult {
+  isZeroData: boolean;
+  netCashflow: number;
+  operatingRatio: number;
+  operatingMarginText: string;
+  rating: string;
+  statusTitle: string;
+  statusVerdict: string;
+  topShift?: CategoryMoMShift;
+  emergencyCushion: EmergencyFundCushionResult;
+  dti: DtiRatioResult;
+  diversification: AssetDiversificationResult;
+  strategicDirectives: StrategicDirective[];
+}
+
+export function calculateFinancialHealthDiagnostic({
+  healthScore,
+  savingsRate,
+  totalIncome,
+  totalExpense,
+  liquidAssets = 0,
+  monthlyDebtService = 0,
+  walletBalances = [],
+  baselines,
+  categoryShifts = [],
+  isIndonesian = true,
+}: FinancialHealthDiagnosticParams): FinancialHealthDiagnosticResult {
+  const isZeroData = totalIncome === 0 && totalExpense === 0;
+  const netCashflow = totalIncome - totalExpense;
+  const operatingRatio =
+    totalIncome > 0
+      ? (totalExpense / totalIncome) * 100
+      : totalExpense > 0
+        ? 999
+        : 0;
+  const operatingMarginText =
+    totalIncome > 0
+      ? `${Number(savingsRate).toFixed(1)}%`
+      : totalExpense > 0
+        ? (isIndonesian ? "Defisit" : "Deficit")
+        : "0.0%";
+
+  let rating = "BBB";
+  let statusTitle = isIndonesian ? "Arus Operasional Stabil" : "Stable Operating Flow";
+  let statusVerdict = isIndonesian
+    ? "Arus kas Anda saat ini menunjukkan operasi yang seimbang dengan pembentukan modal moderat."
+    : "Your current cash flow demonstrates balanced operations with moderate capital formation.";
+
+  if (isZeroData) {
+    rating = "—";
+    statusTitle = isIndonesian ? "Kalibrasi Metrik Modal" : "Capital Metric Calibration";
+    statusVerdict = isIndonesian
+      ? "Belum ada arus kas atau transaksi tercatat pada periode ini. Catat transaksi pemasukan atau pengeluaran untuk mengaktifkan audit diagnostik komprehensif."
+      : "No cashflow or transactions recorded in this period. Log income or expense transactions to activate comprehensive diagnostic auditing.";
+  } else if (healthScore >= 88 && savingsRate >= 35) {
+    rating = "AAA";
+    statusTitle = isIndonesian ? "Retensi Modal Luar Biasa" : "Exceptional Capital Retention";
+    statusVerdict = isIndonesian
+      ? "Efisiensi modal tingkat elit. Retensi kas Anda memungkinkan akselerasi kekayaan secara agresif dengan tingkat kerentanan struktural yang rendah."
+      : "Elite capital efficiency. Your cash retention allows aggressive wealth acceleration while maintaining low structural vulnerability.";
+  } else if (healthScore >= 75 && savingsRate >= 20) {
+    rating = "AA";
+    statusTitle = isIndonesian ? "Solvabilitas & Marjin Operasional Kuat" : "Strong Solvency & Operating Margin";
+    statusVerdict = isIndonesian
+      ? "Marjin operasional yang sehat. Pemasukan melampaui pengeluaran dengan nyaman, menciptakan surplus handal untuk cadangan jangka panjang."
+      : "Healthy operating margin. Inflows comfortably exceed outflows, creating a dependable surplus for long-term reserves.";
+  } else if (healthScore >= 60) {
+    rating = "A";
+    statusTitle = isIndonesian ? "Keseimbangan Modal Resilien" : "Resilient Capital Equilibrium";
+    statusVerdict = isIndonesian
+      ? "Operasional dalam kondisi solven, dengan pengeluaran yang sejalan dengan perolehan kas. Meningkatkan retensi cadangan kas akan memperkuat ketahanan."
+      : "Operations are solvent, with spending roughly aligned with cash generation. Retaining higher cash reserves will enhance resilience.";
+  } else if (healthScore >= 45) {
+    rating = "BBB";
+    statusTitle = isIndonesian ? "Marjin Bantalan Cukup" : "Moderate Buffer Margin";
+    statusVerdict = isIndonesian
+      ? "Pengeluaran menyerap porsi signifikan dari pemasukan. Guncangan kecil atau lonjakan diskresioner dapat menekan arus kas bersih."
+      : "Spending represents a substantial portion of inflows. Minor shocks or discretionary spikes could compress net cash flow.";
+  } else if (healthScore >= 30) {
+    rating = "BB";
+    statusTitle = isIndonesian ? "Tekanan Arus Keluar Tinggi" : "Elevated Outflow Pressure";
+    statusVerdict = isIndonesian
+      ? "Kecepatan pengeluaran tinggi. Arus keluar menyerap hampir seluruh pemasukan yang dihasilkan, membatasi pembentukan modal."
+      : "High expenditure velocity. Outflows are absorbing nearly all generated income, limiting capital retention.";
+  } else {
+    rating = "C";
+    statusTitle = isIndonesian ? "Posisi Defisit Pengeluaran" : "Deficit Spending Position";
+    statusVerdict = isIndonesian
+      ? "Pengeluaran saat ini melebihi pemasukan untuk periode ini. Pengendalian segera atas beban non-esensial sangat disarankan."
+      : "Outflows currently exceed inflows for this period. Immediate containment of non-essential expenditure is recommended.";
+  }
+
+  // Monthly burn rate for emergency cushion
+  const monthlyBurn =
+    baselines && baselines.medianExpense > 0
+      ? baselines.medianExpense
+      : totalExpense > 0
+        ? totalExpense
+        : 1;
+
+  const emergencyCushion = calculateEmergencyFundCushion(liquidAssets, monthlyBurn, isIndonesian);
+  const dti = calculateDtiRatio(monthlyDebtService, totalIncome, isIndonesian);
+  const diversification = calculateAssetDiversification(walletBalances, isIndonesian);
+
+  const topShift = categoryShifts.find((s) => s.isIncrease);
+
+  // Dynamic Strategic Focus Directives (Apple luxury standard)
+  const strategicDirectives: StrategicDirective[] = [];
+
+  // Directive 1: Operating Discipline
+  strategicDirectives.push({
+    title: isIndonesian ? "Disiplin Operasional:" : "Operating Discipline:",
+    body: isIndonesian
+      ? "Pertahankan pengeluaran diskresioner dalam rentang normal IQR historis Anda untuk menjamin arus kas operasional bersih tetap positif."
+      : "Maintain discretionary outflows within your historical IQR normal band to guarantee positive net operating cashflow.",
+  });
+
+  // Directive 2: Buffer Acceleration or Debt Optimization or Surplus Allocation
+  if (emergencyCushion.months < 3.0 && liquidAssets >= 0) {
+    strategicDirectives.push({
+      title: isIndonesian ? "Penguatan Dana Darurat:" : "Emergency Cushion Growth:",
+      body: isIndonesian
+        ? `Alokasikan surplus kas prioritas ke pos dana darurat hingga mencapai minimal 3–6 bulan biaya hidup (~${emergencyCushion.months} bulan saat ini).`
+        : `Channel surplus cashflow into your emergency reserve until reaching at least 3–6 months of living costs (currently ~${emergencyCushion.months} mo).`,
+    });
+  } else if (dti.ratioPct > 36) {
+    strategicDirectives.push({
+      title: isIndonesian ? "Optimalisasi Beban Utang:" : "Debt Service Optimization:",
+      body: isIndonesian
+        ? `Terapkan akselerasi pelunasan utang (Snowball atau Avalanche) untuk menekan rasio kewajiban (${dti.ratioPct}%) di bawah 30%.`
+        : `Implement accelerated debt payoff (Snowball or Avalanche) to compress debt-to-income ratio (${dti.ratioPct}%) below 30%.`,
+    });
+  } else {
+    strategicDirectives.push({
+      title: isIndonesian ? "Alokasi Surplus Modal:" : "Capital Surplus Allocation:",
+      body: isIndonesian
+        ? "Arahkan setidaknya 50% dari arus kas bulanan yang tersimpan segera ke pos sinking fund target atau instrumen imbal hasil begitu dana masuk."
+        : "Route at least 50% of retained monthly cashflow immediately into dedicated goal sinking funds or yield assets upon cash arrival.",
+    });
+  }
+
+  // Directive 3: Concentration Risk or Ticket Velocity Control
+  if (diversification.score < 35 && walletBalances.length > 0) {
+    strategicDirectives.push({
+      title: isIndonesian ? "Mitigasi Konsentrasi:" : "Concentration Mitigation:",
+      body: isIndonesian
+        ? "Saldo likuiditas Anda sangat terkonsentrasi; sebarkan penempatan dana ke 2–3 penyedia tepercaya untuk mengurangi risiko pihak ketiga."
+        : "Your liquid assets are heavily concentrated; spread balances across 2–3 reputable institutions to mitigate counterparty exposure.",
+    });
+  } else {
+    strategicDirectives.push({
+      title: isIndonesian ? "Kendali Kecepatan Belanja:" : "Velocity Control:",
+      body: isIndonesian
+        ? "Audit ukuran transaksi yang melebihi 2x median transaksi tunggal Anda untuk mencegah penekanan anggaran bulanan di awal."
+        : "Audit ticket sizes exceeding 2x your median single expense to prevent front-loaded monthly budget compression.",
+    });
+  }
+
+  return {
+    isZeroData,
+    netCashflow,
+    operatingRatio,
+    operatingMarginText,
+    rating,
+    statusTitle,
+    statusVerdict,
+    topShift,
+    emergencyCushion,
+    dti,
+    diversification,
+    strategicDirectives,
+  };
+}
+
 
