@@ -99,7 +99,7 @@ export function GlassSelect({
       {isOpen && (
         <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
           <div
-            className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-3xl sm:rounded-2xl p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),16px)] sm:pb-4 space-y-3 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 select-none max-h-[88dvh] flex flex-col"
+            className="w-full sm:max-w-md bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-t-3xl sm:rounded-2xl p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 space-y-3 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 select-none max-h-[92dvh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -143,7 +143,7 @@ export function GlassSelect({
             )}
 
             {/* Options List */}
-            <div className="overflow-y-auto no-scrollbar space-y-1 flex-1 py-1">
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1 py-1 pb-2">
               {filteredOptions.length === 0 ? (
                 <div className="py-6 text-center text-[11px] text-[var(--text-tertiary)]">
                   No matching options found

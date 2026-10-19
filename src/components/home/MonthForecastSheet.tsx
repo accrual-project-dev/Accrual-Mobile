@@ -324,7 +324,7 @@ export function MonthForecastSheet({
             </div>
 
             {/* Inner Content Container */}
-            <div className="w-full max-w-md mx-auto px-6 flex flex-col overflow-y-auto no-scrollbar">
+            <div className="w-full max-w-md mx-auto px-6 flex flex-col flex-1 min-h-0 overflow-y-auto no-scrollbar">
               {/* Modal Header Row with Circular Glass Close Button */}
               <div className="relative flex items-center justify-center py-1">
                 <h2

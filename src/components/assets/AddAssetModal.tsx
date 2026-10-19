@@ -803,7 +803,7 @@ export function AddAssetModal({
               mass: 0.8,
             }}
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 w-full max-w-lg mx-auto rounded-t-[32px] sm:rounded-t-[36px] overflow-hidden flex flex-col max-h-[88dvh] transition-all"
+            className="relative z-10 w-full max-w-lg mx-auto rounded-t-[32px] sm:rounded-t-[36px] overflow-hidden flex flex-col max-h-[92dvh] transition-all"
             style={{
               background: sheetBg,
               borderTop: sheetBorder,
@@ -1132,7 +1132,7 @@ export function AddAssetModal({
                   className="px-6 pt-2 pb-4 shrink-0"
                   style={{
                     paddingBottom:
-                      "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
+                      "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
                   }}
                 >
                   <button
@@ -1978,7 +1978,7 @@ export function AddAssetModal({
                   className="px-6 pt-2 pb-4 shrink-0 flex items-center gap-3 border-t border-[var(--glass-border)]/40"
                   style={{
                     paddingBottom:
-                      "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
+                      "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
                   }}
                 >
                   <button

@@ -377,7 +377,7 @@ export function HomeModalsContainer({
       {customizeHomeOpen && (
         <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
           <div
-            className="w-full max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 text-left transition-all max-h-[88dvh] flex flex-col pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),24px)] sm:pb-5"
+            className="w-full max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 text-left transition-all max-h-[92dvh] flex flex-col pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)] sm:pb-5"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--glass-border)",

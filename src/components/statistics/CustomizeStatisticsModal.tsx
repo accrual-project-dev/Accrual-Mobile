@@ -305,7 +305,7 @@ export function CustomizeStatisticsModal({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 32, stiffness: 380 }}
-          className="relative w-full max-w-md max-h-[88vh] sm:max-h-[82vh] flex flex-col overflow-hidden rounded-t-[32px] sm:rounded-[32px] z-10"
+          className="relative w-full max-w-md max-h-[92dvh] sm:max-h-[88vh] flex flex-col overflow-hidden rounded-t-[32px] sm:rounded-[32px] z-10"
           style={{
             background: shellBg,
             border: shellBorder,
@@ -545,7 +545,7 @@ export function CustomizeStatisticsModal({
               FOOTER ACTION DOCK
           ================================================================= */}
           <div
-            className="shrink-0 px-5 pt-3 pb-[max(calc(env(safe-area-inset-bottom,0px)+12px),20px)] border-t"
+            className="shrink-0 px-5 pt-3 pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)] border-t"
             style={{
               background: shellBg,
               borderColor: isDark

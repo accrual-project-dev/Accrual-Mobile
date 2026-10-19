@@ -697,7 +697,7 @@ export function StakingYieldModal({
               mass: 0.8,
             }}
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 w-full max-w-lg mx-auto rounded-t-[32px] sm:rounded-t-[36px] overflow-hidden flex flex-col max-h-[90dvh] transition-all"
+            className="relative z-10 w-full max-w-lg mx-auto rounded-t-[32px] sm:rounded-t-[36px] overflow-hidden flex flex-col max-h-[92dvh] transition-all"
             style={{
               background: sheetOuterBg,
               borderTop: sheetOuterBorder,
@@ -914,7 +914,7 @@ export function StakingYieldModal({
 
             {/* ── 4. Main Scrollable Form Body ─────────────────────────────── */}
             <div
-              className="flex-1 overflow-y-auto no-scrollbar px-6 space-y-4"
+              className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-6 space-y-4"
               style={{
                 paddingBottom:
                   "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 36px)",

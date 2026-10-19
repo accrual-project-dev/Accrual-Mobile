@@ -405,7 +405,7 @@ export function BatchTransactionReviewSheet({
         </div>
 
         {/* ── 3. Transaction List Cards (Clean Studio Glass, Zero Glow) ── */}
-        <div className="space-y-2 mb-3.5 flex-1 min-h-0">
+        <div className="space-y-2 mb-3.5 flex-1 min-h-0 pb-3">
           {items.map((it) => {
             const isSelected = Boolean(selectedMap[it.id]);
             const isOutflow = it.type === "expense";
@@ -801,7 +801,7 @@ export function BatchTransactionReviewSheet({
         {/* ── 5. Category Picker Popover Sheet ── */}
         {activeItemForCategory && (
           <div
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
             style={{ background: "rgba(0, 0, 0, 0.45)" }}
             onClick={() => {
               setActiveItemForCategory(null);
@@ -879,7 +879,7 @@ export function BatchTransactionReviewSheet({
               </div>
 
               {/* Category List */}
-              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0">
+              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-3">
                 {filteredCategories.length > 0 ? (
                   filteredCategories.map((c) => {
                     const isSelected = activeCategoryItem?.suggestedCategoryId === c.id;
@@ -935,7 +935,7 @@ export function BatchTransactionReviewSheet({
         {/* ── 6. Account / Wallet Picker Popover Sheet ── */}
         {activeItemForWallet && (
           <div
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
             style={{ background: "rgba(0, 0, 0, 0.45)" }}
             onClick={() => {
               setActiveItemForWallet(null);
@@ -1021,7 +1021,7 @@ export function BatchTransactionReviewSheet({
               )}
 
               {/* Wallet List */}
-              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0">
+              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-3">
                 {filteredWallets.length > 0 ? (
                   filteredWallets.map((w) => {
                     const currentId =

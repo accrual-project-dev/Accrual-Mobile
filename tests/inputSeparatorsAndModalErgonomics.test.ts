@@ -51,8 +51,16 @@ describe("Input Separators & Modal Viewport Hardening Suite", () => {
       expect(content).toContain("max-h-[88dvh] sm:max-h-[80vh]");
     });
 
-    it("maintains min-h-0 and overflow-y-auto on inner popover scroll containers", () => {
-      expect(content).toContain("flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0");
+    it("maintains min-h-0 and overflow-y-auto on inner popover scroll containers with pb-3", () => {
+      expect(content).toContain("flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-3");
+    });
+
+    it("enforces safe area bottom inset on popover overlay wrappers", () => {
+      expect(content).toContain("pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4");
+    });
+
+    it("provides bottom breathing room on transaction card list", () => {
+      expect(content).toContain("space-y-2 mb-3.5 flex-1 min-h-0 pb-3");
     });
   });
 
@@ -70,6 +78,88 @@ describe("Input Separators & Modal Viewport Hardening Suite", () => {
 
     it("ensures step containers have min-h-0 for smooth deceleration scrolling", () => {
       expect(content).toContain("flex-1 min-h-0 overflow-y-auto");
+    });
+
+    it("provides pb-6 bottom breathing room on review step transaction list", () => {
+      expect(content).toContain("flex-1 min-h-0 overflow-y-auto p-4 space-y-2 pb-6");
+    });
+  });
+
+  describe("CustomizeStatisticsModal Viewport Ergonomics", () => {
+    const filePath = path.resolve(__dirname, "../src/components/statistics/CustomizeStatisticsModal.tsx");
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    it("uses unconstrained max-h-[92dvh] viewport cap on mobile", () => {
+      expect(content).toContain("max-h-[92dvh] sm:max-h-[88vh]");
+    });
+
+    it("enforces generous safe-area padding bottom on action dock", () => {
+      expect(content).toContain("pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)]");
+    });
+  });
+
+  describe("HomeModalsContainer Bento Customization Ergonomics", () => {
+    const filePath = path.resolve(__dirname, "../src/components/home/HomeModalsContainer.tsx");
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    it("uses unconstrained max-h-[92dvh] cap", () => {
+      expect(content).toContain("max-h-[92dvh]");
+    });
+
+    it("enforces safe-area bottom inset padding", () => {
+      expect(content).toContain("pb-[max(calc(env(safe-area-inset-bottom,0px)+20px),28px)] sm:pb-5");
+    });
+  });
+
+  describe("GlassSelect Viewport Ergonomics", () => {
+    const filePath = path.resolve(__dirname, "../src/components/ui/GlassSelect.tsx");
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    it("uses unconstrained max-h-[92dvh]cap", () => {
+      expect(content).toContain("max-h-[92dvh]");
+    });
+
+    it("enforces safe-area bottom inset padding", () => {
+      expect(content).toContain("pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)]");
+    });
+
+    it("uses min-h-0 and pb-2 on scrollable options list", () => {
+      expect(content).toContain("flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1 py-1 pb-2");
+    });
+  });
+
+  describe("MonthForecastSheet Viewport Ergonomics", () => {
+    const filePath = path.resolve(__dirname, "../src/components/home/MonthForecastSheet.tsx");
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    it("uses flex-1 min-h-0 on inner scrollable content container", () => {
+      expect(content).toContain("flex flex-col flex-1 min-h-0 overflow-y-auto no-scrollbar");
+    });
+  });
+
+  describe("StakingYieldModal Viewport Ergonomics", () => {
+    const filePath = path.resolve(__dirname, "../src/components/settings/StakingYieldModal.tsx");
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    it("uses unconstrained max-h-[92dvh]cap", () => {
+      expect(content).toContain("max-h-[92dvh]");
+    });
+
+    it("uses min-h-0 on scrollable form body", () => {
+      expect(content).toContain("flex-1 min-h-0 overflow-y-auto no-scrollbar px-6 space-y-4");
+    });
+  });
+
+  describe("AddAssetModal Viewport Ergonomics", () => {
+    const filePath = path.resolve(__dirname, "../src/components/assets/AddAssetModal.tsx");
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    it("uses unconstrained max-h-[92dvh]cap", () => {
+      expect(content).toContain("max-h-[92dvh]");
+    });
+
+    it("enforces standard safe area bottom dock padding across phases", () => {
+      expect(content).toContain("max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)");
     });
   });
 

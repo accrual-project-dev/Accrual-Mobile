@@ -1507,7 +1507,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               )}
 
               {/* Transactions List */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2 pb-6">
                 {visibleItems.map((item) => {
                   const isIncome = item.type === "income";
                   const isTransfer = item.type === "transfer";
