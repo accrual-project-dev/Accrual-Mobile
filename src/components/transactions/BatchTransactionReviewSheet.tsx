@@ -809,7 +809,7 @@ export function BatchTransactionReviewSheet({
             }}
           >
             <div
-              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[75vh] flex flex-col"
+              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[88dvh] sm:max-h-[80vh] flex flex-col"
               style={{
                 background: isDark
                   ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
@@ -943,7 +943,7 @@ export function BatchTransactionReviewSheet({
             }}
           >
             <div
-              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[75vh] flex flex-col"
+              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[88dvh] sm:max-h-[80vh] flex flex-col"
               style={{
                 background: isDark
                   ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"

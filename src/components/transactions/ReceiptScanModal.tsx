@@ -993,7 +993,7 @@ export function ReceiptScanModal({
               paddingTop:
                 "max(calc(env(safe-area-inset-top, 0px) + 12px), 20px)",
               paddingBottom:
-                "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
+                "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
             }}
           >
             {/* ============================================================

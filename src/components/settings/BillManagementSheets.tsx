@@ -26,7 +26,16 @@ import type { RepeatRule } from "../../lib/types";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
+import { formatLiveAmountInput } from "../../lib/utils";
 import { format, parseISO } from "date-fns";
+
+function parseCleanAmount(str: string, isIndo: boolean): number {
+  if (!str) return 0;
+  const thousandSep = isIndo ? "." : ",";
+  const decimalSep = isIndo ? "," : ".";
+  const clean = str.split(thousandSep).join("").replace(decimalSep, ".");
+  return parseFloat(clean) || 0;
+}
 
 interface BillManagementSheetsProps {
   isOpen: boolean;
@@ -199,7 +208,7 @@ export function BillManagementSheets({
   const handleOpenEditBill = (b: any) => {
     setEditingBill(b);
     setBillTitle(b.title || "");
-    setBillAmount(b.amount ? String(b.amount) : "");
+    setBillAmount(b.amount ? formatLiveAmountInput(String(b.amount), isIndonesian).display : "");
     setBillDate(b.due_date ? parseISO(b.due_date) : new Date());
     setBillRepeat(b.repeat_rule || "monthly");
     setBillIsPaid(!!b.is_paid);
@@ -266,7 +275,7 @@ export function BillManagementSheets({
       );
       return;
     }
-    const num = Number(billAmount);
+    const num = parseCleanAmount(billAmount, isIndonesian);
     const payload = {
       title: billTitle.trim(),
       amount: num > 0 ? num : null,
@@ -640,23 +649,43 @@ export function BillManagementSheets({
             >
               {isIndonesian ? `Nominal Tagihan (${preferredCurrency})` : `Nominal Amount (${preferredCurrency})`}
             </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={billAmount ? formatWithPreferred(Number(billAmount)) : ""}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/[^0-9]/g, "");
-                setBillAmount(raw);
-              }}
-              placeholder={`${currencyMeta.symbol} 0`}
-              className="w-full p-3.5 rounded-2xl outline-none font-bold text-[16px] amount"
+            <div
+              className="flex items-center px-3.5 rounded-2xl"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
               }}
-            />
+            >
+              <span className="text-[14px] font-bold text-[var(--text-tertiary)] mr-2 select-none">
+                {currencyMeta.symbol}
+              </span>
+              <input
+                type="text"
+                inputMode={currencyMeta.decimals > 0 ? "decimal" : "numeric"}
+                value={
+                  billAmount
+                    ? formatLiveAmountInput(
+                        billAmount,
+                        isIndonesian,
+                        currencyMeta.decimals > 0,
+                        currencyMeta.decimals,
+                      ).display
+                    : ""
+                }
+                onChange={(e) => {
+                  const thousandSep = isIndonesian ? "." : ",";
+                  const decimalSep = isIndonesian ? "," : ".";
+                  const clean = e.target.value
+                    .split(thousandSep)
+                    .join("")
+                    .replace(decimalSep, ".");
+                  const numericOnly = clean.replace(/[^0-9.]/g, "");
+                  setBillAmount(numericOnly);
+                }}
+                placeholder="0"
+                className="w-full py-3.5 bg-transparent outline-none font-bold text-[16px] amount text-[var(--text-primary)]"
+              />
+            </div>
           </div>
           <div>
             <label

@@ -47,7 +47,16 @@ import {
   getDebtDueStatusLabel,
   getDebtTypeLabel,
 } from "../../lib/debtReceivableEngine";
+import { formatLiveAmountInput } from "../../lib/utils";
 import { format } from "date-fns";
+
+function parseCleanAmount(str: string, isIndo: boolean): number {
+  if (!str) return 0;
+  const thousandSep = isIndo ? "." : ",";
+  const decimalSep = isIndo ? "," : ".";
+  const clean = str.split(thousandSep).join("").replace(decimalSep, ".");
+  return parseFloat(clean) || 0;
+}
 
 export interface DebtReceivablesSheetProps {
   isOpen: boolean;
@@ -231,7 +240,7 @@ export function DebtReceivablesSheet({
   };
 
   const handleSaveNewRecord = async () => {
-    const rawAmt = Number(formAmountStr.replace(/\D/g, "")) || 0;
+    const rawAmt = parseCleanAmount(formAmountStr, isIndonesian);
     if (!formPersonName.trim()) {
       showToast(
         isIndonesian
@@ -288,7 +297,13 @@ export function DebtReceivablesSheet({
   const handleOpenRepayModal = (record: DebtReceivableRecord) => {
     triggerHaptic("light");
     setRepayingRecord(record);
-    setRepayAmountStr(record.remainingAmount.toString());
+    const formattedRemaining = formatLiveAmountInput(
+      record.remainingAmount.toString(),
+      isIndonesian,
+      currencyMeta.decimals > 0,
+      currencyMeta.decimals,
+    ).display;
+    setRepayAmountStr(formattedRemaining);
     setRepayWalletId(record.walletId || wallets[0]?.id || "");
     setRepayIsAdminOnly(record.isAdministrativeOnly);
     setRepayDate(format(new Date(), "yyyy-MM-dd"));
@@ -297,7 +312,7 @@ export function DebtReceivablesSheet({
 
   const handleConfirmRepayment = async () => {
     if (!repayingRecord) return;
-    const rawAmt = Number(repayAmountStr.replace(/\D/g, "")) || 0;
+    const rawAmt = parseCleanAmount(repayAmountStr, isIndonesian);
     if (rawAmt <= 0) {
       showToast(
         isIndonesian ? "Nominal pelunasan tidak valid" : "Invalid repayment amount",
@@ -340,7 +355,13 @@ export function DebtReceivablesSheet({
     setEditPersonName(record.personName);
     setEditDueDate(record.dueDate || "");
     setEditNote(record.note || "");
-    setEditTotalAmountStr(record.totalAmount.toString());
+    const formattedTotal = formatLiveAmountInput(
+      record.totalAmount.toString(),
+      isIndonesian,
+      currencyMeta.decimals > 0,
+      currencyMeta.decimals,
+    ).display;
+    setEditTotalAmountStr(formattedTotal);
   };
 
   const handleSaveEditRecord = () => {
@@ -353,7 +374,7 @@ export function DebtReceivablesSheet({
       );
       return;
     }
-    const rawAmt = Number(editTotalAmountStr.replace(/\D/g, "")) || 0;
+    const rawAmt = parseCleanAmount(editTotalAmountStr, isIndonesian);
     if (rawAmt <= 0) {
       showToast(
         isIndonesian
@@ -854,13 +875,17 @@ export function DebtReceivablesSheet({
                 </span>
                 <input
                   type="text"
-                  inputMode="numeric"
-                  value={
-                    formAmountStr
-                      ? Number(formAmountStr.replace(/\D/g, "")).toLocaleString("id-ID")
-                      : ""
-                  }
-                  onChange={(e) => setFormAmountStr(e.target.value.replace(/\D/g, ""))}
+                  inputMode={currencyMeta.decimals > 0 ? "decimal" : "numeric"}
+                  value={formAmountStr}
+                  onChange={(e) => {
+                    const { display } = formatLiveAmountInput(
+                      e.target.value,
+                      isIndonesian,
+                      currencyMeta.decimals > 0,
+                      currencyMeta.decimals,
+                    );
+                    setFormAmountStr(display);
+                  }}
                   placeholder="0"
                   className="w-full bg-transparent text-[13px] font-bold text-[var(--text-primary)] outline-none"
                 />
@@ -1044,7 +1069,13 @@ export function DebtReceivablesSheet({
               <button
                 type="button"
                 onClick={() => {
-                  setRepayAmountStr(repayingRecord.remainingAmount.toString());
+                  const fullFormatted = formatLiveAmountInput(
+                    repayingRecord.remainingAmount.toString(),
+                    isIndonesian,
+                    currencyMeta.decimals > 0,
+                    currencyMeta.decimals,
+                  ).display;
+                  setRepayAmountStr(fullFormatted);
                 }}
                 className="flex-1 py-1.5 rounded-lg text-[10.5px] font-semibold active:scale-95 transition-all cursor-pointer"
                 style={{
@@ -1061,7 +1092,13 @@ export function DebtReceivablesSheet({
                 type="button"
                 onClick={() => {
                   const half = Math.floor(repayingRecord.remainingAmount / 2);
-                  setRepayAmountStr(half.toString());
+                  const halfFormatted = formatLiveAmountInput(
+                    half.toString(),
+                    isIndonesian,
+                    currencyMeta.decimals > 0,
+                    currencyMeta.decimals,
+                  ).display;
+                  setRepayAmountStr(halfFormatted);
                 }}
                 className="py-1.5 px-3 rounded-lg text-[10.5px] font-semibold active:scale-95 transition-all cursor-pointer"
                 style={{
@@ -1095,13 +1132,17 @@ export function DebtReceivablesSheet({
                 </span>
                 <input
                   type="text"
-                  inputMode="numeric"
-                  value={
-                    repayAmountStr
-                      ? Number(repayAmountStr.replace(/\D/g, "")).toLocaleString("id-ID")
-                      : ""
-                  }
-                  onChange={(e) => setRepayAmountStr(e.target.value.replace(/\D/g, ""))}
+                  inputMode={currencyMeta.decimals > 0 ? "decimal" : "numeric"}
+                  value={repayAmountStr}
+                  onChange={(e) => {
+                    const { display } = formatLiveAmountInput(
+                      e.target.value,
+                      isIndonesian,
+                      currencyMeta.decimals > 0,
+                      currencyMeta.decimals,
+                    );
+                    setRepayAmountStr(display);
+                  }}
                   placeholder="0"
                   className="w-full bg-transparent text-[13px] font-bold text-[var(--text-primary)] outline-none"
                 />
@@ -1331,11 +1372,16 @@ export function DebtReceivablesSheet({
                 </span>
                 <input
                   type="text"
-                  inputMode="numeric"
+                  inputMode={currencyMeta.decimals > 0 ? "decimal" : "numeric"}
                   value={editTotalAmountStr}
                   onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "");
-                    setEditTotalAmountStr(raw ? Number(raw).toLocaleString("id-ID") : "");
+                    const { display } = formatLiveAmountInput(
+                      e.target.value,
+                      isIndonesian,
+                      currencyMeta.decimals > 0,
+                      currencyMeta.decimals,
+                    );
+                    setEditTotalAmountStr(display);
                   }}
                   placeholder="0"
                   className="w-full bg-transparent text-[13px] font-bold text-[var(--text-primary)] outline-none"

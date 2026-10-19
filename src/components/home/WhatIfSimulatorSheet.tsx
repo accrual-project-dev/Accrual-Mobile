@@ -3,6 +3,7 @@ import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { BottomSheet } from "../ui/BottomSheet";
+import { formatLiveAmountInput } from "../../lib/utils";
 import {
   calculateWhatIfScenario,
   type WhatIfScenarioType,
@@ -268,10 +269,16 @@ export function WhatIfSimulatorSheet({
 
   const effectiveValue = useMemo(() => {
     if (!isCustom) return numericValue;
-    const rawNum = Number(customInput || 0);
+    const thousandSep = isIndonesian ? "." : ",";
+    const decimalSep = isIndonesian ? "," : ".";
+    const clean = customInput
+      .split(thousandSep)
+      .join("")
+      .replace(decimalSep, ".");
+    const rawNum = parseFloat(clean) || 0;
     if (scenarioType === "expense_change_pct") return rawNum;
     return convertToIdr(rawNum, preferredCurrency);
-  }, [isCustom, customInput, scenarioType, convertToIdr, preferredCurrency, numericValue]);
+  }, [isCustom, customInput, isIndonesian, scenarioType, convertToIdr, preferredCurrency, numericValue]);
 
   const result = useMemo(
     () =>
@@ -529,7 +536,7 @@ export function WhatIfSimulatorSheet({
                 onClick={() => {
                   setIsCustom(true);
                   if (!customInput) {
-                    setCustomInput(
+                    const fallbackAmt =
                       scenarioType === "expense_change_pct"
                         ? "10"
                         : preferredCurrency === "IDR"
@@ -538,8 +545,17 @@ export function WhatIfSimulatorSheet({
                             ? "5000"
                             : preferredCurrency === "THB"
                               ? "1000"
-                              : "50",
-                    );
+                              : "50";
+                    const initialVal =
+                      scenarioType === "expense_change_pct"
+                        ? fallbackAmt
+                        : formatLiveAmountInput(
+                            fallbackAmt,
+                            isIndonesian,
+                            currencyMeta.decimals > 0,
+                            currencyMeta.decimals,
+                          ).display;
+                    setCustomInput(initialVal);
                   }
                   triggerHaptic("light");
                 }}
@@ -571,19 +587,35 @@ export function WhatIfSimulatorSheet({
                 {scenarioType === "expense_change_pct" ? "%" : currencyMeta.symbol}
               </span>
               <input
-                type="number"
-                inputMode="decimal"
+                type="text"
+                inputMode={
+                  scenarioType === "expense_change_pct" || currencyMeta.decimals > 0
+                    ? "decimal"
+                    : "numeric"
+                }
                 value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
+                onChange={(e) => {
+                  if (scenarioType === "expense_change_pct") {
+                    setCustomInput(e.target.value.replace(/[^0-9.]/g, ""));
+                  } else {
+                    const { display } = formatLiveAmountInput(
+                      e.target.value,
+                      isIndonesian,
+                      currencyMeta.decimals > 0,
+                      currencyMeta.decimals,
+                    );
+                    setCustomInput(display);
+                  }
+                }}
                 placeholder={
                   scenarioType === "expense_change_pct"
                     ? "15"
                     : preferredCurrency === "IDR"
-                      ? "750000"
+                      ? "750.000"
                       : preferredCurrency === "JPY"
-                        ? "5000"
+                        ? "5.000"
                         : preferredCurrency === "THB"
-                          ? "1000"
+                          ? "1.000"
                           : "50"
                 }
                 className="flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold outline-none tabular-nums"

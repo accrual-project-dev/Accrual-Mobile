@@ -775,7 +775,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 320, damping: 32 }}
-        className="relative w-full max-w-lg max-h-[92dvh] flex flex-col rounded-t-[32px] sm:rounded-[32px] overflow-hidden"
+        className="relative w-full max-w-lg max-h-[95dvh] flex flex-col rounded-t-[32px] sm:rounded-[32px] overflow-hidden"
         style={{
           background: "var(--bg-elevated)",
           border: "1px solid var(--glass-border)",
@@ -843,7 +843,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className="flex-1 overflow-y-auto p-5 space-y-4"
+              className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
               style={{
                 paddingBottom:
                   "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
@@ -1118,7 +1118,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               transition={{ duration: 0.18 }}
               className="flex-1 flex flex-col min-h-0"
             >
-              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
                 <div
                   className="flex items-start gap-2.5 px-3.5 py-3 rounded-2xl"
                   style={{
@@ -1507,7 +1507,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
               )}
 
               {/* Transactions List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
                 {visibleItems.map((item) => {
                   const isIncome = item.type === "income";
                   const isTransfer = item.type === "transfer";
