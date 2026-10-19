@@ -22,7 +22,7 @@ import {
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
-import { formatHoldingUnits } from "../../lib/utils";
+import { formatHoldingUnits, formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -321,7 +321,17 @@ export function AssetDetailSheet({
     triggerHaptic("light");
     setInputNominal("");
     setInputUnits("");
-    setInputPrice(String(currentPrice));
+    const isUsd = holding?.currency === "USD";
+    const formattedPrice =
+      currentPrice > 0
+        ? formatLiveAmountInput(
+            String(currentPrice),
+            isIndonesian,
+            isUsd,
+            isUsd ? 4 : 0,
+          ).display
+        : "";
+    setInputPrice(formattedPrice);
     setModalPriceMode("auto");
     setInputDate(format(new Date(), "yyyy-MM-dd"));
     setInputNote("DCA Purchase");
@@ -334,7 +344,17 @@ export function AssetDetailSheet({
     triggerHaptic("light");
     setInputNominal("");
     setInputUnits("");
-    setInputPrice(String(currentPrice));
+    const isUsd = holding?.currency === "USD";
+    const formattedPrice =
+      currentPrice > 0
+        ? formatLiveAmountInput(
+            String(currentPrice),
+            isIndonesian,
+            isUsd,
+            isUsd ? 4 : 0,
+          ).display
+        : "";
+    setInputPrice(formattedPrice);
     setModalPriceMode("auto");
     setInputDate(format(new Date(), "yyyy-MM-dd"));
     setInputNote("Position Sell");
@@ -345,15 +365,20 @@ export function AssetDetailSheet({
 
   // Dual-Input Smart Handler: Otomatis memformat titik pemisah ribuan saat mengetik Rupiah
   const handleNominalChange = (valStr: string) => {
+    const thousandSep = isIndonesian ? "." : ",";
+    const decimalSep = isIndonesian ? "," : ".";
     const cleanDigits = valStr.replace(/\D/g, "");
     const formattedDisplay = cleanDigits
-      ? Number(cleanDigits).toLocaleString("id-ID")
+      ? Number(cleanDigits).toLocaleString(isIndonesian ? "id-ID" : "en-US")
       : "";
     setInputNominal(formattedDisplay);
 
     const nominal = cleanDigits ? parseFloat(cleanDigits) : 0;
-    const cleanPrice =
-      parseFloat(inputPrice.replace(/\./g, "")) || currentPrice;
+    const cleanPriceStr = inputPrice
+      .split(thousandSep)
+      .join("")
+      .replace(decimalSep, ".");
+    const cleanPrice = parseFloat(cleanPriceStr) || currentPrice;
     if (nominal > 0 && cleanPrice > 0) {
       const computedUnits = nominal / cleanPrice;
       const decimals =
@@ -372,23 +397,38 @@ export function AssetDetailSheet({
   const handleUnitsChange = (valStr: string) => {
     setInputUnits(valStr);
     const units = parseFloat(valStr.replace(/,/g, "."));
-    const cleanPrice =
-      parseFloat(inputPrice.replace(/\./g, "")) || currentPrice;
+    const thousandSep = isIndonesian ? "." : ",";
+    const decimalSep = isIndonesian ? "," : ".";
+    const cleanPriceStr = inputPrice
+      .split(thousandSep)
+      .join("")
+      .replace(decimalSep, ".");
+    const cleanPrice = parseFloat(cleanPriceStr) || currentPrice;
     if (!isNaN(units) && units > 0 && cleanPrice > 0) {
       const computedNominal = Math.round(units * cleanPrice);
-      setInputNominal(computedNominal.toLocaleString("id-ID"));
+      setInputNominal(
+        computedNominal.toLocaleString(isIndonesian ? "id-ID" : "en-US"),
+      );
     } else {
       setInputNominal("");
     }
   };
 
   const handlePriceChange = (valStr: string) => {
-    setInputPrice(valStr);
-    const price = parseFloat(valStr.replace(/\./g, ""));
+    const isUsd = holding?.currency === "USD";
+    const { display, rawNumber } = formatLiveAmountInput(
+      valStr,
+      isIndonesian,
+      isUsd || valStr.includes(".") || valStr.includes(","),
+      isUsd ? 4 : 2,
+    );
+    setInputPrice(display);
     const units = parseFloat(inputUnits.replace(/,/g, "."));
-    if (!isNaN(price) && price > 0 && !isNaN(units) && units > 0) {
-      const computedNominal = Math.round(units * price);
-      setInputNominal(computedNominal.toLocaleString("id-ID"));
+    if (rawNumber > 0 && !isNaN(units) && units > 0) {
+      const computedNominal = Math.round(units * rawNumber);
+      setInputNominal(
+        computedNominal.toLocaleString(isIndonesian ? "id-ID" : "en-US"),
+      );
     }
   };
 
@@ -396,11 +436,20 @@ export function AssetDetailSheet({
     setInputDate(newDate);
     if (modalPriceMode === "auto" && holding) {
       const estimatedRate = estimateHistoricalAssetPrice(holding, newDate);
-      setInputPrice(String(estimatedRate));
+      const isUsd = holding?.currency === "USD";
+      const formattedRate = formatLiveAmountInput(
+        String(estimatedRate),
+        isIndonesian,
+        isUsd,
+        isUsd ? 4 : 0,
+      ).display;
+      setInputPrice(formattedRate);
       const units = parseFloat(inputUnits.replace(/,/g, "."));
       if (!isNaN(units) && units > 0) {
         const computedNominal = Math.round(units * estimatedRate);
-        setInputNominal(computedNominal.toLocaleString("id-ID"));
+        setInputNominal(
+          computedNominal.toLocaleString(isIndonesian ? "id-ID" : "en-US"),
+        );
       }
     }
   };
@@ -408,8 +457,18 @@ export function AssetDetailSheet({
   const handleConfirmAction = (e: React.FormEvent) => {
     e.preventDefault();
     const units = parseFloat(inputUnits.replace(/,/g, "."));
-    const price = parseFloat(inputPrice.replace(/\./g, "")) || currentPrice;
-    const cleanNominal = parseFloat(inputNominal.replace(/\./g, ""));
+    const thousandSep = isIndonesian ? "." : ",";
+    const decimalSep = isIndonesian ? "," : ".";
+    const cleanPriceStr = inputPrice
+      .split(thousandSep)
+      .join("")
+      .replace(decimalSep, ".");
+    const price = parseFloat(cleanPriceStr) || currentPrice;
+    const cleanNominalStr = inputNominal
+      .split(thousandSep)
+      .join("")
+      .replace(decimalSep, ".");
+    const cleanNominal = parseFloat(cleanNominalStr);
     const totalAmount =
       !isNaN(cleanNominal) && cleanNominal > 0 ? cleanNominal : units * price;
 
@@ -446,19 +505,23 @@ export function AssetDetailSheet({
     const costBasis = (holding.avg_buy_price || 0) * units;
     const realizedPnL = actionModal === "sell" ? totalAmount - costBasis : undefined;
 
-    const result = recordHoldingActivity(holding.id, {
-      type: actionModal === "buy" ? "buy" : "sell",
-      units,
-      price_per_unit: price,
-      total_amount: totalAmount,
-      date: occurredOnWithTime,
-      realized_pnl: realizedPnL,
-      note:
-        inputNote ||
-        (actionModal === "buy"
-          ? (isIndonesian ? `Beli ${holding.symbol}` : `Buy ${holding.symbol}`)
-          : (isIndonesian ? `Jual ${holding.symbol}` : `Sell ${holding.symbol}`)),
-    });
+    const result = recordHoldingActivity(
+      holding.id,
+      {
+        type: actionModal === "buy" ? "buy" : "sell",
+        units,
+        price_per_unit: price,
+        total_amount: totalAmount,
+        date: occurredOnWithTime,
+        realized_pnl: realizedPnL,
+        note:
+          inputNote ||
+          (actionModal === "buy"
+            ? (isIndonesian ? `Beli ${holding.symbol}` : `Buy ${holding.symbol}`)
+            : (isIndonesian ? `Jual ${holding.symbol}` : `Sell ${holding.symbol}`)),
+      },
+      user?.id,
+    );
 
     if (linkToWallet && selectedWalletId) {
       const pnlSign = (realizedPnL ?? 0) >= 0 ? "+" : "−";
@@ -472,14 +535,59 @@ export function AssetDetailSheet({
               ? `Likuidasi ${formatHoldingUnits(units)} ${holding.symbol} (Pokok: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`
               : `Liquidate ${formatHoldingUnits(units)} ${holding.symbol} (Principal: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`));
 
-      addTx.mutate({
-        type: actionModal === "buy" ? "expense" : "income",
-        amount: totalAmount,
-        category_id: null,
-        wallet_id: selectedWalletId,
-        occurred_on: occurredOnWithTime,
-        note: txNote,
-      });
+      const sourceWalletId = holding.wallet_id;
+      const isTransferPossible = Boolean(
+        sourceWalletId && sourceWalletId !== selectedWalletId,
+      );
+
+      if (actionModal === "sell") {
+        if (isTransferPossible) {
+          // Transfer from Asset/Crypto Wallet to selected Cash Wallet (Bank)
+          addTx.mutate({
+            type: "transfer",
+            amount: totalAmount,
+            wallet_id: sourceWalletId!,
+            to_wallet_id: selectedWalletId,
+            category_id: null,
+            occurred_on: occurredOnWithTime,
+            note: txNote,
+          });
+        } else {
+          // Direct Cash Inflow from Asset Liquidation
+          addTx.mutate({
+            type: "income",
+            amount: totalAmount,
+            category_id: null,
+            wallet_id: selectedWalletId,
+            occurred_on: occurredOnWithTime,
+            note: txNote,
+          });
+        }
+      } else {
+        // Buy action
+        if (isTransferPossible) {
+          // Transfer from funding Cash Wallet (Bank) to Asset/Crypto Wallet
+          addTx.mutate({
+            type: "transfer",
+            amount: totalAmount,
+            wallet_id: selectedWalletId,
+            to_wallet_id: sourceWalletId!,
+            category_id: null,
+            occurred_on: occurredOnWithTime,
+            note: txNote,
+          });
+        } else {
+          // Direct Cash Expense from funding Cash Wallet
+          addTx.mutate({
+            type: "expense",
+            amount: totalAmount,
+            category_id: null,
+            wallet_id: selectedWalletId,
+            occurred_on: occurredOnWithTime,
+            note: txNote,
+          });
+        }
+      }
     }
 
     setActionModal("none");
@@ -512,7 +620,13 @@ export function AssetDetailSheet({
     e.preventDefault();
     if (!holding) return;
     triggerHaptic("medium");
-    const parsedPrice = parseFloat(customPriceInput.replace(/,/g, "."));
+    const thousandSep = isIndonesian ? "." : ",";
+    const decimalSep = isIndonesian ? "," : ".";
+    const cleanCustomStr = customPriceInput
+      .split(thousandSep)
+      .join("")
+      .replace(decimalSep, ".");
+    const parsedPrice = parseFloat(cleanCustomStr);
     if (isCustomPriceEnabled && (isNaN(parsedPrice) || parsedPrice <= 0)) {
       showToast(
         isIndonesian ? "Harga manual tidak valid" : "Invalid custom price",
@@ -1004,11 +1118,21 @@ export function AssetDetailSheet({
                 onClick={() => {
                   triggerHaptic("light");
                   setIsCustomPriceEnabled(holding.is_custom_price || false);
-                  setCustomPriceInput(
-                    holding.custom_price
-                      ? String(holding.custom_price)
-                      : String(holding.current_price || holding.avg_buy_price || ""),
-                  );
+                  const rawP = holding.custom_price
+                    ? String(holding.custom_price)
+                    : String(
+                        holding.current_price || holding.avg_buy_price || "",
+                      );
+                  const isUsd = holding.currency === "USD";
+                  const formattedP = rawP
+                    ? formatLiveAmountInput(
+                        rawP,
+                        isIndonesian,
+                        isUsd,
+                        isUsd ? 4 : 0,
+                      ).display
+                    : "";
+                  setCustomPriceInput(formattedP);
                   setIsEditingCustomPrice(true);
                 }}
                 className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
@@ -1435,7 +1559,9 @@ export function AssetDetailSheet({
                         ? isIndonesian
                           ? "Harga pasar"
                           : "Market price"
-                        : "cth. 16350"
+                        : holding.currency === "USD"
+                          ? "cth. 1.05"
+                          : "cth. 16.350"
                     }
                     className="w-full px-3.5 h-10 rounded-2xl text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
                     style={{
@@ -1793,8 +1919,21 @@ export function AssetDetailSheet({
                     type="text"
                     inputMode="decimal"
                     value={customPriceInput}
-                    onChange={(e) => setCustomPriceInput(e.target.value)}
-                    placeholder="e.g. 16500"
+                    onChange={(e) => {
+                      const isUsd = holding.currency === "USD";
+                      const { display } = formatLiveAmountInput(
+                        e.target.value,
+                        isIndonesian,
+                        isUsd ||
+                          e.target.value.includes(".") ||
+                          e.target.value.includes(","),
+                        isUsd ? 4 : 2,
+                      );
+                      setCustomPriceInput(display);
+                    }}
+                    placeholder={
+                      holding.currency === "USD" ? "e.g. 1.05" : "e.g. 16.500"
+                    }
                     className="w-full px-3.5 h-10 rounded-2xl text-[13px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
                     style={{
                       background: controlBg,

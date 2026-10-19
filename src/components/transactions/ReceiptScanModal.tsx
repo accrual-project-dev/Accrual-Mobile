@@ -966,7 +966,7 @@ export function ReceiptScanModal({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", stiffness: 360, damping: 35 }}
-            className="w-full max-w-md rounded-t-[36px] sm:rounded-[36px] p-5 relative z-10 flex flex-col max-h-[92dvh] overflow-hidden"
+            className="w-full max-w-md rounded-t-[36px] sm:rounded-[36px] p-5 relative z-10 flex flex-col max-h-[95dvh] overflow-hidden"
             style={{
               background: isDark
                 ? "linear-gradient(165deg, rgba(255,255,255,0.085) 0%, rgba(255,255,255,0.032) 40%, rgba(0,0,0,0.62) 100%), var(--bg-canvas)"
@@ -993,7 +993,7 @@ export function ReceiptScanModal({
               paddingTop:
                 "max(calc(env(safe-area-inset-top, 0px) + 12px), 20px)",
               paddingBottom:
-                "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
+                "max(calc(env(safe-area-inset-bottom, 0px) + 16px), 24px)",
             }}
           >
             {/* ============================================================
@@ -1117,7 +1117,7 @@ export function ReceiptScanModal({
                   onClick={
                     isLiveCameraActive ? () => captureLiveSnapshot() : undefined
                   }
-                  className={`relative w-full aspect-[3/4] max-h-[50dvh] rounded-[28px] flex flex-col items-center justify-center overflow-hidden transition-all bg-black ${
+                  className={`relative w-full aspect-[3/4] max-h-[58dvh] rounded-[28px] flex flex-col items-center justify-center overflow-hidden transition-all bg-black ${
                     isLiveCameraActive ? "cursor-pointer" : ""
                   }`}
                   style={{
@@ -1483,7 +1483,13 @@ export function ReceiptScanModal({
             STEP 3 — RESULT
             ============================================================ */}
             {step === "result" && parsedSlip && (
-              <div className="flex-1 overflow-y-auto space-y-3 pt-1 no-scrollbar">
+              <div
+                className="flex-1 min-h-0 overflow-y-auto space-y-3 pt-1 no-scrollbar"
+                style={{
+                  paddingBottom:
+                    "max(calc(env(safe-area-inset-bottom, 0px) + 36px), 48px)",
+                }}
+              >
                 {/* ========================================================
                 STATUS CAPSULE
                 ======================================================== */}
@@ -2379,7 +2385,7 @@ export function ReceiptScanModal({
                 {/* ========================================================
                 ACTIONS
                 ======================================================== */}
-                <div className="pt-2 space-y-2">
+                <div className="pt-2.5 pb-6 space-y-2">
                   {/* Primary */}
                   <button
                     type="button"

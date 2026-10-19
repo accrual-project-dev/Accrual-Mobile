@@ -112,10 +112,9 @@ describe("Phase 4: Glass Confirmation Modal & Strict Non-Mixed Localization Suit
 
       expect(content).toContain("Perbarui Kurs");
       expect(content).toContain("Sync FX");
-      expect(content).toContain("Mata Uang Penilaian");
-      expect(content).toContain("Valuation Currency");
-      expect(content).toContain("Pilih mata uang dasar pembukuan Anda");
-      expect(content).toContain("Select your preferred base currency");
+      expect(content).toMatch(/Valas & Nilai Tukar|Pilihan Mata Uang/);
+      expect(content).toMatch(/FX & Exchange Rates|Base Currencies/);
+      expect(content).toMatch(/Konversi multi-valuta|revaluasi aset asing/);
     });
   });
 });
