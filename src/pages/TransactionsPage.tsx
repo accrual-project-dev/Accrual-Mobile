@@ -28,11 +28,13 @@ import {
 } from "../hooks/useTransactions";
 import { useWallets, resolveTransactionWallets } from "../hooks/useWallets";
 import { useCategories } from "../hooks/useCategories";
+import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useSpace } from "../contexts/SpaceContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { isUsdtWallet, reverseTransactionWithHolding } from "../lib/holdingSyncEngine";
 import type { Transaction, Category, Wallet as WalletType } from "../lib/types";
 import { formatCurrency, getDateLabel } from "../lib/utils";
 import { useDeferredRender } from "../hooks/useDeferredRender";
@@ -164,6 +166,7 @@ export function TransactionsPage({
   const deleteTx = useDeleteTransaction();
   const batchDeleteTx = useBatchDeleteTransactions();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const { preferredCurrency, currencyMeta } = useCurrency();
   const { t, isIndonesian } = useLanguage();
   const {
@@ -208,6 +211,25 @@ export function TransactionsPage({
         isIndonesian ? "Transaksi dihapus" : "Transaction deleted",
         "delete",
         () => {
+          const fromWallet = wallets.find((w) => w.id === tx.wallet_id);
+          const toWallet = wallets.find((w) => w.id === tx.to_wallet_id);
+          const isCrypto =
+            isUsdtWallet(fromWallet) ||
+            (tx.type === "transfer" && isUsdtWallet(toWallet));
+          if (isCrypto) {
+            reverseTransactionWithHolding(
+              {
+                type: tx.type,
+                amount: Number(tx.amount),
+                wallet_id: tx.wallet_id,
+                to_wallet_id: tx.to_wallet_id,
+                occurred_on: tx.occurred_on,
+                note: tx.note,
+              },
+              wallets,
+              user?.id,
+            );
+          }
           deleteTx.mutate(tx.id, {
             onSuccess: () => {
               setPendingDeletedIds((prev) => {
@@ -228,7 +250,7 @@ export function TransactionsPage({
         },
       );
     },
-    [deleteTx, showToast, isIndonesian],
+    [deleteTx, showToast, isIndonesian, wallets, user?.id],
   );
 
   const handleToggleSelect = useCallback((tx: Transaction) => {
@@ -286,6 +308,29 @@ export function TransactionsPage({
         : `${count} transactions deleted`,
       "delete",
       () => {
+        idsToDelete.forEach((id) => {
+          const tx = allTxs.find((t) => t.id === id);
+          if (!tx) return;
+          const fromWallet = wallets.find((w) => w.id === tx.wallet_id);
+          const toWallet = wallets.find((w) => w.id === tx.to_wallet_id);
+          const isCrypto =
+            isUsdtWallet(fromWallet) ||
+            (tx.type === "transfer" && isUsdtWallet(toWallet));
+          if (isCrypto) {
+            reverseTransactionWithHolding(
+              {
+                type: tx.type,
+                amount: Number(tx.amount),
+                wallet_id: tx.wallet_id,
+                to_wallet_id: tx.to_wallet_id,
+                occurred_on: tx.occurred_on,
+                note: tx.note,
+              },
+              wallets,
+              user?.id,
+            );
+          }
+        });
         batchDeleteTx.mutate(idsToDelete, {
           onSuccess: () => {
             setPendingDeletedIds((prev) => {
@@ -311,6 +356,9 @@ export function TransactionsPage({
     showToast,
     batchDeleteTx,
     isIndonesian,
+    allTxs,
+    wallets,
+    user?.id,
   ]);
 
   const handleDuplicateTransaction = useCallback((tx: Transaction) => {

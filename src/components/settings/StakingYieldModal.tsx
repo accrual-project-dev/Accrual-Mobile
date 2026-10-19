@@ -610,15 +610,31 @@ export function StakingYieldModal({
           userId,
         );
 
-        // 2. Record income transaction in the ledger so user sees it in cashflow & reports
-        addTx.mutate({
-          wallet_id: null,
-          category_id: incomeCat?.id || null,
-          type: "income",
-          amount: idrAmount,
-          occurred_on: fullIsoOccurredOn,
-          note: finalNote,
-        });
+        // 2. Identify if a genuine crypto/investment wallet is linked to receive ledger entry
+        const matchingCryptoWallet =
+          (targetHolding?.wallet_id &&
+            wallets.find((w) => w.id === targetHolding.wallet_id)) ||
+          wallets.find(
+            (w) =>
+              w.name.toLowerCase().includes(targetSymbol.toLowerCase()) ||
+              w.classification === "investment" ||
+              w.name.toLowerCase().includes("crypto") ||
+              w.name.toLowerCase().includes("tether") ||
+              w.name.toLowerCase().includes("usdt"),
+          );
+
+        // Record ledger income ONLY if a dedicated crypto/investment wallet exists.
+        // Never dispatch wallet_id: null, as financialMath attributes null wallet_id to the default fiat bank.
+        if (matchingCryptoWallet) {
+          addTx.mutate({
+            wallet_id: matchingCryptoWallet.id,
+            category_id: incomeCat?.id || null,
+            type: "income",
+            amount: idrAmount,
+            occurred_on: fullIsoOccurredOn,
+            note: finalNote,
+          });
+        }
 
         showToast(
           isIndonesian

@@ -22,6 +22,7 @@ import {
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
+import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { formatHoldingUnits, formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
@@ -137,6 +138,8 @@ export function AssetDetailSheet({
   const [timeframe, setTimeframe] = useState<
     "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL"
   >("1M");
+
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   // Buy / Sell action modal states
   const [actionModal, setActionModal] = useState<"none" | "buy" | "sell">(
@@ -740,7 +743,8 @@ export function AssetDetailSheet({
   };
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title={holding.name}>
+    <>
+      <BottomSheet isOpen={isOpen} onClose={onClose} title={holding.name}>
       <div className="px-5 sm:px-6 space-y-3.5 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none max-w-lg mx-auto">
         {/* ============================================================ */}
         {/* 1. HERO & BALANCE (Apple Stocks Parity)                     */}
@@ -828,8 +832,8 @@ export function AssetDetailSheet({
               <button
                 type="button"
                 onClick={() => {
-                  triggerHaptic("heavy");
-                  onDeleteHolding(holding.id, holding.name);
+                  triggerHaptic("medium");
+                  setIsConfirmingDelete(true);
                 }}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-rose-400 active:scale-90 transition-all cursor-pointer"
                 style={{
@@ -1980,5 +1984,31 @@ export function AssetDetailSheet({
         )}
       </div>
     </BottomSheet>
+
+    {/* Confirmation Modal for Asset Deletion */}
+    <GlassConfirmationModal
+      isOpen={isConfirmingDelete}
+      onClose={() => setIsConfirmingDelete(false)}
+      onConfirm={() => {
+        if (holding) {
+          onDeleteHolding(holding.id, holding.name);
+          setIsConfirmingDelete(false);
+          onClose();
+        }
+      }}
+      title={isIndonesian ? "Hapus Kepemilikan Aset?" : "Delete Asset Holding?"}
+      description={
+        isIndonesian
+          ? `Apakah Anda yakin ingin menghapus data kepemilikan ${holding.name} (${holding.symbol})? Seluruh riwayat transaksi aset ini akan dihapus dari portofolio.`
+          : `Are you sure you want to remove ${holding.name} (${holding.symbol})? All holding transactions for this asset will be removed from your portfolio.`
+      }
+      confirmLabel={isIndonesian ? "Hapus Aset" : "Delete Asset"}
+      cancelLabel={isIndonesian ? "Batal" : "Cancel"}
+      icon={Trash2}
+      isIndonesian={isIndonesian}
+      isDark={isDark}
+      zIndex={120}
+    />
+    </>
   );
 }

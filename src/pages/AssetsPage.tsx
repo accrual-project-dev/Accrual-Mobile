@@ -42,6 +42,7 @@ import {
   getStandardUsdtHoldingId,
   saveUsdtPref,
   deleteHolding,
+  upsertHolding,
   calculateHoldingValuation,
   fetchHoldingsFromSupabase,
   refreshAllPortfolioPrices,
@@ -843,6 +844,7 @@ export function AssetsPage() {
   const handleDeleteHolding = (id: string, name: string) => {
     triggerHaptic("heavy");
     if (id.startsWith("usdt-") || id === "usdt-core-holding") {
+      const prevPref = { ...usdtPref };
       const cleared: UsdtValuationPref = {
         units: 0,
         costBasis: 0,
@@ -853,16 +855,37 @@ export function AssetsPage() {
       showToast(
         isIndonesian ? "Holding USDT dihapus" : "USDT holding removed",
         "delete",
-        () => {},
+        () => {
+          triggerHaptic("medium");
+          saveUsdtPref(prevPref, user?.id);
+          setUsdtPref(prevPref);
+          showToast(
+            isIndonesian ? "Holding USDT dipulihkan" : "USDT holding restored",
+            "add",
+            () => {},
+          );
+        },
       );
       return;
     }
+    const previousHolding = holdings.find((h) => h.id === id);
     const updated = deleteHolding(id, user?.id);
     setHoldings(updated);
     showToast(
       `${name} ${isIndonesian ? "dihapus" : "removed"}`,
       "delete",
-      () => {},
+      () => {
+        if (previousHolding) {
+          triggerHaptic("medium");
+          upsertHolding(previousHolding, user?.id);
+          setHoldings(getSavedHoldings(user?.id));
+          showToast(
+            `${name} ${isIndonesian ? "dipulihkan" : "restored"}`,
+            "add",
+            () => {},
+          );
+        }
+      },
     );
   };
 
