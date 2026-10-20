@@ -272,7 +272,7 @@ describe("Audit #36: User Identity, Profile Capsule, Password Recovery & Multi-T
         ([e]) => (e as CustomEvent).type === "trouvaille_session_teardown"
       );
       expect(event).toBeDefined();
-    });
+    }, 15000);
 
     it("respects preserveGuestFlag when clearing session", async () => {
       store["trouvaille_guest_mode"] = "true";

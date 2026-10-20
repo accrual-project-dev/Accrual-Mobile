@@ -233,6 +233,19 @@ export function BottomTabBar({
         )}
       </AnimatePresence>
 
+      {/* ── Apple Ambient Bottom Shield: Eliminates bottom leakage beneath the floating pill ── */}
+      <div
+        aria-hidden="true"
+        data-testid="bottom-tab-bar-ambient-shield"
+        className="fixed bottom-0 left-0 right-0 pointer-events-none z-40 transition-colors duration-200"
+        style={{
+          height: "calc(env(safe-area-inset-bottom, 0px) + 84px)",
+          background: isDark
+            ? "linear-gradient(to bottom, rgba(10,10,13,0) 0%, rgba(10,10,13,0.3) 28%, rgba(10,10,13,0.85) 60%, var(--bg-base) 82%, var(--bg-base) 100%)"
+            : "linear-gradient(to bottom, rgba(240,240,242,0) 0%, rgba(240,240,242,0.3) 28%, rgba(240,240,242,0.85) 60%, var(--bg-base) 82%, var(--bg-base) 100%)",
+        }}
+      />
+
       <div className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-[calc(10px+env(safe-area-inset-bottom))] pointer-events-none flex justify-center">
         <div
           className="w-full max-w-[360px] rounded-full p-1.5 flex items-center justify-between pointer-events-auto transition-all relative select-none"
