@@ -10,7 +10,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "generate:icons": "node scripts/generate-all-app-icons.cjs",
-    "flow:automate": "node scripts/flow-automation.cjs"
+    "flow:automate": "node scripts/flow-automation.cjs",
+    "postinstall": "node scripts/patch-local-notifications.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

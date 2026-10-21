@@ -30,6 +30,7 @@ scripts/*
 !scripts/generate-all-app-icons.cjs
 !scripts/make-1024-icon.cjs
 !scripts/optimize-pwa.cjs
+!scripts/patch-local-notifications.cjs
 trouvaille-web/
 conteks/
 *.traineddata

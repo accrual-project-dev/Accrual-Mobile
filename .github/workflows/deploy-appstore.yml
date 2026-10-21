@@ -50,7 +50,9 @@ jobs:
           xcodebuild -version
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: |
+          npm ci || npm install
+          node scripts/patch-local-notifications.cjs
 
       - name: Build Web Application
         run: npm run build
