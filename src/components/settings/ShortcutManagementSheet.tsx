@@ -8,6 +8,7 @@ import {
   ArrowUpCircle,
   Check,
   X,
+  Link2,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -133,6 +134,26 @@ export function ShortcutManagementSheet({
           ? "Preset ditambahkan"
           : "Preset added",
       editingId ? "update" : "add",
+    );
+  };
+
+  const handleCopyScheme = (s: Shortcut) => {
+    triggerHaptic("light");
+    const cat = categories.find((c) => c.id === s.category_id);
+    const wal = wallets.find((w) => w.id === s.wallet_id);
+    const params = new URLSearchParams();
+    if (s.amount > 0) params.append("amount", String(s.amount));
+    params.append("type", s.type);
+    if (cat?.name) params.append("category", cat.name);
+    if (wal?.name) params.append("wallet", wal.name);
+    if (s.note || s.title) params.append("note", s.note || s.title);
+    params.append("autosave", "true");
+
+    const scheme = `accrual://add?${params.toString()}`;
+    navigator.clipboard.writeText(scheme);
+    showToast(
+      isIndonesian ? "Skema URL pintasan disalin" : "Shortcut scheme URL copied",
+      "add",
     );
   };
 
@@ -594,6 +615,19 @@ export function ShortcutManagementSheet({
                   </button>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyScheme(s)}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                      style={{
+                        background: "var(--glass-fill)",
+                        color: "var(--text-secondary)",
+                      }}
+                      aria-label={isIndonesian ? `Salin skema URL ${s.title}` : `Copy URL scheme ${s.title}`}
+                      title={isIndonesian ? "Salin Skema" : "Copy Scheme"}
+                    >
+                      <Link2 size={13.5} strokeWidth={1.75} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEditForm(s)}

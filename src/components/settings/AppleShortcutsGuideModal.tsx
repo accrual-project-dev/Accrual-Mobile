@@ -43,15 +43,15 @@ export type TabType =
   | "screen_scan"
   | "notification_reader";
 
-type InternalTab = "pindai" | "notifikasi" | "instan" | "suara" | "dialog";
+type InternalTab = "unduh" | "pindai" | "notifikasi" | "instan" | "suara" | "dialog";
 
 function mapTab(t: TabType): InternalTab {
   if (t === "screen_scan") return "pindai";
   if (t === "notification_reader" || t === "automation") return "notifikasi";
   if (t === "ways_to_add") return "suara";
   if (t === "action_button") return "instan";
-  if (t === "back_tap") return "pindai";
-  return "pindai";
+  if (t === "back_tap") return "unduh";
+  return "unduh";
 }
 
 interface AppleShortcutsGuideModalProps {
@@ -174,6 +174,65 @@ export function AppleShortcutsGuideModal({
 
   // Slide content matrix with pure non-mixed localization
   const slides: Record<InternalTab, SlideData[]> = {
+    unduh: [
+      {
+        isHero: true,
+        title: isIndonesian ? "Pusat Pintasan Cepat 1-Ketukan" : "1-Tap Shortcuts Hub",
+        desc: isIndonesian
+          ? "Karena Accrual kini terdaftar resmi di ekosistem Apple Developer, skema URL dan pintasan iOS dapat berjalan permanen tanpa batas waktu. Anda dapat langsung menguji skema atau menyalin perintah siap pakai ke aplikasi Pintasan Apple."
+          : "Because Accrual is officially signed under Apple Developer, iOS URL schemes and shortcuts run permanently without expiration. You can instantly test schemes or copy ready-to-use commands into the Apple Shortcuts app.",
+        actionType: "test_url",
+        scheme: "accrual://add",
+        btnText: isIndonesian ? "Uji Skema Catat Instan" : "Test Instant Add Scheme",
+      },
+      {
+        stepNum: 1,
+        title: isIndonesian ? "Pintasan Catat Cepat (Instant Add)" : "Instant Quick Add Shortcut",
+        desc: isIndonesian
+          ? "Membuka formulir pencatatan transaksi Accrual secara instan dari aplikasi apa pun via Back Tap atau Action Button."
+          : "Instantly opens the Accrual transaction sheet from anywhere via Back Tap or Action Button.",
+        actionType: "test_url",
+        scheme: "accrual://add",
+        btnText: isIndonesian ? "Uji Buka accrual://add" : "Test accrual://add",
+        noteText: isIndonesian ? "Gunakan skema accrual://add pada tindakan 'Buka URL' di Pintasan." : "Use accrual://add in 'Open URLs' action in Shortcuts.",
+      },
+      {
+        stepNum: 2,
+        title: isIndonesian ? "Pembaca Notifikasi Bank Otomatis" : "Auto Bank Notification Reader",
+        desc: isIndonesian
+          ? "Setiap ada notifikasi dari BCA, Mandiri, GoPay, OVO, ShopeePay, DANA, dll., pintasan otomatis membaca teks dan menyimpannya langsung ke Accrual."
+          : "Whenever a notification arrives from your banking or e-wallet app, Shortcuts automatically reads the text and logs it directly to Accrual.",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "accrual://add?text=[Teks Terenkode]&autosave=true"
+          : "accrual://add?text=[URL Encoded Text]&autosave=true",
+        copyLabel: isIndonesian ? "Skema Automasi Bank" : "Bank Automation Scheme",
+        btnText: isIndonesian ? "Salin Skema Notifikasi Bank" : "Copy Bank Notification Scheme",
+      },
+      {
+        stepNum: 3,
+        title: isIndonesian ? "Pindai Layar Resi (Back Tap Screen OCR)" : "Screen Receipt Scanner OCR",
+        desc: isIndonesian
+          ? "Ketuk 2x bodi belakang iPhone saat melihat struk atau mutasi bank, sistem otomatis membaca teks via Live Text OCR dan membuka daftar periksa cerdas."
+          : "Double tap back of iPhone while viewing receipt or bank statement, iOS Live Text OCR extracts text and opens checklist.",
+        actionType: "copy",
+        copyText: isIndonesian
+          ? "accrual://capture?text=[Teks Terenkode]&autosave=true"
+          : "accrual://capture?text=[URL Encoded Text]&autosave=true",
+        copyLabel: isIndonesian ? "Skema Pindai Resi" : "Receipt Scan Scheme",
+        btnText: isIndonesian ? "Salin Skema Pindai Resi" : "Copy Receipt Scan Scheme",
+      },
+      {
+        stepNum: 4,
+        title: isIndonesian ? "Pencatatan Dikte Suara (Voice Log)" : "Voice Transaction Log",
+        desc: isIndonesian
+          ? "Cukup ucapkan pengeluaran Anda (misal: 'Kopi 25rb pakai Cash') dan kecerdasan Accrual langsung mengurai nominal, akun, dan kategori."
+          : "Simply speak your transaction (e.g. 'Coffee 25k with Cash') and Accrual automatically parses amount, wallet, and category.",
+        actionType: "test_url",
+        scheme: "accrual://voice",
+        btnText: isIndonesian ? "Uji Dikte Suara (accrual://voice)" : "Test Voice Log (accrual://voice)",
+      },
+    ],
     pindai: [
       {
         isHero: true,
@@ -500,6 +559,11 @@ export function AppleShortcutsGuideModal({
   };
 
   const tabs: { id: InternalTab; label: string; icon: React.ReactNode }[] = [
+    {
+      id: "unduh",
+      label: isIndonesian ? "1-Ketukan" : "1-Tap",
+      icon: <Sparkles size={12} strokeWidth={2} />,
+    },
     {
       id: "pindai",
       label: isIndonesian ? "Pindai" : "Scan",
