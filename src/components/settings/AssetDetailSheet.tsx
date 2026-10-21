@@ -89,6 +89,18 @@ const getStockRangeLabel = (range: string, isIndonesian: boolean): string => {
   return isIndonesian ? labels[range]?.id || range : labels[range]?.en || range;
 };
 
+const formatActivityDate = (dateStr?: string, _isIndo?: boolean): string => {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const hasTime = dateStr.includes("T") || dateStr.includes(":");
+    return hasTime ? format(d, "dd MMM yyyy, HH:mm") : format(d, "dd MMM yyyy");
+  } catch {
+    return dateStr;
+  }
+};
+
 const GlassTooltip = ({ active, payload, label, formatFn }: any) => {
   if (!active || !payload?.length) return null;
   const val = payload[0]?.value ?? 0;
@@ -208,14 +220,26 @@ export function AssetDetailSheet({
           const fromW = wallets.find((w) => w.id === tx.wallet_id);
           note =
             tx.note ||
-            (fromW ? `Deposit dari ${fromW.name}` : "P2P Purchase / Deposit");
+            (fromW
+              ? isIndonesian
+                ? `Setoran dari ${fromW.name}`
+                : `Deposit from ${fromW.name}`
+              : isIndonesian
+                ? "Pembelian Aset"
+                : "Asset Purchase");
         } else if (tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
           isMatch = true;
           actType = "sell";
           const toW = wallets.find((w) => w.id === tx.to_wallet_id);
           note =
             tx.note ||
-            (toW ? `Transfer ke ${toW.name}` : "P2P Withdrawal / Penarikan");
+            (toW
+              ? isIndonesian
+                ? `Transfer ke ${toW.name}`
+                : `Transfer to ${toW.name}`
+              : isIndonesian
+                ? "Pencairan Aset"
+                : "Asset Liquidation");
         }
       } else if (holding.symbol) {
         const sym = holding.symbol.toUpperCase();
@@ -361,8 +385,9 @@ export function AssetDetailSheet({
     setModalPriceMode("auto");
     setInputDate(format(new Date(), "yyyy-MM-dd"));
     setInputNote("Position Sell");
-    setLinkToWallet(false);
-    setSelectedWalletId(wallets[0]?.id || "");
+    setLinkToWallet(true);
+    const nonCryptoWallet = wallets.find((w) => !isInvestmentOrCryptoWallet(w));
+    setSelectedWalletId(nonCryptoWallet?.id || wallets[0]?.id || "");
     setActionModal("sell");
   };
 
@@ -1288,7 +1313,7 @@ export function AssetDetailSheet({
                                   : "Reduce Units"}
                           </span>
                           <span className="text-[9.5px] font-mono text-[var(--text-tertiary)] opacity-75">
-                            {act.date}
+                            {formatActivityDate(act.date, isIndonesian)}
                           </span>
                         </div>
                         <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-1 leading-none">

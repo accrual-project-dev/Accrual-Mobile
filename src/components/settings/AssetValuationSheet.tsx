@@ -183,6 +183,22 @@ export function AssetValuationSheet({
     }
   }, [user?.id]);
 
+  // Listen to cross-component holding/USDT updates (e.g. from TransactionSheet transfer, AssetDetailSheet, sync engine)
+  useEffect(() => {
+    const handleUpdate = () => {
+      setUsdtPref(getSavedUsdtPref(user?.id));
+      setHoldings(getSavedHoldings(user?.id));
+    };
+
+    window.addEventListener("trouvaille_holdings_updated", handleUpdate);
+    window.addEventListener("trouvaille_usdt_updated", handleUpdate);
+
+    return () => {
+      window.removeEventListener("trouvaille_holdings_updated", handleUpdate);
+      window.removeEventListener("trouvaille_usdt_updated", handleUpdate);
+    };
+  }, [user?.id]);
+
   // Automatically refresh live USDT rate and sync cloud holdings upon sheet open
   useEffect(() => {
     if (!isOpen) return;
@@ -1081,14 +1097,14 @@ export function AssetValuationSheet({
                               />
                               <span className="text-[11px] font-semibold tracking-tight text-[var(--text-primary)]">
                                 {isIndonesian
-                                  ? "Sinkronisasi Transfer P2P Terbaru"
-                                  : "Recent P2P Transfer Sync"}
+                                  ? "Sinkronisasi Pencairan Aset Terbaru"
+                                  : "Recent Asset Liquidation Sync"}
                               </span>
                             </div>
                             <p className="text-[10.5px] leading-tight text-[var(--text-secondary)]">
                               {isIndonesian
-                                ? `Penarikan P2P terbaru (${reconciliationAudit.unreconciledTxs[0]?.date || "18 Sep"} · ${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) belum dikurangkan dari unit kepemilikan.`
-                                : `Recent P2P withdrawal (${reconciliationAudit.unreconciledTxs[0]?.date || "Sep 18"} · ${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) has not been deducted from holding units yet.`}
+                                ? `Pencairan aset terbaru (${reconciliationAudit.unreconciledTxs[0]?.date || "18 Sep"} · ${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) belum dikurangkan dari unit kepemilikan.`
+                                : `Recent asset liquidation (${reconciliationAudit.unreconciledTxs[0]?.date || "Sep 18"} · ${formatWithPreferred(reconciliationAudit.unreconciledTxs[0]?.amount || 89624)}) has not been deducted from holding units yet.`}
                             </p>
                           </div>
                           <button

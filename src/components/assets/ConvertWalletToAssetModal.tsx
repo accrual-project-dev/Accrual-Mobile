@@ -393,8 +393,8 @@ export function ConvertWalletToAssetModal({
               </div>
               <p className="text-[9.5px] text-[var(--text-tertiary)] leading-tight">
                 {isIndonesian
-                  ? "Dompet tetap ada untuk mutasi P2P, terklasifikasi sebagai investasi."
-                  : "Wallet remains for P2P txs, classified as investment."}
+                  ? "Dompet tetap ada untuk mutasi pencairan/setoran, terklasifikasi sebagai investasi."
+                  : "Wallet remains for liquidation/deposit txs, classified as investment."}
               </p>
             </button>
 

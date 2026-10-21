@@ -147,7 +147,7 @@ export function syncTransactionWithHolding(
   const usdtPref = getSavedUsdtPref(userId);
   const rate = tx.customPrice && tx.customPrice > 0 ? tx.customPrice : usdtPref.rate || USD_IDR_ESTIMATE;
 
-  // Case 1: Transfer OUT from Crypto (e.g. P2P USDT -> SeaBank withdrawal)
+  // Case 1: Transfer OUT from Crypto (e.g. USDT -> SeaBank liquidation / withdrawal)
   if (tx.type === "transfer" && isFromCrypto && !isToCrypto) {
     const unitsToDeduct =
       tx.customUnits && tx.customUnits > 0
@@ -164,7 +164,7 @@ export function syncTransactionWithHolding(
         price_per_unit: rate,
         total_amount: amount,
         date: tx.occurred_on,
-        note: tx.note || `P2P Withdrawal to ${toWallet?.name || "Bank"}`,
+        note: tx.note || `Pencairan Aset ke ${toWallet?.name || "Bank"}`,
       },
       userId,
     );
@@ -176,11 +176,11 @@ export function syncTransactionWithHolding(
       unitsDelta: -unitsToDeduct,
       previousUnits,
       newUnits: updatedHolding.units,
-      message: `Deducted ${unitsToDeduct} USDT for P2P withdrawal`,
+      message: `Deducted ${unitsToDeduct} USDT for asset liquidation`,
     };
   }
 
-  // Case 2: Transfer IN to Crypto (e.g. SeaBank -> USDT deposit / P2P purchase)
+  // Case 2: Transfer IN to Crypto (e.g. SeaBank -> USDT deposit / purchase)
   if (tx.type === "transfer" && !isFromCrypto && isToCrypto) {
     const unitsToAdd =
       tx.customUnits && tx.customUnits > 0
@@ -197,7 +197,7 @@ export function syncTransactionWithHolding(
         price_per_unit: rate,
         total_amount: amount,
         date: tx.occurred_on,
-        note: tx.note || `Deposit from ${fromWallet?.name || "Bank"}`,
+        note: tx.note || `Pembelian Aset dari ${fromWallet?.name || "Bank"}`,
       },
       userId,
     );

@@ -21,6 +21,7 @@ import {
   Coins,
   Lock,
   Plus,
+  Edit3,
 } from "lucide-react";
 import { TransactionKeypadSheet } from "./TransactionKeypadSheet";
 import { CategorySelectorRibbon } from "./CategorySelectorRibbon";
@@ -210,6 +211,23 @@ export function TransactionSheet({
   });
   const [cryptoUnits, setCryptoUnits] = useState<string>("");
   const [isUnitsInputMode, setIsUnitsInputMode] = useState<boolean>(false);
+  const [isEditingRate, setIsEditingRate] = useState<boolean>(false);
+  const [customRateStr, setCustomRateStr] = useState<string>("");
+
+  const usdtPref = useMemo(() => getSavedUsdtPref(user?.id), [user?.id]);
+  const usdtAvgBuyPrice = useMemo(() => {
+    return usdtPref.units > 0
+      ? Math.round(usdtPref.costBasis / usdtPref.units)
+      : cryptoRate;
+  }, [usdtPref, cryptoRate]);
+
+  // Realized PnL preview for liquidation (transfer out from crypto)
+  const estimatedRealizedPnL = useMemo(() => {
+    if (!isFromCrypto || type !== "transfer") return null;
+    const u = parseFloat(cryptoUnits) || 0;
+    if (u <= 0 || !cryptoRate) return null;
+    return Math.round(u * (cryptoRate - usdtAvgBuyPrice));
+  }, [isFromCrypto, type, cryptoUnits, cryptoRate, usdtAvgBuyPrice]);
 
   useEffect(() => {
     if (isCryptoInvolved) {
@@ -1438,7 +1456,7 @@ export function TransactionSheet({
             ))}
           </div>
 
-          {/* Crypto Holding P2P Sync Bar */}
+          {/* Crypto Holding Liquidation / Purchase Sync Bar */}
           {isCryptoInvolved && (
             <div
               className="mt-3 p-3 rounded-2xl max-w-[340px] mx-auto text-left space-y-2 select-none"
@@ -1458,12 +1476,12 @@ export function TransactionSheet({
                   <span className="text-[11px] font-semibold tracking-tight text-[var(--text-primary)]">
                     {isFromCrypto && type === "transfer"
                       ? isIndonesian
-                        ? "Penarikan P2P"
-                        : "P2P Withdrawal"
+                        ? "Pencairan Aset"
+                        : "Asset Liquidation"
                       : isToCrypto && type === "transfer"
                         ? isIndonesian
-                          ? "Setoran P2P"
-                          : "P2P Deposit"
+                          ? "Pembelian Aset"
+                          : "Asset Purchase"
                         : type === "income"
                           ? isIndonesian
                             ? "Hasil Staking"
@@ -1473,10 +1491,82 @@ export function TransactionSheet({
                             : "Crypto Execution"}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] border border-[var(--glass-border)] text-[var(--text-secondary)]">
-                  1 USDT ≈ Rp {cryptoRate.toLocaleString("id-ID")}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setIsEditingRate((prev) => !prev);
+                    if (!isEditingRate) {
+                      setCustomRateStr(formatLiveAmountInput(String(Math.round(cryptoRate)), isIndonesian).display);
+                    }
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] hover:bg-white/[0.09] active:scale-[0.97] transition-all border border-[var(--glass-border)] text-[var(--text-secondary)] cursor-pointer"
+                  title={isIndonesian ? "Klik untuk atur kurs kustom" : "Click to edit custom rate"}
+                >
+                  <span>1 USDT ≈ Rp {cryptoRate.toLocaleString("id-ID")}</span>
+                  <Edit3 size={10} className="text-[var(--text-tertiary)]" />
+                </button>
               </div>
+
+              {isEditingRate && (
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--glass-border)]/40">
+                  <span className="text-[10px] text-[var(--text-tertiary)] shrink-0">
+                    {isIndonesian ? "Kurs Kustom (Rp/USDT):" : "Custom Rate (IDR/USDT):"}
+                  </span>
+                  <div className="flex items-center gap-1 flex-1 max-w-[140px]">
+                    <span className="text-[11px] font-mono text-[var(--text-tertiary)]">Rp</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={customRateStr}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const formatted = formatLiveAmountInput(raw, isIndonesian);
+                        setCustomRateStr(formatted.display);
+                        const clean = formatted.rawNumber;
+                        if (clean > 0) {
+                          setCryptoRate(clean);
+                          const u = parseFloat(cryptoUnits);
+                          if (!isNaN(u) && u > 0) {
+                            const calcAmountIdr = Math.round(u * clean);
+                            const displayAmt =
+                              preferredCurrency === "IDR"
+                                ? calcAmountIdr
+                                : Number(convertFromIdr(calcAmountIdr).toFixed(maxDecimals));
+                            setAmount(String(displayAmt));
+                            setAmountInput(formatDisplayNumber(displayAmt));
+                          }
+                        }
+                      }}
+                      placeholder={cryptoRate.toLocaleString("id-ID")}
+                      className="w-full text-[11px] font-mono font-semibold bg-transparent outline-none py-0.5 px-1.5 rounded-md text-right"
+                      style={{
+                        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                        border: controlBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {estimatedRealizedPnL !== null && (
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--glass-border)]/40 text-[10px]">
+                  <span className="text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Estimasi Realized P&L:" : "Est. Realized P&L:"}
+                  </span>
+                  <span
+                    className={`font-mono font-semibold ${
+                      estimatedRealizedPnL >= 0
+                        ? "text-[var(--text-primary)]"
+                        : "text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {estimatedRealizedPnL >= 0 ? "+" : "−"}
+                    {formatCurrency(Math.abs(estimatedRealizedPnL), preferredCurrency)}
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between gap-3 pt-1 border-t border-[var(--glass-border)]/40">
                 <div className="flex-1">

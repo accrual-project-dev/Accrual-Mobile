@@ -327,14 +327,15 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
     const isFixed = holding.asset_type === "fixed_asset";
     if (!isValidUUID(holdingId)) {
       if (!isFixed && holding.symbol) {
-        const { data: existing } = await supabase
+        const { data: existingList } = await supabase
           .from("holdings")
           .select("id")
           .eq("user_id", userId)
           .eq("symbol", holding.symbol)
-          .limit(1)
-          .maybeSingle();
+          .order("updated_at", { ascending: false })
+          .limit(1);
 
+        const existing = existingList?.[0];
         if (existing?.id && isValidUUID(existing.id)) {
           holdingId = existing.id;
         } else {
@@ -427,7 +428,8 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
 
     if (!error && Array.isArray(data)) {
       markHoldingsHydrated(userId);
-      // Map deduplicating by normalized symbol for market assets, keeping unique row.id for fixed/custom assets
+      // Map deduplicating by normalized symbol for market assets, keeping unique row.id for fixed/custom assets.
+      // Data is ordered by updated_at descending, so the first encountered row is strictly the most recent state.
       const symbolMap = new Map<string, any>();
       for (const row of data) {
         const sym = (row.symbol || "").toUpperCase().trim();
@@ -435,12 +437,6 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
         const mapKey = isFixed || !sym ? `id_${row.id}` : sym;
         if (!symbolMap.has(mapKey)) {
           symbolMap.set(mapKey, row);
-        } else {
-          // If already encountered, pick the one with positive units or higher units
-          const prev = symbolMap.get(mapKey);
-          if ((Number(row.units) || 0) > (Number(prev.units) || 0)) {
-            symbolMap.set(mapKey, row);
-          }
         }
       }
 
