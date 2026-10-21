@@ -56,7 +56,9 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor iOS
-        run: npx cap sync ios
+        run: |
+          npx cap sync ios
+          sed -i '' 's/exact: "8.5.[0-9]"/from: "8.5.0"/g' ios/App/CapApp-SPM/Package.swift || true
 
       - name: Set iOS Build Number
         run: |
