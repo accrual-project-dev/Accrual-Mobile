@@ -191,20 +191,33 @@ jobs:
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: |
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
-          
-          echo "Memvalidasi paket aplikasi dengan App Store Connect..."
-          xcrun altool --validate-app \
-            -f build/App.ipa \
-            -t ios \
-            --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
-            --apiIssuer "$APP_STORE_CONNECT_API_ISSUER_ID"
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const os = require("os");
+            const keyId = process.env.APP_STORE_CONNECT_API_KEY_ID;
+            const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_BASE64;
+            const keyContent = Buffer.from(keyBase64, "base64").toString("utf8");
             
-          echo "Mengunggah paket aplikasi ke TestFlight..."
-          xcrun altool --upload-app \
-            -f build/App.ipa \
-            -t ios \
+            const dirs = [
+              path.join(os.homedir(), ".appstoreconnect", "private_keys"),
+              path.join(os.homedir(), ".private_keys"),
+              path.join(os.homedir(), "private_keys"),
+              path.join(process.cwd(), "private_keys")
+            ];
+            
+            for (const dir of dirs) {
+              fs.mkdirSync(dir, { recursive: true });
+              fs.writeFileSync(path.join(dir, `AuthKey_${keyId}.p8`), keyContent);
+            }
+            console.log(`Kunci otentikasi AuthKey_${keyId}.p8 berhasil disimpan (${keyContent.length} bytes).`);
+          '
+          
+          export API_PRIVATE_KEYS_DIR="$HOME/.appstoreconnect/private_keys"
+          
+          echo "Mengunggah paket aplikasi ke App Store Connect / TestFlight..."
+          xcrun altool --upload-package build/App.ipa \
+            --type ios \
             --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
             --apiIssuer "$APP_STORE_CONNECT_API_ISSUER_ID"
             
