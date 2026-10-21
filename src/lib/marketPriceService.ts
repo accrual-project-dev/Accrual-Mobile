@@ -1462,12 +1462,44 @@ export function calculatePortfolioSummary(holdings: InvestmentHolding[]): Portfo
 }
 
 /**
+ * Deduplicate and sanitize holding activities, removing ghost or duplicated rows
+ * caused by previous transaction updates while keeping the latest entry.
+ */
+export function sanitizeHoldingActivities(activities: HoldingActivity[]): HoldingActivity[] {
+  if (!activities || activities.length <= 1) return activities || [];
+  const seenKeys = new Set<string>();
+  const sanitized: HoldingActivity[] = [];
+
+  for (const act of activities) {
+    let key = "";
+    if (act.transaction_id) {
+      key = `tx:${act.transaction_id}`;
+    } else if (act.id.startsWith("act-tx-")) {
+      key = `tx:${act.id.replace("act-tx-", "")}`;
+    } else if (act.id.startsWith("tx-bridge-")) {
+      key = `tx:${act.id.replace("tx-bridge-", "")}`;
+    } else {
+      const d = (act.date || "").slice(0, 10);
+      const amt = Math.round(act.total_amount || 0);
+      const u = Number(act.units.toFixed(2));
+      key = `legacy:${act.type}:${d}:${amt}:${u}`;
+    }
+
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      sanitized.push(act);
+    }
+  }
+  return sanitized;
+}
+
+/**
  * Retrieve all activities/positions recorded for a holding.
  * If activities array is empty or undefined, synthesizes an initial position from the holding's current values.
  */
 export function getHoldingActivities(holding: InvestmentHolding): HoldingActivity[] {
   if (holding.activities && Array.isArray(holding.activities) && holding.activities.length > 0) {
-    const sanitized = holding.activities.map((act) => {
+    const healed = holding.activities.map((act) => {
       // Auto-heal any legacy activities with distorted total_amount
       if (
         act.units > 0 &&
@@ -1481,6 +1513,7 @@ export function getHoldingActivities(holding: InvestmentHolding): HoldingActivit
       }
       return act;
     });
+    const sanitized = sanitizeHoldingActivities(healed);
     return sanitized.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }
 
@@ -1522,6 +1555,8 @@ export function recordHoldingActivity(
     date?: string;
     note?: string;
     realized_pnl?: number;
+    transaction_id?: string;
+    id?: string;
   },
   userId?: string,
 ): { updatedHolding: InvestmentHolding; realizedPnL: number } {
@@ -1560,26 +1595,52 @@ export function recordHoldingActivity(
   const units = Math.max(0, Number(activityInput.units) || 0);
   const price = Math.max(0, Number(activityInput.price_per_unit) || 0);
   const totalNominal = activityInput.total_amount ? Number(activityInput.total_amount) : units * price;
-  let newUnits = target.units;
+
+  const actId =
+    activityInput.id ||
+    (activityInput.transaction_id
+      ? `act-tx-${activityInput.transaction_id}`
+      : `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+
+  // Idempotency check: if an activity for this transaction or ID already exists,
+  // revert its effect first so we update the position cleanly without duplicating.
+  let baseUnits = target.units;
+  const filteredExisting = existingActivities.filter((a) => {
+    const isSameTx =
+      (activityInput.transaction_id && a.transaction_id === activityInput.transaction_id) ||
+      a.id === actId ||
+      (activityInput.transaction_id && a.id === `act-tx-${activityInput.transaction_id}`);
+    if (isSameTx) {
+      if (a.type === "buy") {
+        baseUnits = Math.max(0, Number((baseUnits - a.units).toFixed(4)));
+      } else if (a.type === "sell") {
+        baseUnits = Number((baseUnits + a.units).toFixed(4));
+      }
+      return false; // remove old activity
+    }
+    return !a.id.startsWith("act-initial-");
+  });
+
+  let newUnits = baseUnits;
   let newAvgBuyPrice = target.avg_buy_price;
   let realizedPnL = 0;
 
   if (activityInput.type === "buy") {
     // Weighted average cost basis:
     // (previous_units * previous_avg + new_units * new_price) / (previous_units + new_units)
-    const prevCost = target.units * target.avg_buy_price;
+    const prevCost = baseUnits * target.avg_buy_price;
     const addCost = units * price;
-    newUnits = target.units + units;
+    newUnits = baseUnits + units;
     newAvgBuyPrice = newUnits > 0 ? (prevCost + addCost) / newUnits : price;
   } else if (activityInput.type === "sell") {
     // Realized Profit/Loss = units_sold * (selling_price - avg_buy_price)
     realizedPnL = units * (price - target.avg_buy_price);
-    newUnits = Math.max(0, target.units - units);
+    newUnits = Math.max(0, Number((baseUnits - units).toFixed(4)));
     // avg_buy_price per remaining unit remains unchanged on partial liquidation
   }
 
   const newActivity: HoldingActivity = {
-    id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: actId,
     holding_id: target.id,
     type: activityInput.type,
     date: dateStr,
@@ -1589,6 +1650,7 @@ export function recordHoldingActivity(
     realized_pnl: activityInput.type === "sell" ? Math.round(realizedPnL * 100) / 100 : undefined,
     note: activityInput.note || (activityInput.type === "buy" ? "DCA Purchase" : "Position Sell"),
     created_at: new Date().toISOString(),
+    transaction_id: activityInput.transaction_id,
   };
 
   const updatedHolding: InvestmentHolding = {
@@ -1597,7 +1659,7 @@ export function recordHoldingActivity(
     avg_buy_price: Math.round(newAvgBuyPrice * 100) / 100,
     current_price: price > 0 ? price : target.current_price,
     last_price_updated_at: new Date().toISOString(),
-    activities: [newActivity, ...existingActivities.filter((a) => !a.id.startsWith("act-initial-"))],
+    activities: [newActivity, ...filteredExisting],
   };
 
   upsertHolding(updatedHolding, userId);
@@ -1656,7 +1718,20 @@ export function undoHoldingActivity(
   }
 
   const existingActivities = target.activities || [];
-  const actIndex = existingActivities.findIndex((a) => a.id === activityId);
+  const rawTxId = activityId.startsWith("act-tx-")
+    ? activityId.replace("act-tx-", "")
+    : activityId.startsWith("tx-bridge-")
+      ? activityId.replace("tx-bridge-", "")
+      : activityId;
+
+  const actIndex = existingActivities.findIndex(
+    (a) =>
+      a.id === activityId ||
+      (rawTxId && a.transaction_id === rawTxId) ||
+      (a.transaction_id && a.transaction_id === activityId) ||
+      (rawTxId && a.id === `act-tx-${rawTxId}`) ||
+      (rawTxId && a.id === `tx-bridge-${rawTxId}`),
+  );
 
   let act: HoldingActivity;
   if (actIndex >= 0) {
@@ -1677,9 +1752,8 @@ export function undoHoldingActivity(
     newUnits = Math.max(0, Number((target.units - act.units).toFixed(4)));
   }
 
-  // If this was a bridged transaction, also un-reconcile it from reconciledTxIds
-  if (activityId.startsWith("tx-bridge-")) {
-    const rawTxId = activityId.replace("tx-bridge-", "");
+  // If this was a bridged transaction or transaction-linked activity, un-reconcile it from reconciledTxIds
+  if (rawTxId) {
     try {
       const currentReconciled = getReconciledTxIds(userId);
       currentReconciled.delete(rawTxId);
@@ -1688,7 +1762,13 @@ export function undoHoldingActivity(
     } catch {}
   }
 
-  const remainingActivities = existingActivities.filter((a) => a.id !== activityId);
+  const remainingActivities = existingActivities.filter(
+    (a) =>
+      a.id !== act.id &&
+      (!rawTxId || a.transaction_id !== rawTxId) &&
+      (!rawTxId || a.id !== `act-tx-${rawTxId}`) &&
+      (!rawTxId || a.id !== `tx-bridge-${rawTxId}`),
+  );
 
   const updatedHolding: InvestmentHolding = {
     ...target,

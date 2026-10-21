@@ -302,9 +302,12 @@ export function AssetDetailSheet({
 
     const merged = [...directActivities];
     linkedTxActivities.forEach((linked) => {
+      const linkedTxId = linked.id.replace("tx-bridge-", "");
       const alreadyHas = merged.some(
         (m) =>
           m.id === linked.id ||
+          m.transaction_id === linkedTxId ||
+          m.id === `act-tx-${linkedTxId}` ||
           ((m.date || "").slice(0, 10) === (linked.date || "").slice(0, 10) &&
             Math.abs(m.total_amount - linked.total_amount) < 100),
       );

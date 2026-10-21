@@ -43,7 +43,7 @@ import { useWalletSuggestions } from "../../hooks/useWalletSuggestions";
 import { useMerchantMemory } from "../../hooks/useMerchantMemory";
 import { useBudgetTarget } from "../../hooks/useBudgetTarget";
 import { useToast } from "../../contexts/ToastContext";
-import { formatCurrency, formatLiveAmountInput } from "../../lib/utils";
+import { formatCurrency, formatLiveAmountInput, generateUUID } from "../../lib/utils";
 import { format, isToday, parseISO } from "date-fns";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassDatePicker } from "../ui/GlassDatePicker";
@@ -1025,26 +1025,58 @@ export function TransactionSheet({
     }
 
     const effectiveUnits = cryptoUnits ? parseFloat(cryptoUnits) : undefined;
-    if (isCryptoInvolved) {
-      syncTransactionWithHolding(
-        {
-          type,
-          amount: numAmount,
-          wallet_id: effectiveWalletId,
-          to_wallet_id: effectiveToWalletId,
-          occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
-          note,
-          customUnits: effectiveUnits,
-          customPrice: cryptoRate,
-        },
-        wallets,
-        user?.id,
-      );
-    }
 
-    onClose();
+    // Check if the transaction previously involved crypto holdings
+    const prevFromWallet = transaction?.wallet_id
+      ? wallets.find((w) => w.id === transaction.wallet_id)
+      : null;
+    const prevToWallet = transaction?.to_wallet_id
+      ? wallets.find((w) => w.id === transaction.to_wallet_id)
+      : null;
+    const wasCryptoInvolved =
+      Boolean(transaction) &&
+      (isUsdtWallet(prevFromWallet) ||
+        (transaction?.type === "transfer" && isUsdtWallet(prevToWallet)));
 
     if (transaction && transaction.id) {
+      // 1. Revert previous holding impact cleanly if it previously involved crypto
+      if (wasCryptoInvolved) {
+        reverseTransactionWithHolding(
+          {
+            type: transaction.type,
+            amount: Number(transaction.amount),
+            wallet_id: transaction.wallet_id,
+            to_wallet_id: transaction.to_wallet_id,
+            occurred_on: transaction.occurred_on,
+            note: transaction.note,
+            tx_id: transaction.id,
+          },
+          wallets,
+          user?.id,
+        );
+      }
+
+      // 2. Synchronize new holding impact if the updated transaction involves crypto
+      if (isCryptoInvolved) {
+        syncTransactionWithHolding(
+          {
+            type,
+            amount: numAmount,
+            wallet_id: effectiveWalletId,
+            to_wallet_id: effectiveToWalletId,
+            occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
+            note,
+            customUnits: effectiveUnits,
+            customPrice: cryptoRate,
+            tx_id: transaction.id,
+          },
+          wallets,
+          user?.id,
+        );
+      }
+
+      onClose();
+
       updateTx.mutate(
         { id: transaction.id, ...payload },
         {
@@ -1067,39 +1099,73 @@ export function TransactionSheet({
         },
       );
     } else {
-      addTx.mutate(payload, {
-        onSuccess: () => {
-          lastSavedTimestampRef.current = Date.now();
-          lastSavedPayloadRef.current = {
-            amount: numAmount,
+      const newTxId = generateUUID();
+      if (isCryptoInvolved) {
+        syncTransactionWithHolding(
+          {
             type,
-            walletId: effectiveWalletId,
-            categoryId: effectiveCatId,
+            amount: numAmount,
+            wallet_id: effectiveWalletId,
+            to_wallet_id: effectiveToWalletId,
+            occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
             note,
-          };
-          setDuplicateWarningAcknowledged(false);
-          isSavingRef.current = false;
-          setIsSaving(false);
+            customUnits: effectiveUnits,
+            customPrice: cryptoRate,
+            tx_id: newTxId,
+          },
+          wallets,
+          user?.id,
+        );
+      }
+
+      onClose();
+
+      addTx.mutate(
+        { id: newTxId, ...payload },
+        {
+          onSuccess: () => {
+            lastSavedTimestampRef.current = Date.now();
+            lastSavedPayloadRef.current = {
+              amount: numAmount,
+              type,
+              walletId: effectiveWalletId,
+              categoryId: effectiveCatId,
+              note,
+            };
+            setDuplicateWarningAcknowledged(false);
+            isSavingRef.current = false;
+            setIsSaving(false);
+          },
+          onError: () => {
+            isSavingRef.current = false;
+            setIsSaving(false);
+            showToast(
+              isIndonesian
+                ? "Gagal menyimpan transaksi"
+                : "Failed to save transaction",
+              "error",
+              () => {},
+            );
+          },
         },
-        onError: () => {
-          isSavingRef.current = false;
-          setIsSaving(false);
-          showToast(
-            isIndonesian
-              ? "Gagal menyimpan transaksi"
-              : "Failed to save transaction",
-            "error",
-            () => {},
-          );
-        },
-      });
+      );
     }
   };
 
   const handleDelete = () => {
     if (!transaction) return;
     const deletedTx = { ...transaction };
-    if (isCryptoInvolved) {
+    const prevFromWallet = transaction.wallet_id
+      ? wallets.find((w) => w.id === transaction.wallet_id)
+      : null;
+    const prevToWallet = transaction.to_wallet_id
+      ? wallets.find((w) => w.id === transaction.to_wallet_id)
+      : null;
+    const wasCrypto =
+      isUsdtWallet(prevFromWallet) ||
+      (transaction.type === "transfer" && isUsdtWallet(prevToWallet));
+
+    if (wasCrypto) {
       reverseTransactionWithHolding(
         {
           type: transaction.type,
@@ -1108,6 +1174,7 @@ export function TransactionSheet({
           to_wallet_id: transaction.to_wallet_id,
           occurred_on: transaction.occurred_on,
           note: transaction.note,
+          tx_id: transaction.id,
         },
         wallets,
         user?.id,
@@ -1119,7 +1186,7 @@ export function TransactionSheet({
           isIndonesian ? "Transaksi dihapus" : "Transaction deleted",
           "delete",
           () => {
-            if (isCryptoInvolved) {
+            if (wasCrypto) {
               syncTransactionWithHolding(
                 {
                   type: deletedTx.type,
@@ -1128,6 +1195,7 @@ export function TransactionSheet({
                   to_wallet_id: deletedTx.to_wallet_id,
                   occurred_on: deletedTx.occurred_on,
                   note: deletedTx.note,
+                  tx_id: deletedTx.id,
                 },
                 wallets,
                 user?.id,

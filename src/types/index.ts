@@ -33,6 +33,7 @@ export interface HoldingActivity {
   realized_pnl?: number;
   note?: string;
   created_at?: string;
+  transaction_id?: string;
 }
 
 export interface InvestmentHolding {

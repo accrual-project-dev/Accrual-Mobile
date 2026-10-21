@@ -6,6 +6,7 @@ import {
   saveUsdtPref,
   upsertHolding,
   recordHoldingActivity,
+  undoHoldingActivity,
   getStandardUsdtHoldingId,
   getReconciledTxIds,
   markTxAsReconciled,
@@ -75,6 +76,7 @@ export interface SyncTransactionHoldingParams {
   skipHoldingActivity?: boolean;
   holdingId?: string;
   holdingSymbol?: string;
+  tx_id?: string;
 }
 
 export interface SyncResult {
@@ -128,6 +130,7 @@ export function syncTransactionWithHolding(
           total_amount: amount,
           date: tx.occurred_on,
           note: tx.note || "Auto-Compound Yield",
+          transaction_id: tx.tx_id,
         },
         userId,
       );
@@ -165,6 +168,7 @@ export function syncTransactionWithHolding(
         total_amount: amount,
         date: tx.occurred_on,
         note: tx.note || `Pencairan Aset ke ${toWallet?.name || "Bank"}`,
+        transaction_id: tx.tx_id,
       },
       userId,
     );
@@ -198,6 +202,7 @@ export function syncTransactionWithHolding(
         total_amount: amount,
         date: tx.occurred_on,
         note: tx.note || `Pembelian Aset dari ${fromWallet?.name || "Bank"}`,
+        transaction_id: tx.tx_id,
       },
       userId,
     );
@@ -231,6 +236,7 @@ export function syncTransactionWithHolding(
         total_amount: amount,
         date: tx.occurred_on,
         note: tx.note || "Staking Yield / Earn",
+        transaction_id: tx.tx_id,
       },
       userId,
     );
@@ -264,6 +270,7 @@ export function syncTransactionWithHolding(
         total_amount: amount,
         date: tx.occurred_on,
         note: tx.note || "Network / Gas Fee",
+        transaction_id: tx.tx_id,
       },
       userId,
     );
@@ -283,7 +290,8 @@ export function syncTransactionWithHolding(
 }
 
 /**
- * Reverse holding sync when a transaction is deleted.
+ * Reverse holding sync when a transaction is deleted or updated.
+ * Cleanly undoes the corresponding holding activity and restores units without ghost records.
  */
 export function reverseTransactionWithHolding(
   tx: SyncTransactionHoldingParams,
@@ -303,6 +311,68 @@ export function reverseTransactionWithHolding(
 
   if (!isFromCrypto && !isToCrypto) return { synced: false };
 
+  const holdingId = getStandardUsdtHoldingId(userId);
+  const allHoldings = getSavedHoldings(userId);
+  const target = allHoldings.find(
+    (h) => h.id === holdingId || h.symbol?.toUpperCase() === "USDT",
+  );
+
+  const existingActivities = target?.activities || [];
+  const txDateStr = (tx.occurred_on || "").slice(0, 10);
+
+  // 1. Try to find the exact activity matching tx_id, act-tx-${tx_id}, or tx-bridge-${tx_id}
+  let matchingAct: HoldingActivity | undefined;
+  if (tx.tx_id) {
+    matchingAct = existingActivities.find(
+      (a) =>
+        a.transaction_id === tx.tx_id ||
+        a.id === `act-tx-${tx.tx_id}` ||
+        a.id === `tx-bridge-${tx.tx_id}` ||
+        a.id === tx.tx_id,
+    );
+  }
+
+  // 2. Fallback: match by date, type, and amount
+  if (!matchingAct) {
+    const expectedType =
+      tx.type === "transfer" && isFromCrypto && !isToCrypto
+        ? "sell"
+        : tx.type === "transfer" && !isFromCrypto && isToCrypto
+          ? "buy"
+          : tx.type === "income" && isFromCrypto
+            ? "buy"
+            : tx.type === "expense" && isFromCrypto
+              ? "sell"
+              : undefined;
+
+    if (expectedType) {
+      matchingAct = existingActivities.find(
+        (a) =>
+          a.type === expectedType &&
+          (a.date || "").slice(0, 10) === txDateStr &&
+          Math.abs((a.total_amount || 0) - amount) < 100,
+      );
+    }
+  }
+
+  // 3. If matching activity found, undo it cleanly
+  if (matchingAct) {
+    const { updatedHolding, revertedActivity } = undoHoldingActivity(
+      target?.id || holdingId,
+      matchingAct.id,
+      userId,
+      matchingAct,
+    );
+    return {
+      synced: true,
+      action: revertedActivity.type === "sell" ? "buy" : "sell",
+      unitsDelta: revertedActivity.type === "sell" ? revertedActivity.units : -revertedActivity.units,
+      newUnits: updatedHolding.units,
+      message: `Reverted holding activity for transaction ${tx.tx_id || matchingAct.id}`,
+    };
+  }
+
+  // 4. Fallback if no activity found in log: restore units mathematically without creating ghost entries
   const usdtPref = getSavedUsdtPref(userId);
   const rate = tx.customPrice && tx.customPrice > 0 ? tx.customPrice : usdtPref.rate || USD_IDR_ESTIMATE;
   const units =
@@ -310,74 +380,26 @@ export function reverseTransactionWithHolding(
       ? tx.customUnits
       : Number((amount / rate).toFixed(4));
 
-  const holdingId = `usdt-${userId || "default"}`;
-
-  // Reverse of Transfer OUT: Buy back
   if (tx.type === "transfer" && isFromCrypto && !isToCrypto) {
-    recordHoldingActivity(
-      holdingId,
-      {
-        type: "buy",
-        units,
-        price_per_unit: rate,
-        total_amount: amount,
-        date: tx.occurred_on,
-        note: `Rollback: Deleted transfer out (${tx.note || ""})`,
-      },
-      userId,
-    );
-    return { synced: true, action: "buy", unitsDelta: units };
-  }
-
-  // Reverse of Transfer IN: Sell back
-  if (tx.type === "transfer" && !isFromCrypto && isToCrypto) {
-    recordHoldingActivity(
-      holdingId,
-      {
-        type: "sell",
-        units,
-        price_per_unit: rate,
-        total_amount: amount,
-        date: tx.occurred_on,
-        note: `Rollback: Deleted deposit (${tx.note || ""})`,
-      },
-      userId,
-    );
-    return { synced: true, action: "sell", unitsDelta: -units };
-  }
-
-  // Reverse of Income: Sell back
-  if (tx.type === "income" && isFromCrypto) {
-    recordHoldingActivity(
-      holdingId,
-      {
-        type: "sell",
-        units,
-        price_per_unit: rate,
-        total_amount: amount,
-        date: tx.occurred_on,
-        note: `Rollback: Deleted yield income (${tx.note || ""})`,
-      },
-      userId,
-    );
-    return { synced: true, action: "sell", unitsDelta: -units };
-  }
-
-  // Reverse of Expense: Buy back
-  if (tx.type === "expense" && isFromCrypto) {
-    recordHoldingActivity(
-      holdingId,
-      {
-        type: "buy",
-        units,
-        price_per_unit: rate,
-        total_amount: amount,
-        date: tx.occurred_on,
-        note: `Rollback: Deleted fee expense (${tx.note || ""})`,
-      },
-      userId,
-    );
-    return { synced: true, action: "buy", unitsDelta: units };
+    // Reversal of transfer out: restore units
+    const nextUnits = Number((usdtPref.units + units).toFixed(4));
+    saveUsdtPref({ ...usdtPref, units: nextUnits }, userId);
+    return { synced: true, action: "buy", unitsDelta: units, newUnits: nextUnits };
+  } else if (tx.type === "transfer" && !isFromCrypto && isToCrypto) {
+    // Reversal of transfer in: deduct units
+    const nextUnits = Math.max(0, Number((usdtPref.units - units).toFixed(4)));
+    saveUsdtPref({ ...usdtPref, units: nextUnits }, userId);
+    return { synced: true, action: "sell", unitsDelta: -units, newUnits: nextUnits };
+  } else if (tx.type === "income" && isFromCrypto) {
+    // Reversal of yield: deduct units
+    const nextUnits = Math.max(0, Number((usdtPref.units - units).toFixed(4)));
+    saveUsdtPref({ ...usdtPref, units: nextUnits }, userId);
+    return { synced: true, action: "sell", unitsDelta: -units, newUnits: nextUnits };
+  } else if (tx.type === "expense" && isFromCrypto) {
+    // Reversal of fee expense: restore units
+    const nextUnits = Number((usdtPref.units + units).toFixed(4));
+    saveUsdtPref({ ...usdtPref, units: nextUnits }, userId);
+    return { synced: true, action: "buy", unitsDelta: units, newUnits: nextUnits };
   }
 
   return { synced: false };
