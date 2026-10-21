@@ -38,6 +38,7 @@ import {
 import {
   isInvestmentOrCryptoWallet,
   estimateHistoricalAssetPrice,
+  extractCryptoMetadataFromTx,
 } from "../../lib/holdingSyncEngine";
 import {
   recordHoldingActivity,
@@ -251,28 +252,11 @@ export function AssetDetailSheet({
 
       if (isMatch) {
         const txDateStr = (tx.occurred_on || "").slice(0, 10);
-        let rate: number | undefined = (tx as any).customPrice;
-        if (!rate && tx.note) {
-          const match = tx.note.match(/(?:rate|kurs|@)\s*[:=]?\s*([0-9.,]+)/i);
-          if (match && match[1]) {
-            const parsed = parseFloat(
-              match[1].replace(/\./g, "").replace(",", "."),
-            );
-            if (!isNaN(parsed) && parsed > 1000) {
-              rate = parsed;
-            }
-          }
-        }
-        if (!rate) {
-          const matchingDirect = directActivities.find(
-            (d) =>
-              (d.date || "").slice(0, 10) === txDateStr &&
-              Math.abs((d.total_amount || 0) - tx.amount) < 100,
-          );
-          if (matchingDirect && matchingDirect.price_per_unit > 0) {
-            rate = matchingDirect.price_per_unit;
-          }
-        }
+        const empiricalMeta = extractCryptoMetadataFromTx(tx, directActivities);
+        let rate: number | undefined = (tx as any).customPrice || empiricalMeta.rate;
+        let units: number | undefined = (tx as any).customUnits || empiricalMeta.units;
+        const isEstimated = !empiricalMeta.isEmpirical && !(tx as any).customPrice;
+
         if (!rate) {
           rate = estimateHistoricalAssetPrice(
             holding,
@@ -282,9 +266,9 @@ export function AssetDetailSheet({
           );
         }
 
-        const units =
-          (tx as any).customUnits ||
-          (rate > 0 ? Number((tx.amount / rate).toFixed(4)) : 0);
+        if (!units) {
+          units = rate > 0 ? Number((tx.amount / rate).toFixed(4)) : 0;
+        }
 
         linkedTxActivities.push({
           id: `tx-bridge-${tx.id}`,
@@ -296,6 +280,8 @@ export function AssetDetailSheet({
           total_amount: tx.amount,
           note,
           created_at: tx.created_at || new Date().toISOString(),
+          transaction_id: tx.id,
+          is_estimated: isEstimated,
         });
       }
     });
@@ -1319,9 +1305,32 @@ export function AssetDetailSheet({
                             {formatActivityDate(act.date, isIndonesian)}
                           </span>
                         </div>
-                        <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-1 leading-none">
-                          @ {formatWithPreferred(act.price_per_unit)}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 leading-none">
+                          <p className="text-[10px] text-[var(--text-tertiary)] truncate">
+                            @ {formatWithPreferred(act.price_per_unit)}
+                          </p>
+                          {act.is_estimated && (
+                            <span
+                              className="text-[8px] font-mono px-1 py-0.5 rounded tracking-tight uppercase"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.05)"
+                                  : "rgba(0, 0, 0, 0.04)",
+                                color: "var(--text-tertiary)",
+                                border: isDark
+                                  ? "1px solid rgba(255, 255, 255, 0.08)"
+                                  : "1px solid rgba(0, 0, 0, 0.08)",
+                              }}
+                              title={
+                                isIndonesian
+                                  ? "Kurs estimasi pasar historis"
+                                  : "Historical market estimated rate"
+                              }
+                            >
+                              {isIndonesian ? "est." : "est."}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 

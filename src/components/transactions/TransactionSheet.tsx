@@ -60,11 +60,16 @@ import {
   isUsdtWallet,
   syncTransactionWithHolding,
   reverseTransactionWithHolding,
+  extractCryptoMetadataFromTx,
+  appendCryptoMetadataToNote,
+  estimateHistoricalUsdtBuyRate,
 } from "../../lib/holdingSyncEngine";
 import {
   getSavedUsdtPref,
   fetchUsdtPriceInIDR,
   USD_IDR_ESTIMATE,
+  getSavedHoldings,
+  getHoldingActivities,
 } from "../../lib/marketPriceService";
 
 interface TransactionSheetProps {
@@ -213,6 +218,9 @@ export function TransactionSheet({
   const [isUnitsInputMode, setIsUnitsInputMode] = useState<boolean>(false);
   const [isEditingRate, setIsEditingRate] = useState<boolean>(false);
   const [customRateStr, setCustomRateStr] = useState<string>("");
+  const [rateSource, setRateSource] = useState<"recorded" | "estimated_live" | "live_api">("live_api");
+  const hasRecordedRateRef = useRef<boolean>(false);
+  const isInitialMountTxRef = useRef<boolean>(false);
 
   const usdtPref = useMemo(() => getSavedUsdtPref(user?.id), [user?.id]);
   const usdtAvgBuyPrice = useMemo(() => {
@@ -230,16 +238,23 @@ export function TransactionSheet({
   }, [isFromCrypto, type, cryptoUnits, cryptoRate, usdtAvgBuyPrice]);
 
   useEffect(() => {
-    if (isCryptoInvolved) {
+    if (isCryptoInvolved && !hasRecordedRateRef.current && rateSource === "live_api") {
       fetchUsdtPriceInIDR()
         .then((rate) => {
-          if (rate > 5000 && rate < 50000) setCryptoRate(rate);
+          if (!hasRecordedRateRef.current && rate > 5000 && rate < 50000) {
+            setCryptoRate(rate);
+            setRateSource("live_api");
+          }
         })
         .catch(() => {});
     }
-  }, [isCryptoInvolved]);
+  }, [isCryptoInvolved, rateSource]);
 
   useEffect(() => {
+    if (isInitialMountTxRef.current) {
+      isInitialMountTxRef.current = false;
+      return;
+    }
     if (isCryptoInvolved && !isUnitsInputMode) {
       const rawNum = Number(amount) || 0;
       const numInIdr =
@@ -724,6 +739,53 @@ export function TransactionSheet({
           }
         }
         setToWalletId(resolvedToWalletId);
+
+        // Check if transaction involves crypto wallet and resolve empirical rate/units
+        const fromW = wallets.find((w) => w.id === resolvedFromWalletId);
+        const toW = wallets.find((w) => w.id === resolvedToWalletId);
+        const txIsCrypto =
+          isUsdtWallet(fromW) ||
+          (transaction.type === "transfer" && isUsdtWallet(toW));
+
+        if (txIsCrypto) {
+          const holdings = getSavedHoldings(user?.id);
+          const usdtHolding = holdings.find(
+            (h) => h.symbol === "USDT" || h.name.toLowerCase().includes("usdt"),
+          );
+          const activities = usdtHolding ? getHoldingActivities(usdtHolding) : [];
+          const meta = extractCryptoMetadataFromTx(transaction, activities);
+
+          if (meta.rate && meta.rate > 0) {
+            setCryptoRate(meta.rate);
+            hasRecordedRateRef.current = true;
+            setRateSource("recorded");
+            if (meta.units && meta.units > 0) {
+              setCryptoUnits(String(meta.units));
+            } else {
+              const rawTxAmt = Number(transaction.amount || 0);
+              if (rawTxAmt > 0) {
+                setCryptoUnits(Number((rawTxAmt / meta.rate).toFixed(4)).toString());
+              }
+            }
+          } else {
+            hasRecordedRateRef.current = false;
+            setRateSource("estimated_live");
+            const txDateStr = transaction.occurred_on || transaction.created_at;
+            const estRate = estimateHistoricalUsdtBuyRate(txDateStr);
+            setCryptoRate(estRate);
+            const rawTxAmt = Number(transaction.amount || 0);
+            if (rawTxAmt > 0 && estRate > 0) {
+              setCryptoUnits(Number((rawTxAmt / estRate).toFixed(4)).toString());
+            }
+          }
+          isInitialMountTxRef.current = true;
+        } else {
+          hasRecordedRateRef.current = false;
+          setRateSource("live_api");
+          isInitialMountTxRef.current = false;
+        }
+        setIsEditingRate(false);
+        setCustomRateStr("");
       } else {
         const initType = initialValues?.type || "expense";
         const rawInitAmt =
@@ -771,6 +833,11 @@ export function TransactionSheet({
         setCategoryId(defaultCatId);
         setWalletId(defaultFromId);
         setToWalletId(defaultToId);
+        hasRecordedRateRef.current = false;
+        setRateSource("live_api");
+        isInitialMountTxRef.current = false;
+        setIsEditingRate(false);
+        setCustomRateStr("");
       }
     }
 
@@ -790,6 +857,7 @@ export function TransactionSheet({
     convertFromIdr,
     maxDecimals,
     formatDisplayNumber,
+    user?.id,
   ]);
 
   useEffect(() => {
@@ -988,10 +1056,16 @@ export function TransactionSheet({
       txDate.setHours(h, m, 0, 0);
     }
 
+    const effectiveUnits = cryptoUnits ? parseFloat(cryptoUnits) : undefined;
+    let finalNote = note || "";
+    if (isCryptoInvolved && cryptoRate > 0) {
+      finalNote = appendCryptoMetadataToNote(finalNote, cryptoRate, effectiveUnits, "USDT");
+    }
+
     const payload = {
       type,
       amount: numAmount,
-      note: note || null,
+      note: finalNote || null,
       space_id: selectedSpaceId === "personal" ? null : selectedSpaceId,
       ledger_id: selectedSpaceId || "personal",
       occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
@@ -1023,8 +1097,6 @@ export function TransactionSheet({
         () => {},
       );
     }
-
-    const effectiveUnits = cryptoUnits ? parseFloat(cryptoUnits) : undefined;
 
     // Check if the transaction previously involved crypto holdings
     const prevFromWallet = transaction?.wallet_id
@@ -1065,7 +1137,7 @@ export function TransactionSheet({
             wallet_id: effectiveWalletId,
             to_wallet_id: effectiveToWalletId,
             occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
-            note,
+            note: finalNote,
             customUnits: effectiveUnits,
             customPrice: cryptoRate,
             tx_id: transaction.id,
@@ -1108,7 +1180,7 @@ export function TransactionSheet({
             wallet_id: effectiveWalletId,
             to_wallet_id: effectiveToWalletId,
             occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
-            note,
+            note: finalNote,
             customUnits: effectiveUnits,
             customPrice: cryptoRate,
             tx_id: newTxId,
@@ -1559,21 +1631,45 @@ export function TransactionSheet({
                             : "Crypto Execution"}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setIsEditingRate((prev) => !prev);
-                    if (!isEditingRate) {
-                      setCustomRateStr(formatLiveAmountInput(String(Math.round(cryptoRate)), isIndonesian).display);
-                    }
-                  }}
-                  className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] hover:bg-white/[0.09] active:scale-[0.97] transition-all border border-[var(--glass-border)] text-[var(--text-secondary)] cursor-pointer"
-                  title={isIndonesian ? "Klik untuk atur kurs kustom" : "Click to edit custom rate"}
-                >
-                  <span>1 USDT ≈ Rp {cryptoRate.toLocaleString("id-ID")}</span>
-                  <Edit3 size={10} className="text-[var(--text-tertiary)]" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="text-[8.5px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    style={{
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.05)"
+                        : "rgba(0, 0, 0, 0.04)",
+                      color: "var(--text-tertiary)",
+                      border: isDark
+                        ? "1px solid rgba(255, 255, 255, 0.08)"
+                        : "1px solid rgba(0, 0, 0, 0.08)",
+                    }}
+                  >
+                    {rateSource === "recorded"
+                      ? isIndonesian
+                        ? "Kurs Tersimpan"
+                        : "Recorded"
+                      : rateSource === "estimated_live"
+                        ? isIndonesian
+                          ? "Estimasi Pasar"
+                          : "Market Est."
+                        : "Live API"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setIsEditingRate((prev) => !prev);
+                      if (!isEditingRate) {
+                        setCustomRateStr(formatLiveAmountInput(String(Math.round(cryptoRate)), isIndonesian).display);
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] hover:bg-white/[0.09] active:scale-[0.97] transition-all border border-[var(--glass-border)] text-[var(--text-secondary)] cursor-pointer"
+                    title={isIndonesian ? "Klik untuk atur kurs kustom" : "Click to edit custom rate"}
+                  >
+                    <span>1 USDT ≈ Rp {cryptoRate.toLocaleString("id-ID")}</span>
+                    <Edit3 size={10} className="text-[var(--text-tertiary)]" />
+                  </button>
+                </div>
               </div>
 
               {isEditingRate && (
@@ -1594,6 +1690,8 @@ export function TransactionSheet({
                         const clean = formatted.rawNumber;
                         if (clean > 0) {
                           setCryptoRate(clean);
+                          hasRecordedRateRef.current = true;
+                          setRateSource("recorded");
                           const u = parseFloat(cryptoUnits);
                           if (!isNaN(u) && u > 0) {
                             const calcAmountIdr = Math.round(u * clean);
@@ -1635,6 +1733,22 @@ export function TransactionSheet({
                   </span>
                 </div>
               )}
+
+              <div className="pt-1 border-t border-[var(--glass-border)]/40">
+                <p className="text-[9.5px] text-[var(--text-tertiary)] leading-tight opacity-75">
+                  {rateSource === "recorded"
+                    ? isIndonesian
+                      ? "Menggunakan kurs empiris yang tercatat saat transaksi ini dieksekusi."
+                      : "Using empirical rate recorded when this transaction was executed."
+                    : rateSource === "estimated_live"
+                      ? isIndonesian
+                        ? "Kurs empiris tidak tersimpan pada data riwayat; menampilkan estimasi pasar. Ketuk kurs di atas untuk mengubah."
+                        : "No empirical rate was recorded for this transaction; showing market estimate. Tap rate above to edit."
+                      : isIndonesian
+                        ? "Menggunakan estimasi kurs langsung dari CoinGecko. Ketuk untuk menyesuaikan kurs kustom."
+                        : "Using live market rate from CoinGecko. Tap to adjust custom rate."}
+                </p>
+              </div>
 
               <div className="flex items-center justify-between gap-3 pt-1 border-t border-[var(--glass-border)]/40">
                 <div className="flex-1">

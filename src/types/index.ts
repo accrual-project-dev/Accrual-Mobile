@@ -34,6 +34,7 @@ export interface HoldingActivity {
   note?: string;
   created_at?: string;
   transaction_id?: string;
+  is_estimated?: boolean;
 }
 
 export interface InvestmentHolding {
