@@ -91,5 +91,7 @@
 	<string>Accrual requires photo library access to select and import receipt images and payment proof.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Accrual requires permission to save receipt captures to your photo library.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
