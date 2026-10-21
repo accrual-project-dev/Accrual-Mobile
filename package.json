@@ -10,8 +10,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "generate:icons": "node scripts/generate-all-app-icons.cjs",
-    "flow:automate": "node scripts/flow-automation.cjs",
-    "postinstall": "node scripts/patch-local-notifications.cjs"
+    "flow:automate": "node scripts/flow-automation.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
@@ -22,7 +21,7 @@
     "@capacitor/filesystem": "^8.1.3",
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.5.3",
-    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/local-notifications": "8.3.1",
     "@capgo/capacitor-native-biometric": "^8.6.7",
     "@revenuecat/purchases-capacitor": "^13.7.4",
     "@supabase/supabase-js": "^2.112.3",
