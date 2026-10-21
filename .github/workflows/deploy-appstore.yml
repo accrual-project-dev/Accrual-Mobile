@@ -195,8 +195,13 @@ jobs:
             const fs = require("fs");
             const path = require("path");
             const os = require("os");
-            const keyId = process.env.APP_STORE_CONNECT_API_KEY_ID;
+            const keyId = (process.env.APP_STORE_CONNECT_API_KEY_ID || "").trim() || "X4SX9VQZ44";
+            const issuerId = (process.env.APP_STORE_CONNECT_API_ISSUER_ID || "").trim() || "c32ee50b-c9f8-4532-898e-4c793cac57f6";
             const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_BASE64;
+            if (!keyBase64) {
+              console.error("ERROR: Secret APP_STORE_CONNECT_API_KEY_BASE64 tidak ditemukan!");
+              process.exit(1);
+            }
             const keyContent = Buffer.from(keyBase64, "base64").toString("utf8");
             
             const dirs = [
@@ -209,17 +214,20 @@ jobs:
             for (const dir of dirs) {
               fs.mkdirSync(dir, { recursive: true });
               fs.writeFileSync(path.join(dir, `AuthKey_${keyId}.p8`), keyContent);
+              fs.writeFileSync(path.join(dir, "AuthKey_X4SX9VQZ44.p8"), keyContent);
             }
             console.log(`Kunci otentikasi AuthKey_${keyId}.p8 berhasil disimpan (${keyContent.length} bytes).`);
           '
           
           export API_PRIVATE_KEYS_DIR="$HOME/.appstoreconnect/private_keys"
+          KEY_ID="${APP_STORE_CONNECT_API_KEY_ID:-X4SX9VQZ44}"
+          ISSUER_ID="${APP_STORE_CONNECT_API_ISSUER_ID:-c32ee50b-c9f8-4532-898e-4c793cac57f6}"
           
-          echo "Mengunggah paket aplikasi ke App Store Connect / TestFlight..."
+          echo "Mengunggah paket aplikasi ke App Store Connect / TestFlight dengan Key ID: $KEY_ID..."
           xcrun altool --upload-package build/App.ipa \
             --type ios \
-            --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
-            --apiIssuer "$APP_STORE_CONNECT_API_ISSUER_ID"
+            --apiKey "$KEY_ID" \
+            --apiIssuer "$ISSUER_ID"
             
           echo "Sukses! Aplikasi berhasil dikirim ke App Store Connect / TestFlight."
 
