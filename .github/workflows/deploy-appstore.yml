@@ -78,7 +78,13 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$RUNNER_TEMP/build_cert.p12"
-          security import "$RUNNER_TEMP/build_cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          if ! security import "$RUNNER_TEMP/build_cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"; then
+            echo "Format PKCS#12 modern terdeteksi, mengonversi ke format legacy untuk macOS Keychain..."
+            openssl pkcs12 -in "$RUNNER_TEMP/build_cert.p12" -passin pass:"$P12_PASSWORD" -nodes -out "$RUNNER_TEMP/temp.pem"
+            openssl pkcs12 -export -in "$RUNNER_TEMP/temp.pem" -passout pass:"$P12_PASSWORD" -out "$RUNNER_TEMP/build_cert_legacy.p12" -legacy
+            security import "$RUNNER_TEMP/build_cert_legacy.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            rm -f "$RUNNER_TEMP/temp.pem" "$RUNNER_TEMP/build_cert_legacy.p12"
+          fi
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 

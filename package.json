@@ -9,7 +9,8 @@
     "test": "vitest run",
     "lint": "oxlint",
     "preview": "vite preview",
-    "generate:icons": "node scripts/generate-all-app-icons.cjs"
+    "generate:icons": "node scripts/generate-all-app-icons.cjs",
+    "flow:automate": "node scripts/flow-automation.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

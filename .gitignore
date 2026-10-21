@@ -35,3 +35,15 @@ conteks/
 *.traineddata
 nota/
 reference/
+
+flow-ingredients/
+
+# Apple Developer Secrets & Certificates
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.key
+*.csr
+*.pem
+*.base64*
