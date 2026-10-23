@@ -2,10 +2,6 @@ name: Build Android Release Bundle (.aab)
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
-      - 'release-*'
 
 permissions:
   contents: write
