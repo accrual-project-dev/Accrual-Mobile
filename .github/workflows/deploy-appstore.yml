@@ -156,6 +156,8 @@ jobs:
           </dict>
           </plist>
           EOF
+          echo "Hasil ExportOptions.plist:"
+          cat build/ExportOptions.plist
 
       - name: Archive Xcode Project
         env:
@@ -169,12 +171,16 @@ jobs:
           
           sed -i '' "s/DevelopmentTeam = [^;]*/DevelopmentTeam = $APPLE_TEAM_ID/g" App.xcodeproj/project.pbxproj
           sed -i '' "s/DEVELOPMENT_TEAM = [^;]*/DEVELOPMENT_TEAM = $APPLE_TEAM_ID/g" App.xcodeproj/project.pbxproj
-          sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*/PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_NAME\"/g" App.xcodeproj/project.pbxproj
+          sed -i '' "s/\"MAIN_APP_PROFILE_PLACEHOLDER\"/\"$PROFILE_NAME\"/g" App.xcodeproj/project.pbxproj
 
           if [ -f "$RUNNER_TEMP/widget.mobileprovision" ]; then
             WIDGET_PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" /dev/stdin <<< $(security cms -D -i "$RUNNER_TEMP/widget.mobileprovision"))
-            sed -i '' "s/\"Accrual Widget AppStore Profile\"/\"$WIDGET_PROFILE_NAME\"/g" App.xcodeproj/project.pbxproj
+            echo "Menyesuaikan signing settings untuk target AccrualWidget: $WIDGET_PROFILE_NAME..."
+            sed -i '' "s/\"WIDGET_APP_PROFILE_PLACEHOLDER\"/\"$WIDGET_PROFILE_NAME\"/g" App.xcodeproj/project.pbxproj
           fi
+          
+          echo "Verifikasi konfigurasi signing target di project.pbxproj:"
+          grep -E "PROVISIONING_PROFILE_SPECIFIER|CODE_SIGN_IDENTITY" App.xcodeproj/project.pbxproj
           
           xcodebuild archive \
             -project App.xcodeproj \
