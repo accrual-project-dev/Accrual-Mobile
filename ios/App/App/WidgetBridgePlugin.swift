@@ -30,7 +30,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
      * Updates the financial snapshot stored in App Group UserDefaults.
      * This snapshot is directly read by SwiftUI WidgetKit widgets on the Home Screen & Lock Screen.
      */
-    @objc func updateSnapshot(_ call: CAPPluginCall) {
+    @objc public func updateSnapshot(_ call: CAPPluginCall) {
         guard let snapshot = call.getObject("snapshot") else {
             call.reject("Data snapshot tidak valid")
             return
@@ -52,7 +52,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
      * Retrieves any quick log or voice transactions queued by Siri or iPhone Back Tap (AppIntents)
      * while the app was closed or backgrounded.
      */
-    @objc func getPendingIngestion(_ call: CAPPluginCall) {
+    @objc public func getPendingIngestion(_ call: CAPPluginCall) {
         let transactions = sharedDefaults.array(forKey: "pending_backtap_transactions") as? [[String: Any]] ?? []
         let voiceLogs = sharedDefaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
 
@@ -65,7 +65,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     /**
      * Clears processed Siri / Back Tap transactions from the queue.
      */
-    @objc func clearPendingIngestion(_ call: CAPPluginCall) {
+    @objc public func clearPendingIngestion(_ call: CAPPluginCall) {
         sharedDefaults.removeObject(forKey: "pending_backtap_transactions")
         sharedDefaults.removeObject(forKey: "pending_backtap_voice")
         sharedDefaults.synchronize()
@@ -76,7 +76,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     /**
      * Forces WidgetKit to reload all timelines.
      */
-    @objc func reloadWidgets(_ call: CAPPluginCall) {
+    @objc public func reloadWidgets(_ call: CAPPluginCall) {
         if #available(iOS 14.0, *) {
             WidgetCenter.shared.reloadAllTimelines()
         }

@@ -1,8 +1,9 @@
+#if canImport(AppIntents)
 import Foundation
 import AppIntents
 import SwiftUI
 
-/// Trouvaille Quick Log App Intent for iOS 16+
+/// Accrual Quick Log App Intent for iOS 16+
 /// Enables the interactive floating frosted glass modal triggered via iPhone Back Tap,
 /// Siri, or Action Button without launching the full application.
 @available(iOS 16.0, *)
@@ -13,7 +14,7 @@ struct QuickLogExpenseIntent: AppIntent {
     // Crucial: Executes in background without launching the webview
     static var openAppWhenRun: Bool = false
 
-    @Parameter(title: "How much was it?", inputOptions: String.IntentInputOptions(capitalizationType: .none))
+    @Parameter(title: "How much was it?")
     var amount: Double?
 
     @Parameter(title: "What kind of expense is it?")
@@ -132,3 +133,4 @@ struct AccrualShortcutsProvider: AppShortcutsProvider {
         )
     }
 }
+#endif
