@@ -47,6 +47,10 @@ jobs:
         run: npm ci || npm install
 
       - name: Build Web Application
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://iqjcmqkgrfmopznrfikx.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxamNtcWtncmZtb3B6bnJmaWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODA0NzcsImV4cCI6MjEwMjg1NjQ3N30.ujfATs0huUkR9tCNB0Rs8JlqJG3dkz13EKtkr-eFiDg' }}
+          VITE_REVENUECAT_APPLE_KEY: ${{ secrets.VITE_REVENUECAT_APPLE_KEY || 'appl_rmACsDjQHgRalDqlnwYGRlMTMVa' }}
         run: npm run build
 
       - name: Sync Capacitor iOS
