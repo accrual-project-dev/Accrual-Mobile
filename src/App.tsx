@@ -52,6 +52,7 @@ import {
 import { fetchHoldingsFromSupabase } from "./lib/marketPriceService";
 import { autoDeduplicateCategories, autoDeduplicateWallets } from "./lib/deduplicationEngine";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
+import { useWidgetSync } from "./hooks/useWidgetSync";
 import { usePrivacy } from "./contexts/PrivacyContext";
 import { useSpace } from "./contexts/SpaceContext";
 import { useSubscription } from "./contexts/SubscriptionContext";
@@ -151,6 +152,7 @@ function AppShell() {
   const { activeSpaceId, setActiveSpaceId, currentUserRole } = useSpace();
   const navigate = useNavigate();
 
+  useWidgetSync();
   useRealtimeSync(user?.id, {
     onPartnerTransaction: (data) => {
       setRecordedShortcutTx(data);

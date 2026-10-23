@@ -17,6 +17,9 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		9582B6852FE993A70072D4E8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9582B6842FE993A70072D4E8 /* PrivacyInfo.xcprivacy */; };
+		9582B6872FE993A70072D4E8 /* QuickLogIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6862FE993A70072D4E8 /* QuickLogIntent.swift */; };
+		9582B6892FE993A70072D4E8 /* WidgetBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6882FE993A70072D4E8 /* WidgetBridgePlugin.swift */; };
+		9582B68B2FE993A70072D4E8 /* WidgetBridgePlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 9582B68A2FE993A70072D4E8 /* WidgetBridgePlugin.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +34,9 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		9582B6842FE993A70072D4E8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		9582B6862FE993A70072D4E8 /* QuickLogIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogIntent.swift; sourceTree = "<group>"; };
+		9582B6882FE993A70072D4E8 /* WidgetBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridgePlugin.swift; sourceTree = "<group>"; };
+		9582B68A2FE993A70072D4E8 /* WidgetBridgePlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WidgetBridgePlugin.m; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -74,6 +80,9 @@
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
 				9582B6842FE993A70072D4E8 /* PrivacyInfo.xcprivacy */,
+				9582B6862FE993A70072D4E8 /* QuickLogIntent.swift */,
+				9582B6882FE993A70072D4E8 /* WidgetBridgePlugin.swift */,
+				9582B68A2FE993A70072D4E8 /* WidgetBridgePlugin.m */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
@@ -165,6 +174,9 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				9582B6872FE993A70072D4E8 /* QuickLogIntent.swift in Sources */,
+				9582B6892FE993A70072D4E8 /* WidgetBridgePlugin.swift in Sources */,
+				9582B68B2FE993A70072D4E8 /* WidgetBridgePlugin.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
