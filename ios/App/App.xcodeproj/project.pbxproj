@@ -18,7 +18,35 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		9582B6852FE993A70072D4E8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9582B6842FE993A70072D4E8 /* PrivacyInfo.xcprivacy */; };
 		9582B6892FE993A70072D4E8 /* WidgetBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6882FE993A70072D4E8 /* WidgetBridgePlugin.swift */; };
+		9582B7032FE993A70072D4E8 /* AccrualWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B7022FE993A70072D4E8 /* AccrualWidgetBundle.swift */; };
+		9582B7052FE993A70072D4E8 /* NetWorthWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B7042FE993A70072D4E8 /* NetWorthWidget.swift */; };
+		9582B7072FE993A70072D4E8 /* WidgetDataModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B7062FE993A70072D4E8 /* WidgetDataModel.swift */; };
+		9582B7122FE993A70072D4E8 /* AccrualWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9582B7012FE993A70072D4E8 /* AccrualWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9582B7152FE993A70072D4E8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9582B70E2FE993A70072D4E8;
+			remoteInfo = AccrualWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9582B7132FE993A70072D4E8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				9582B7122FE993A70072D4E8 /* AccrualWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
@@ -35,6 +63,12 @@
 		9582B6862FE993A70072D4E8 /* QuickLogIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogIntent.swift; sourceTree = "<group>"; };
 		9582B6882FE993A70072D4E8 /* WidgetBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridgePlugin.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		9582B7012FE993A70072D4E8 /* AccrualWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AccrualWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		9582B7022FE993A70072D4E8 /* AccrualWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccrualWidgetBundle.swift; sourceTree = "<group>"; };
+		9582B7042FE993A70072D4E8 /* NetWorthWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetWorthWidget.swift; sourceTree = "<group>"; };
+		9582B7062FE993A70072D4E8 /* WidgetDataModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataModel.swift; sourceTree = "<group>"; };
+		9582B7082FE993A70072D4E8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9582B7092FE993A70072D4E8 /* AccrualWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AccrualWidget.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +80,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9582B70C2FE993A70072D4E8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -54,6 +95,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				9582B70A2FE993A70072D4E8 /* AccrualWidget */,
 				504EC3051FED79650016851F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -62,6 +104,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				9582B7012FE993A70072D4E8 /* AccrualWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -85,6 +128,18 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		9582B70A2FE993A70072D4E8 /* AccrualWidget */ = {
+			isa = PBXGroup;
+			children = (
+				9582B7022FE993A70072D4E8 /* AccrualWidgetBundle.swift */,
+				9582B7042FE993A70072D4E8 /* NetWorthWidget.swift */,
+				9582B7062FE993A70072D4E8 /* WidgetDataModel.swift */,
+				9582B7082FE993A70072D4E8 /* Info.plist */,
+				9582B7092FE993A70072D4E8 /* AccrualWidget.entitlements */,
+			);
+			path = AccrualWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -95,10 +150,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				9582B7132FE993A70072D4E8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				9582B7142FE993A70072D4E8 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -107,6 +164,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		9582B70E2FE993A70072D4E8 /* AccrualWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9582B70F2FE993A70072D4E8 /* Build configuration list for PBXNativeTarget "AccrualWidget" */;
+			buildPhases = (
+				9582B70B2FE993A70072D4E8 /* Sources */,
+				9582B70C2FE993A70072D4E8 /* Frameworks */,
+				9582B70D2FE993A70072D4E8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AccrualWidget;
+			productName = AccrualWidget;
+			productReference = 9582B7012FE993A70072D4E8 /* AccrualWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -117,6 +191,11 @@
 				LastSwiftUpdateCheck = 0920;
 				LastUpgradeCheck = 0920;
 				TargetAttributes = {
+					9582B70E2FE993A70072D4E8 = {
+						CreatedOnToolsVersion = 15.0;
+						DevelopmentTeam = VU4PP3SY5B;
+						ProvisioningStyle = Manual;
+					};
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						DevelopmentTeam = VU4PP3SY5B;
@@ -142,6 +221,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				9582B70E2FE993A70072D4E8 /* AccrualWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -161,6 +241,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9582B70D2FE993A70072D4E8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -174,7 +261,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9582B70B2FE993A70072D4E8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9582B7032FE993A70072D4E8 /* AccrualWidgetBundle.swift in Sources */,
+				9582B7052FE993A70072D4E8 /* NetWorthWidget.swift in Sources */,
+				9582B7072FE993A70072D4E8 /* WidgetDataModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		9582B7142FE993A70072D4E8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9582B70E2FE993A70072D4E8 /* AccrualWidget */;
+			targetProxy = 9582B7152FE993A70072D4E8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -355,6 +460,62 @@
 			};
 			name = Release;
 		};
+		9582B7102FE993A70072D4E8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = AccrualWidget/AccrualWidget.entitlements;
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VU4PP3SY5B;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AccrualWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Accrual Widgets";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.syntheticae.accrual.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "Accrual Widget AppStore Profile";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9582B7112FE993A70072D4E8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = AccrualWidget/AccrualWidget.entitlements;
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VU4PP3SY5B;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AccrualWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Accrual Widgets";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.syntheticae.accrual.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "Accrual Widget AppStore Profile";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -372,6 +533,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9582B70F2FE993A70072D4E8 /* Build configuration list for PBXNativeTarget "AccrualWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9582B7102FE993A70072D4E8 /* Debug */,
+				9582B7112FE993A70072D4E8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
