@@ -17,6 +17,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		9582B6852FE993A70072D4E8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9582B6842FE993A70072D4E8 /* PrivacyInfo.xcprivacy */; };
+		9582B6872FE993A70072D4E8 /* QuickLogIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6862FE993A70072D4E8 /* QuickLogIntent.swift */; };
 		9582B6892FE993A70072D4E8 /* WidgetBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6882FE993A70072D4E8 /* WidgetBridgePlugin.swift */; };
 		9582B7032FE993A70072D4E8 /* AccrualWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B7022FE993A70072D4E8 /* AccrualWidgetBundle.swift */; };
 		9582B7052FE993A70072D4E8 /* NetWorthWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B7042FE993A70072D4E8 /* NetWorthWidget.swift */; };
@@ -260,6 +261,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				9582B6892FE993A70072D4E8 /* WidgetBridgePlugin.swift in Sources */,
+				9582B6872FE993A70072D4E8 /* QuickLogIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

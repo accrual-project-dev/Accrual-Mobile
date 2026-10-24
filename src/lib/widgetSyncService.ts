@@ -76,6 +76,7 @@ export interface WidgetBridgePlugin {
   getPendingIngestion(): Promise<{
     transactions: PendingBackTapTx[];
     voiceLogs: PendingBackTapVoice[];
+    navigation?: string | null;
   }>;
   clearPendingIngestion(): Promise<{ success: boolean }>;
   reloadWidgets(): Promise<{ success: boolean }>;
@@ -133,9 +134,10 @@ class WidgetSyncService {
   public async retrievePendingIngestion(): Promise<{
     transactions: PendingBackTapTx[];
     voiceLogs: PendingBackTapVoice[];
+    navigation?: string | null;
   }> {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") {
-      return { transactions: [], voiceLogs: [] };
+      return { transactions: [], voiceLogs: [], navigation: null };
     }
 
     try {
@@ -143,10 +145,11 @@ class WidgetSyncService {
       return {
         transactions: Array.isArray(result?.transactions) ? result.transactions : [],
         voiceLogs: Array.isArray(result?.voiceLogs) ? result.voiceLogs : [],
+        navigation: result?.navigation || null,
       };
     } catch (err) {
       console.warn("[WidgetSyncService] retrievePendingIngestion failed:", err);
-      return { transactions: [], voiceLogs: [] };
+      return { transactions: [], voiceLogs: [], navigation: null };
     }
   }
 

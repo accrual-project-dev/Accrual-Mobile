@@ -242,9 +242,16 @@ export function useWidgetSync() {
     isIngestingRef.current = true;
 
     try {
-      const { transactions, voiceLogs } = await widgetSyncService.retrievePendingIngestion();
+      const { transactions, voiceLogs, navigation } = await widgetSyncService.retrievePendingIngestion();
 
       let ingestedCount = 0;
+
+      // Handle foreground navigation intent from iOS App Shortcuts
+      if (navigation === "add") {
+        window.dispatchEvent(new CustomEvent("trouvaille:open-quick-add"));
+      } else if (navigation === "scan") {
+        window.dispatchEvent(new CustomEvent("trouvaille:open-scanner"));
+      }
 
       // Process structured quick-log transactions
       if (transactions.length > 0) {
@@ -305,8 +312,11 @@ export function useWidgetSync() {
         }
       }
 
-      if (ingestedCount > 0) {
+      if (ingestedCount > 0 || navigation) {
         await widgetSyncService.clearPendingIngestion();
+      }
+
+      if (ingestedCount > 0) {
         triggerSuccessHaptic();
         showToast(
           isIndonesian

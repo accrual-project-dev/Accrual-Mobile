@@ -179,29 +179,29 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pusat Pintasan Cepat 1-Ketukan" : "1-Tap Shortcuts Hub",
         desc: isIndonesian
-          ? "Karena Accrual kini terdaftar resmi di ekosistem Apple Developer, skema URL dan pintasan iOS dapat berjalan permanen tanpa batas waktu. Anda dapat langsung menguji skema atau menyalin perintah siap pakai ke aplikasi Pintasan Apple."
-          : "Because Accrual is officially signed under Apple Developer, iOS URL schemes and shortcuts run permanently without expiration. You can instantly test schemes or copy ready-to-use commands into the Apple Shortcuts app.",
+          ? "Accrual kini terintegrasi langsung di aplikasi Pintasan Apple (Aksi Bawaan) dan mendukung skema URL permanen. Anda dapat menemukan Accrual langsung di daftar Aplikasi pada aplikasi Pintasan iOS atau menguji tautan langsung di bawah."
+          : "Accrual is now integrated natively into Apple Shortcuts (Native Actions) alongside permanent URL schemes. You can find Accrual directly in the Apps list in iOS Shortcuts or test instant deep links below.",
         actionType: "test_url",
         scheme: "accrual://add",
         btnText: isIndonesian ? "Uji Skema Catat Instan" : "Test Instant Add Scheme",
       },
       {
         stepNum: 1,
-        title: isIndonesian ? "Pintasan Catat Cepat (Instant Add)" : "Instant Quick Add Shortcut",
+        title: isIndonesian ? "Aksi Bawaan: Buka Lembar Catat Cepat" : "Native Action: Open Quick Add Sheet",
         desc: isIndonesian
-          ? "Membuka formulir pencatatan transaksi Accrual secara instan dari aplikasi apa pun via Back Tap atau Action Button."
-          : "Instantly opens the Accrual transaction sheet from anywhere via Back Tap or Action Button.",
+          ? "Buka aplikasi Pintasan › Pilih Accrual › Pilih 'Buka Lembar Catat Cepat' (atau gunakan skema accrual://add via Ketuk Bagian Belakang atau Tombol Tindakan)."
+          : "Open Shortcuts app › Select Accrual › Choose 'Open Quick Add Sheet' (or use scheme accrual://add via Back Tap or Action Button).",
         actionType: "test_url",
         scheme: "accrual://add",
         btnText: isIndonesian ? "Uji Buka accrual://add" : "Test accrual://add",
-        noteText: isIndonesian ? "Gunakan skema accrual://add pada tindakan 'Buka URL' di Pintasan." : "Use accrual://add in 'Open URLs' action in Shortcuts.",
+        noteText: isIndonesian ? "Aksi bawaan Accrual tersedia langsung di perpustakaan tindakan iOS." : "Accrual native actions are available directly in the iOS action library.",
       },
       {
         stepNum: 2,
-        title: isIndonesian ? "Pembaca Notifikasi Bank Otomatis" : "Auto Bank Notification Reader",
+        title: isIndonesian ? "Aksi Bawaan: Catat Transaksi dari Teks" : "Native Action: Log Transaction Text",
         desc: isIndonesian
-          ? "Setiap ada notifikasi dari BCA, Mandiri, GoPay, OVO, ShopeePay, DANA, dll., pintasan otomatis membaca teks dan menyimpannya langsung ke Accrual."
-          : "Whenever a notification arrives from your banking or e-wallet app, Shortcuts automatically reads the text and logs it directly to Accrual.",
+          ? "Sangat ideal untuk automasi notifikasi bank atau SMS. Cukup sambungkan teks ke aksi 'Catat Transaksi dari Teks' di Pintasan."
+          : "Ideal for bank notification or SMS automations. Simply pass the text into the 'Log Transaction Text' action in Shortcuts.",
         actionType: "copy",
         copyText: isIndonesian
           ? "accrual://add?text=[Teks Terenkode]&autosave=true"
@@ -211,10 +211,10 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 3,
-        title: isIndonesian ? "Pindai Layar Resi (Back Tap Screen OCR)" : "Screen Receipt Scanner OCR",
+        title: isIndonesian ? "Aksi Bawaan: Buka Pemindai Resi" : "Native Action: Open Receipt Scanner",
         desc: isIndonesian
-          ? "Ketuk 2x bodi belakang iPhone saat melihat struk atau mutasi bank, sistem otomatis membaca teks via Live Text OCR dan membuka daftar periksa cerdas."
-          : "Double tap back of iPhone while viewing receipt or bank statement, iOS Live Text OCR extracts text and opens checklist.",
+          ? "Buka pemindai struk & mutasi Accrual secara instan dari aplikasi Pintasan dengan memilih aksi 'Buka Pemindai Resi' atau menggunakan skema accrual://capture."
+          : "Open Accrual's receipt & statement scanner instantly from Shortcuts with the 'Open Receipt Scanner' action or using accrual://capture.",
         actionType: "copy",
         copyText: isIndonesian
           ? "accrual://capture?text=[Teks Terenkode]&autosave=true"
@@ -224,10 +224,10 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 4,
-        title: isIndonesian ? "Pencatatan Dikte Suara (Voice Log)" : "Voice Transaction Log",
+        title: isIndonesian ? "Aksi Bawaan: Catat Transaksi dengan Suara" : "Native Action: Log Transaction with Voice",
         desc: isIndonesian
-          ? "Cukup ucapkan pengeluaran Anda (misal: 'Kopi 25rb pakai Cash') dan kecerdasan Accrual langsung mengurai nominal, akun, dan kategori."
-          : "Simply speak your transaction (e.g. 'Coffee 25k with Cash') and Accrual automatically parses amount, wallet, and category.",
+          ? "Pilih aksi 'Catat Transaksi dengan Suara' atau gunakan skema accrual://voice. Cukup ucapkan pengeluaran Anda dan sistem cerdas Accrual langsung mengurai transaksi."
+          : "Choose the 'Log Transaction with Voice' action or use the accrual://voice scheme. Simply speak your transaction and Accrual's intelligent parser parses it directly.",
         actionType: "test_url",
         scheme: "accrual://voice",
         btnText: isIndonesian ? "Uji Dikte Suara (accrual://voice)" : "Test Voice Log (accrual://voice)",
@@ -284,8 +284,8 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pembaca Notifikasi Bank Otomatis" : "Auto Bank Notification Reader",
         desc: isIndonesian
-          ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, dll.), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Accrual di latar belakang tanpa sentuhan manual."
-          : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, etc.), your iPhone automatically reads the notification text and saves it directly to Accrual in the background without manual touch.",
+          ? "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, dll.), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Accrual di latar belakang tanpa sentuhan manual via Aksi Bawaan Accrual atau skema URL."
+          : "Whenever a transaction notification arrives from your banking or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA, etc.), your iPhone automatically reads the notification text and saves it directly to Accrual in the background without manual touch via Accrual's Native Action or URL scheme.",
         actionType: "test_hud",
         btnText: isIndonesian ? "Uji Kapsul Notifikasi" : "Test Dynamic Island HUD",
       },
@@ -302,16 +302,19 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 2,
-        title: isIndonesian ? "Langkah 2: Sambungkan Teks ke Accrual" : "Step 2: Connect Text to Accrual",
+        title: isIndonesian ? "Langkah 2: Sambungkan Teks ke Aksi Bawaan Accrual" : "Step 2: Connect Text to Accrual Native Action",
         desc: isIndonesian
-          ? "1. Tambah tindakan 'Enkode URL' untuk variabel 'Masukan Pintasan'.\n2. Tambah tindakan 'Buka URL' dan masukkan skema di bawah, lalu ganti [Teks Terenkode] dengan variabel biru:"
-          : "1. Add 'URL Encode' action for 'Shortcut Input' variable.\n2. Add 'Open URLs' action and paste the scheme below, replacing [URL Encoded Text] with the blue variable token:",
+          ? "Metode Utama (Aksi Bawaan Accrual):\n1. Tambah Tindakan › Pilih 'Aplikasi' › Pilih 'Accrual'.\n2. Pilih tindakan 'Catat Transaksi dari Teks'.\n3. Sambungkan variabel biru 'Masukan Pintasan' ke kolom Teks.\n\nMetode Alternatif (Skema URL):\nTambahkan tindakan 'Enkode URL' untuk 'Masukan Pintasan', lalu tambahkan 'Buka URL' dengan skema di bawah:"
+          : "Primary Method (Accrual Native Action):\n1. Add Action › Select 'Apps' › Select 'Accrual'.\n2. Choose 'Log Transaction Text' action.\n3. Connect the blue 'Shortcut Input' variable into the Text field.\n\nAlternative Method (URL Scheme):\nAdd 'URL Encode' for 'Shortcut Input', then add 'Open URLs' action with the scheme below:",
         actionType: "copy",
         copyText: isIndonesian
           ? "accrual://add?text=[Teks Terenkode]&autosave=true"
           : "accrual://add?text=[URL Encoded Text]&autosave=true",
         copyLabel: isIndonesian ? "Skema Automasi" : "Automation Scheme",
         btnText: isIndonesian ? "Salin Skema Automasi" : "Copy Automation Scheme",
+        noteText: isIndonesian
+          ? "Aksi bawaan Accrual langsung tercatat di latar belakang tanpa membuka aplikasi secara penuh."
+          : "Accrual's native action records silently in the background without opening the full app.",
       },
       {
         stepNum: 3,
@@ -330,18 +333,18 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pencatatan 1-Ketukan Instan" : "Instant 1-Tap Logging",
         desc: isIndonesian
-          ? "Ketuk 2x bodi belakang iPhone Anda untuk langsung membuka lembar masukan nominal Accrual secara instan dari aplikasi apa pun tanpa jeda."
-          : "Double tap the back of your iPhone (Back Tap) to instantly open the Accrual amount sheet from anywhere without opening the full app.",
+          ? "Ketuk 2x bodi belakang iPhone Anda untuk langsung membuka lembar masukan nominal Accrual secara instan dari aplikasi apa pun tanpa jeda via Aksi Bawaan Accrual atau skema URL."
+          : "Double tap the back of your iPhone (Back Tap) to instantly open the Accrual amount sheet from anywhere without opening the full app via Accrual Native Action or URL scheme.",
         actionType: "test_url",
         scheme: "accrual://add",
         btnText: isIndonesian ? "Uji Buka URL Sekarang" : "Test Open URL Now",
       },
       {
         stepNum: 1,
-        title: isIndonesian ? "Buat Tindakan 'Buka URL'" : "Add 'Open URLs' Action",
+        title: isIndonesian ? "Pilih Aksi Accrual atau Buat 'Buka URL'" : "Select Accrual Action or Add 'Open URLs'",
         desc: isIndonesian
-          ? "Buka aplikasi Pintasan > Ketuk tanda (+) > Ganti nama pintasan menjadi 'Catat Pengeluaran' > Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
-          : "Open Shortcuts > Tap (+) > Rename shortcut to 'Log Expense' > Add 'Open URLs' action and paste the scheme below:",
+          ? "Buka aplikasi Pintasan › Ketuk (+) › Ganti nama menjadi 'Catat Pengeluaran'.\n• Pilihan 1 (Aksi Bawaan): Ketuk Tambah Tindakan › Pilih 'Aplikasi' › 'Accrual' › Pilih 'Buka Lembar Catat Cepat'.\n• Pilihan 2 (Skema URL): Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
+          : "Open Shortcuts › Tap (+) › Rename shortcut to 'Log Expense'.\n• Option 1 (Native Action): Tap Add Action › Select 'Apps' › 'Accrual' › Choose 'Open Quick Add Sheet'.\n• Option 2 (URL Scheme): Add 'Open URLs' action and paste the scheme below:",
         actionType: "copy",
         copyText: "accrual://add",
         copyLabel: isIndonesian ? "Skema URL" : "URL Scheme",
@@ -372,10 +375,10 @@ export function AppleShortcutsGuideModal({
       },
       {
         stepNum: 1,
-        title: isIndonesian ? "Langkah 1: Tambah Tindakan 'Buka URL'" : "Step 1: Add 'Open URLs' Action",
+        title: isIndonesian ? "Pilih Aksi Accrual atau Tambah 'Buka URL'" : "Select Accrual Action or Add 'Open URLs'",
         desc: isIndonesian
-          ? "Buka aplikasi Pintasan › Ketuk (+) › Ganti nama menjadi 'Catat Suara' › Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
-          : "Open Shortcuts › Tap (+) › Rename shortcut to 'Log Voice' › Add 'Open URLs' action and paste the scheme below:",
+          ? "Buka aplikasi Pintasan › Ketuk (+) › Ganti nama menjadi 'Catat Suara'.\n• Pilihan 1 (Aksi Bawaan): Ketuk Tambah Tindakan › Pilih 'Aplikasi' › 'Accrual' › Pilih 'Catat Transaksi dengan Suara'.\n• Pilihan 2 (Skema URL): Tambahkan tindakan 'Buka URL' dan tempel alamat skema berikut:"
+          : "Open Shortcuts › Tap (+) › Rename shortcut to 'Log Voice'.\n• Option 1 (Native Action): Tap Add Action › Select 'Apps' › 'Accrual' › Choose 'Log Transaction with Voice'.\n• Option 2 (URL Scheme): Add 'Open URLs' action and paste the scheme below:",
         actionType: "copy",
         copyText: "accrual://voice",
         copyLabel: isIndonesian ? "Skema URL Suara" : "Voice URL Scheme",
@@ -398,8 +401,8 @@ export function AppleShortcutsGuideModal({
         isHero: true,
         title: isIndonesian ? "Pencatatan Dialog Pop-up Asli iOS" : "Native iOS Dialog Logging",
         desc: isIndonesian
-          ? "Input transaksi melalui rentetan pop-up dialog resmi iOS satu demi satu. Seluruh data terkirim hening dan tersimpan rapi ke cloud Accrual tanpa perlu berpindah aplikasi."
-          : "Log expenses through sequential native iOS dialog pop-ups. All data is silently transmitted and saved to your Accrual cloud without opening the app.",
+          ? "Anda dapat memilih Aksi Bawaan 'Catat Pengeluaran Cepat' dari Accrual di Pintasan (yang otomatis menampilkan dialog input bawaan iOS), atau merangkai 6 langkah dialog manual di bawah. Seluruh data terkirim hening dan tersimpan rapi ke cloud Accrual."
+          : "You can select Accrual's Native Action 'Quick Log Expense' in Shortcuts (which automatically presents iOS native input dialogs), or configure the 6-step manual dialog chain below. All data is silently transmitted and saved to your Accrual cloud.",
         actionType: "copy",
         copyText: userIdText,
         copyLabel: isIndonesian ? "ID Pengguna" : "User ID",
@@ -410,7 +413,7 @@ export function AppleShortcutsGuideModal({
         title: isIndonesian ? "Langkah 1: Minta Masukan Nominal" : "Step 1: Ask for Number (Amount)",
         desc: isIndonesian
           ? "Tambah tindakan 'Minta Masukan' › Ubah tipe ke 'Angka' › Pertanyaan: 'Berapa nominalnya?'. Ketuk variabel biru di atas papan ketik lalu ganti nama menjadi 'Nominal'."
-          : "Add 'Ask for Input' › Change type to 'Number' › Prompt: 'How much was it?'. Tap the blue variable above the keyboard and rename it to 'Nominal'.",
+          : "Add 'Ask for Input' › Change type to 'Number' › Prompt: 'How much was it?'. Tap the blue variable above the keyboard and rename it to 'Amount'.",
         actionType: "info",
         noteText: isIndonesian
           ? "Tipe Angka memastikan papan tombol numerik iOS langsung muncul."
@@ -1398,40 +1401,42 @@ export function AppleShortcutsGuideModal({
                 {/* Connection Line */}
                 <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
-                {/* Action 1: URL Encode */}
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 8px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 3.5 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <LinkIcon size={7} strokeWidth={2.5} className="text-white" />
+                {/* Action: Accrual Native Action (Primary) */}
+                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", padding: "6px 8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3.5, marginBottom: 3 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 3, background: "#09090c", border: "0.5px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Sparkles size={7.5} strokeWidth={2.5} className="text-white" />
                     </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
-                      {isIndonesian ? "Enkode URL" : "URL Encode"}
+                    <span style={{ fontSize: 7.5, fontWeight: 700, color: "white" }}>
+                      Accrual
                     </span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 600 }}>
+                    <span style={{ marginLeft: "auto", fontSize: 6, color: "rgba(255,255,255,0.45)" }}>
+                      {isIndonesian ? "Aksi Bawaan" : "Native Action"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 7, fontWeight: 600, color: "white", marginBottom: 2.5 }}>
+                    {isIndonesian ? "Catat Transaksi dari Teks" : "Log Transaction Text"}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, background: "#18181a", borderRadius: 5, padding: "2.5px 6px" }}>
+                    <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.5)" }}>
+                      {isIndonesian ? "Teks:" : "Text:"}
+                    </span>
+                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px", fontSize: 6.5, fontWeight: 600 }}>
                       {isIndonesian ? "Masukan Pintasan" : "Shortcut Input"}
                     </span>
                   </div>
                 </div>
 
                 {/* Connection Line */}
-                <div style={{ width: 1.5, height: 6, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
+                <div style={{ width: 1.5, height: 5, background: "rgba(255,255,255,0.22)", margin: "0 auto" }} />
 
-                {/* Action 2: Open URLs */}
-                <div style={{ background: "#242426", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "6px 7px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
-                    <div style={{ width: 13, height: 13, borderRadius: 3, background: "#007aff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ExternalLink size={7} strokeWidth={2.5} className="text-white" />
-                    </div>
-                    <span style={{ fontSize: 7.5, fontWeight: 600, color: "white" }}>
-                      {isIndonesian ? "Buka" : "Open"}
+                {/* Optional Fallback Pill: Open URLs */}
+                <div style={{ background: "#242426", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", padding: "3.5px 6px", opacity: 0.65 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <ExternalLink size={6.5} className="text-zinc-400" />
+                    <span style={{ fontSize: 6, color: "rgba(255,255,255,0.7)" }}>
+                      {isIndonesian ? "Atau Skema URL: accrual://add" : "Or URL Scheme: accrual://add"}
                     </span>
-                  </div>
-                  <div style={{ background: "#18181a", borderRadius: 6, padding: "4px 6px", fontSize: 6.5, lineHeight: 1.5, wordBreak: "break-all" }}>
-                    <span style={{ color: "#2997ff" }}>accrual://add?text=</span>
-                    <span style={{ background: "#0f274a", border: "1px solid rgba(41,151,255,0.45)", color: "#2997ff", borderRadius: 3, padding: "0 3px" }}>
-                      {isIndonesian ? "Teks Terenkode URL" : "URL Encoded Text"}
-                    </span>
-                    <span style={{ color: "#2997ff" }}>&autosave=true</span>
                   </div>
                 </div>
               </div>

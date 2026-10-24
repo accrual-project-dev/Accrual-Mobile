@@ -58,10 +58,12 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc public func getPendingIngestion(_ call: CAPPluginCall) {
         let transactions = sharedDefaults.array(forKey: "pending_backtap_transactions") as? [[String: Any]] ?? []
         let voiceLogs = sharedDefaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
+        let navAction = sharedDefaults.string(forKey: "pending_intent_navigation")
 
         call.resolve([
             "transactions": transactions,
-            "voiceLogs": voiceLogs
+            "voiceLogs": voiceLogs,
+            "navigation": navAction as Any
         ])
     }
 
@@ -71,6 +73,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc public func clearPendingIngestion(_ call: CAPPluginCall) {
         sharedDefaults.removeObject(forKey: "pending_backtap_transactions")
         sharedDefaults.removeObject(forKey: "pending_backtap_voice")
+        sharedDefaults.removeObject(forKey: "pending_intent_navigation")
         sharedDefaults.synchronize()
 
         call.resolve(["success": true])

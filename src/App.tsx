@@ -342,6 +342,23 @@ function AppShell() {
   // Two-stage design to fix cold-launch race condition:
   //   Stage 1 (this effect): register listeners, queue URL if categories/wallets not yet loaded
   // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
+  // Listener for native iOS App Intents / Shortcuts foreground triggers
+  useEffect(() => {
+    const handleOpenQuickAdd = () => {
+      setPrefilledValues(null);
+      setAddSheetOpen(true);
+    };
+    const handleOpenScanner = () => {
+      setReceiptScanOpen(true);
+    };
+    window.addEventListener("trouvaille:open-quick-add", handleOpenQuickAdd);
+    window.addEventListener("trouvaille:open-scanner", handleOpenScanner);
+    return () => {
+      window.removeEventListener("trouvaille:open-quick-add", handleOpenQuickAdd);
+      window.removeEventListener("trouvaille:open-scanner", handleOpenScanner);
+    };
+  }, []);
+
   const handleUrlDispatch = useRef<((rawUrl: string) => void) | null>(null);
 
   useEffect(() => {

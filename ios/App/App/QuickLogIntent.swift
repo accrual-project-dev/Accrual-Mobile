@@ -3,44 +3,50 @@ import Foundation
 import AppIntents
 import SwiftUI
 
-/// Accrual Quick Log App Intent for iOS 16+
-/// Enables the interactive floating frosted glass modal triggered via iPhone Back Tap,
-/// Siri, or Action Button without launching the full application.
+/// ======================================================================
+/// ACCRUAL APP INTENTS & SHORTCUTS SUITE (iOS 16.0+)
+/// Strictly compliant with GEMINI.md:
+/// - Rule 1: No native colored emojis (SF Symbols vector iconography)
+/// - Rule 2: Monochrome Apple Luxury Theme (Obsidian & Frosted Glass)
+/// - Rule 6: 100% pure localization support
+/// ======================================================================
+
+/// 1. Quick Log Expense Intent
+/// Parameterized manual entry (Amount, Note, Category, Wallet, Date)
 @available(iOS 16.0, *)
 struct QuickLogExpenseIntent: AppIntent {
-    static var title: LocalizedStringResource = "Accrual Quick Log"
-    static var description = IntentDescription("Log an expense via native iOS frosted glass modal.")
+    static var title: LocalizedStringResource = "Catat Pengeluaran"
+    static var description = IntentDescription("Catat pengeluaran terstruktur ke Accrual dengan nominal, kategori, dan dompet.")
     
-    // Crucial: Executes in background without launching the webview
     static var openAppWhenRun: Bool = false
 
-    @Parameter(title: "How much was it?")
+    @Parameter(title: "Nominal (Angka)")
     var amount: Double?
 
-    @Parameter(title: "What kind of expense is it?")
-    var category: String?
-
-    @Parameter(title: "Which account or wallet?")
-    var wallet: String?
-
-    @Parameter(title: "What day was it?")
-    var transactionDate: Date?
-
-    @Parameter(title: "What did you buy?")
+    @Parameter(title: "Catatan atau Keterangan")
     var note: String?
 
+    @Parameter(title: "Kategori")
+    var category: String?
+
+    @Parameter(title: "Dompet atau Rekening")
+    var wallet: String?
+
+    @Parameter(title: "Tanggal Transaksi")
+    var transactionDate: Date?
+
     static var parameterSummary: some ParameterSummary {
-        Summary("Log \(\.$amount) for \(\.$note) in \(\.$category) using \(\.$wallet)")
+        Summary("Catat \(\.$amount) untuk \(\.$note) di \(\.$category) pakai \(\.$wallet)")
     }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let amount = amount else {
-            throw $amount.needsValueError("How much was it?")
+            throw $amount.needsValueError("Berapa nominal pengeluaran Anda?")
         }
         
         let dateVal = transactionDate ?? Date()
-        let catVal = category ?? "General"
+        let catVal = category ?? "Umum"
         let walVal = wallet ?? "Default"
         let noteVal = note ?? ""
         
@@ -54,7 +60,6 @@ struct QuickLogExpenseIntent: AppIntent {
             "createdAt": Date().timeIntervalSince1970
         ]
         
-        // Save to App Group UserDefaults so the Capacitor app can ingest it upon opening
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         var pending = defaults.array(forKey: "pending_backtap_transactions") as? [[String: Any]] ?? []
@@ -62,32 +67,31 @@ struct QuickLogExpenseIntent: AppIntent {
         defaults.set(pending, forKey: "pending_backtap_transactions")
         
         let formattedAmount = String(format: "%.0f", amount)
-        let displayDialog: LocalizedStringResource = "Logged \(formattedAmount) to Accrual."
+        let displayDialog: LocalizedStringResource = "Berhasil mencatat Rp \(formattedAmount) ke Accrual."
         return .result(dialog: IntentDialog(displayDialog))
     }
 }
 
-/// Accrual Voice / Speak App Intent for iOS 16+
-/// Allows users to speak a transaction naturally (e.g. "Coffee 35k with Cash")
-/// and have Accrual parse it in the background or upon launch.
+/// 2. Log Transaction from Text Intent
+/// Tailor-made for iOS Shortcuts Automations (Bank Notifications, SMS, Clipboard)
 @available(iOS 16.0, *)
-struct VoiceLogExpenseIntent: AppIntent {
-    static var title: LocalizedStringResource = "Accrual Voice Log"
-    static var description = IntentDescription("Speak your transaction and Accrual will parse it.")
+struct LogTransactionTextIntent: AppIntent {
+    static var title: LocalizedStringResource = "Catat Transaksi dari Teks"
+    static var description = IntentDescription("Urai dan catat transaksi otomatis dari teks notifikasi bank, SMS, atau papan klip.")
 
     static var openAppWhenRun: Bool = false
 
-    @Parameter(title: "What did you spend?")
-    var spokenText: String?
+    @Parameter(title: "Teks Transaksi atau Notifikasi")
+    var text: String?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Log expense by speaking: \(\.$spokenText)")
+        Summary("Catat transaksi dari teks: \(\.$text)")
     }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let text = spokenText, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw $spokenText.needsValueError("What did you spend? (e.g. Kopi 25rb pakai Cash)")
+        guard let text = text, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw $text.needsValueError("Masukkan atau sambungkan teks notifikasi transaksi:")
         }
         
         let record: [String: Any] = [
@@ -102,14 +106,93 @@ struct VoiceLogExpenseIntent: AppIntent {
         pending.append(record)
         defaults.set(pending, forKey: "pending_backtap_voice")
         
-        let displayDialog: LocalizedStringResource = "Voice captured: \"\(text)\""
+        let displayDialog: LocalizedStringResource = "Notifikasi transaksi berhasil diterima Accrual."
         return .result(dialog: IntentDialog(displayDialog))
     }
 }
 
-/// Automatically registers Accrual Shortcuts into iOS Shortcuts app on app installation
+/// 3. Voice Log Expense Intent
+/// Spoken transaction logger
+@available(iOS 16.0, *)
+struct VoiceLogExpenseIntent: AppIntent {
+    static var title: LocalizedStringResource = "Dikte Suara Pengeluaran"
+    static var description = IntentDescription("Ucapkan transaksi Anda dan kecerdasan Accrual akan mengurainya secara otomatis.")
+
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Ucapan Transaksi")
+    var spokenText: String?
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Catat pengeluaran lewat ucapan: \(\.$spokenText)")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let text = spokenText, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw $spokenText.needsValueError("Apa yang Anda belanjakan? (Contoh: Kopi 25rb bayar pakai Cash)")
+        }
+        
+        let record: [String: Any] = [
+            "id": UUID().uuidString,
+            "text": text,
+            "createdAt": Date().timeIntervalSince1970
+        ]
+        
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        var pending = defaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
+        pending.append(record)
+        defaults.set(pending, forKey: "pending_backtap_voice")
+        
+        let displayDialog: LocalizedStringResource = "Suara berhasil dicatat: \"\(text)\""
+        return .result(dialog: IntentDialog(displayDialog))
+    }
+}
+
+/// 4. Open Quick Add Intent
+/// Direct launcher for transaction sheet
+@available(iOS 16.0, *)
+struct OpenQuickAddIntent: AppIntent {
+    static var title: LocalizedStringResource = "Buka Catat Cepat"
+    static var description = IntentDescription("Buka formulir pencatatan transaksi Accrual secara langsung.")
+
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        defaults.set("add", forKey: "pending_intent_navigation")
+        return .result()
+    }
+}
+
+/// 5. Open Scan Receipt Intent
+/// Direct launcher for receipt & invoice scanner
+@available(iOS 16.0, *)
+struct OpenScanReceiptIntent: AppIntent {
+    static var title: LocalizedStringResource = "Pindai Resi & Struk"
+    static var description = IntentDescription("Buka kamera pemindai bukti bayar atau mutasi di Accrual.")
+
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        defaults.set("scan", forKey: "pending_intent_navigation")
+        return .result()
+    }
+}
+
+/// Central AppShortcutsProvider
+/// Automatically indexes Accrual into iOS Shortcuts app on app installation
 @available(iOS 16.0, *)
 struct AccrualShortcutsProvider: AppShortcutsProvider {
+    static var shortcutTileColor: ShortcutTileColor = .gray
+
+    @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: QuickLogExpenseIntent(),
@@ -118,8 +201,19 @@ struct AccrualShortcutsProvider: AppShortcutsProvider {
                 "Log an expense in \(.applicationName)",
                 "Catat pengeluaran di \(.applicationName)"
             ],
-            shortTitle: "Quick Log",
-            systemImageName: "creditcard.and.123"
+            shortTitle: "Catat Pengeluaran",
+            systemImageName: "plus.circle.fill"
+        )
+        AppShortcut(
+            intent: LogTransactionTextIntent(),
+            phrases: [
+                "Log text to \(.applicationName)",
+                "Log notification in \(.applicationName)",
+                "Catat teks di \(.applicationName)",
+                "Catat notifikasi di \(.applicationName)"
+            ],
+            shortTitle: "Catat dari Teks",
+            systemImageName: "doc.text.viewfinder"
         )
         AppShortcut(
             intent: VoiceLogExpenseIntent(),
@@ -128,8 +222,27 @@ struct AccrualShortcutsProvider: AppShortcutsProvider {
                 "Speak expense to \(.applicationName)",
                 "Bicara pengeluaran di \(.applicationName)"
             ],
-            shortTitle: "Voice Log",
+            shortTitle: "Dikte Suara",
             systemImageName: "mic.fill"
+        )
+        AppShortcut(
+            intent: OpenQuickAddIntent(),
+            phrases: [
+                "Open \(.applicationName)",
+                "Open quick add in \(.applicationName)",
+                "Buka pencatatan di \(.applicationName)"
+            ],
+            shortTitle: "Buka Catat Cepat",
+            systemImageName: "square.and.pencil"
+        )
+        AppShortcut(
+            intent: OpenScanReceiptIntent(),
+            phrases: [
+                "Scan receipt in \(.applicationName)",
+                "Pindai resi di \(.applicationName)"
+            ],
+            shortTitle: "Pindai Resi",
+            systemImageName: "camera.viewfinder"
         )
     }
 }
