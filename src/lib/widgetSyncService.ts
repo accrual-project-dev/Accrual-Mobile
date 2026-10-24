@@ -8,6 +8,11 @@
 
 import { registerPlugin, Capacitor } from "@capacitor/core";
 
+export interface WidgetHeatmapDot {
+  intensity: number;
+  hasSpend: boolean;
+}
+
 export interface WidgetSnapshotPayload {
   netWorthFormatted: string;
   netWorthRaw: number;
@@ -18,8 +23,35 @@ export interface WidgetSnapshotPayload {
   totalAssetsFormatted: string;
   totalDebtsFormatted: string;
   isPrivacyMode: boolean;
+  isIndonesian: boolean;
   lastUpdated: string;
   sparkline: number[];
+
+  // Expanded fields for 10 Home Widgets & 5 Lock Screen Accessories
+  savingsRate: number;
+  savingsTarget: number;
+  monthlySavingsFormatted: string;
+  runwayMonths: number;
+  dailyBurnFormatted: string;
+  monthlyInflowFormatted: string;
+  monthlyOutflowFormatted: string;
+  netCashflowFormatted: string;
+  cashflowBars: number[];
+  capitalHealthScore: number;
+  capitalHealthTier: string;
+  heatmapDots: WidgetHeatmapDot[];
+  activeDaysCount: number;
+  solvencyScore: number;
+  debtRatio: number;
+  liquidPct: number;
+  growthPct: number;
+  fixedPct: number;
+  grossAssetsFormatted: string;
+  liabilitiesFormatted: string;
+  netEquityFormatted: string;
+  spendingVolatilityStatus: string;
+  dailyAverageFormatted: string;
+  volatilityVariance: number;
 }
 
 export interface PendingBackTapTx {

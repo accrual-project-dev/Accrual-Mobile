@@ -148,15 +148,28 @@ class RevenueCatService {
         return { success: false, error: "Invalid product identifier" };
       }
 
-      // Check current offerings first
+      // 1. Search in current offering first
       const offerings = await Purchases.getOfferings();
-      const currentOffering = offerings.current;
-
       let packageToPurchase = null;
-      if (currentOffering && currentOffering.availablePackages) {
-        packageToPurchase = currentOffering.availablePackages.find(
+
+      if (offerings?.current?.availablePackages) {
+        packageToPurchase = offerings.current.availablePackages.find(
           (pkg) => pkg.product.identifier === productId || pkg.identifier === productId
         );
+      }
+
+      // 2. Search all offerings if not found in current
+      if (!packageToPurchase && offerings?.all) {
+        for (const offeringKey of Object.keys(offerings.all)) {
+          const off = offerings.all[offeringKey];
+          const found = off?.availablePackages?.find(
+            (pkg) => pkg.product.identifier === productId || pkg.identifier === productId
+          );
+          if (found) {
+            packageToPurchase = found;
+            break;
+          }
+        }
       }
 
       let customerInfo: CustomerInfo;
@@ -164,20 +177,31 @@ class RevenueCatService {
         const result = await Purchases.purchasePackage({ aPackage: packageToPurchase });
         customerInfo = result.customerInfo;
       } else {
-        // Direct product purchase fallback
+        // 3. Fallback: Query StoreKit directly using getProducts to obtain full PurchasesStoreProduct
+        const productsResponse = await Purchases.getProducts({ productIdentifiers: [productId] });
+        const storeProduct = productsResponse.products?.find((p) => p.identifier === productId);
+        if (!storeProduct) {
+          throw new Error(`Produk StoreKit '${productId}' tidak ditemukan di App Store.`);
+        }
         const result = await Purchases.purchaseStoreProduct({
-          product: { identifier: productId } as any,
+          product: storeProduct,
         });
         customerInfo = result.customerInfo;
       }
 
-      const isProActive = Boolean(
+      const hasEntitlement = Boolean(
         customerInfo.entitlements?.active &&
-        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID]
+        (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] ||
+         Object.keys(customerInfo.entitlements.active).length > 0)
+      );
+
+      const hasActiveSub = Boolean(
+        customerInfo.activeSubscriptions &&
+        customerInfo.activeSubscriptions.includes(productId)
       );
 
       return {
-        success: isProActive,
+        success: hasEntitlement || hasActiveSub,
         customerInfo,
         planId,
       };
@@ -210,8 +234,10 @@ class RevenueCatService {
     try {
       const { customerInfo } = await Purchases.restorePurchases();
       const hasActivePro = Boolean(
-        customerInfo.entitlements?.active &&
-        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID]
+        (customerInfo.entitlements?.active &&
+          (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] ||
+           Object.keys(customerInfo.entitlements.active).length > 0)) ||
+        (customerInfo.activeSubscriptions && customerInfo.activeSubscriptions.length > 0)
       );
 
       return {
@@ -239,8 +265,10 @@ class RevenueCatService {
     try {
       const { customerInfo } = await Purchases.getCustomerInfo();
       return Boolean(
-        customerInfo.entitlements?.active &&
-        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID]
+        (customerInfo.entitlements?.active &&
+          (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] ||
+           Object.keys(customerInfo.entitlements.active).length > 0)) ||
+        (customerInfo.activeSubscriptions && customerInfo.activeSubscriptions.length > 0)
       );
     } catch {
       return false;

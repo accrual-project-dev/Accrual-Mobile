@@ -62,6 +62,99 @@ export function useWidgetSync() {
     const change24hFormatted = `${isPositive24h ? "+" : ""}${change24hPercentage}%`;
 
     const totalDebts = Math.max(0, liquidAssets - netWorth);
+    const grossAssets = netWorth + totalDebts;
+    const debtRatio = grossAssets > 0 ? Number(((totalDebts / grossAssets) * 100).toFixed(1)) : 0;
+    const solvencyScore = Math.max(0, Math.round(100 - debtRatio));
+    const liquidPct = grossAssets > 0 ? Number(((liquidAssets / grossAssets) * 100).toFixed(1)) : 100;
+
+    // Monthly Inflow & Outflow calculation
+    const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+    let monthlyInflow = 0;
+    let monthlyOutflow = 0;
+
+    for (const tx of allTxs) {
+      const rawDate = tx.occurred_on || tx.created_at || "";
+      if (rawDate.startsWith(currentMonthPrefix)) {
+        if (tx.type === "income") monthlyInflow += tx.amount;
+        else if (tx.type === "expense") monthlyOutflow += tx.amount;
+      }
+    }
+
+    const netCashflow = monthlyInflow - monthlyOutflow;
+    const monthlySavings = Math.max(0, netCashflow);
+    const savingsRate = monthlyInflow > 0 ? Math.round((monthlySavings / monthlyInflow) * 100) : 0;
+    const savingsTarget = 40;
+
+    // Runway and Daily Burn
+    const currentDay = Math.max(1, new Date().getDate());
+    const dailyBurn = monthlyOutflow / currentDay;
+    const monthlyBurn = dailyBurn * 30;
+    const runwayMonths = monthlyBurn > 0 ? Number((liquidAssets / monthlyBurn).toFixed(1)) : 12.0;
+
+    // Capital Health Score calculation (0 - 100)
+    const cashflowScore = netCashflow >= 0 ? 35 : Math.max(10, Math.round(35 * (1 + netCashflow / Math.max(1, monthlyInflow))));
+    const runwayScore = runwayMonths >= 6 ? 35 : Math.round((runwayMonths / 6) * 35);
+    const savingsScore = Math.min(30, Math.round((savingsRate / savingsTarget) * 30));
+    const capitalHealthScore = Math.min(100, Math.max(20, cashflowScore + runwayScore + savingsScore));
+    const capitalHealthTier =
+      capitalHealthScore >= 80
+        ? isIndonesian ? "Prima" : "Optimal"
+        : capitalHealthScore >= 60
+          ? isIndonesian ? "Baik" : "Good"
+          : isIndonesian ? "Cukup" : "Fair";
+
+    // 28-day Activity Heatmap
+    const heatmapDots: { intensity: number; hasSpend: boolean }[] = [];
+    const daySpends: number[] = [];
+
+    for (let i = 27; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const isoPrefix = d.toISOString().slice(0, 10);
+
+      const dayTotal = allTxs
+        .filter((tx) => {
+          const rawDate = tx.occurred_on || tx.created_at || "";
+          return rawDate.slice(0, 10) === isoPrefix && tx.type === "expense";
+        })
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      daySpends.push(dayTotal);
+    }
+
+    const peakSpend = Math.max(...daySpends, 1);
+    for (const spend of daySpends) {
+      heatmapDots.push({
+        intensity: spend > 0 ? Number((spend / peakSpend).toFixed(2)) : 0,
+        hasSpend: spend > 0,
+      });
+    }
+
+    const activeDaysCount = heatmapDots.filter((d) => d.hasSpend).length;
+
+    // Cashflow Bar Ticks (Last 12 relative activity points)
+    const cashflowBars: number[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const spend = daySpends[27 - i] || 0;
+      cashflowBars.push(Math.round((spend / peakSpend) * 100));
+    }
+
+    // Spending Volatility
+    const activeSpends = daySpends.filter((s) => s > 0);
+    let volatilityVariance = 14;
+    if (activeSpends.length > 2) {
+      const mean = activeSpends.reduce((a, b) => a + b, 0) / activeSpends.length;
+      const varianceSum = activeSpends.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / activeSpends.length;
+      const stdDev = Math.sqrt(varianceSum);
+      volatilityVariance = Math.min(95, Math.max(8, Math.round((stdDev / Math.max(1, mean)) * 100)));
+    }
+
+    const spendingVolatilityStatus =
+      volatilityVariance <= 25
+        ? isIndonesian ? "Stabil" : "Stable"
+        : volatilityVariance <= 55
+          ? isIndonesian ? "Moderat" : "Moderate"
+          : isIndonesian ? "Volatil" : "Volatile";
 
     const sparkline = widgetSyncService.generate7DaySparkline(allTxs, netWorth);
 
@@ -75,8 +168,35 @@ export function useWidgetSync() {
       totalAssetsFormatted: formatWithPreferred(liquidAssets),
       totalDebtsFormatted: formatWithPreferred(totalDebts),
       isPrivacyMode: isStealthMode,
+      isIndonesian,
       lastUpdated: new Date().toISOString(),
       sparkline,
+
+      // Expanded Data
+      savingsRate,
+      savingsTarget,
+      monthlySavingsFormatted: formatWithPreferred(monthlySavings),
+      runwayMonths,
+      dailyBurnFormatted: formatWithPreferred(Math.round(dailyBurn)),
+      monthlyInflowFormatted: formatWithPreferred(monthlyInflow),
+      monthlyOutflowFormatted: formatWithPreferred(monthlyOutflow),
+      netCashflowFormatted: `${netCashflow >= 0 ? "+" : ""}${formatWithPreferred(netCashflow)}`,
+      cashflowBars,
+      capitalHealthScore,
+      capitalHealthTier,
+      heatmapDots,
+      activeDaysCount,
+      solvencyScore,
+      debtRatio,
+      liquidPct,
+      growthPct: 0,
+      fixedPct: 0,
+      grossAssetsFormatted: formatWithPreferred(grossAssets),
+      liabilitiesFormatted: formatWithPreferred(totalDebts),
+      netEquityFormatted: formatWithPreferred(netWorth),
+      spendingVolatilityStatus,
+      dailyAverageFormatted: `${formatWithPreferred(Math.round(dailyBurn))}${isIndonesian ? "/hr" : "/d"}`,
+      volatilityVariance,
     };
 
     widgetSyncService.syncSnapshot(snapshot).catch(() => {});
@@ -85,6 +205,7 @@ export function useWidgetSync() {
     liquidAssets,
     allTxs,
     isStealthMode,
+    isIndonesian,
     formatWithPreferred,
     currencyMeta,
   ]);

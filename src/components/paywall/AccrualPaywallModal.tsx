@@ -44,7 +44,7 @@ export function AccrualPaywallModal({
     paywallContext,
     isLoading: isSubLoading,
   } = useSubscription();
-  const { isGuest, exitGuestMode } = useAuth();
+  const { exitGuestMode } = useAuth();
   const { showToast } = useToast();
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>(
@@ -107,11 +107,6 @@ export function AccrualPaywallModal({
   };
 
   const handlePurchase = async () => {
-    if (isGuest) {
-      triggerHaptic("medium");
-      setShowGuestLoginPrompt(true);
-      return;
-    }
     try {
       setIsProcessing(true);
       const success = await upgradeToPlan(selectedPlan);
@@ -144,11 +139,6 @@ export function AccrualPaywallModal({
   };
 
   const handleRestore = async () => {
-    if (isGuest) {
-      triggerHaptic("medium");
-      setShowGuestLoginPrompt(true);
-      return;
-    }
     try {
       setIsProcessing(true);
       const restored = await restorePurchases();
