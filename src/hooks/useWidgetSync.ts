@@ -25,9 +25,9 @@ import {
 
 export function useWidgetSync() {
   const { netWorth, liquidAssets } = useWalletBalances();
-  const { data: allTxs = [] } = useAllTransactions();
+  const { data: allTxs = [], isLoading: isTxsLoading } = useAllTransactions();
   const { data: categories = [] } = useCategories();
-  const { data: wallets = [] } = useWallets();
+  const { data: wallets = [], isLoading: isWalletsLoading } = useWallets();
   const { isStealthMode } = usePrivacy();
   const { formatWithPreferred, currencyMeta } = useCurrency();
   const { isIndonesian } = useLanguage();
@@ -38,6 +38,11 @@ export function useWidgetSync() {
 
   // 1. Synchronize real-time snapshot to iOS App Group (WidgetKit)
   useEffect(() => {
+    // Avoid pushing an empty state during cold boot before cache/network resolves
+    if ((isWalletsLoading || isTxsLoading) && wallets.length === 0 && allTxs.length === 0) {
+      return;
+    }
+
     // Calculate 24h change
     const now = Date.now();
     const oneDayAgo = now - 24 * 60 * 60 * 1000;
@@ -204,6 +209,9 @@ export function useWidgetSync() {
     netWorth,
     liquidAssets,
     allTxs,
+    wallets,
+    isWalletsLoading,
+    isTxsLoading,
     isStealthMode,
     isIndonesian,
     formatWithPreferred,

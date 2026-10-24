@@ -55,7 +55,7 @@ public struct AccrualWidgetSnapshot: Codable {
 
     // MARK: - Safe Property Resolvers
     public var isIndo: Bool {
-        return isIndonesian ?? true
+        return isIndonesian ?? false
     }
 
     public var safeSavingsRate: Int {
@@ -176,7 +176,7 @@ public struct AccrualWidgetSnapshot: Codable {
             totalAssetsFormatted: "Rp 150.000.000",
             totalDebtsFormatted: "Rp 9.000.000",
             isPrivacyMode: false,
-            isIndonesian: true,
+            isIndonesian: false,
             lastUpdated: ISO8601DateFormatter().string(from: Date()),
             sparkline: [20, 35, 40, 55, 50, 75, 100],
             savingsRate: 38,
@@ -189,7 +189,7 @@ public struct AccrualWidgetSnapshot: Codable {
             netCashflowFormatted: "+Rp 24.300.000",
             cashflowBars: [30, 45, 20, 60, 40, 85, 30, 70, 50, 40, 65, 90],
             capitalHealthScore: 88,
-            capitalHealthTier: "Prima",
+            capitalHealthTier: "Optimal",
             heatmapDots: nil,
             activeDaysCount: 18,
             solvencyScore: 94,
@@ -200,8 +200,8 @@ public struct AccrualWidgetSnapshot: Codable {
             grossAssetsFormatted: "Rp 150.000.000",
             liabilitiesFormatted: "Rp 9.000.000",
             netEquityFormatted: "Rp 141.000.000",
-            spendingVolatilityStatus: "Stabil",
-            dailyAverageFormatted: "Rp 326.000/hr",
+            spendingVolatilityStatus: "Stable",
+            dailyAverageFormatted: "Rp 326.000/d",
             volatilityVariance: 14
         )
     }
@@ -211,17 +211,20 @@ public struct AccrualWidgetSnapshot: Codable {
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
 
-        guard let dict = defaults.dictionary(forKey: "accrual_widget_snapshot") else {
-            return .preview
+        if let data = defaults.data(forKey: "accrual_widget_snapshot_data") {
+            if let decoded = try? JSONDecoder().decode(AccrualWidgetSnapshot.self, from: data) {
+                return decoded
+            }
         }
 
-        do {
-            let data = try JSONSerialization.data(withJSONObject: dict, options: [])
-            let decoded = try JSONDecoder().decode(AccrualWidgetSnapshot.self, from: data)
-            return decoded
-        } catch {
-            return .preview
+        if let dict = defaults.dictionary(forKey: "accrual_widget_snapshot") {
+            if let data = try? JSONSerialization.data(withJSONObject: dict, options: []),
+               let decoded = try? JSONDecoder().decode(AccrualWidgetSnapshot.self, from: data) {
+                return decoded
+            }
         }
+
+        return .preview
     }
 }
 

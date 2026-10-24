@@ -21,11 +21,21 @@ struct AccrualAdvancedHomeWidgets: WidgetBundle {
     }
 }
 
+struct AccrualLockScreenWidgets: WidgetBundle {
+    var body: some Widget {
+        LockScreenNetWorthWidget()
+        LockScreenPortfolioWidget()
+        LockScreenSavingsRunwayWidget()
+        LockScreenSpendingStabilityWidget()
+        LockScreenQuickLogWidget()
+    }
+}
+
 @main
 struct AccrualWidgetBundle: WidgetBundle {
     var body: some Widget {
         AccrualCoreHomeWidgets().body
         AccrualAdvancedHomeWidgets().body
-        LockScreenAccessoriesWidget()
+        AccrualLockScreenWidgets().body
     }
 }

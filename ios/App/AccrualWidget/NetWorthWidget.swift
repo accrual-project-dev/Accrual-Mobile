@@ -833,8 +833,10 @@ struct SpendingStabilitySmallView: View {
             // Header + Status Pill
             HStack {
                 Text(snapshot.isIndo ? "STABILITAS" : "STABILITY")
-                    .font(.system(size: 9.5, weight: .semibold))
-                    .tracking(0.8)
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(0.5)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
 
                 Spacer()
@@ -953,7 +955,7 @@ struct LockScreenSavingsRunwayRectView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("Savings Runway")
+                Text(snapshot.isIndo ? "Cadangan Hidup" : "Savings Runway")
                     .font(.system(size: 9, weight: .medium))
                     .textCase(.uppercase)
                 Spacer()
@@ -1085,8 +1087,9 @@ struct NetWorthHorizonWidget: Widget {
             }
         }
         .configurationDisplayName("Net Worth Horizon")
-        .description("Grafik kurva kekayaan bersih dengan titik simpul bersinar dan tren.")
+        .description("Net worth trajectory curve with glowing node and velocity trend.")
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1100,9 +1103,10 @@ struct PortfolioAllocationWidget: Widget {
                 PortfolioAllocationMediumView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Alokasi Portofolio")
-        .description("Diagram Donut alokasi aset kas, investasi, dan fisik.")
+        .configurationDisplayName("Portfolio Allocation")
+        .description("Asset allocation donut chart: liquid cash, growth, and real assets.")
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1116,9 +1120,10 @@ struct LiquidCashRunwayWidget: Widget {
                 LiquidCashRunwaySmallView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Kas Likuid & Runway")
-        .description("Saldo kas likuid darurat dan ketahanan cadangan hidup.")
+        .configurationDisplayName("Liquid Cash & Runway")
+        .description("Liquid emergency reserves and runway survival months.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1132,9 +1137,10 @@ struct SavingsRateRingWidget: Widget {
                 SavingsRateRingSmallView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Rasio Tabungan")
-        .description("Cincin rasio tabungan bulanan terhadap target.")
+        .configurationDisplayName("Savings Rate")
+        .description("Monthly savings rate concentric progress ring against target.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1148,9 +1154,10 @@ struct MonthlyCashflowBarWidget: Widget {
                 MonthlyCashflowBarMediumView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Arus Kas Bulanan")
-        .description("Perbandingan arus masuk vs keluar dengan bilah tempo aktivitas.")
+        .configurationDisplayName("Monthly Cashflow")
+        .description("Inflow vs outflow comparison with 12-tempo activity bars.")
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1164,9 +1171,10 @@ struct QuickLogStationWidget: Widget {
                 QuickLogStationSmallView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Stasiun Catat Cepat")
-        .description("Tombol 1-ketukan untuk mencatat pengeluaran, pemasukan, atau transfer.")
+        .configurationDisplayName("Quick Log Station")
+        .description("1-tap action buttons to log expense, income, or transfer.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1180,9 +1188,10 @@ struct CapitalHealthWidget: Widget {
                 CapitalHealthSmallView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Kesehatan Modal")
-        .description("Skor kesehatan finansial dan indeks ketahanan portofolio.")
+        .configurationDisplayName("Capital Health")
+        .description("Financial health score and portfolio resilience index.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1196,9 +1205,10 @@ struct ActivityMatrixWidget: Widget {
                 ActivityMatrixSmallView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Matriks Aktivitas")
-        .description("Kisi 28 titik frekuensi dan intensitas transaksi harian.")
+        .configurationDisplayName("Activity Matrix")
+        .description("28-day frequency and intensity transaction cadence matrix.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1212,9 +1222,10 @@ struct BalanceSheetWidget: Widget {
                 BalanceSheetMediumView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Struktur Neraca")
-        .description("Neraca portofolio dengan chart pengukur cincin solvensi konsentris.")
+        .configurationDisplayName("Balance Sheet")
+        .description("Portfolio solvency concentric gauge, gross assets, and net equity.")
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -1228,42 +1239,96 @@ struct SpendingStabilityWidget: Widget {
                 SpendingStabilitySmallView(snapshot: entry.snapshot)
             }
         }
-        .configurationDisplayName("Stabilitas Pengeluaran")
-        .description("Indeks variansi dan rata-rata pengeluaran harian.")
+        .configurationDisplayName("Spending Stability")
+        .description("Expense volatility variance index and daily burn average.")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
 // ======================================================================
-// MARK: - LOCK SCREEN ACCESSORIES WIDGET
+// MARK: - 5 LOCK SCREEN ACCESSORIES WIDGETS
 // ======================================================================
-struct LockScreenAccessoriesWidget: Widget {
-    let kind: String = "LockScreenAccessoriesWidget"
+
+// 1. Lock Screen: Net Worth Horizon & Inline
+struct LockScreenNetWorthWidget: Widget {
+    let kind: String = "LockScreenNetWorthWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            LockScreenAccessoryEntryView(entry: entry)
+            LockScreenNetWorthEntryView(snapshot: entry.snapshot)
         }
-        .configurationDisplayName("Accrual Lock Screen")
-        .description("Widget aksesoris layar kunci monokrom.")
-        .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline])
+        .configurationDisplayName("Net Worth (Lock Screen)")
+        .description("Smooth net worth curve and 24-hour delta percentage.")
+        .supportedFamilies([.accessoryRectangular, .accessoryInline])
     }
 }
 
-struct LockScreenAccessoryEntryView: View {
+struct LockScreenNetWorthEntryView: View {
     @Environment(\.widgetFamily) var family
-    var entry: AccrualTimelineProvider.Entry
+    let snapshot: AccrualWidgetSnapshot
 
     var body: some View {
-        switch family {
-        case .accessoryRectangular:
-            LockScreenNetWorthRectView(snapshot: entry.snapshot)
-        case .accessoryCircular:
-            LockScreenQuickLogCircularView()
-        case .accessoryInline:
-            LockScreenInlineView(snapshot: entry.snapshot)
-        default:
+        if family == .accessoryInline {
+            LockScreenInlineView(snapshot: snapshot)
+        } else {
+            LockScreenNetWorthRectView(snapshot: snapshot)
+        }
+    }
+}
+
+// 2. Lock Screen: Alokasi Portofolio
+struct LockScreenPortfolioWidget: Widget {
+    let kind: String = "LockScreenPortfolioWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            LockScreenPortfolioRectView(snapshot: entry.snapshot)
+        }
+        .configurationDisplayName("Portfolio Allocation (Lock Screen)")
+        .description("Concentric allocation ring: cash, investments, and physical assets.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+// 3. Lock Screen: Pill Card Savings Runway
+struct LockScreenSavingsRunwayWidget: Widget {
+    let kind: String = "LockScreenSavingsRunwayWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            LockScreenSavingsRunwayRectView(snapshot: entry.snapshot)
+        }
+        .configurationDisplayName("Savings Runway (Lock Screen)")
+        .description("Emergency survival runway months indicator.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+// 4. Lock Screen: Pill Card Spending Stability
+struct LockScreenSpendingStabilityWidget: Widget {
+    let kind: String = "LockScreenSpendingStabilityWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            LockScreenSpendingStabilityRectView(snapshot: entry.snapshot)
+        }
+        .configurationDisplayName("Spending Stability (Lock Screen)")
+        .description("Daily expense average and volatility variance.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+// 5. Lock Screen: Catat Cepat (Pure Logo Icon)
+struct LockScreenQuickLogWidget: Widget {
+    let kind: String = "LockScreenQuickLogWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { _ in
             LockScreenQuickLogCircularView()
         }
+        .configurationDisplayName("Quick Log (Lock Screen)")
+        .description("1-tap pebble logo button for instant transaction entry.")
+        .supportedFamilies([.accessoryCircular])
     }
 }

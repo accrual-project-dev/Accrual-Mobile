@@ -37,6 +37,9 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         sharedDefaults.set(snapshot, forKey: "accrual_widget_snapshot")
+        if let jsonData = try? JSONSerialization.data(withJSONObject: snapshot, options: []) {
+            sharedDefaults.set(jsonData, forKey: "accrual_widget_snapshot_data")
+        }
         sharedDefaults.set(Date().timeIntervalSince1970, forKey: "accrual_widget_last_synced")
         sharedDefaults.synchronize()
 
