@@ -424,6 +424,10 @@ struct MonthlyCashflowBarMediumView: View {
         return base.opacity(opacity)
     }
 
+    private var displayBars: [(offset: Int, element: Int)] {
+        Array(snapshot.safeCashflowBars.prefix(12).enumerated())
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -471,8 +475,7 @@ struct MonthlyCashflowBarMediumView: View {
 
             // 12 Vertical Activity Bar Ticks
             HStack(alignment: .bottom, spacing: 6) {
-                ForEach(Array(0..<min(12, snapshot.safeCashflowBars.count)), id: \.self) { idx in
-                    let val = snapshot.safeCashflowBars[idx]
+                ForEach(displayBars, id: \.offset) { _, val in
                     RoundedRectangle(cornerRadius: 2)
                         .fill(barColor(val: val, isDark: isDark))
                         .frame(maxWidth: .infinity, height: max(6, CGFloat(val) * 0.28))
@@ -644,6 +647,10 @@ struct ActivityMatrixSmallView: View {
         }
     }
 
+    private var displayDots: [(offset: Int, element: WidgetHeatmapDot)] {
+        Array(snapshot.safeHeatmapDots.prefix(28).enumerated())
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -659,8 +666,7 @@ struct ActivityMatrixSmallView: View {
 
             // 7x4 28-day Activity Dot Grid
             LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(Array(0..<min(28, snapshot.safeHeatmapDots.count)), id: \.self) { idx in
-                    let dot = snapshot.safeHeatmapDots[idx]
+                ForEach(displayDots, id: \.offset) { _, dot in
                     Circle()
                         .fill(dotColor(dot: dot, isDark: isDark))
                         .frame(width: 10, height: 10)
