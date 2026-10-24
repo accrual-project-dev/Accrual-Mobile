@@ -7,7 +7,12 @@
 // ======================================================================
 
 import { Capacitor } from "@capacitor/core";
-import { Purchases, type CustomerInfo, type PurchasesOffering } from "@revenuecat/purchases-capacitor";
+import {
+  Purchases,
+  type CustomerInfo,
+  type PurchasesOffering,
+  type PurchasesPackage,
+} from "@revenuecat/purchases-capacitor";
 import type { SubscriptionPlanId, UserSubscription } from "../types/subscription";
 
 export const REVENUECAT_ENTITLEMENT_ID = "accrual_pro";
@@ -36,7 +41,9 @@ class RevenueCatService {
    * Automatically falls back to mock mode if running on web or without valid API keys.
    */
   public async initialize(userId?: string): Promise<boolean> {
-    if (this.isConfigured && this.currentUserId === (userId || null)) {
+    const targetUserId = userId && userId !== "guest" ? userId : null;
+
+    if (this.isConfigured && this.currentUserId === targetUserId) {
       return true;
     }
 
@@ -52,7 +59,7 @@ class RevenueCatService {
     if (!isNative || !apiKey || apiKey.trim() === "") {
       this.isMockMode = true;
       this.isConfigured = true;
-      this.currentUserId = userId || null;
+      this.currentUserId = targetUserId;
       console.info(
         "[RevenueCat] Operating in resilient Mock/Sandbox mode (Web or missing API key)."
       );
@@ -60,20 +67,43 @@ class RevenueCatService {
     }
 
     try {
+      // Check if native SDK is already configured
+      let nativeConfigured = false;
+      try {
+        const status = await Purchases.isConfigured();
+        nativeConfigured = Boolean(status?.isConfigured);
+      } catch {
+        nativeConfigured = false;
+      }
+
+      if (nativeConfigured) {
+        this.isConfigured = true;
+        this.isMockMode = false;
+        if (targetUserId && this.currentUserId !== targetUserId) {
+          await this.logIn(targetUserId);
+        } else if (!targetUserId && this.currentUserId) {
+          await this.logOut();
+        }
+        this.currentUserId = targetUserId;
+        return true;
+      }
+
+      // Configure native Purchases SDK for the first time
       await Purchases.configure({
         apiKey: apiKey.trim(),
-        appUserID: userId && userId !== "guest" ? userId : undefined,
+        appUserID: targetUserId || undefined,
       });
 
       this.isMockMode = false;
       this.isConfigured = true;
-      this.currentUserId = userId || null;
-      console.info("[RevenueCat] Native Purchases SDK initialized successfully.");
+      this.currentUserId = targetUserId;
+      console.info("[RevenueCat] Native Purchases SDK configured successfully.");
       return true;
     } catch (err) {
       console.warn("[RevenueCat] Initialization failed, falling back to mock mode:", err);
       this.isMockMode = true;
       this.isConfigured = true;
+      this.currentUserId = targetUserId;
       return false;
     }
   }
@@ -82,7 +112,11 @@ class RevenueCatService {
    * Log in user identity to RevenueCat (aliases anonymous purchases to Supabase user ID).
    */
   public async logIn(userId: string): Promise<boolean> {
-    if (!userId || userId === "guest") return false;
+    if (!userId || userId === "guest") {
+      await this.logOut();
+      return true;
+    }
+
     this.currentUserId = userId;
 
     if (this.isMockMode || !this.isConfigured) {
@@ -91,6 +125,7 @@ class RevenueCatService {
 
     try {
       await Purchases.logIn({ appUserID: userId });
+      console.info(`[RevenueCat] Logged in user: ${userId}`);
       return true;
     } catch (err) {
       console.warn("[RevenueCat] logIn failed:", err);
@@ -99,14 +134,19 @@ class RevenueCatService {
   }
 
   /**
-   * Log out user identity from RevenueCat.
+   * Log out user identity from RevenueCat to revert to anonymous state.
    */
   public async logOut(): Promise<void> {
+    const prevUserId = this.currentUserId;
     this.currentUserId = null;
-    if (this.isMockMode || !this.isConfigured) return;
+
+    if (this.isMockMode || !this.isConfigured || !prevUserId) {
+      return;
+    }
 
     try {
       await Purchases.logOut();
+      console.info("[RevenueCat] Successfully logged out to anonymous user.");
     } catch (err) {
       console.warn("[RevenueCat] logOut failed:", err);
     }
@@ -116,7 +156,11 @@ class RevenueCatService {
    * Fetches current offerings from RevenueCat or StoreKit.
    */
   public async getOffering(): Promise<PurchasesOffering | null> {
-    if (this.isMockMode || !this.isConfigured) {
+    if (!this.isConfigured) {
+      await this.initialize();
+    }
+
+    if (this.isMockMode) {
       return null;
     }
 
@@ -130,11 +174,78 @@ class RevenueCatService {
   }
 
   /**
+   * Resolves a package from a RevenueCat offering by planId.
+   * Matches predefined annual/monthly/lifetime slots, standard package identifiers,
+   * packageType enums, or exact StoreKit product identifiers.
+   */
+  public resolvePackageFromOffering(
+    offering: PurchasesOffering | null | undefined,
+    planId: SubscriptionPlanId
+  ): PurchasesPackage | null {
+    if (!offering) return null;
+
+    const productId = REVENUECAT_PRODUCT_IDS[planId];
+
+    // 1. Direct offering property matching
+    if (planId === "accrual_annual_199k" && offering.annual) {
+      return offering.annual;
+    }
+    if (planId === "accrual_monthly_29k" && offering.monthly) {
+      return offering.monthly;
+    }
+    if (planId === "accrual_lifetime_499k" && offering.lifetime) {
+      return offering.lifetime;
+    }
+
+    // 2. Search packages in availablePackages
+    const packages = offering.availablePackages || [];
+
+    // 2a. Match product identifier directly
+    let match = packages.find(
+      (pkg) => pkg.product?.identifier === productId || pkg.identifier === productId
+    );
+    if (match) return match;
+
+    // 2b. Match by package type or standard package identifier
+    if (planId === "accrual_annual_199k") {
+      match = packages.find(
+        (pkg) =>
+          pkg.packageType === "ANNUAL" ||
+          pkg.identifier === "$rc_annual" ||
+          pkg.identifier?.toLowerCase().includes("annual")
+      );
+      if (match) return match;
+    } else if (planId === "accrual_monthly_29k") {
+      match = packages.find(
+        (pkg) =>
+          pkg.packageType === "MONTHLY" ||
+          pkg.identifier === "$rc_monthly" ||
+          pkg.identifier?.toLowerCase().includes("monthly")
+      );
+      if (match) return match;
+    } else if (planId === "accrual_lifetime_499k") {
+      match = packages.find(
+        (pkg) =>
+          pkg.packageType === "LIFETIME" ||
+          pkg.identifier === "$rc_lifetime" ||
+          pkg.identifier?.toLowerCase().includes("lifetime")
+      );
+      if (match) return match;
+    }
+
+    return null;
+  }
+
+  /**
    * Purchases a specific plan by identifier.
    */
   public async purchasePlan(planId: SubscriptionPlanId): Promise<PurchaseResult> {
+    if (!this.isConfigured) {
+      await this.initialize();
+    }
+
     // If mock mode, simulate successful StoreKit purchase
-    if (this.isMockMode || !this.isConfigured) {
+    if (this.isMockMode) {
       console.info(`[RevenueCat:Mock] Simulated purchase for ${planId} succeeded.`);
       return {
         success: true,
@@ -150,21 +261,13 @@ class RevenueCatService {
 
       // 1. Search in current offering first
       const offerings = await Purchases.getOfferings();
-      let packageToPurchase = null;
-
-      if (offerings?.current?.availablePackages) {
-        packageToPurchase = offerings.current.availablePackages.find(
-          (pkg) => pkg.product.identifier === productId || pkg.identifier === productId
-        );
-      }
+      let packageToPurchase = this.resolvePackageFromOffering(offerings?.current, planId);
 
       // 2. Search all offerings if not found in current
       if (!packageToPurchase && offerings?.all) {
         for (const offeringKey of Object.keys(offerings.all)) {
           const off = offerings.all[offeringKey];
-          const found = off?.availablePackages?.find(
-            (pkg) => pkg.product.identifier === productId || pkg.identifier === productId
-          );
+          const found = this.resolvePackageFromOffering(off, planId);
           if (found) {
             packageToPurchase = found;
             break;
@@ -174,14 +277,20 @@ class RevenueCatService {
 
       let customerInfo: CustomerInfo;
       if (packageToPurchase) {
+        console.info(
+          `[RevenueCat] Purchasing package '${packageToPurchase.identifier}' (product: '${packageToPurchase.product?.identifier}')`
+        );
         const result = await Purchases.purchasePackage({ aPackage: packageToPurchase });
         customerInfo = result.customerInfo;
       } else {
         // 3. Fallback: Query StoreKit directly using getProducts to obtain full PurchasesStoreProduct
+        console.info(`[RevenueCat] Package not found in offerings, querying StoreKit for '${productId}'...`);
         const productsResponse = await Purchases.getProducts({ productIdentifiers: [productId] });
         const storeProduct = productsResponse.products?.find((p) => p.identifier === productId);
         if (!storeProduct) {
-          throw new Error(`Produk StoreKit '${productId}' tidak ditemukan di App Store.`);
+          throw new Error(
+            `Produk In-App Purchase '${productId}' belum aktif di Apple StoreKit / RevenueCat. Mohon periksa status produk di App Store Connect.`
+          );
         }
         const result = await Purchases.purchaseStoreProduct({
           product: storeProduct,
@@ -207,9 +316,11 @@ class RevenueCatService {
       };
     } catch (err: any) {
       const userCancelled =
-        err?.userCancelled ||
+        err?.userCancelled === true ||
         err?.code === "1" ||
-        (err?.message && err.message.toLowerCase().includes("cancel"));
+        err?.code === 1 ||
+        (typeof err?.message === "string" && err.message.toLowerCase().includes("cancel")) ||
+        (err?.domain === "SKErrorDomain" && (err?.code === 2 || err?.code === "2"));
 
       if (userCancelled) {
         return { success: false, cancelled: true };
@@ -218,7 +329,7 @@ class RevenueCatService {
       console.error("[RevenueCat] Purchase failed:", err);
       return {
         success: false,
-        error: err?.message || "Purchase failed",
+        error: err?.message || "Transaksi tidak dapat diselesaikan.",
       };
     }
   }
@@ -226,8 +337,17 @@ class RevenueCatService {
   /**
    * Restores existing purchases for the active Apple ID.
    */
-  public async restorePurchases(): Promise<{ success: boolean; hasActivePro: boolean; customerInfo?: CustomerInfo }> {
-    if (this.isMockMode || !this.isConfigured) {
+  public async restorePurchases(): Promise<{
+    success: boolean;
+    hasActivePro: boolean;
+    customerInfo?: CustomerInfo;
+    error?: string;
+  }> {
+    if (!this.isConfigured) {
+      await this.initialize();
+    }
+
+    if (this.isMockMode) {
       return { success: true, hasActivePro: false };
     }
 
@@ -245,11 +365,12 @@ class RevenueCatService {
         hasActivePro,
         customerInfo,
       };
-    } catch (err) {
+    } catch (err: any) {
       console.warn("[RevenueCat] restorePurchases failed:", err);
       return {
         success: false,
         hasActivePro: false,
+        error: err?.message || "Gagal memulihkan pembelian.",
       };
     }
   }

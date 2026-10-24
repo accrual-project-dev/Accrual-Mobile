@@ -32,6 +32,18 @@ export function getSubscriptionStorageKey(userId?: string | null): string {
   return `${SUBSCRIPTION_STORAGE_KEY}_${userId}`;
 }
 
+export interface UpgradePlanResult {
+  success: boolean;
+  cancelled?: boolean;
+  error?: string;
+}
+
+export interface RestorePurchasesResult {
+  success: boolean;
+  hasActivePro: boolean;
+  error?: string;
+}
+
 export interface SubscriptionContextValue {
   subscription: UserSubscription;
   isPremium: boolean;
@@ -40,8 +52,8 @@ export interface SubscriptionContextValue {
   paywallContext: PaywallTriggerContext | null;
   openPaywall: (ctx?: PaywallTriggerContext) => void;
   closePaywall: () => void;
-  upgradeToPlan: (planId: SubscriptionPlanId) => Promise<boolean>;
-  restorePurchases: () => Promise<boolean>;
+  upgradeToPlan: (planId: SubscriptionPlanId) => Promise<UpgradePlanResult>;
+  restorePurchases: () => Promise<RestorePurchasesResult>;
   setLocalTierOverride: (tier: "free" | "premium") => void; // for debug/testing
   limits: typeof MONETIZATION_LIMITS;
 }
@@ -161,7 +173,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       } catch {
         setSubscription(DEFAULT_SUBSCRIPTION);
       }
-      revenueCatService.logOut().catch(() => {});
+      revenueCatService.initialize();
       return;
     }
 
@@ -199,7 +211,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const upgradeToPlan = useCallback(
-    async (planId: SubscriptionPlanId): Promise<boolean> => {
+    async (planId: SubscriptionPlanId): Promise<UpgradePlanResult> => {
       try {
         setIsLoading(true);
 
@@ -208,10 +220,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         if (!result.success) {
           if (result.cancelled) {
             console.info("[SubscriptionContext] Checkout cancelled by user.");
-            return false;
+            return { success: false, cancelled: true };
           }
           console.warn("[SubscriptionContext] Purchase failed:", result.error);
-          return false;
+          return { success: false, error: result.error };
         }
 
         triggerSuccessHaptic();
@@ -275,10 +287,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }
 
         closePaywall();
-        return true;
-      } catch (err) {
+        return { success: true };
+      } catch (err: any) {
         console.error("[SubscriptionContext] Upgrade error:", err);
-        return false;
+        return { success: false, error: err?.message || "Gagal memproses transaksi." };
       } finally {
         setIsLoading(false);
       }
@@ -286,7 +298,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     [user, saveToLocal, closePaywall]
   );
 
-  const restorePurchases = useCallback(async (): Promise<boolean> => {
+  const restorePurchases = useCallback(async (): Promise<RestorePurchasesResult> => {
     try {
       setIsLoading(true);
       triggerHaptic();
@@ -319,18 +331,22 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             console.warn("[SubscriptionContext] Restore sync error:", syncErr);
           }
         }
-        return true;
+        return { success: true, hasActivePro: true };
+      }
+
+      if (restoreRes.error) {
+        return { success: false, hasActivePro: false, error: restoreRes.error };
       }
 
       // 2. In offline/mock mode, check remote Supabase record if logged in
       if (user && user.id !== GUEST_USER_ID) {
         await fetchRemoteSubscription();
-        return subscription.tier === "premium";
+        return { success: true, hasActivePro: subscription.tier === "premium" };
       }
 
-      return false;
-    } catch {
-      return false;
+      return { success: true, hasActivePro: false };
+    } catch (err: any) {
+      return { success: false, hasActivePro: false, error: err?.message };
     } finally {
       setIsLoading(false);
     }
@@ -398,8 +414,8 @@ export function useSubscription(): SubscriptionContextValue {
       paywallContext: null,
       openPaywall: () => {},
       closePaywall: () => {},
-      upgradeToPlan: async () => false,
-      restorePurchases: async () => false,
+      upgradeToPlan: async () => ({ success: false }),
+      restorePurchases: async () => ({ success: false, hasActivePro: false }),
       setLocalTierOverride: () => {},
       limits: MONETIZATION_LIMITS,
     };

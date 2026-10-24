@@ -16,15 +16,12 @@ import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSubscription } from "../../contexts/SubscriptionContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth, GUEST_USER_ID } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { triggerHaptic } from "../../lib/haptics";
 import type { SubscriptionPlanId } from "../../types/subscription";
 import { PLAN_PRICING_CONFIG } from "../../types/subscription";
-import {
-  revenueCatService,
-  REVENUECAT_PRODUCT_IDS,
-} from "../../lib/revenueCatService";
+import { revenueCatService } from "../../lib/revenueCatService";
 import type { PurchasesOffering } from "@revenuecat/purchases-capacitor";
 
 interface AccrualPaywallModalProps {
@@ -44,7 +41,7 @@ export function AccrualPaywallModal({
     paywallContext,
     isLoading: isSubLoading,
   } = useSubscription();
-  const { exitGuestMode } = useAuth();
+  const { user, exitGuestMode } = useAuth();
   const { showToast } = useToast();
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>(
@@ -70,10 +67,7 @@ export function AccrualPaywallModal({
   }, [isOpen]);
 
   const getPlanPriceDisplay = (planId: SubscriptionPlanId) => {
-    const productId = REVENUECAT_PRODUCT_IDS[planId];
-    const pkg = offering?.availablePackages?.find(
-      (p) => p.product?.identifier === productId || p.identifier === productId,
-    );
+    const pkg = revenueCatService.resolvePackageFromOffering(offering, planId);
 
     if (pkg?.product?.priceString) {
       return pkg.product.priceString;
@@ -84,12 +78,25 @@ export function AccrualPaywallModal({
   };
 
   const getAnnualMonthlyBreakdown = () => {
-    const annualPriceIdr = PLAN_PRICING_CONFIG.accrual_annual_199k.price;
-    const monthlyEq = Math.round(annualPriceIdr / 12);
-    const formattedMonthly = formatWithPreferred(monthlyEq);
+    const annualPkg = revenueCatService.resolvePackageFromOffering(
+      offering,
+      "accrual_annual_199k"
+    );
+
+    let monthlyDisplay: string;
+    if (annualPkg?.product?.price) {
+      const monthlyPrice = annualPkg.product.price / 12;
+      monthlyDisplay = annualPkg.product.currencyCode
+        ? `${annualPkg.product.currencyCode} ${monthlyPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+        : formatWithPreferred(Math.round(monthlyPrice));
+    } else {
+      const annualPriceIdr = PLAN_PRICING_CONFIG.accrual_annual_199k.price;
+      monthlyDisplay = `${formatWithPreferred(Math.round(annualPriceIdr / 12))}`;
+    }
+
     return isIndonesian
-      ? `7 hari gratis, lalu ${formattedMonthly}/bln`
-      : `7 days free, then ~${formattedMonthly}/mo`;
+      ? `7 hari gratis, lalu ${monthlyDisplay}/bln`
+      : `7 days free, then ~${monthlyDisplay}/mo`;
   };
 
   const handleSelectPlan = (plan: SubscriptionPlanId) => {
@@ -109,8 +116,8 @@ export function AccrualPaywallModal({
   const handlePurchase = async () => {
     try {
       setIsProcessing(true);
-      const success = await upgradeToPlan(selectedPlan);
-      if (success) {
+      const res = await upgradeToPlan(selectedPlan);
+      if (res.success) {
         showToast(
           isIndonesian
             ? "Selamat! Akun Accrual Pro Anda kini telah aktif."
@@ -118,19 +125,22 @@ export function AccrualPaywallModal({
           "update",
         );
         onClose();
+      } else if (res.cancelled) {
+        // User voluntarily dismissed Apple StoreKit purchase sheet; exit cleanly
       } else {
-        showToast(
-          isIndonesian
+        const errorMsg =
+          res.error ||
+          (isIndonesian
             ? "Gagal memproses transaksi. Silakan coba kembali."
-            : "Unable to process transaction. Please try again.",
-          "error",
-        );
+            : "Unable to process transaction. Please try again.");
+        showToast(errorMsg, "error", undefined, 5000);
       }
-    } catch {
+    } catch (err: any) {
       showToast(
-        isIndonesian
-          ? "Terjadi kendala saat transaksi."
-          : "An unexpected error occurred during checkout.",
+        err?.message ||
+          (isIndonesian
+            ? "Terjadi kendala saat transaksi."
+            : "An unexpected error occurred during checkout."),
         "error",
       );
     } finally {
@@ -141,8 +151,8 @@ export function AccrualPaywallModal({
   const handleRestore = async () => {
     try {
       setIsProcessing(true);
-      const restored = await restorePurchases();
-      if (restored) {
+      const res = await restorePurchases();
+      if (res.hasActivePro) {
         showToast(
           isIndonesian
             ? "Status pembelian Anda berhasil diperbarui."
@@ -150,6 +160,8 @@ export function AccrualPaywallModal({
           "update",
         );
         onClose();
+      } else if (res.error) {
+        showToast(res.error, "error", undefined, 5000);
       } else {
         showToast(
           isIndonesian
@@ -158,12 +170,13 @@ export function AccrualPaywallModal({
           "info",
         );
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[AccrualPaywallModal] Restore error:", err);
       showToast(
-        isIndonesian
-          ? "Gagal memulihkan pembelian. Periksa koneksi internet Anda."
-          : "Failed to restore purchases. Please check your internet connection.",
+        err?.message ||
+          (isIndonesian
+            ? "Gagal memulihkan pembelian. Periksa koneksi internet Anda."
+            : "Failed to restore purchases. Please check your internet connection."),
         "error",
       );
     } finally {
@@ -278,6 +291,32 @@ export function AccrualPaywallModal({
                         : "This feature is exclusively designed for Accrual Pro members.")}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* ==============================================================
+            GUEST MODE NOTIFICATION BANNER
+        =============================================================== */}
+        {(!user || user.id === GUEST_USER_ID) && (
+          <div className="mb-4 p-3 rounded-2xl bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Lock
+                className="w-3.5 h-3.5 text-[var(--text-tertiary)] shrink-0"
+                strokeWidth={1.5}
+              />
+              <span className="text-[11.5px] text-[var(--text-tertiary)] leading-tight">
+                {isIndonesian
+                  ? "Mode Tamu. Masuk akun agar langganan tersinkronkan ke cloud."
+                  : "Guest Mode. Sign in to synchronize purchases across devices."}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowGuestLoginPrompt(true)}
+              className="text-[11.5px] font-semibold text-[var(--text-primary)] underline decoration-[color-mix(in_srgb,var(--text-primary)_30%,transparent)] underline-offset-2 shrink-0 cursor-pointer"
+            >
+              {isIndonesian ? "Masuk" : "Sign In"}
+            </button>
           </div>
         )}
 

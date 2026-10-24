@@ -121,4 +121,58 @@ describe("RevenueCat In-App Purchase Service (StoreKit 2)", () => {
       expect(sub.isLifetime).toBe(false);
     });
   });
+
+  describe("4. Package Resolution Engine (resolvePackageFromOffering)", () => {
+    it("resolves direct offering properties (annual, monthly, lifetime)", () => {
+      const mockAnnualPkg = { identifier: "$rc_annual", packageType: "ANNUAL", product: { identifier: "accrual_annual_199k" } };
+      const mockMonthlyPkg = { identifier: "$rc_monthly", packageType: "MONTHLY", product: { identifier: "accrual_monthly_29k" } };
+      const mockLifetimePkg = { identifier: "$rc_lifetime", packageType: "LIFETIME", product: { identifier: "accrual_lifetime_499k" } };
+
+      const mockOffering = {
+        identifier: "default",
+        serverDescription: "Standard Offerings",
+        annual: mockAnnualPkg,
+        monthly: mockMonthlyPkg,
+        lifetime: mockLifetimePkg,
+        availablePackages: [mockAnnualPkg, mockMonthlyPkg, mockLifetimePkg],
+      } as any;
+
+      expect(revenueCatService.resolvePackageFromOffering(mockOffering, "accrual_annual_199k")).toBe(mockAnnualPkg);
+      expect(revenueCatService.resolvePackageFromOffering(mockOffering, "accrual_monthly_29k")).toBe(mockMonthlyPkg);
+      expect(revenueCatService.resolvePackageFromOffering(mockOffering, "accrual_lifetime_499k")).toBe(mockLifetimePkg);
+    });
+
+    it("resolves packages by packageType from availablePackages when direct properties are null", () => {
+      const mockAnnualPkg = { identifier: "custom_annual_tier", packageType: "ANNUAL", product: { identifier: "custom_id" } };
+      const mockOffering = {
+        identifier: "default",
+        annual: null,
+        monthly: null,
+        lifetime: null,
+        availablePackages: [mockAnnualPkg],
+      } as any;
+
+      const resolved = revenueCatService.resolvePackageFromOffering(mockOffering, "accrual_annual_199k");
+      expect(resolved).toBe(mockAnnualPkg);
+    });
+
+    it("resolves packages by product identifier when packageType is CUSTOM or UNKNOWN", () => {
+      const mockMonthlyPkg = { identifier: "my_monthly", packageType: "CUSTOM", product: { identifier: "accrual_monthly_29k" } };
+      const mockOffering = {
+        identifier: "default",
+        annual: null,
+        monthly: null,
+        lifetime: null,
+        availablePackages: [mockMonthlyPkg],
+      } as any;
+
+      const resolved = revenueCatService.resolvePackageFromOffering(mockOffering, "accrual_monthly_29k");
+      expect(resolved).toBe(mockMonthlyPkg);
+    });
+
+    it("returns null gracefully if offering is null, empty, or unmapped", () => {
+      expect(revenueCatService.resolvePackageFromOffering(null, "accrual_annual_199k")).toBeNull();
+      expect(revenueCatService.resolvePackageFromOffering({ availablePackages: [] } as any, "accrual_annual_199k")).toBeNull();
+    });
+  });
 });
