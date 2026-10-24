@@ -279,7 +279,7 @@ public struct SpecularRimLight: View {
         LinearGradient(
             gradient: Gradient(colors: [
                 Color.clear,
-                isDark ? Color.white.opacity(0.35) : Color.black.opacity(0.08),
+                isDark ? Color.white.opacity(0.35) : Color.white.opacity(0.70),
                 Color.clear
             ]),
             startPoint: .leading,

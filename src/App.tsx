@@ -549,7 +549,19 @@ function AppShell() {
       lower.includes("wealth") ||
       lower.includes("transactions") ||
       lower.includes("history") ||
-      lower.includes("home")
+      lower.includes("home") ||
+      lower.includes("log") ||
+      lower.includes("add") ||
+      lower.includes("networth") ||
+      lower.includes("allocation") ||
+      lower.includes("cash") ||
+      lower.includes("runway") ||
+      lower.includes("savings") ||
+      lower.includes("cashflow") ||
+      lower.includes("capital") ||
+      lower.includes("activity") ||
+      lower.includes("balance-sheet") ||
+      lower.includes("spending-stability")
     ) {
       handleUrlDispatch.current?.(rawUrl);
       return;

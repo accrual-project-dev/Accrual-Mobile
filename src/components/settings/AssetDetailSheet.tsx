@@ -849,7 +849,7 @@ export function AssetDetailSheet({
                   triggerHaptic("medium");
                   setIsConfirmingDelete(true);
                 }}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-rose-400 active:scale-90 transition-all cursor-pointer"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
                 style={{
                   background: isDark
                     ? "rgba(255, 255, 255, 0.06)"

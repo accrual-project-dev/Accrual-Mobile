@@ -41,8 +41,8 @@ const GlassTooltip = ({
   isIndonesian,
   isDark,
 }: GlassTooltipProps) => {
-  if (!active || !payload?.length) return null;
   const { formatWithPreferred } = useCurrency();
+  if (!active || !payload?.length) return null;
   const val = payload[0]?.value ?? 0;
 
   return (

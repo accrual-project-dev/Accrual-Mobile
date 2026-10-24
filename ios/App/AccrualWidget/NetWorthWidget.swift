@@ -999,17 +999,16 @@ struct LockScreenSpendingStabilityRectView: View {
 // STRICT REQUIREMENT: Only the App Logo Icon, NO TEXT!
 struct LockScreenQuickLogCircularView: View {
     var body: some View {
-        Link(destination: URL(string: "accrual://log")!) {
-            ZStack {
-                // Outer Circular Gauge Track
-                Circle()
-                    .stroke(Color.primary.opacity(0.2), lineWidth: 2.5)
+        ZStack {
+            // Outer Circular Gauge Track
+            Circle()
+                .stroke(Color.primary.opacity(0.2), lineWidth: 2.5)
 
-                // Accrual 3-Pebble Zen Logo Icon Centered
-                AccrualZenLogoIcon(size: 26)
-                    .foregroundColor(.primary)
-            }
+            // Accrual 3-Pebble Zen Logo Icon Centered
+            AccrualZenLogoIcon(size: 26)
+                .foregroundColor(.primary)
         }
+        .widgetURL(URL(string: "accrual://log"))
     }
 }
 
@@ -1077,6 +1076,7 @@ struct NetWorthHorizonWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 NetWorthHorizonMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://assets"))
         }
         .configurationDisplayName("Net Worth Horizon")
         .description("Net worth trajectory curve with glowing node and velocity trend.")
@@ -1094,6 +1094,7 @@ struct PortfolioAllocationWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 PortfolioAllocationMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://assets"))
         }
         .configurationDisplayName("Portfolio Allocation")
         .description("Asset allocation donut chart: liquid cash, growth, and real assets.")
@@ -1111,6 +1112,7 @@ struct LiquidCashRunwayWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 LiquidCashRunwaySmallView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://assets"))
         }
         .configurationDisplayName("Liquid Cash & Runway")
         .description("Liquid emergency reserves and runway survival months.")
@@ -1128,6 +1130,7 @@ struct SavingsRateRingWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 SavingsRateRingSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://statistics"))
         }
         .configurationDisplayName("Savings Rate")
         .description("Monthly savings rate concentric progress ring against target.")
@@ -1145,6 +1148,7 @@ struct MonthlyCashflowBarWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 MonthlyCashflowBarMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://statistics"))
         }
         .configurationDisplayName("Monthly Cashflow")
         .description("Inflow vs outflow comparison with 12-tempo activity bars.")
@@ -1162,6 +1166,7 @@ struct QuickLogStationWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 QuickLogStationSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://log?type=expense"))
         }
         .configurationDisplayName("Quick Log Station")
         .description("1-tap action buttons to log expense, income, or transfer.")
@@ -1179,6 +1184,7 @@ struct CapitalHealthWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 CapitalHealthSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://statistics"))
         }
         .configurationDisplayName("Capital Health")
         .description("Financial health score and portfolio resilience index.")
@@ -1196,6 +1202,7 @@ struct ActivityMatrixWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 ActivityMatrixSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://transactions"))
         }
         .configurationDisplayName("Activity Matrix")
         .description("28-day frequency and intensity transaction cadence matrix.")
@@ -1213,6 +1220,7 @@ struct BalanceSheetWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 BalanceSheetMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://reports"))
         }
         .configurationDisplayName("Balance Sheet")
         .description("Portfolio solvency concentric gauge, gross assets, and net equity.")
@@ -1230,6 +1238,7 @@ struct SpendingStabilityWidget: Widget {
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
                 SpendingStabilitySmallView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://statistics"))
         }
         .configurationDisplayName("Spending Stability")
         .description("Expense volatility variance index and daily burn average.")
@@ -1249,6 +1258,7 @@ struct LockScreenNetWorthWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenNetWorthEntryView(snapshot: entry.snapshot)
+                .widgetURL(URL(string: "accrual://assets"))
         }
         .configurationDisplayName("Net Worth (Lock Screen)")
         .description("Smooth net worth curve and 24-hour delta percentage.")
@@ -1276,6 +1286,7 @@ struct LockScreenPortfolioWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenPortfolioRectView(snapshot: entry.snapshot)
+                .widgetURL(URL(string: "accrual://assets"))
         }
         .configurationDisplayName("Portfolio Allocation (Lock Screen)")
         .description("Concentric allocation ring: cash, investments, and physical assets.")
@@ -1290,6 +1301,7 @@ struct LockScreenSavingsRunwayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenSavingsRunwayRectView(snapshot: entry.snapshot)
+                .widgetURL(URL(string: "accrual://assets"))
         }
         .configurationDisplayName("Savings Runway (Lock Screen)")
         .description("Emergency survival runway months indicator.")
@@ -1304,6 +1316,7 @@ struct LockScreenSpendingStabilityWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenSpendingStabilityRectView(snapshot: entry.snapshot)
+                .widgetURL(URL(string: "accrual://statistics"))
         }
         .configurationDisplayName("Spending Stability (Lock Screen)")
         .description("Daily expense average and volatility variance.")

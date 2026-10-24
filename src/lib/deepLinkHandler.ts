@@ -491,26 +491,53 @@ export function parseDeepLink(
       return { action: "transaction" };
     }
 
-    // 2. Direct tab navigation routes
+    // 2. Direct tab navigation routes & Widget deep-link aliases
     if (actionPath === "calendar") {
       return { action: "navigate", path: "/calendar" };
     }
     if (actionPath === "bills" || actionPath === "tagihan") {
       return { action: "navigate", path: "/bills" };
     }
-    if (actionPath === "transactions" || actionPath === "history" || actionPath === "riwayat") {
+    if (
+      actionPath === "transactions" ||
+      actionPath === "history" ||
+      actionPath === "riwayat" ||
+      actionPath === "activity"
+    ) {
       return { action: "navigate", path: "/transactions" };
     }
-    if (actionPath === "statistics" || actionPath === "stats" || actionPath === "statistik") {
+    if (
+      actionPath === "statistics" ||
+      actionPath === "stats" ||
+      actionPath === "statistik" ||
+      actionPath === "savings" ||
+      actionPath === "cashflow" ||
+      actionPath === "capital" ||
+      actionPath === "spending-stability"
+    ) {
       return { action: "navigate", path: "/statistics" };
     }
-    if (actionPath === "assets" || actionPath === "wealth" || actionPath === "investments" || actionPath === "aset") {
+    if (
+      actionPath === "assets" ||
+      actionPath === "wealth" ||
+      actionPath === "investments" ||
+      actionPath === "aset" ||
+      actionPath === "networth" ||
+      actionPath === "allocation" ||
+      actionPath === "cash" ||
+      actionPath === "runway"
+    ) {
       return { action: "navigate", path: "/assets" };
     }
     if (actionPath === "settings" || actionPath === "pengaturan") {
       return { action: "navigate", path: "/settings" };
     }
-    if (actionPath === "reports" || actionPath === "report" || actionPath === "laporan") {
+    if (
+      actionPath === "reports" ||
+      actionPath === "report" ||
+      actionPath === "laporan" ||
+      actionPath === "balance-sheet"
+    ) {
       return { action: "navigate", path: "/transactions?open=export" };
     }
     if (actionPath === "home" || actionPath === "beranda") {
@@ -809,9 +836,24 @@ export function parseDeepLink(
       };
     }
 
-    // Case C: Explicit open transaction modal (e.g. `trouvaille://add` or `trouvaille://transaction`)
-    if (actionPath === "add" || actionPath === "transaction" || actionPath === "") {
-      return { action: "transaction" };
+    // Case C: Explicit open transaction modal (e.g. `accrual://log?type=...`, `trouvaille://add` or `trouvaille://transaction`)
+    if (
+      actionPath === "add" ||
+      actionPath === "log" ||
+      actionPath === "quick-log" ||
+      actionPath === "transaction" ||
+      actionPath === ""
+    ) {
+      const logType = (params.get("type") || params.get("tipe"))?.toLowerCase();
+      if (logType === "scan") {
+        return { action: "scan" };
+      }
+      const targetType: TransactionType =
+        logType === "income" ? "income" : logType === "transfer" ? "transfer" : "expense";
+      return {
+        action: "transaction",
+        prefilledValues: { type: targetType },
+      };
     }
 
     return { action: "none" };

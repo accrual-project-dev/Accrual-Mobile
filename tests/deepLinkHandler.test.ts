@@ -202,6 +202,55 @@ describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
     expect(result.prefilledValues?.date?.getDate()).toBe(28);
   });
 
+  it("handles widget quick-log deep links and tab navigation aliases", () => {
+    // Quick log buttons
+    expect(parseDeepLink("accrual://log?type=expense", mockCategories, mockWallets)).toEqual({
+      action: "transaction",
+      prefilledValues: { type: "expense" },
+    });
+    expect(parseDeepLink("accrual://log?type=income", mockCategories, mockWallets)).toEqual({
+      action: "transaction",
+      prefilledValues: { type: "income" },
+    });
+    expect(parseDeepLink("accrual://log?type=transfer", mockCategories, mockWallets)).toEqual({
+      action: "transaction",
+      prefilledValues: { type: "transfer" },
+    });
+    expect(parseDeepLink("accrual://log?type=scan", mockCategories, mockWallets)).toEqual({
+      action: "scan",
+    });
+
+    // Widget navigation aliases
+    expect(parseDeepLink("accrual://networth", mockCategories, mockWallets)).toEqual({
+      action: "navigate",
+      path: "/assets",
+    });
+    expect(parseDeepLink("accrual://allocation", mockCategories, mockWallets)).toEqual({
+      action: "navigate",
+      path: "/assets",
+    });
+    expect(parseDeepLink("accrual://cash", mockCategories, mockWallets)).toEqual({
+      action: "navigate",
+      path: "/assets",
+    });
+    expect(parseDeepLink("accrual://savings", mockCategories, mockWallets)).toEqual({
+      action: "navigate",
+      path: "/statistics",
+    });
+    expect(parseDeepLink("accrual://cashflow", mockCategories, mockWallets)).toEqual({
+      action: "navigate",
+      path: "/statistics",
+    });
+    expect(parseDeepLink("accrual://activity", mockCategories, mockWallets)).toEqual({
+      action: "navigate",
+      path: "/transactions",
+    });
+    expect(parseDeepLink("accrual://balance-sheet", mockCategories, mockWallets)).toEqual({
+      action: "navigate",
+      path: "/transactions?open=export",
+    });
+  });
+
   it("returns none action on empty or invalid inputs", () => {
     expect(parseDeepLink("").action).toBe("none");
     expect(parseDeepLink("random-string-without-scheme").action).toBe("none");

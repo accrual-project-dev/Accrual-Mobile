@@ -19,13 +19,21 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { triggerSuccessHaptic } from "../lib/haptics";
+import { parseNaturalTransaction } from "../lib/nlpParser";
 import {
   widgetSyncService,
   type WidgetSnapshotPayload,
 } from "../lib/widgetSyncService";
 
 export function useWidgetSync() {
-  const { netWorth, liquidAssets } = useWalletBalances();
+  const {
+    netWorth,
+    liquidAssets,
+    investmentAssets = 0,
+    fixedAssets = 0,
+    liabilities = 0,
+    totalAssets = 0,
+  } = useWalletBalances();
   const { data: allTxs = [], isLoading: isTxsLoading } = useAllTransactions();
   const { data: categories = [] } = useCategories();
   const { data: wallets = [], isLoading: isWalletsLoading } = useWallets();
@@ -68,11 +76,13 @@ export function useWidgetSync() {
     const isPositive24h = delta24h >= 0;
     const change24hFormatted = `${isPositive24h ? "+" : ""}${change24hPercentage}%`;
 
-    const totalDebts = Math.max(0, liquidAssets - netWorth);
-    const grossAssets = netWorth + totalDebts;
+    const totalDebts = liabilities;
+    const grossAssets = totalAssets > 0 ? totalAssets : (netWorth + totalDebts);
     const debtRatio = grossAssets > 0 ? Number(((totalDebts / grossAssets) * 100).toFixed(1)) : 0;
-    const solvencyScore = Math.max(0, Math.round(100 - debtRatio));
-    const liquidPct = grossAssets > 0 ? Number(((liquidAssets / grossAssets) * 100).toFixed(1)) : 100;
+    const solvencyScore = Math.max(0, Math.min(100, Math.round(100 - debtRatio)));
+    const liquidPct = grossAssets > 0 ? Math.round((liquidAssets / grossAssets) * 100) : 100;
+    const growthPct = grossAssets > 0 ? Math.round((investmentAssets / grossAssets) * 100) : 0;
+    const fixedPct = grossAssets > 0 ? Math.max(0, 100 - liquidPct - growthPct) : 0;
 
     // Monthly Inflow & Outflow calculation
     const currentMonthPrefix = new Date().toISOString().slice(0, 7);
@@ -172,7 +182,7 @@ export function useWidgetSync() {
       change24hPercentage,
       change24hFormatted,
       isPositive24h,
-      totalAssetsFormatted: formatWithPreferred(liquidAssets),
+      totalAssetsFormatted: formatWithPreferred(grossAssets),
       totalDebtsFormatted: formatWithPreferred(totalDebts),
       isPrivacyMode: isStealthMode,
       isIndonesian,
@@ -197,8 +207,8 @@ export function useWidgetSync() {
       solvencyScore,
       debtRatio,
       liquidPct,
-      growthPct: 0,
-      fixedPct: 0,
+      growthPct,
+      fixedPct,
       grossAssetsFormatted: formatWithPreferred(grossAssets),
       liabilitiesFormatted: formatWithPreferred(totalDebts),
       netEquityFormatted: formatWithPreferred(netWorth),
@@ -211,6 +221,10 @@ export function useWidgetSync() {
   }, [
     netWorth,
     liquidAssets,
+    investmentAssets,
+    fixedAssets,
+    liabilities,
+    totalAssets,
     allTxs,
     wallets,
     isWalletsLoading,
@@ -228,7 +242,7 @@ export function useWidgetSync() {
     isIngestingRef.current = true;
 
     try {
-      const { transactions } = await widgetSyncService.retrievePendingIngestion();
+      const { transactions, voiceLogs } = await widgetSyncService.retrievePendingIngestion();
 
       let ingestedCount = 0;
 
@@ -258,11 +272,35 @@ export function useWidgetSync() {
                 (isIndonesian
                   ? "Pencatatan Siri / Ketukan Belakang"
                   : "Siri / Back Tap Quick Log"),
-              type: "expense",
+              type: (tx as any).type || "expense",
             });
             ingestedCount++;
           } catch (e) {
             console.warn("[useWidgetSync] Failed to insert pending tx:", e);
+          }
+        }
+      }
+
+      // Process voice logs from Siri or Back Tap
+      if (voiceLogs && voiceLogs.length > 0) {
+        for (const vLog of voiceLogs) {
+          if (vLog.text && vLog.text.trim()) {
+            try {
+              const parsed = parseNaturalTransaction(vLog.text, categories, wallets);
+              if (parsed.amount && parsed.amount > 0) {
+                await addTransactionMutation.mutateAsync({
+                  amount: parsed.amount,
+                  category_id: parsed.categoryId || categories[0]?.id || null,
+                  wallet_id: parsed.walletId || wallets[0]?.id || null,
+                  occurred_on: parsed.date ? parsed.date.toISOString() : new Date().toISOString(),
+                  note: parsed.note || vLog.text,
+                  type: parsed.type || "expense",
+                });
+                ingestedCount++;
+              }
+            } catch (err) {
+              console.warn("[useWidgetSync] Failed to process voice log:", err);
+            }
           }
         }
       }
