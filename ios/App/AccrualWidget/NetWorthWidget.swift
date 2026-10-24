@@ -418,6 +418,12 @@ struct MonthlyCashflowBarMediumView: View {
     let snapshot: AccrualWidgetSnapshot
     var isDark: Bool { colorScheme == .dark }
 
+    private func barColor(val: Int, isDark: Bool) -> Color {
+        let base = isDark ? Color.white : Color.black
+        let opacity = val > 50 ? 0.9 : 0.3
+        return base.opacity(opacity)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -465,13 +471,10 @@ struct MonthlyCashflowBarMediumView: View {
 
             // 12 Vertical Activity Bar Ticks
             HStack(alignment: .bottom, spacing: 6) {
-                ForEach(0..<min(12, snapshot.safeCashflowBars.count), id: \.self) { idx in
+                ForEach(Array(0..<min(12, snapshot.safeCashflowBars.count)), id: \.self) { idx in
                     let val = snapshot.safeCashflowBars[idx]
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(isDark
-                            ? Color.white.opacity(val > 50 ? 0.9 : 0.3)
-                            : Color.black.opacity(val > 50 ? 0.9 : 0.3)
-                        )
+                        .fill(barColor(val: val, isDark: isDark))
                         .frame(maxWidth: .infinity, height: max(6, CGFloat(val) * 0.28))
                 }
             }
@@ -628,6 +631,19 @@ struct ActivityMatrixSmallView: View {
 
     let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
+    private func dotColor(dot: WidgetHeatmapDot, isDark: Bool) -> Color {
+        let base = isDark ? Color.white : Color.black
+        if dot.intensity > 0.6 {
+            return base
+        } else if dot.intensity > 0.2 {
+            return base.opacity(isDark ? 0.45 : 0.40)
+        } else if dot.hasSpend {
+            return base.opacity(isDark ? 0.20 : 0.18)
+        } else {
+            return base.opacity(0.06)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -643,13 +659,10 @@ struct ActivityMatrixSmallView: View {
 
             // 7x4 28-day Activity Dot Grid
             LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(0..<min(28, snapshot.safeHeatmapDots.count), id: \.self) { idx in
+                ForEach(Array(0..<min(28, snapshot.safeHeatmapDots.count)), id: \.self) { idx in
                     let dot = snapshot.safeHeatmapDots[idx]
                     Circle()
-                        .fill(isDark
-                            ? (dot.intensity > 0.6 ? Color.white : dot.intensity > 0.2 ? Color.white.opacity(0.45) : dot.hasSpend ? Color.white.opacity(0.2) : Color.white.opacity(0.06))
-                            : (dot.intensity > 0.6 ? Color.black : dot.intensity > 0.2 ? Color.black.opacity(0.40) : dot.hasSpend ? Color.black.opacity(0.18) : Color.black.opacity(0.06))
-                        )
+                        .fill(dotColor(dot: dot, isDark: isDark))
                         .frame(width: 10, height: 10)
                 }
             }
