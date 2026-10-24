@@ -478,7 +478,8 @@ struct MonthlyCashflowBarMediumView: View {
                 ForEach(displayBars, id: \.offset) { _, val in
                     RoundedRectangle(cornerRadius: 2)
                         .fill(barColor(val: val, isDark: isDark))
-                        .frame(maxWidth: .infinity, height: max(6, CGFloat(val) * 0.28))
+                        .frame(height: max(6, CGFloat(val) * 0.28))
+                        .frame(maxWidth: .infinity)
                 }
             }
             .frame(height: 32)
