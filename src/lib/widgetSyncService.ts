@@ -24,6 +24,7 @@ export interface WidgetSnapshotPayload {
   totalDebtsFormatted: string;
   isPrivacyMode: boolean;
   isIndonesian: boolean;
+  theme?: "light" | "dark";
   lastUpdated: string;
   sparkline: number[];
 

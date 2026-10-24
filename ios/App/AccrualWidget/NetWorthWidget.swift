@@ -29,19 +29,21 @@ struct AccrualEntry: TimelineEntry {
 // MARK: - Container Background & Rim Light Wrapper
 struct AccrualWidgetShell<Content: View>: View {
     @Environment(\.colorScheme) var colorScheme
-    let content: Content
+    let snapshot: AccrualWidgetSnapshot
+    let content: (Bool) -> Content
 
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
+    init(snapshot: AccrualWidgetSnapshot, @ViewBuilder content: @escaping (Bool) -> Content) {
+        self.snapshot = snapshot
+        self.content = content
     }
 
     var isDark: Bool {
-        colorScheme == .dark
+        snapshot.forcedDark ?? (colorScheme == .dark)
     }
 
     var body: some View {
         ZStack(alignment: .top) {
-            content
+            content(isDark)
                 .padding(14)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -70,9 +72,8 @@ extension View {
 // MARK: - 1. NET WORTH HORIZON (Medium: 329x155)
 // ======================================================================
 struct NetWorthHorizonMediumView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -163,9 +164,8 @@ struct NetWorthHorizonMediumView: View {
 // MARK: - 2. ALOKASI PORTOFOLIO (Medium: 329x155)
 // ======================================================================
 struct PortfolioAllocationMediumView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -280,9 +280,8 @@ struct AssetClassLegendRow: View {
 // MARK: - 3. POSISI KAS LIKUID & RUNWAY (Small: 155x155)
 // ======================================================================
 struct LiquidCashRunwaySmallView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -355,9 +354,8 @@ struct LiquidCashRunwaySmallView: View {
 // MARK: - 4. RASIO TABUNGAN RING (Small: 155x155)
 // ======================================================================
 struct SavingsRateRingSmallView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
@@ -414,9 +412,8 @@ struct SavingsRateRingSmallView: View {
 // MARK: - 5. ARUS KAS BULANAN BATANG TICK (Medium: 329x155)
 // ======================================================================
 struct MonthlyCashflowBarMediumView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     private func barColor(val: Int, isDark: Bool) -> Color {
         let base = isDark ? Color.white : Color.black
@@ -491,9 +488,8 @@ struct MonthlyCashflowBarMediumView: View {
 // MARK: - 6. STASIUN CATAT CEPAT 1-KETUKAN (Small: 155x155)
 // ======================================================================
 struct QuickLogStationSmallView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -565,9 +561,8 @@ struct QuickActionTile: View {
 // MARK: - 7. KESEHATAN MODAL / CAPITAL HEALTH (Small: 155x155)
 // ======================================================================
 struct CapitalHealthSmallView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -629,9 +624,8 @@ struct CapitalHealthSmallView: View {
 // MARK: - 8. MATRIKS AKTIVITAS BULANAN / HALF CARD (Small: 155x155)
 // ======================================================================
 struct ActivityMatrixSmallView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
@@ -703,9 +697,8 @@ struct ActivityMatrixSmallView: View {
 // MARK: - 9. STRUKTUR NERACA DENGAN CHART SOLVENSI (Medium: 329x155)
 // ======================================================================
 struct BalanceSheetMediumView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -824,9 +817,8 @@ struct BalanceMetricRow: View {
 // MARK: - 10. STABILITAS PENGELUARAN (Small: 155x155)
 // ======================================================================
 struct SpendingStabilitySmallView: View {
-    @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
-    var isDark: Bool { colorScheme == .dark }
+    let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1082,8 +1074,8 @@ struct NetWorthHorizonWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                NetWorthHorizonMediumView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                NetWorthHorizonMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Net Worth Horizon")
@@ -1099,8 +1091,8 @@ struct PortfolioAllocationWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                PortfolioAllocationMediumView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                PortfolioAllocationMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Portfolio Allocation")
@@ -1116,8 +1108,8 @@ struct LiquidCashRunwayWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                LiquidCashRunwaySmallView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                LiquidCashRunwaySmallView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Liquid Cash & Runway")
@@ -1133,8 +1125,8 @@ struct SavingsRateRingWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                SavingsRateRingSmallView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                SavingsRateRingSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Savings Rate")
@@ -1150,8 +1142,8 @@ struct MonthlyCashflowBarWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                MonthlyCashflowBarMediumView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                MonthlyCashflowBarMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Monthly Cashflow")
@@ -1167,8 +1159,8 @@ struct QuickLogStationWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                QuickLogStationSmallView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                QuickLogStationSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Quick Log Station")
@@ -1184,8 +1176,8 @@ struct CapitalHealthWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                CapitalHealthSmallView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                CapitalHealthSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Capital Health")
@@ -1201,8 +1193,8 @@ struct ActivityMatrixWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                ActivityMatrixSmallView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                ActivityMatrixSmallView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Activity Matrix")
@@ -1218,8 +1210,8 @@ struct BalanceSheetWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                BalanceSheetMediumView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                BalanceSheetMediumView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Balance Sheet")
@@ -1235,8 +1227,8 @@ struct SpendingStabilityWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell {
-                SpendingStabilitySmallView(snapshot: entry.snapshot)
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                SpendingStabilitySmallView(snapshot: entry.snapshot, isDark: isDark)
             }
         }
         .configurationDisplayName("Spending Stability")

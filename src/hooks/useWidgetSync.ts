@@ -16,6 +16,7 @@ import { useWallets } from "./useWallets";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { triggerSuccessHaptic } from "../lib/haptics";
 import {
@@ -31,6 +32,7 @@ export function useWidgetSync() {
   const { isStealthMode } = usePrivacy();
   const { formatWithPreferred, currencyMeta } = useCurrency();
   const { isIndonesian } = useLanguage();
+  const { theme } = useTheme();
   const { showToast } = useToast();
   const addTransactionMutation = useAddTransaction();
 
@@ -174,6 +176,7 @@ export function useWidgetSync() {
       totalDebtsFormatted: formatWithPreferred(totalDebts),
       isPrivacyMode: isStealthMode,
       isIndonesian,
+      theme,
       lastUpdated: new Date().toISOString(),
       sparkline,
 
@@ -214,6 +217,7 @@ export function useWidgetSync() {
     isTxsLoading,
     isStealthMode,
     isIndonesian,
+    theme,
     formatWithPreferred,
     currencyMeta,
   ]);

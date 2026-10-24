@@ -24,6 +24,7 @@ public struct AccrualWidgetSnapshot: Codable {
     public let totalDebtsFormatted: String
     public let isPrivacyMode: Bool
     public let isIndonesian: Bool?
+    public let theme: String?
     public let lastUpdated: String
     public let sparkline: [Int]
 
@@ -56,6 +57,13 @@ public struct AccrualWidgetSnapshot: Codable {
     // MARK: - Safe Property Resolvers
     public var isIndo: Bool {
         return isIndonesian ?? false
+    }
+
+    public var forcedDark: Bool? {
+        guard let t = theme?.lowercased() else { return nil }
+        if t == "light" { return false }
+        if t == "dark" { return true }
+        return nil
     }
 
     public var safeSavingsRate: Int {
@@ -177,6 +185,7 @@ public struct AccrualWidgetSnapshot: Codable {
             totalDebtsFormatted: "Rp 9.000.000",
             isPrivacyMode: false,
             isIndonesian: false,
+            theme: nil,
             lastUpdated: ISO8601DateFormatter().string(from: Date()),
             sparkline: [20, 35, 40, 55, 50, 75, 100],
             savingsRate: 38,
@@ -234,7 +243,7 @@ public struct AccrualTheme {
         LinearGradient(
             gradient: Gradient(colors: isDark
                 ? [Color(red: 16/255, green: 16/255, blue: 21/255), Color(red: 10/255, green: 10/255, blue: 13/255)]
-                : [Color.white, Color(red: 246/255, green: 247/255, blue: 250/255)]
+                : [Color.white, Color(red: 244/255, green: 244/255, blue: 247/255)]
             ),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -258,7 +267,7 @@ public struct AccrualTheme {
     }
 
     public static func fillSubtle(isDark: Bool) -> Color {
-        isDark ? Color.white.opacity(0.05) : Color.black.opacity(0.035)
+        isDark ? Color.white.opacity(0.06) : Color.black.opacity(0.045)
     }
 }
 
@@ -270,7 +279,7 @@ public struct SpecularRimLight: View {
         LinearGradient(
             gradient: Gradient(colors: [
                 Color.clear,
-                Color.white.opacity(isDark ? 0.35 : 0.85),
+                isDark ? Color.white.opacity(0.35) : Color.black.opacity(0.08),
                 Color.clear
             ]),
             startPoint: .leading,
