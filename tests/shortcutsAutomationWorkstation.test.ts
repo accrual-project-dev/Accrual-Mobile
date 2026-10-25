@@ -298,7 +298,7 @@ describe("Apple Shortcuts & iOS/Android Automation Workstation (Audit #35)", () 
         "Quick Action",
         "Scan Receipt",
         "Notification Reader",
-        "Apple Pay Sync",
+        "Card Transaction Sync",
       ];
       const indonesianLabels = [
         "Dikte Suara",
@@ -306,7 +306,7 @@ describe("Apple Shortcuts & iOS/Android Automation Workstation (Audit #35)", () 
         "Buka Catat Cepat",
         "Pindai Resi & Struk",
         "Pembaca Notifikasi Bank",
-        "Sinkronisasi Apple Pay",
+        "Sinkronisasi Transaksi Kartu",
       ];
 
       expect(englishLabels.length).toBe(6);

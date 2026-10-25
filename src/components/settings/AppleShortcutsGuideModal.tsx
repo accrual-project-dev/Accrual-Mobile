@@ -111,10 +111,10 @@ export function AppleShortcutsGuideModal({
   const nativeActionsCatalog = useMemo(
     () => [
       {
-        id: "apple_pay",
-        name: "Log Apple Pay Transaction",
-        descId: "Sinkronkan transaksi Apple Pay otomatis",
-        descEn: "Sync Apple Pay transactions directly",
+        id: "card_transaction",
+        name: "Log Card Transaction",
+        descId: "Sinkronkan transaksi kartu nirsentuh otomatis",
+        descEn: "Sync card and contactless payments directly",
         icon: CreditCard,
       },
       {
@@ -435,12 +435,12 @@ export function AppleShortcutsGuideModal({
                     </div>
                     <div className="min-w-0">
                       <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
-                        {isIndonesian ? "Sinkronisasi Apple Pay" : "Apple Pay Sync"}
+                        {isIndonesian ? "Sinkronisasi Transaksi Kartu" : "Card Transaction Sync"}
                       </div>
                       <div className="text-[11px] text-[var(--text-tertiary)] truncate">
                         {isIndonesian
-                          ? "Sinkronkan transaksi kartu Apple Pay langsung"
-                          : "Sync Apple Pay transactions directly to Accrual"}
+                          ? "Sinkronkan transaksi kartu nirsentuh & dompet digital"
+                          : "Sync card and contactless transactions directly"}
                       </div>
                     </div>
                   </div>
@@ -979,12 +979,12 @@ export function AppleShortcutsGuideModal({
             {/* Title & Subtitle */}
             <div className="space-y-1">
               <h2 className="text-[20px] font-semibold text-[var(--text-primary)] tracking-tight">
-                {isIndonesian ? "Sinkronisasi Apple Pay" : "Apple Pay Sync"}
+                {isIndonesian ? "Sinkronisasi Transaksi Kartu" : "Card Transaction Sync"}
               </h2>
               <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
                 {isIndonesian
-                  ? "Sinkronkan setiap pembayaran Apple Pay langsung ke catatan buku kas Accrual."
-                  : "Automatically sync every Apple Pay transaction directly into your Accrual ledger."}
+                  ? "Sinkronkan setiap pembayaran kartu nirsentuh langsung ke catatan buku kas Accrual."
+                  : "Automatically sync every card and contactless transaction directly into your Accrual ledger."}
               </p>
             </div>
 
@@ -1005,7 +1005,7 @@ export function AppleShortcutsGuideModal({
                     A
                   </div>
                   <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                    Log Apple Pay Transaction
+                    Log Card Transaction
                   </span>
                 </div>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-[var(--text-secondary)]">
@@ -1014,7 +1014,7 @@ export function AppleShortcutsGuideModal({
               </div>
 
               <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-[12.5px] leading-relaxed text-zinc-300 font-sans">
-                <span>Log Apple Pay </span>
+                <span>Log card transaction </span>
                 <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[11px] font-semibold">
                   Amount
                 </span>
@@ -1041,8 +1041,8 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div className="text-[var(--text-secondary)] leading-relaxed">
                     {isIndonesian
-                      ? "Di aplikasi Pintasan › Automasi › (+) Automasi Baru › Pilih 'Transaksi' (Apple Pay)."
-                      : "In Shortcuts app › Automation › (+) New Automation › Select 'Transaction' (Apple Pay)."}
+                      ? "Di aplikasi Pintasan › Automasi › (+) Automasi Baru › Pilih 'Transaksi'."
+                      : "In Shortcuts app › Automation › (+) New Automation › Select 'Transaction'."}
                   </div>
                 </div>
               </div>
@@ -1073,8 +1073,8 @@ export function AppleShortcutsGuideModal({
                   </div>
                   <div className="text-[var(--text-secondary)] leading-relaxed">
                     {isIndonesian
-                      ? "Pilih aksi 'Log Apple Pay Transaction' dan sambungkan variabel Amount, Merchant, dan Card."
-                      : "Select 'Log Apple Pay Transaction' and map Amount, Merchant, and Card variables."}
+                      ? "Pilih aksi 'Log Card Transaction' dan sambungkan variabel Amount, Merchant, dan Card."
+                      : "Select 'Log Card Transaction' and map Amount, Merchant, and Card variables."}
                   </div>
                 </div>
               </div>

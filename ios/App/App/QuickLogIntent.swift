@@ -7,12 +7,12 @@ import SwiftUI
 /// ACCRUAL APP INTENTS & SHORTCUTS SUITE (iOS 16.0+)
 /// Advanced Native iOS Financial Automation Architecture:
 /// - Rule 1: No native colored emojis (SF Symbols vector iconography)
-/// - Rule 2: Monochrome Apple Luxury Theme (Obsidian & Frosted Glass)
+/// - Rule 2: Monochrome Obsidian & Frosted Glass Luxury Theme
 /// - Rule 6: 100% pure localization support
 ///
 /// 6 Native Actions:
 /// 1. Log Notification Transaction (Automations: "When I receive a notification from [Apps]")
-/// 2. Log Apple Pay Transaction (Automations: "When an Apple Pay transaction occurs")
+/// 2. Log Card Transaction (Automations: Contactless / card transaction trigger)
 /// 3. Voice Entry (Shortcuts: Siri, Action Button, Voice Entry)
 /// 4. Scan Payment Screenshot (Shortcuts: Back Tap, Screenshot OCR)
 /// 5. Open Accrual Quick Action (Shortcuts: 1-Tap Entry)
@@ -101,12 +101,12 @@ struct LogNotificationTransactionIntent: AppIntent {
     }
 }
 
-/// 2. Log Apple Pay Transaction Intent
-/// Parameter Summary: "Log Apple Pay [Amount] at [Merchant] with [Card]"
+/// 2. Log Card Transaction Intent
+/// Parameter Summary: "Log card transaction [Amount] at [Merchant] with [Card]"
 @available(iOS 16.0, *)
-struct LogApplePayTransactionIntent: AppIntent {
-    static var title: LocalizedStringResource = "Log Apple Pay Transaction"
-    static var description = IntentDescription("Sync Apple Pay transactions directly to Accrual.")
+struct LogCardTransactionIntent: AppIntent {
+    static var title: LocalizedStringResource = "Log Card Transaction"
+    static var description = IntentDescription("Sync card and contactless transactions directly to Accrual.")
 
     static var openAppWhenRun: Bool = false
 
@@ -126,25 +126,25 @@ struct LogApplePayTransactionIntent: AppIntent {
     var transactionDate: Date?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Log Apple Pay \(\.$amount) at \(\.$merchant) with \(\.$cardName)")
+        Summary("Log card transaction \(\.$amount) at \(\.$merchant) with \(\.$cardName)")
     }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let amount = amount, amount > 0 else {
-            throw $amount.needsValueError("Berapa nominal transaksi Apple Pay?")
+            throw $amount.needsValueError("Berapa nominal transaksi kartu?")
         }
 
         let dateVal = transactionDate ?? Date()
-        let merchantVal = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Apple Pay"
-        let cardVal = cardName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Apple Pay"
+        let merchantVal = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Kartu"
+        let cardVal = cardName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Kartu"
 
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
 
-        // Deduplication guard: ignore duplicate Apple Pay events within 10 minutes
-        let lastLoggedKey = "last_apple_pay_hash"
-        let lastLoggedTimeKey = "last_apple_pay_time"
+        // Deduplication guard: ignore duplicate card events within 10 minutes
+        let lastLoggedKey = "last_card_tx_hash"
+        let lastLoggedTimeKey = "last_card_tx_time"
         let currentHash = "\(amount)_\(merchantVal)_\(cardVal)"
         let currentTime = Date().timeIntervalSince1970
 
@@ -165,7 +165,7 @@ struct LogApplePayTransactionIntent: AppIntent {
             "category": "Umum",
             "wallet": cardVal,
             "date": ISO8601DateFormatter().string(from: dateVal),
-            "note": "Apple Pay: \(merchantVal)",
+            "note": "Kartu: \(merchantVal)",
             "createdAt": currentTime
         ]
 
@@ -174,7 +174,7 @@ struct LogApplePayTransactionIntent: AppIntent {
         defaults.set(pending, forKey: "pending_backtap_transactions")
 
         let formattedAmount = String(format: "%.0f", amount)
-        let displayDialog: LocalizedStringResource = "Apple Pay \(formattedAmount) di \(merchantVal) berhasil dicatat."
+        let displayDialog: LocalizedStringResource = "Transaksi kartu \(formattedAmount) di \(merchantVal) berhasil dicatat."
         return .result(dialog: IntentDialog(displayDialog))
     }
 }
@@ -449,12 +449,12 @@ struct AccrualShortcutsProvider: AppShortcutsProvider {
             systemImageName: "bell.badge.fill"
         )
         AppShortcut(
-            intent: LogApplePayTransactionIntent(),
+            intent: LogCardTransactionIntent(),
             phrases: [
-                "Log Apple Pay in \(.applicationName)",
-                "Catat Apple Pay di \(.applicationName)"
+                "Log card payment in \(.applicationName)",
+                "Catat transaksi kartu di \(.applicationName)"
             ],
-            shortTitle: "Log Apple Pay Transaction",
+            shortTitle: "Log Card Transaction",
             systemImageName: "creditcard.fill"
         )
         AppShortcut(
