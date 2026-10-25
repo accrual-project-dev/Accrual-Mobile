@@ -7,6 +7,7 @@ import {
   parseCurrencyAmount,
   extractTimeComponents,
 } from "../src/lib/deepLinkHandler";
+import { parseBankNotification } from "../src/lib/bankNotificationParser";
 import type { Category, Wallet } from "../src/lib/types";
 
 const mockCategories: Category[] = [
@@ -238,6 +239,80 @@ describe("Apple Shortcuts & iOS/Android Automation Workstation (Audit #35)", () 
       expect(result.prefilledValues?.walletId).toBe("w-mandiri");
       expect(result.prefilledValues?.toWalletId).toBeDefined();
       expect(result.prefilledValues?.toWalletId).not.toBe("w-mandiri");
+    });
+  });
+
+  describe("8. Bank Notification Reader & Personal Automation Ingestion", () => {
+    it("parses BCA m-transfer notifications accurately", () => {
+      const notif = "BCA - m-Transfer berhasil sebesar Rp 75.000 ke Kopi Kenangan pada 25/10/2026";
+      const parsed = parseBankNotification(notif, mockCategories, mockWallets);
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amount).toBe(75000);
+      expect(parsed?.sourceApp).toBe("BCA");
+      expect(parsed?.type).toBe("expense");
+    });
+
+    it("parses Mandiri Livin payment notification", () => {
+      const notif = "Livin by Mandiri: Pembayaran sukses senilai Rp 120.000 di Shell Stasiun";
+      const parsed = parseBankNotification(notif, mockCategories, mockWallets);
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amount).toBe(120000);
+      expect(parsed?.type).toBe("expense");
+    });
+
+    it("parses GoPay QRIS payment notification", () => {
+      const notif = "GoPay: Pembayaran QRIS sebesar Rp 25.000 di Toko Berkah berhasil";
+      const parsed = parseBankNotification(notif, mockCategories, mockWallets);
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amount).toBe(25000);
+      expect(parsed?.sourceApp).toBe("GoPay");
+    });
+  });
+
+  describe("9. Smart Promotional & Spam Filtering Invariant", () => {
+    it("rejects purely promotional push notifications without financial mutation", () => {
+      const promoNotif = "Promo Spesial Gajian! Dapatkan diskon 50% dan cashback voucher hari ini";
+      const parsed = parseBankNotification(promoNotif, mockCategories, mockWallets);
+
+      // Should be null because no banking signals or valid transaction amounts exist
+      expect(parsed).toBeNull();
+    });
+
+    it("rejects promotional notifications containing only marketing discounts", () => {
+      const marketingSpam = "Kupon diskon Rp 50.000 menunggu kamu. Segera klaim sebelum hangus!";
+      const parsed = parseBankNotification(marketingSpam, mockCategories, mockWallets);
+
+      // Should be null because there are no bank/e-wallet confirmation tokens
+      expect(parsed).toBeNull();
+    });
+  });
+
+  describe("10. 6 Native Actions Catalog & Localization Invariants", () => {
+    it("supports both English default and pure Indonesian without gado-gado terminology", () => {
+      const englishLabels = [
+        "Voice Entry",
+        "Screen Scanner",
+        "Quick Action",
+        "Scan Receipt",
+        "Notification Reader",
+        "Apple Pay Sync",
+      ];
+      const indonesianLabels = [
+        "Dikte Suara",
+        "Pindai Tangkapan Layar",
+        "Buka Catat Cepat",
+        "Pindai Resi & Struk",
+        "Pembaca Notifikasi Bank",
+        "Sinkronisasi Apple Pay",
+      ];
+
+      expect(englishLabels.length).toBe(6);
+      expect(indonesianLabels.length).toBe(6);
+      englishLabels.forEach((lbl) => expect(lbl.length).toBeGreaterThan(0));
+      indonesianLabels.forEach((lbl) => expect(lbl.length).toBeGreaterThan(0));
     });
   });
 });

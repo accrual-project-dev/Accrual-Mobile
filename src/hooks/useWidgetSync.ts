@@ -20,6 +20,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { triggerSuccessHaptic } from "../lib/haptics";
 import { parseNaturalTransaction } from "../lib/nlpParser";
+import { parseBankNotification } from "../lib/bankNotificationParser";
 import {
   widgetSyncService,
   type WidgetSnapshotPayload,
@@ -288,25 +289,39 @@ export function useWidgetSync() {
         }
       }
 
-      // Process voice logs from Siri or Back Tap
+      // Process voice logs or bank notifications from Siri, Back Tap, or iOS Automations
       if (voiceLogs && voiceLogs.length > 0) {
         for (const vLog of voiceLogs) {
           if (vLog.text && vLog.text.trim()) {
             try {
-              const parsed = parseNaturalTransaction(vLog.text, categories, wallets);
-              if (parsed.amount && parsed.amount > 0) {
+              // 1. Try bank notification parser first if text has bank signals
+              const bankResult = parseBankNotification(vLog.text, categories, wallets);
+              if (bankResult && bankResult.amount > 0) {
                 await addTransactionMutation.mutateAsync({
-                  amount: parsed.amount,
-                  category_id: parsed.categoryId || categories[0]?.id || null,
-                  wallet_id: parsed.walletId || wallets[0]?.id || null,
-                  occurred_on: parsed.date ? parsed.date.toISOString() : new Date().toISOString(),
-                  note: parsed.note || vLog.text,
-                  type: parsed.type || "expense",
+                  amount: bankResult.amount,
+                  category_id: bankResult.suggestedCategoryId || categories[0]?.id || null,
+                  wallet_id: bankResult.suggestedWalletId || wallets[0]?.id || null,
+                  occurred_on: new Date().toISOString(),
+                  note: bankResult.merchantOrNote || vLog.text,
+                  type: bankResult.type || "expense",
                 });
                 ingestedCount++;
+              } else {
+                const parsed = parseNaturalTransaction(vLog.text, categories, wallets);
+                if (parsed.amount && parsed.amount > 0) {
+                  await addTransactionMutation.mutateAsync({
+                    amount: parsed.amount,
+                    category_id: parsed.categoryId || categories[0]?.id || null,
+                    wallet_id: parsed.walletId || wallets[0]?.id || null,
+                    occurred_on: parsed.date ? parsed.date.toISOString() : new Date().toISOString(),
+                    note: parsed.note || vLog.text,
+                    type: parsed.type || "expense",
+                  });
+                  ingestedCount++;
+                }
               }
             } catch (err) {
-              console.warn("[useWidgetSync] Failed to process voice log:", err);
+              console.warn("[useWidgetSync] Failed to process voice/notification log:", err);
             }
           }
         }
