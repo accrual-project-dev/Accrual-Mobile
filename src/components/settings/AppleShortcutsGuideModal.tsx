@@ -1,20 +1,19 @@
 import { useState, useMemo } from "react";
 import {
   Sparkles,
-  Zap,
   Mic,
   Camera,
   Smartphone,
   Copy,
   Check,
   ExternalLink,
-  Search,
   Bell,
   CreditCard,
   Plus,
   ShieldCheck,
   Eye,
-  Sliders,
+  ListFilter,
+  Play,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -31,14 +30,6 @@ export type TabType =
   | "screen_scan"
   | "notification_reader";
 
-export type ActiveTab =
-  | "native_actions"
-  | "bank_notif"
-  | "card_tx"
-  | "back_tap"
-  | "action_button"
-  | "siri";
-
 export type NativeActionId =
   | "notif_reader"
   | "card_transaction"
@@ -53,135 +44,252 @@ interface AppleShortcutsGuideModalProps {
   initialTab?: TabType;
 }
 
+interface ActionStep {
+  labelId: string;
+  labelEn: string;
+  descId: string;
+  descEn: string;
+}
+
 interface NativeActionItem {
   id: NativeActionId;
   name: string;
+  chipLabelId: string;
+  chipLabelEn: string;
   titleId: string;
   titleEn: string;
   shortDescId: string;
   shortDescEn: string;
-  fullDescId: string;
-  fullDescEn: string;
+  badgeId: string;
+  badgeEn: string;
   icon: typeof Bell;
+  steps: ActionStep[];
   siriPhraseId: string;
   siriPhraseEn: string;
   testScheme?: string;
-  category: "automation" | "shortcut";
 }
 
-function resolveInitialSelection(tab?: TabType): { tab: ActiveTab; action: NativeActionId } {
-  if (tab === "notification_reader" || tab === "automation") {
-    return { tab: "bank_notif", action: "notif_reader" };
-  }
-  if (tab === "screen_scan" || tab === "back_tap") {
-    return { tab: "back_tap", action: "screen_scanner" };
-  }
-  if (tab === "action_button") {
-    return { tab: "action_button", action: "voice_entry" };
-  }
-  return { tab: "native_actions", action: "notif_reader" };
+function resolveInitialAction(tab?: TabType): NativeActionId {
+  if (tab === "notification_reader" || tab === "automation") return "notif_reader";
+  if (tab === "screen_scan" || tab === "back_tap") return "screen_scanner";
+  if (tab === "action_button") return "voice_entry";
+  return "notif_reader";
 }
 
 const NATIVE_ACTIONS: NativeActionItem[] = [
   {
     id: "notif_reader",
     name: "Log Notification Transaction",
+    chipLabelId: "Notifikasi Bank",
+    chipLabelEn: "Bank Alerts",
     titleId: "Pembaca Notifikasi Bank",
-    titleEn: "Log Notification Transaction",
-    shortDescId: "Urai mutasi notifikasi bank & e-wallet otomatis",
+    titleEn: "Bank Notification Reader",
+    shortDescId: "Ekstrak otomatis mutasi m-Banking & e-wallet",
     shortDescEn: "Auto extract bank & e-wallet push notifications",
-    fullDescId:
-      "Aksi automasi latar belakang cerdas yang menerima parameter notifikasi (Notification, Title, Subtitle, App, Received At) dari pemicu iOS. Dilengkapi filter promo otomatis untuk menyaring kupon atau voucher belanja secara hening.",
-    fullDescEn:
-      "Smart background automation action that receives notification parameters (Notification, Title, Subtitle, App, Received At) from iOS triggers. Includes an intelligent promo filter to silently discard marketing vouchers.",
+    badgeId: "Automasi",
+    badgeEn: "Automation",
     icon: Bell,
+    steps: [
+      {
+        labelId: "01 Pemicu",
+        labelEn: "01 Trigger",
+        descId: "Aplikasi Pintasan › Automasi › (+) Baru › Notifikasi › Pilih aplikasi bank Anda.",
+        descEn: "Shortcuts App › Automation tab › (+) New › Notification › Select banking apps.",
+      },
+      {
+        labelId: "02 Aksi",
+        labelEn: "02 Action",
+        descId: "Cari 'Accrual' › Pilih 'Log Notification Transaction' › Sambungkan variabel [Notifikasi].",
+        descEn: "Search 'Accrual' › Select 'Log Notification Transaction' › Connect [Notification].",
+      },
+      {
+        labelId: "03 Jalankan",
+        labelEn: "03 Run",
+        descId: "Pilih 'Jalankan Segera' dan matikan 'Beri Tahu Saat Dijalankan' untuk proses latar belakang.",
+        descEn: "Select 'Run Immediately' and turn off 'Notify When Run' for silent logging.",
+      },
+    ],
     siriPhraseId: "Hey Siri, Catat notifikasi di Accrual",
     siriPhraseEn: "Hey Siri, Log notification in Accrual",
-    category: "automation",
   },
   {
     id: "card_transaction",
     name: "Log Card Transaction",
+    chipLabelId: "Transaksi Kartu",
+    chipLabelEn: "Card Pay",
     titleId: "Sinkronisasi Transaksi Kartu",
-    titleEn: "Log Card Transaction",
-    shortDescId: "Sinkronkan transaksi kartu nirsentuh & dompet digital",
+    titleEn: "Card & Contactless Payment",
+    shortDescId: "Catat transaksi kartu kredit, debit & nirsentuh",
     shortDescEn: "Sync card and contactless transactions directly",
-    fullDescId:
-      "Dirancang untuk pemicu automasi transaksi kartu iOS. Menerima nominal, nama merchant, dan kartu pembayaran dengan proteksi anti-duplikasi 10 menit untuk menjaga keakuratan buku kas.",
-    fullDescEn:
-      "Built for iOS card payment automation triggers. Receives amount, merchant name, and card details with a 10-minute duplicate guard to safeguard ledger integrity.",
+    badgeId: "Automasi",
+    badgeEn: "Automation",
     icon: CreditCard,
+    steps: [
+      {
+        labelId: "01 Pemicu",
+        labelEn: "01 Trigger",
+        descId: "Aplikasi Pintasan › Automasi › (+) Baru › Transaksi › Pilih kartu pembayaran.",
+        descEn: "Shortcuts App › Automation tab › (+) New › Transaction › Select payment cards.",
+      },
+      {
+        labelId: "02 Aksi",
+        labelEn: "02 Action",
+        descId: "Cari 'Accrual' › Pilih 'Log Card Transaction' › Sambungkan Nominal & Merchant.",
+        descEn: "Search 'Accrual' › Select 'Log Card Transaction' › Map Amount & Merchant.",
+      },
+      {
+        labelId: "03 Jalankan",
+        labelEn: "03 Run",
+        descId: "Pilih 'Jalankan Segera' untuk pencatatan otomatis tanpa konfirmasi manual.",
+        descEn: "Select 'Run Immediately' for silent background execution without confirmation.",
+      },
+    ],
     siriPhraseId: "Hey Siri, Catat transaksi kartu di Accrual",
     siriPhraseEn: "Hey Siri, Log card payment in Accrual",
-    category: "automation",
   },
   {
     id: "voice_entry",
     name: "Voice Entry",
+    chipLabelId: "Dikte Suara",
+    chipLabelEn: "Voice Entry",
     titleId: "Dikte Suara Transaksi",
-    titleEn: "Voice Entry",
-    shortDescId: "Catat transaksi dengan berbicara santai",
-    shortDescEn: "Add a transaction by speaking naturally",
-    fullDescId:
-      "Cukup ucapkan pengeluaran Anda (misal: 'Kopi susu 25 ribu bayar pakai Cash'). Mesin AI NLP Accrual otomatis mengurai nominal, kategori, dan dompet tanpa perlu menyentuh layar.",
-    fullDescEn:
-      "Simply speak your expense (e.g. 'Coffee 25 thousand paid with Cash'). Accrual's AI NLP automatically extracts amount, category, and wallet hands-free.",
+    titleEn: "Voice Transaction Entry",
+    shortDescId: "Catat pengeluaran hanya dengan berbicara santai",
+    shortDescEn: "Log transactions by speaking naturally",
+    badgeId: "Pintasan",
+    badgeEn: "Shortcut",
     icon: Mic,
+    steps: [
+      {
+        labelId: "01 Pemicu",
+        labelEn: "01 Trigger",
+        descId: "Ucapkan perintah Siri atau tautkan ke Tombol Tindakan / Ketuk Bagian Belakang.",
+        descEn: "Say Siri command or assign to Action Button / Back Tap double-tap.",
+      },
+      {
+        labelId: "02 Aksi",
+        labelEn: "02 Action",
+        descId: "Bicara santai, contoh: 'Kopi susu 25 ribu bayar pakai Cash'.",
+        descEn: "Speak naturally, e.g. 'Iced coffee 25 thousand paid with Cash'.",
+      },
+      {
+        labelId: "03 Jalankan",
+        labelEn: "03 Run",
+        descId: "Mesin AI NLP Accrual otomatis mengurai nominal, akun dompet, dan kategori.",
+        descEn: "Accrual AI NLP extracts amount, account, and category hands-free.",
+      },
+    ],
     siriPhraseId: "Hey Siri, Voice log to Accrual",
     siriPhraseEn: "Hey Siri, Voice log to Accrual",
     testScheme: "accrual://voice",
-    category: "shortcut",
   },
   {
     id: "screen_scanner",
     name: "Scan Payment Screenshot",
-    titleId: "Pindai Tangkapan Layar",
+    chipLabelId: "Ketuk Belakang",
+    chipLabelEn: "Back Tap OCR",
+    titleId: "Pindai Layar Bukti Bayar",
     titleEn: "Scan Payment Screenshot",
-    shortDescId: "Catat transaksi dari screenshot atau bukti QRIS",
-    shortDescEn: "Add a transaction by scanning a screenshot or QRIS",
-    fullDescId:
-      "Sangat pas ditautkan ke Ketukan Belakang (Back Tap). Ambil tangkapan layar bukti transfer atau struk, lalu ketuk punggung iPhone Anda untuk memproses transaksi secara instan.",
-    fullDescEn:
-      "Perfect for iPhone Back Tap. Take a screenshot of any payment confirmation or bank slip, then tap your iPhone's back to process the transaction instantly.",
+    shortDescId: "Ketuk 2x punggung iPhone untuk pindai struk/QRIS",
+    shortDescEn: "Double-tap iPhone back to scan receipts or QRIS",
+    badgeId: "Ketuk Belakang",
+    badgeEn: "Back Tap",
     icon: Smartphone,
+    steps: [
+      {
+        labelId: "01 Pemicu",
+        labelEn: "01 Trigger",
+        descId: "Pengaturan iOS › Aksesibilitas › Sentuh › Ketuk Bagian Belakang › Ketuk Dua Kali.",
+        descEn: "iOS Settings › Accessibility › Touch › Back Tap › Double Tap.",
+      },
+      {
+        labelId: "02 Aksi",
+        labelEn: "02 Action",
+        descId: "Pilih 'Scan Payment Screenshot' di bawah kelompok aplikasi Accrual.",
+        descEn: "Select 'Scan Payment Screenshot' under the Accrual shortcuts section.",
+      },
+      {
+        labelId: "03 Jalankan",
+        labelEn: "03 Run",
+        descId: "Jepret layar bukti bayar, lalu ketuk 2x bodi belakang iPhone untuk mengurai teks via OCR.",
+        descEn: "Take screenshot of any receipt, then double-tap iPhone back for instant OCR extraction.",
+      },
+    ],
     siriPhraseId: "Hey Siri, Pindai tangkapan layar di Accrual",
     siriPhraseEn: "Hey Siri, Scan payment screenshot with Accrual",
     testScheme: "accrual://scan",
-    category: "shortcut",
   },
   {
     id: "quick_action",
     name: "Open Accrual Quick Action",
-    titleId: "Buka Catat Cepat",
-    titleEn: "Open Accrual Quick Action",
-    shortDescId: "Buka formulir pencatatan secepat kilat",
-    shortDescEn: "Instantly launch into the transaction keypad",
-    fullDescId:
-      "Membuka aplikasi Accrual dan langsung memunculkan lembar pencatatan transaksi baru dengan fokus langsung pada keypad angka.",
-    fullDescEn:
-      "Launches Accrual directly into the new transaction modal with immediate focus on the numeric keypad.",
+    chipLabelId: "Catat Cepat",
+    chipLabelEn: "Quick Add",
+    titleId: "Buka Formulir Cepat",
+    titleEn: "Instant Quick Action",
+    shortDescId: "Langsung ke keypad input nominal 1-ketukan",
+    shortDescEn: "Launch directly into the transaction keypad",
+    badgeId: "1-Ketukan",
+    badgeEn: "1-Tap",
     icon: Plus,
+    steps: [
+      {
+        labelId: "01 Pemicu",
+        labelEn: "01 Trigger",
+        descId: "Pasang di Layar Utama, Layar Terkunci, atau Pusat Kontrol (iOS 18).",
+        descEn: "Place on Home Screen, Lock Screen, or Control Center (iOS 18).",
+      },
+      {
+        labelId: "02 Aksi",
+        labelEn: "02 Action",
+        descId: "Ketuk ikon pintasan untuk membuka Accrual dengan fokus instan pada angka.",
+        descEn: "Tap the shortcut button to launch Accrual with immediate keypad focus.",
+      },
+      {
+        labelId: "03 Jalankan",
+        labelEn: "03 Run",
+        descId: "Catat transaksi dalam hitungan detik tanpa jeda navigasi antarmuka.",
+        descEn: "Log transactions on the go in under 3 seconds with zero friction.",
+      },
+    ],
     siriPhraseId: "Hey Siri, Buka catat cepat di Accrual",
     siriPhraseEn: "Hey Siri, Open quick action in Accrual",
     testScheme: "accrual://quick-add",
-    category: "shortcut",
   },
   {
     id: "scan_receipt",
     name: "Scan Receipt",
-    titleId: "Pindai Resi & Struk",
-    titleEn: "Scan Receipt",
-    shortDescId: "Buka kamera pemindai struk fisik & faktur",
-    shortDescEn: "Open camera scanner for receipts & invoices",
-    fullDescId:
-      "Langsung mengaktifkan kamera pemindai struk belanja fisik, nota makan, dan faktur untuk diekstrak otomatis oleh mesin OCR berkecepatan tinggi.",
-    fullDescEn:
-      "Instantly launches the camera scanner for physical shopping receipts, dining slips, and invoices via high-speed on-device OCR.",
+    chipLabelId: "Pindai Struk",
+    chipLabelEn: "Scan Receipt",
+    titleId: "Kamera Pemindai Struk",
+    titleEn: "Camera Receipt Scanner",
+    shortDescId: "Buka pemindai struk fisik & nota belanja",
+    shortDescEn: "Instant camera scanner for paper receipts",
+    badgeId: "Kamera",
+    badgeEn: "Camera",
     icon: Camera,
+    steps: [
+      {
+        labelId: "01 Pemicu",
+        labelEn: "01 Trigger",
+        descId: "Tambahkan ke Pusat Kontrol atau tombol Layar Terkunci di iOS 18.",
+        descEn: "Add to Control Center or Lock Screen buttons in iOS 18.",
+      },
+      {
+        labelId: "02 Aksi",
+        labelEn: "02 Action",
+        descId: "Pilih 'Scan Receipt' untuk langsung mengaktifkan kamera pemindai nota.",
+        descEn: "Select 'Scan Receipt' to activate the camera document scanner directly.",
+      },
+      {
+        labelId: "03 Jalankan",
+        labelEn: "03 Run",
+        descId: "Mesin OCR lokal membaca nominal total, tanggal, dan nama toko secara instan.",
+        descEn: "On-device OCR extracts total amount, date, and merchant automatically.",
+      },
+    ],
     siriPhraseId: "Hey Siri, Pindai resi di Accrual",
     siriPhraseEn: "Hey Siri, Scan receipt in Accrual",
     testScheme: "accrual://scan",
-    category: "shortcut",
   },
 ];
 
@@ -195,10 +303,9 @@ export function AppleShortcutsGuideModal({
   const { showToast } = useToast();
   const isDark = theme !== "light";
 
-  const initial = useMemo(() => resolveInitialSelection(initialTab), [initialTab]);
-  const [activeTab, setActiveTab] = useState<ActiveTab>(initial.tab);
-  const [selectedActionId, setSelectedActionId] = useState<NativeActionId>(initial.action);
-  const [mockupMode, setMockupMode] = useState<"picker" | "action_card">("picker");
+  const initialActionId = useMemo(() => resolveInitialAction(initialTab), [initialTab]);
+  const [selectedActionId, setSelectedActionId] = useState<NativeActionId>(initialActionId);
+  const [mockupMode, setMockupMode] = useState<"library" | "card">("library");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const selectedAction = useMemo(
@@ -234,399 +341,407 @@ export function AppleShortcutsGuideModal({
     window.location.href = scheme;
   };
 
-  // ── Clean Monochrome Luxury Glass Tokens ──
-  const groupBg = isDark
-    ? "linear-gradient(160deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.02) 100%)"
-    : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)";
-
-  const groupBorder = isDark
-    ? "1px solid rgba(255, 255, 255, 0.08)"
-    : "1px solid rgba(0, 0, 0, 0.06)";
-
-  const groupShadow = isDark
-    ? "0 10px 28px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
-    : "0 4px 14px -4px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff";
-
-  const iconBg = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
-  const iconBorder = isDark
-    ? "1px solid rgba(255, 255, 255, 0.08)"
-    : "1px solid rgba(0, 0, 0, 0.05)";
-
-  const tabList: { key: ActiveTab; labelId: string; labelEn: string; icon: typeof Zap }[] = [
-    { key: "native_actions", labelId: "6 Aksi Bawaan", labelEn: "6 Native Actions", icon: Sparkles },
-    { key: "bank_notif", labelId: "Notifikasi Bank", labelEn: "Bank Automation", icon: Bell },
-    { key: "card_tx", labelId: "Transaksi Kartu", labelEn: "Card Transactions", icon: CreditCard },
-    { key: "back_tap", labelId: "Ketuk Belakang", labelEn: "Back Tap", icon: Smartphone },
-    { key: "action_button", labelId: "Tombol Tindakan", labelEn: "Action Button", icon: Sliders },
-    { key: "siri", labelId: "Perintah Siri", labelEn: "Siri Voice", icon: Mic },
-  ];
-
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="">
       <div
-        className="px-4 pb-8 space-y-5"
+        className="px-4 pb-8 space-y-4 font-sans select-none"
         style={{
           paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
         }}
       >
         {/* Header Hero */}
-        <div className="space-y-1.5 select-none pt-1">
+        <div className="text-center space-y-1 pt-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-white/10 bg-white/[0.04] text-[10.5px] font-medium tracking-wide uppercase text-[var(--text-tertiary)]">
             <Sparkles size={11} strokeWidth={1.75} />
-            <span>
-              {isIndonesian ? "Pusat Integrasi iOS" : "Apple Ecosystem Suite"}
-            </span>
+            <span>{isIndonesian ? "Ekosistem iOS" : "Apple Ecosystem"}</span>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[22px] font-semibold text-[var(--text-primary)] tracking-tight">
-              {isIndonesian ? "Pintasan & Automasi" : "Shortcuts & Automations"}
-            </h2>
-            <button
-              type="button"
-              onClick={openShortcutsApp}
-              className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-white/10 bg-white/[0.04] text-[var(--text-primary)] hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer"
-            >
-              <ExternalLink size={11} />
-              <span>{isIndonesian ? "Buka Pintasan" : "Open Shortcuts"}</span>
-            </button>
-          </div>
-          <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed">
+          <h2 className="text-[20px] font-semibold text-[var(--text-primary)] tracking-tight">
+            {isIndonesian ? "Pintasan & Automasi" : "Shortcuts & Automations"}
+          </h2>
+          <p className="text-[12px] text-[var(--text-tertiary)] max-w-xs mx-auto leading-relaxed">
             {isIndonesian
-              ? "Catat transaksi secara instan tanpa perlu membuka aplikasi Accrual melalui 6 aksi bawaan dan pemicu automasi iOS."
-              : "Quickly log new transactions without opening Accrual via 6 native actions and iOS automation triggers."}
+              ? "Catat pengeluaran instan tanpa membuka aplikasi melalui 6 aksi bawaan dan pemicu cerdas iOS."
+              : "Log expenses instantly without opening the app via 6 native actions and smart iOS triggers."}
           </p>
         </div>
 
-        {/* Top Category Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 select-none">
-          {tabList.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
+        {/* ==================================================================== */}
+        {/* TOP: AUTHENTIC REALISTIC IPHONE 16 PRO MOCKUP CHASSIS                */}
+        {/* ==================================================================== */}
+        <div className="relative w-full py-2 flex flex-col items-center justify-center">
+          {/* Subtle Ambient Studio Light Reflection */}
+          <div
+            className="pointer-events-none absolute -top-4 w-60 h-32 rounded-full"
+            style={{
+              background: isDark
+                ? "radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 70%)"
+                : "radial-gradient(ellipse, rgba(0,0,0,0.04) 0%, transparent 70%)",
+            }}
+          />
+
+          {/* iPhone 16 Pro Mockup Chassis */}
+          <div
+            className="relative"
+            style={{
+              width: 224,
+              height: 388,
+              borderRadius: 40,
+              padding: 3,
+              background: "linear-gradient(150deg, #3a3a40 0%, #1a1a1d 35%, #18181b 65%, #34343a 100%)",
+              boxShadow: isDark
+                ? "0 18px 45px -10px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.16), 0 0 0 2px #09090c"
+                : "0 16px 36px -10px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12), 0 0 0 2px #d4d4d8",
+            }}
+          >
+            {/* Side Hardware Micro Buttons */}
+            {/* Action Button */}
+            <div
+              style={{
+                position: "absolute",
+                left: -2.5,
+                top: 70,
+                width: 2.5,
+                height: 18,
+                borderRadius: "2px 0 0 2px",
+                background: "#2f2f35",
+              }}
+            />
+            {/* Volume Up */}
+            <div
+              style={{
+                position: "absolute",
+                left: -2.5,
+                top: 98,
+                width: 2.5,
+                height: 32,
+                borderRadius: "2px 0 0 2px",
+                background: "#2f2f35",
+              }}
+            />
+            {/* Volume Down */}
+            <div
+              style={{
+                position: "absolute",
+                left: -2.5,
+                top: 138,
+                width: 2.5,
+                height: 32,
+                borderRadius: "2px 0 0 2px",
+                background: "#2f2f35",
+              }}
+            />
+            {/* Power Button */}
+            <div
+              style={{
+                position: "absolute",
+                right: -2.5,
+                top: 110,
+                width: 2.5,
+                height: 48,
+                borderRadius: "0 2px 2px 0",
+                background: "#2f2f35",
+              }}
+            />
+
+            {/* OLED Screen Surface */}
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: 37,
+                background: "#000000",
+                overflow: "hidden",
+                position: "relative",
+                WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+                maskImage: "radial-gradient(white, black)",
+                isolation: "isolate",
+                transform: "translateZ(0)",
+              }}
+            >
+              {/* Dynamic Island */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 74,
+                  height: 19,
+                  borderRadius: 999,
+                  background: "#000000",
+                  border: "0.5px solid rgba(255,255,255,0.1)",
+                  zIndex: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0 7px",
+                }}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#0a0a0f" }} />
+                <div style={{ width: 7.5, height: 7.5, borderRadius: "50%", background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.12)" }} />
+              </div>
+
+              {/* Status Bar */}
+              <div className="absolute top-2 left-0 right-0 px-4 flex items-center justify-between text-[9.5px] font-mono text-zinc-300 z-30">
+                <span className="font-semibold">09:41</span>
+                <div className="flex items-center gap-1.5 text-[8.5px]">
+                  <span>5G</span>
+                  <div className="w-4 h-2 rounded-[2px] border border-zinc-300 p-0.5 flex items-center">
+                    <div className="w-full h-full bg-zinc-200 rounded-[1px]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Inside Screen Content */}
+              <div className="absolute inset-0 pt-9 pb-3 px-2.5 flex flex-col justify-between">
+                {/* Search Bar / Shortcuts Nav Header */}
+                <div className="space-y-1.5 shrink-0">
+                  <div className="flex items-center justify-between px-1 text-zinc-400 text-[10px]">
+                    <span className="font-semibold text-white tracking-tight">Accrual</span>
+                    <span className="font-mono text-[9px] text-zinc-500">6 Actions</span>
+                  </div>
+
+                  {/* Mode Segment: Library vs Card */}
+                  <div className="flex items-center p-0.5 rounded-lg bg-zinc-900 border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setMockupMode("library");
+                      }}
+                      className="flex-1 py-0.5 rounded text-[9.5px] font-medium transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                      style={{
+                        background: mockupMode === "library" ? "rgba(255,255,255,0.15)" : "transparent",
+                        color: mockupMode === "library" ? "#ffffff" : "#71717a",
+                      }}
+                    >
+                      <ListFilter size={10} />
+                      <span>{isIndonesian ? "Daftar" : "Library"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setMockupMode("card");
+                      }}
+                      className="flex-1 py-0.5 rounded text-[9.5px] font-medium transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                      style={{
+                        background: mockupMode === "card" ? "rgba(255,255,255,0.15)" : "transparent",
+                        color: mockupMode === "card" ? "#ffffff" : "#71717a",
+                      }}
+                    >
+                      <Eye size={10} />
+                      <span>{isIndonesian ? "Kartu" : "Flow"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* View 1: Real Action Library List */}
+                {mockupMode === "library" && (
+                  <div className="space-y-1 my-auto overflow-hidden">
+                    {NATIVE_ACTIONS.map((action) => {
+                      const Icon = action.icon;
+                      const isSelected = action.id === selectedActionId;
+                      return (
+                        <div
+                          key={action.id}
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setSelectedActionId(action.id);
+                          }}
+                          className="flex items-center justify-between p-1.5 rounded-lg transition-all cursor-pointer border"
+                          style={{
+                            background: isSelected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)",
+                            borderColor: isSelected ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.06)",
+                          }}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div
+                              className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                              style={{
+                                background: isSelected ? "#ffffff" : "rgba(255,255,255,0.08)",
+                                color: isSelected ? "#000000" : "#ffffff",
+                              }}
+                            >
+                              <Icon size={10.5} strokeWidth={2} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-semibold text-white truncate font-mono">
+                                {action.name}
+                              </div>
+                              <div className="text-[8px] text-zinc-400 truncate">
+                                {isIndonesian ? action.chipLabelId : action.chipLabelEn}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="w-3.5 h-3.5 rounded-full border border-white/20 flex items-center justify-center text-[7.5px] text-zinc-400 italic">
+                            i
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* View 2: Live Action Block Execution */}
+                {mockupMode === "card" && (
+                  <div className="my-auto space-y-2 p-2 rounded-xl bg-zinc-900/90 border border-white/12 text-left">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-4 h-4 rounded bg-white text-black flex items-center justify-center text-[8px] font-bold">
+                          A
+                        </div>
+                        <span className="text-[10px] font-bold text-white truncate">
+                          {selectedAction.name}
+                        </span>
+                      </div>
+                      <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">
+                        AppIntent
+                      </span>
+                    </div>
+
+                    {/* Parameter Syntax with Authentic Blue Variable Tokens */}
+                    <div className="text-[10px] leading-relaxed text-zinc-300 font-sans">
+                      {selectedAction.id === "notif_reader" && (
+                        <div>
+                          <span>Log </span>
+                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
+                            Notification
+                          </span>
+                          <span> to Accrual automatically</span>
+                        </div>
+                      )}
+
+                      {selectedAction.id === "card_transaction" && (
+                        <div>
+                          <span>Log </span>
+                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
+                            Amount
+                          </span>
+                          <span> at </span>
+                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
+                            Merchant
+                          </span>
+                          <span> with </span>
+                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
+                            Card
+                          </span>
+                        </div>
+                      )}
+
+                      {selectedAction.id === "voice_entry" && (
+                        <div>
+                          <div className="flex items-center gap-1 mb-1 text-[#5AC8FA]">
+                            <Mic size={10} />
+                            <span className="text-[9px] font-semibold font-mono">Siri AI NLP</span>
+                          </div>
+                          <span>"Kopi 25rb bayar pakai Cash"</span>
+                        </div>
+                      )}
+
+                      {selectedAction.id === "screen_scanner" && (
+                        <div>
+                          <span>Extract receipt from </span>
+                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
+                            Screenshot
+                          </span>
+                          <span> via Live Text OCR</span>
+                        </div>
+                      )}
+
+                      {selectedAction.id === "quick_action" && (
+                        <div>
+                          <span>Open transaction modal with numeric keypad focus</span>
+                        </div>
+                      )}
+
+                      {selectedAction.id === "scan_receipt" && (
+                        <div>
+                          <span>Launch document camera scanner with edge detection</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-[8px] text-zinc-500 border-t border-white/06 pt-1 flex items-center justify-between">
+                      <span>{isIndonesian ? "Eksekusi Hening" : "Silent Execution"}</span>
+                      <span className="text-zinc-400">iOS 16+</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Home Indicator */}
+                <div className="w-20 h-1 bg-white/30 rounded-full mx-auto shrink-0" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ==================================================================== */}
+        {/* ACTION SELECTOR CHIPS (HORIZONTAL SCROLL)                             */}
+        {/* ==================================================================== */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 py-1">
+          {NATIVE_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            const isSelected = action.id === selectedActionId;
             return (
               <button
-                key={tab.key}
+                key={action.id}
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
-                  setActiveTab(tab.key);
-                  if (tab.key === "bank_notif") setSelectedActionId("notif_reader");
-                  else if (tab.key === "card_tx") setSelectedActionId("card_transaction");
-                  else if (tab.key === "back_tap") setSelectedActionId("screen_scanner");
-                  else if (tab.key === "action_button") setSelectedActionId("voice_entry");
-                  else if (tab.key === "siri") setSelectedActionId("voice_entry");
+                  setSelectedActionId(action.id);
                 }}
                 className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-medium transition-all cursor-pointer border"
                 style={{
-                  background: isActive
+                  background: isSelected
                     ? isDark
                       ? "rgba(255, 255, 255, 0.12)"
                       : "#18181b"
-                    : iconBg,
-                  borderColor: isActive
+                    : isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                  borderColor: isSelected
                     ? isDark
                       ? "rgba(255, 255, 255, 0.22)"
                       : "#18181b"
                     : isDark
                       ? "rgba(255, 255, 255, 0.06)"
                       : "rgba(0, 0, 0, 0.05)",
-                  color: isActive ? "#ffffff" : "var(--text-secondary)",
-                  boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
+                  color: isSelected ? "#ffffff" : "var(--text-secondary)",
+                  boxShadow: isSelected ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
                 }}
               >
-                <Icon size={12.5} strokeWidth={1.8} />
-                <span>{isIndonesian ? tab.labelId : tab.labelEn}</span>
+                <Icon size={12} strokeWidth={1.8} />
+                <span>{isIndonesian ? action.chipLabelId : action.chipLabelEn}</span>
               </button>
             );
           })}
         </div>
 
         {/* ==================================================================== */}
-        {/* INTERACTIVE REALISTIC IPHONE DEVICE MOCKUP (FRONT-AND-CENTER)        */}
+        {/* BOTTOM: CONCISE & MODERN 3-STEP HOW-TO RECIPE                         */}
         {/* ==================================================================== */}
         <div
-          className="rounded-3xl p-4 relative overflow-hidden select-none border transition-all"
+          className="p-3.5 rounded-2xl border space-y-3"
           style={{
             background: isDark
-              ? "radial-gradient(ellipse at 50% -20%, rgba(255,255,255,0.08) 0%, rgba(18,18,20,0.98) 75%)"
-              : "radial-gradient(ellipse at 50% -20%, rgba(0,0,0,0.03) 0%, #ffffff 85%)",
-            borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
-            boxShadow: groupShadow,
+              ? "linear-gradient(160deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.015) 100%)"
+              : "linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)",
+            borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+            boxShadow: isDark
+              ? "0 8px 24px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
+              : "0 4px 14px -4px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff",
           }}
         >
-          {/* Hardware Status Bar (Clock, Dynamic Island, 5G, Battery) */}
-          <div className="flex items-center justify-between mb-3 px-1 text-[11px] font-mono text-[var(--text-tertiary)]">
-            <span>09:20</span>
-            <div className="w-16 h-3.5 bg-black rounded-full mx-auto border border-white/10 shadow-inner flex items-center justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-1.5" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span>5G</span>
-              <span className="text-[10px]">62%</span>
-            </div>
-          </div>
-
-          {/* Search App Header in iOS Shortcuts & Screen Mode Switcher */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10">
-              <div className="flex items-center gap-2 min-w-0">
-                <Search size={13} className="text-[var(--text-tertiary)] shrink-0" />
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-[11px] font-semibold text-[var(--text-primary)]">
-                  <span className="w-3.5 h-3.5 rounded-sm bg-black border border-white/20 flex items-center justify-center text-[8.5px] font-bold text-white">
-                    A
-                  </span>
-                  <span>Accrual</span>
-                </div>
+          {/* Action Header */}
+          <div className="flex items-center justify-between gap-2 border-b border-white/06 pb-2.5">
+            <div className="min-w-0">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
+                {isIndonesian ? selectedAction.badgeId : selectedAction.badgeEn}
               </div>
-
-              {/* In-device View Mode Toggle */}
-              <div className="flex items-center p-0.5 rounded-lg bg-black/40 border border-white/10 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setMockupMode("picker");
-                  }}
-                  className="px-2 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer"
-                  style={{
-                    background: mockupMode === "picker" ? "rgba(255,255,255,0.14)" : "transparent",
-                    color: mockupMode === "picker" ? "#ffffff" : "var(--text-tertiary)",
-                  }}
-                >
-                  {isIndonesian ? "Daftar Aksi" : "Action Picker"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setMockupMode("action_card");
-                  }}
-                  className="px-2 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer flex items-center gap-1"
-                  style={{
-                    background: mockupMode === "action_card" ? "rgba(255,255,255,0.14)" : "transparent",
-                    color: mockupMode === "action_card" ? "#ffffff" : "var(--text-tertiary)",
-                  }}
-                >
-                  <Eye size={10} />
-                  <span>{isIndonesian ? "Kartu Aksi" : "Action Card"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* MODE 1: Interactive Native Actions List inside Shortcuts App */}
-            {mockupMode === "picker" && (
-              <div className="space-y-1.5">
-                {NATIVE_ACTIONS.map((action) => {
-                  const ActionIcon = action.icon;
-                  const isSelected = selectedActionId === action.id;
-                  return (
-                    <button
-                      key={action.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setSelectedActionId(action.id);
-                        if (action.id === "notif_reader") setActiveTab("bank_notif");
-                        else if (action.id === "card_transaction") setActiveTab("card_tx");
-                        else if (action.id === "screen_scanner") setActiveTab("back_tap");
-                        else if (action.id === "voice_entry") setActiveTab("action_button");
-                        else setActiveTab("native_actions");
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all cursor-pointer text-left border"
-                      style={{
-                        background: isSelected
-                          ? isDark
-                            ? "rgba(255, 255, 255, 0.08)"
-                            : "rgba(0, 0, 0, 0.05)"
-                          : "transparent",
-                        borderColor: isSelected
-                          ? isDark
-                            ? "rgba(255, 255, 255, 0.16)"
-                            : "rgba(0, 0, 0, 0.12)"
-                          : "transparent",
-                      }}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                        <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform"
-                          style={{
-                            background: isSelected ? "var(--text-primary)" : iconBg,
-                            color: isSelected
-                              ? isDark
-                                ? "#09090c"
-                                : "#ffffff"
-                              : "var(--text-primary)",
-                            border: iconBorder,
-                            transform: isSelected ? "scale(1.05)" : "scale(1)",
-                          }}
-                        >
-                          <ActionIcon size={14} strokeWidth={1.8} />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[12px] font-medium text-[var(--text-primary)] truncate font-mono">
-                            {action.name}
-                          </div>
-                          <div className="text-[10px] text-[var(--text-tertiary)] truncate">
-                            {isIndonesian ? action.shortDescId : action.shortDescEn}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {action.category === "automation" && (
-                          <span className="text-[8.5px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-[var(--text-tertiary)] border border-white/08">
-                            Auto
-                          </span>
-                        )}
-                        <div
-                          className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-serif italic transition-colors"
-                          style={{
-                            borderColor: isSelected ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.08)",
-                            color: isSelected ? "#ffffff" : "var(--text-tertiary)",
-                          }}
-                        >
-                          i
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* MODE 2: Realistic iOS Shortcuts Action Card Simulation with Blue Variable Tokens */}
-            {mockupMode === "action_card" && (
-              <div className="space-y-2 pt-1 animate-fadeIn">
-                <div
-                  className="p-3.5 rounded-2xl border space-y-2.5"
-                  style={{
-                    background: isDark
-                      ? "linear-gradient(180deg, #18181d 0%, #121215 100%)"
-                      : "linear-gradient(180deg, #ffffff 0%, #f4f4f7 100%)",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    boxShadow: "0 8px 24px -6px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-md bg-black border border-white/20 flex items-center justify-center text-[9px] font-bold text-white">
-                        A
-                      </div>
-                      <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                        {selectedAction.name}
-                      </span>
-                    </div>
-                    <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-[var(--text-secondary)] border border-white/10">
-                      AppIntent
-                    </span>
-                  </div>
-
-                  {/* Dynamic Parameter Syntax with Authentic Blue Variable Tokens */}
-                  {selectedAction.id === "notif_reader" && (
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 text-[12px] leading-relaxed text-zinc-300 font-sans">
-                      <span>Log notification </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Notification
-                      </span>
-                      <span> titled </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Title
-                      </span>
-                      <span> subtitled </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Subtitle
-                      </span>
-                      <span> from </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        App
-                      </span>
-                      <span> at </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Received At
-                      </span>
-                    </div>
-                  )}
-
-                  {selectedAction.id === "card_transaction" && (
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 text-[12px] leading-relaxed text-zinc-300 font-sans">
-                      <span>Log card transaction </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Amount
-                      </span>
-                      <span> at </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Merchant
-                      </span>
-                      <span> with </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Card
-                      </span>
-                    </div>
-                  )}
-
-                  {selectedAction.id === "voice_entry" && (
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 text-[12px] leading-relaxed text-zinc-300 font-sans">
-                      <span>Voice entry: </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Spoken Text
-                      </span>
-                      <div className="pt-2 text-[11px] text-[var(--text-tertiary)] italic">
-                        {isIndonesian
-                          ? "Kecerdasan AI NLP otomatis mengurai nominal, kategori, dan dompet secara bebas genggam."
-                          : "AI NLP intelligence automatically parses amount, category, and wallet hands-free."}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedAction.id === "screen_scanner" && (
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 text-[12px] leading-relaxed text-zinc-300 font-sans">
-                      <span>Scan payment screenshot from </span>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[10.5px] font-semibold">
-                        Screenshot File
-                      </span>
-                      <div className="pt-2 text-[11px] text-[var(--text-tertiary)] italic">
-                        {isIndonesian
-                          ? "Mengekstraksi slip transfer dan QRIS via mesin OCR lokal."
-                          : "Extracts transfer slips and QRIS confirmations via on-device OCR."}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedAction.id === "quick_action" && (
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 text-[12px] leading-relaxed text-zinc-300 font-sans">
-                      <span>Open quick transaction entry keypad in Accrual</span>
-                    </div>
-                  )}
-
-                  {selectedAction.id === "scan_receipt" && (
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 text-[12px] leading-relaxed text-zinc-300 font-sans">
-                      <span>Open camera scanner for receipts and invoices</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ==================================================================== */}
-        {/* DETAIL WORKSTATION FOR THE CURRENTLY SELECTED ACTION                 */}
-        {/* ==================================================================== */}
-        <div
-          className="p-4 rounded-2xl border space-y-3.5"
-          style={{
-            background: groupBg,
-            border: groupBorder,
-            boxShadow: groupShadow,
-          }}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-0.5 min-w-0">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)]">
-                {isIndonesian ? "Aksi Terpilih" : "Selected Action"}
-              </span>
-              <h3 className="text-[15px] font-semibold text-[var(--text-primary)] truncate">
+              <div className="text-[14px] font-semibold text-[var(--text-primary)] truncate">
                 {isIndonesian ? selectedAction.titleId : selectedAction.titleEn}
-              </h3>
+              </div>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
@@ -634,462 +749,100 @@ export function AppleShortcutsGuideModal({
                 <button
                   type="button"
                   onClick={() => handleTestScheme(selectedAction.testScheme)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-medium border border-white/10 bg-white/[0.04] text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-medium border border-white/10 bg-white/[0.04] text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
                 >
-                  <ExternalLink size={11} />
-                  <span>{isIndonesian ? "Uji Buka" : "Test Run"}</span>
+                  <Play size={10} />
+                  <span>{isIndonesian ? "Uji Coba" : "Test Run"}</span>
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* 3 Streamlined Numbered Steps */}
+          <div className="space-y-2 text-[11.5px]">
+            {selectedAction.steps.map((step, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05"
+              >
+                <span className="font-mono text-[10px] font-semibold text-[var(--text-tertiary)] px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/08 shrink-0 mt-0.5">
+                  {idx + 1}
+                </span>
+                <div className="min-w-0 leading-relaxed text-[var(--text-secondary)]">
+                  <span className="font-semibold text-[var(--text-primary)] mr-1">
+                    {isIndonesian ? step.labelId : step.labelEn}:
+                  </span>
+                  <span>{isIndonesian ? step.descId : step.descEn}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Helper Bar */}
+          {selectedAction.siriPhraseEn && (
+            <div className="pt-1 flex items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.02] border border-white/06 text-[11px]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Mic size={12} className="text-[var(--text-tertiary)] shrink-0" />
+                <span className="text-[var(--text-tertiary)] shrink-0 font-medium">Siri:</span>
+                <span className="text-[var(--text-primary)] truncate font-mono text-[10.5px]">
+                  "{isIndonesian ? selectedAction.siriPhraseId : selectedAction.siriPhraseEn}"
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={openShortcutsApp}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-medium border border-white/10 bg-white/[0.06] text-white active:scale-95 transition-all cursor-pointer"
+                onClick={() =>
+                  handleCopy(
+                    isIndonesian ? selectedAction.siriPhraseId : selectedAction.siriPhraseEn,
+                    `siri-${selectedAction.id}`,
+                    isIndonesian ? "Frasa Siri" : "Siri Phrase",
+                  )
+                }
+                className="p-1 rounded-md border border-white/10 bg-white/[0.04] text-[var(--text-tertiary)] active:text-white transition-colors cursor-pointer shrink-0"
               >
-                <span>{isIndonesian ? "Atur" : "Setup"}</span>
+                {copiedKey === `siri-${selectedAction.id}` ? (
+                  <Check size={11} className="text-white" />
+                ) : (
+                  <Copy size={11} />
+                )}
               </button>
-            </div>
-          </div>
-
-          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-            {isIndonesian ? selectedAction.fullDescId : selectedAction.fullDescEn}
-          </p>
-
-          {/* Siri Trigger Pill */}
-          <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/08 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Mic size={13} className="text-[var(--text-tertiary)] shrink-0" />
-              <div className="min-w-0">
-                <div className="text-[10px] text-[var(--text-tertiary)] font-medium">
-                  {isIndonesian ? "Frasa Perintah Siri" : "Siri Voice Trigger"}
-                </div>
-                <div className="text-[11.5px] font-semibold text-[var(--text-primary)] truncate font-mono">
-                  {isIndonesian ? selectedAction.siriPhraseId : selectedAction.siriPhraseEn}
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                handleCopy(
-                  isIndonesian ? selectedAction.siriPhraseId : selectedAction.siriPhraseEn,
-                  `siri-${selectedAction.id}`,
-                  isIndonesian ? "Frasa Siri" : "Siri Phrase",
-                )
-              }
-              className="p-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-[var(--text-tertiary)] active:text-white transition-colors cursor-pointer shrink-0"
-            >
-              {copiedKey === `siri-${selectedAction.id}` ? (
-                <Check size={12} className="text-white" />
-              ) : (
-                <Copy size={12} />
-              )}
-            </button>
-          </div>
-
-          {/* Variable Mapping Token Table (Specifically for Notification Reader) */}
-          {selectedAction.id === "notif_reader" && (
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/06 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-[var(--text-primary)]">
-                  {isIndonesian ? "Pemetaan Variabel Pintasan" : "Shortcuts Variable Mapping"}
-                </span>
-                <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
-                  5 Parameters
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 text-[10.5px] font-mono">
-                <div className="p-1.5 rounded bg-black/40 border border-white/08 text-zinc-300">
-                  Notification → <span className="text-[#5AC8FA]">Notification</span>
-                </div>
-                <div className="p-1.5 rounded bg-black/40 border border-white/08 text-zinc-300">
-                  Title → <span className="text-[#5AC8FA]">Title</span>
-                </div>
-                <div className="p-1.5 rounded bg-black/40 border border-white/08 text-zinc-300">
-                  Subtitle → <span className="text-[#5AC8FA]">Subtitle</span>
-                </div>
-                <div className="p-1.5 rounded bg-black/40 border border-white/08 text-zinc-300">
-                  App → <span className="text-[#5AC8FA]">App</span>
-                </div>
-                <div className="col-span-2 p-1.5 rounded bg-black/40 border border-white/08 text-zinc-300">
-                  Received At → <span className="text-[#5AC8FA]">Current Date</span>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* Smart Promo Filtering Safety Notice */}
           {selectedAction.id === "notif_reader" && (
-            <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/06 flex items-start gap-2.5 text-[11px] text-[var(--text-secondary)]">
-              <ShieldCheck size={14} className="text-white shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {isIndonesian ? "Filter Promo Otomatis: " : "Smart Promo Filter: "}
-                </span>
+            <div className="p-2 rounded-xl bg-white/[0.02] border border-white/06 flex items-center gap-2 text-[10.5px] text-[var(--text-tertiary)]">
+              <ShieldCheck size={12} className="text-white shrink-0" />
+              <span>
                 {isIndonesian
-                  ? "Accrual otomatis menyaring dan mengabaikan notifikasi belanja diskon, cashback, voucher, atau kupon tanpa mutasi finansial nyata agar buku kas Anda tetap bersih."
-                  : "Accrual automatically detects and ignores marketing promotions, discount vouchers, and cashback push notifications without valid transaction mutations."}
-              </div>
+                  ? "Filter promo aktif: notifikasi voucher dan promo diabaikan otomatis."
+                  : "Promo filter active: marketing discounts & coupons are silently ignored."}
+              </span>
             </div>
           )}
         </div>
 
-        {/* ==================================================================== */}
-        {/* CONTEXTUAL STEP-BY-STEP RECIPE GUIDES                                */}
-        {/* ==================================================================== */}
-
-        {/* 1. BANK NOTIFICATION AUTOMATION RECIPE */}
-        {activeTab === "bank_notif" && (
-          <div
-            className="p-4 rounded-2xl border space-y-3"
+        {/* Bottom CTA Action Bar */}
+        <div className="pt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={openShortcutsApp}
+            className="flex-1 h-11 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.985] transition-all cursor-pointer border"
             style={{
-              background: groupBg,
-              border: groupBorder,
-              boxShadow: groupShadow,
+              background: isDark ? "rgba(255, 255, 255, 0.09)" : "#18181b",
+              borderColor: isDark ? "rgba(255, 255, 255, 0.16)" : "#18181b",
+              color: "#ffffff",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-[13.5px]">
-                <Bell size={15} strokeWidth={1.8} />
-                <span>
-                  {isIndonesian
-                    ? "Resep: Automasi Notifikasi Bank"
-                    : "Recipe: Bank Notification Automation"}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={openShortcutsApp}
-                className="flex items-center gap-1 text-[11px] font-medium text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-              >
-                <span>{isIndonesian ? "Buka Pintasan" : "Open Shortcuts"}</span>
-                <ExternalLink size={10} />
-              </button>
-            </div>
-
-            <div className="space-y-2 text-[11.5px] text-[var(--text-secondary)]">
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  1
-                </span>
-                <div>
-                  <div className="font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Pilih Tab Automasi di Pintasan" : "Select Automation Tab in Shortcuts"}
-                  </div>
-                  <div>
-                    {isIndonesian
-                      ? "Buka aplikasi Pintasan › Ketuk tab 'Automasi' di bawah › Ketuk (+) Automasi Baru."
-                      : "Open Shortcuts app › Tap 'Automation' tab at the bottom › Tap (+) New Automation."}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  2
-                </span>
-                <div>
-                  <div className="font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Pilih Pemicu Notifikasi" : "Choose Notification Trigger"}
-                  </div>
-                  <div>
-                    {isIndonesian
-                      ? "Pilih pemicu 'Saat Menerima Notifikasi' (When I Receive Notification)."
-                      : "Select 'When I Receive Notification' as the automation trigger."}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  3
-                </span>
-                <div>
-                  <div className="font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Pilih Aplikasi Finansial Anda" : "Select Your Financial Apps"}
-                  </div>
-                  <div>
-                    {isIndonesian
-                      ? "Pilih satu atau beberapa aplikasi bank & e-wallet (BCA, Livin by Mandiri, BRImo, GoPay, DANA, OVO, ShopeePay, SeaBank)."
-                      : "Select your banking & wallet apps (e.g. BCA, Livin by Mandiri, BRImo, GoPay, DANA, OVO, ShopeePay, SeaBank)."}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  4
-                </span>
-                <div>
-                  <div className="font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Tambahkan Aksi Accrual" : "Add Accrual Action"}
-                  </div>
-                  <div>
-                    {isIndonesian
-                      ? "Cari 'Accrual' › Pilih aksi 'Log Notification Transaction'."
-                      : "Search 'Accrual' › Select 'Log Notification Transaction' action."}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  5
-                </span>
-                <div>
-                  <div className="font-semibold text-[var(--text-primary)]">
-                    {isIndonesian ? "Jalankan Segera Secara Hening" : "Run Immediately & Silently"}
-                  </div>
-                  <div>
-                    {isIndonesian
-                      ? "Centang 'Jalankan Segera' (Run Immediately) dan matikan 'Beri Tahu Saat Dijalankan' agar pencatatan hening di latar belakang."
-                      : "Check 'Run Immediately' and disable 'Notify When Run' for silent background entry."}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 2. CARD TRANSACTION AUTOMATION RECIPE */}
-        {activeTab === "card_tx" && (
-          <div
-            className="p-4 rounded-2xl border space-y-3"
-            style={{
-              background: groupBg,
-              border: groupBorder,
-              boxShadow: groupShadow,
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-[13.5px]">
-                <CreditCard size={15} strokeWidth={1.8} />
-                <span>
-                  {isIndonesian
-                    ? "Resep: Sinkronisasi Transaksi Kartu"
-                    : "Recipe: Card Transaction Sync"}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={openShortcutsApp}
-                className="flex items-center gap-1 text-[11px] font-medium text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-              >
-                <span>{isIndonesian ? "Buka Pintasan" : "Open Shortcuts"}</span>
-                <ExternalLink size={10} />
-              </button>
-            </div>
-
-            <div className="space-y-2 text-[11.5px] text-[var(--text-secondary)]">
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  1
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Buka aplikasi Pintasan › Tab Automasi › (+) Automasi Baru › Pilih 'Transaksi'."
-                    : "Open Shortcuts app › Automation tab › (+) New Automation › Select 'Transaction'."}
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  2
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Pilih kartu Anda (atau Semua Kartu) dan centang 'Jalankan Segera' (Run Immediately)."
-                    : "Choose your card (or Any Card) and check 'Run Immediately'."}
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  3
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Pilih aksi 'Log Card Transaction' dari Accrual dan hubungkan variabel Amount, Merchant, dan Card."
-                    : "Select Accrual's 'Log Card Transaction' and map Amount, Merchant, and Card variables."}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 3. BACK TAP RECIPE */}
-        {activeTab === "back_tap" && (
-          <div
-            className="p-4 rounded-2xl border space-y-3"
-            style={{
-              background: groupBg,
-              border: groupBorder,
-              boxShadow: groupShadow,
-            }}
-          >
-            <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-[13.5px]">
-              <Smartphone size={15} strokeWidth={1.8} />
-              <span>
-                {isIndonesian
-                  ? "Resep: Ketuk Bagian Belakang iPhone (Back Tap)"
-                  : "Recipe: Link to iPhone Back Tap"}
-              </span>
-            </div>
-            <div className="space-y-2 text-[11.5px] text-[var(--text-secondary)]">
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  1
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Buka Pengaturan iPhone › Aksesibilitas › Sentuh › Ketuk Bagian Belakang."
-                    : "Open iPhone Settings › Accessibility › Touch › Back Tap."}
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  2
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Pilih 'Ketuk Dua Kali' atau 'Ketuk Tiga Kali' › Gulir ke bagian Pintasan."
-                    : "Select 'Double Tap' or 'Triple Tap' › Scroll down to Shortcuts."}
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  3
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Pilih 'Scan Payment Screenshot' atau 'Voice Entry'. Mengetuk punggung iPhone langsung mengekstrak slip atau mencatat suara!"
-                    : "Choose 'Scan Payment Screenshot' or 'Voice Entry'. Tapping your iPhone's back immediately prompts entry!"}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 4. ACTION BUTTON RECIPE */}
-        {activeTab === "action_button" && (
-          <div
-            className="p-4 rounded-2xl border space-y-3"
-            style={{
-              background: groupBg,
-              border: groupBorder,
-              boxShadow: groupShadow,
-            }}
-          >
-            <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-[13.5px]">
-              <Sliders size={15} strokeWidth={1.8} />
-              <span>
-                {isIndonesian
-                  ? "Resep: Tombol Tindakan (iPhone 15 Pro / 16)"
-                  : "Recipe: Action Button (iPhone 15 Pro / 16)"}
-              </span>
-            </div>
-            <div className="space-y-2 text-[11.5px] text-[var(--text-secondary)]">
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  1
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Buka Pengaturan iPhone › Tombol Tindakan."
-                    : "Open iPhone Settings › Action Button."}
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  2
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Geser ke opsi 'Pintasan' › Ketuk tombol pemilih pintasan."
-                    : "Swipe to 'Shortcut' › Tap the shortcut picker button."}
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05">
-                <span className="w-5 h-5 rounded-full bg-white/10 text-white font-mono text-[10px] flex items-center justify-center shrink-0">
-                  3
-                </span>
-                <div>
-                  {isIndonesian
-                    ? "Pilih aksi Accrual seperti 'Voice Entry' atau 'Scan Receipt'. Satu tekanan tombol fisik langsung siap mencatat!"
-                    : "Pick an Accrual action such as 'Voice Entry' or 'Scan Receipt'. Press the physical button to log instantly!"}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 5. SIRI COMMANDS RECIPE */}
-        {activeTab === "siri" && (
-          <div
-            className="p-4 rounded-2xl border space-y-3"
-            style={{
-              background: groupBg,
-              border: groupBorder,
-              boxShadow: groupShadow,
-            }}
-          >
-            <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-[13.5px]">
-              <Mic size={15} strokeWidth={1.8} />
-              <span>
-                {isIndonesian
-                  ? "Resep: Perintah Suara Bebas Genggam Siri"
-                  : "Recipe: Hands-free Siri Voice Commands"}
-              </span>
-            </div>
-            <p className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
-              {isIndonesian
-                ? "Sistem AppShortcutsProvider otomatis mendaftarkan frasa Siri ke iOS saat aplikasi terpasang. Anda cukup memanggil Siri dengan kalimat berikut:"
-                : "AppShortcutsProvider automatically indexes Siri phrases into iOS on install. Simply invoke Siri with any of these phrases:"}
-            </p>
-            <div className="space-y-1.5 font-mono text-[11px]">
-              {[
-                { en: "Hey Siri, Voice log to Accrual", id: "Hey Siri, Voice log to Accrual" },
-                { en: "Hey Siri, Log notification in Accrual", id: "Hey Siri, Catat notifikasi di Accrual" },
-                { en: "Hey Siri, Log card payment in Accrual", id: "Hey Siri, Catat transaksi kartu di Accrual" },
-                { en: "Hey Siri, Open quick action in Accrual", id: "Hey Siri, Buka catat cepat di Accrual" },
-              ].map((item, idx) => {
-                const phrase = isIndonesian ? item.id : item.en;
-                return (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/06 text-[var(--text-primary)]"
-                  >
-                    <span>"{phrase}"</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(phrase, `phrase-${idx}`, "Frasa Siri")}
-                      className="p-1 rounded text-[var(--text-tertiary)] active:text-white cursor-pointer"
-                    >
-                      {copiedKey === `phrase-${idx}` ? (
-                        <Check size={11} className="text-white" />
-                      ) : (
-                        <Copy size={11} />
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom Done Button */}
-        <div className="pt-2">
+            <ExternalLink size={13} />
+            <span>{isIndonesian ? "Buka Pintasan" : "Open Shortcuts"}</span>
+          </button>
           <button
             type="button"
             onClick={() => {
               triggerHaptic("light");
               onClose();
             }}
-            className="w-full h-11 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 active:scale-[0.985] transition-all cursor-pointer border"
-            style={{
-              background: isDark ? "rgba(255, 255, 255, 0.09)" : "#18181b",
-              borderColor: isDark ? "rgba(255, 255, 255, 0.16)" : "#18181b",
-              color: "#ffffff",
-              boxShadow: groupShadow,
-            }}
+            className="h-11 px-6 rounded-2xl font-semibold text-[13px] flex items-center justify-center border border-white/10 bg-white/[0.04] text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
           >
             <span>{isIndonesian ? "Selesai" : "Done"}</span>
           </button>
