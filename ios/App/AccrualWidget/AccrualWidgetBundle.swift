@@ -8,6 +8,7 @@ struct AccrualCoreHomeWidgets: WidgetBundle {
         LiquidCashRunwayWidget()
         SavingsRateRingWidget()
         MonthlyCashflowBarWidget()
+        SafeToSpendWidget()
     }
 }
 
@@ -31,11 +32,23 @@ struct AccrualLockScreenWidgets: WidgetBundle {
     }
 }
 
+@available(iOS 18.0, *)
+struct AccrualControlWidgets: WidgetBundle {
+    var body: some Widget {
+        AccrualVoiceControl()
+        AccrualScanControl()
+        AccrualQuickAddControl()
+    }
+}
+
 @main
 struct AccrualWidgetBundle: WidgetBundle {
     var body: some Widget {
         AccrualCoreHomeWidgets().body
         AccrualAdvancedHomeWidgets().body
         AccrualLockScreenWidgets().body
+        if #available(iOS 18.0, *) {
+            AccrualControlWidgets().body
+        }
     }
 }

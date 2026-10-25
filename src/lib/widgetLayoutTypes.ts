@@ -250,6 +250,17 @@ export const DEFAULT_HOME_WIDGETS: CardWidgetConfig[] = [
     order: 20,
     isVisible: false,
   },
+  {
+    id: "safe_to_spend",
+    title: "Safe to Spend",
+    subtitle: "Pacing allowance, daily budget & remaining days",
+    page: "home",
+    category: "planning",
+    size: "half",
+    supportedSizes: ["full", "half"],
+    order: 21,
+    isVisible: true,
+  },
 ];
 
 export const WIDGET_LOCALIZED_META: Record<
@@ -383,6 +394,10 @@ export const WIDGET_LOCALIZED_META: Record<
   personal_baselines: {
     en: { title: "Personal Baseline Spending", subtitle: "Minimum survival benchmark & expense tolerance boundaries" },
     id: { title: "Batas Dasar Beban Pribadi", subtitle: "Benchmark pengeluaran minimum & batas toleransi beban" },
+  },
+  safe_to_spend: {
+    en: { title: "Safe to Spend", subtitle: "Pacing allowance, daily budget & remaining days" },
+    id: { title: "Aman Belanja", subtitle: "Laju aman belanja, anggaran harian & sisa hari" },
   },
 };
 

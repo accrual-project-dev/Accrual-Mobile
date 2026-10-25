@@ -7,4 +7,5 @@ export * from "./MiniHeatmapCard";
 export * from "./HealthMeterCard";
 export * from "./LiquidRunwayCard";
 export * from "./CalendarCard";
+export * from "./SafeToSpendCard";
 export * from "./WidgetFallbackCard";

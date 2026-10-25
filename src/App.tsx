@@ -351,11 +351,16 @@ function AppShell() {
     const handleOpenScanner = () => {
       setReceiptScanOpen(true);
     };
+    const handleOpenVoice = () => {
+      setVoiceModalOpen(true);
+    };
     window.addEventListener("trouvaille:open-quick-add", handleOpenQuickAdd);
     window.addEventListener("trouvaille:open-scanner", handleOpenScanner);
+    window.addEventListener("trouvaille:open-voice", handleOpenVoice);
     return () => {
       window.removeEventListener("trouvaille:open-quick-add", handleOpenQuickAdd);
       window.removeEventListener("trouvaille:open-scanner", handleOpenScanner);
+      window.removeEventListener("trouvaille:open-voice", handleOpenVoice);
     };
   }, []);
 

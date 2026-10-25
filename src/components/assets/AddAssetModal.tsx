@@ -1236,6 +1236,52 @@ export function AddAssetModal({
                     </div>
                   </div>
 
+                  {/* Asset Name & Ticker Input for Custom & Editable Assets */}
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="col-span-2">
+                      <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block mb-1 px-1">
+                        {isIndonesian ? "Nama Aset" : "Asset Name"}
+                      </label>
+                      <input
+                        type="text"
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        placeholder={
+                          isIndonesian
+                            ? "cth: Apartemen Sudirman, Emas Antam"
+                            : "e.g. Rental Apartment, Antam Gold"
+                        }
+                        className="w-full h-10 px-3.5 rounded-2xl text-[13px] font-semibold outline-none transition-all"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.05)"
+                            : "rgba(0, 0, 0, 0.03)",
+                          border: "1px solid var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block mb-1 px-1">
+                        {isIndonesian ? "Kode / Simbol" : "Symbol"}
+                      </label>
+                      <input
+                        type="text"
+                        value={formSymbol}
+                        onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
+                        placeholder="KODE"
+                        className="w-full h-10 px-3.5 rounded-2xl text-[13px] font-semibold outline-none transition-all uppercase"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.05)"
+                            : "rgba(0, 0, 0, 0.03)",
+                          border: "1px solid var(--glass-border)",
+                          color: "var(--text-primary)",
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   {/* Quantity & Buy Price */}
                   <div className="grid grid-cols-2 gap-2.5">
                     <div>

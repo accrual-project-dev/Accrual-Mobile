@@ -13,6 +13,7 @@ import { useWalletBalances } from "./useWalletBalances";
 import { useAllTransactions, useAddTransaction } from "./useTransactions";
 import { useCategories } from "./useCategories";
 import { useWallets } from "./useWallets";
+import { useBudgetTarget } from "./useBudgetTarget";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -40,6 +41,7 @@ export function useWidgetSync() {
   const { data: wallets = [], isLoading: isWalletsLoading } = useWallets();
   const { isStealthMode } = usePrivacy();
   const { formatWithPreferred, currencyMeta } = useCurrency();
+  const { budgetTarget } = useBudgetTarget();
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const { showToast } = useToast();
@@ -176,6 +178,36 @@ export function useWidgetSync() {
 
     const sparkline = widgetSyncService.generate7DaySparkline(allTxs, netWorth);
 
+    // Safe to Spend metrics
+    const nowDate = new Date();
+    const daysInMonth = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0).getDate();
+    const daysLeftInMonth = Math.max(1, daysInMonth - nowDate.getDate());
+    const activeBudget = budgetTarget > 0 ? budgetTarget : Math.max(5000000, monthlyInflow > 0 ? monthlyInflow : 10000000);
+    const safeToSpendRemaining = Math.max(0, activeBudget - monthlyOutflow);
+    const safeToSpendDaily = Math.round(safeToSpendRemaining / daysLeftInMonth);
+    const safeToSpendPercent = Math.min(100, Math.round((monthlyOutflow / activeBudget) * 100));
+
+    // Cashflow Delta vs Last Month
+    const prevMonth = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1);
+    const prevMonthPrefix = prevMonth.toISOString().slice(0, 7);
+    let prevInflow = 0;
+    let prevOutflow = 0;
+    for (const tx of allTxs) {
+      const raw = tx.occurred_on || tx.created_at || "";
+      if (raw.startsWith(prevMonthPrefix)) {
+        if (tx.type === "income") prevInflow += tx.amount;
+        else if (tx.type === "expense") prevOutflow += tx.amount;
+      }
+    }
+    const prevNet = prevInflow - prevOutflow;
+    const deltaVsPrev = prevNet !== 0 ? Math.round(((netCashflow - prevNet) / Math.abs(prevNet)) * 100) : 0;
+    const cashflowDeltaVsLastMonth = `${deltaVsPrev >= 0 ? "+" : ""}${deltaVsPrev}%`;
+    const monthShortName = nowDate.toLocaleDateString(isIndonesian ? "id-ID" : "en-US", { month: "short" }).toUpperCase();
+
+    // Liquid cash sparkline (7-day trend using genuine liquid cash)
+    const liquidCashSparkline = widgetSyncService.generate7DaySparkline(allTxs, liquidAssets);
+    const liquidCashChangeFormatted = `${change24hPercentage >= 0 ? "+" : ""}${change24hPercentage}%`;
+
     const snapshot: WidgetSnapshotPayload = {
       netWorthFormatted: formatWithPreferred(netWorth),
       netWorthRaw: netWorth,
@@ -216,6 +248,19 @@ export function useWidgetSync() {
       spendingVolatilityStatus,
       dailyAverageFormatted: `${formatWithPreferred(Math.round(dailyBurn))}${isIndonesian ? "/hr" : "/d"}`,
       volatilityVariance,
+
+      // Foto 1, 2, 3 Widget Modernization Suite
+      liquidCashFormatted: formatWithPreferred(liquidAssets),
+      liquidCashRaw: liquidAssets,
+      liquidCashChangeFormatted,
+      liquidCashSparkline,
+      safeToSpendDailyFormatted: `${formatWithPreferred(safeToSpendDaily)}${isIndonesian ? "/hr" : "/day"}`,
+      safeToSpendRemainingFormatted: formatWithPreferred(safeToSpendRemaining),
+      safeToSpendBudgetFormatted: formatWithPreferred(activeBudget),
+      safeToSpendPercent,
+      daysLeftInMonth,
+      cashflowDeltaVsLastMonth,
+      monthShortName,
     };
 
     widgetSyncService.syncSnapshot(snapshot).catch(() => {});
@@ -228,6 +273,7 @@ export function useWidgetSync() {
     totalAssets,
     allTxs,
     wallets,
+    budgetTarget,
     isWalletsLoading,
     isTxsLoading,
     isStealthMode,
@@ -247,11 +293,13 @@ export function useWidgetSync() {
 
       let ingestedCount = 0;
 
-      // Handle foreground navigation intent from iOS App Shortcuts
+      // Handle foreground navigation intent from iOS App Shortcuts & Controls
       if (navigation === "add") {
         window.dispatchEvent(new CustomEvent("trouvaille:open-quick-add"));
       } else if (navigation === "scan") {
         window.dispatchEvent(new CustomEvent("trouvaille:open-scanner"));
+      } else if (navigation === "voice") {
+        window.dispatchEvent(new CustomEvent("trouvaille:open-voice"));
       }
 
       // Process structured quick-log transactions

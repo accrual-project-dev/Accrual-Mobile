@@ -14,6 +14,7 @@ import {
   Eye,
   ListFilter,
   Play,
+  Search,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -499,6 +500,11 @@ export function AppleShortcutsGuideModal({
                   <div className="flex items-center justify-between px-1 text-zinc-400 text-[10px]">
                     <span className="font-semibold text-white tracking-tight">Accrual</span>
                     <span className="font-mono text-[9px] text-zinc-500">6 Actions</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 text-[9px]">
+                    <Search size={10} className="text-zinc-500" />
+                    <span>{isIndonesian ? "Cari Tindakan" : "Search Actions"}</span>
                   </div>
 
                   {/* Mode Segment: Library vs Card */}

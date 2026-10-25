@@ -53,6 +53,19 @@ export interface WidgetSnapshotPayload {
   spendingVolatilityStatus: string;
   dailyAverageFormatted: string;
   volatilityVariance: number;
+
+  // Foto 1, 2, 3 Widget Modernization Suite
+  liquidCashFormatted: string;
+  liquidCashRaw: number;
+  liquidCashChangeFormatted: string;
+  liquidCashSparkline: number[];
+  safeToSpendDailyFormatted: string;
+  safeToSpendRemainingFormatted: string;
+  safeToSpendBudgetFormatted: string;
+  safeToSpendPercent: number;
+  daysLeftInMonth: number;
+  cashflowDeltaVsLastMonth: string;
+  monthShortName: string;
 }
 
 export interface PendingBackTapTx {

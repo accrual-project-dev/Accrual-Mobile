@@ -54,6 +54,19 @@ public struct AccrualWidgetSnapshot: Codable {
     public let dailyAverageFormatted: String?
     public let volatilityVariance: Int?
 
+    // Foto 1, 2, 3 Widget Modernization Suite
+    public let liquidCashFormatted: String?
+    public let liquidCashRaw: Double?
+    public let liquidCashChangeFormatted: String?
+    public let liquidCashSparkline: [Int]?
+    public let safeToSpendDailyFormatted: String?
+    public let safeToSpendRemainingFormatted: String?
+    public let safeToSpendBudgetFormatted: String?
+    public let safeToSpendPercent: Int?
+    public let daysLeftInMonth: Int?
+    public let cashflowDeltaVsLastMonth: String?
+    public let monthShortName: String?
+
     // MARK: - Safe Property Resolvers
     public var isIndo: Bool {
         return isIndonesian ?? false
@@ -172,6 +185,46 @@ public struct AccrualWidgetSnapshot: Codable {
         return volatilityVariance ?? 14
     }
 
+    public var safeLiquidCash: String {
+        return liquidCashFormatted ?? "\(currencySymbol) 46.877.591"
+    }
+
+    public var safeLiquidCashChange: String {
+        return liquidCashChangeFormatted ?? "+0.7% vs \(safeMonthShortName)"
+    }
+
+    public var safeLiquidCashSparkline: [Int] {
+        return liquidCashSparkline ?? sparkline
+    }
+
+    public var safeSafeToSpendDaily: String {
+        return safeToSpendDailyFormatted ?? "\(currencySymbol) 541.250\(isIndo ? "/hr" : "/day")"
+    }
+
+    public var safeSafeToSpendRemaining: String {
+        return safeToSpendRemainingFormatted ?? "\(currencySymbol) 3.788.000"
+    }
+
+    public var safeSafeToSpendBudget: String {
+        return safeToSpendBudgetFormatted ?? "\(currencySymbol) 14.000.000"
+    }
+
+    public var safeSafeToSpendPercent: Int {
+        return safeToSpendPercent ?? 73
+    }
+
+    public var safeDaysLeftInMonth: Int {
+        return daysLeftInMonth ?? 7
+    }
+
+    public var safeCashflowDeltaVsLastMonth: String {
+        return cashflowDeltaVsLastMonth ?? "+36% vs \(safeMonthShortName)"
+    }
+
+    public var safeMonthShortName: String {
+        return monthShortName ?? (isIndo ? "OKT" : "OCT")
+    }
+
     // MARK: - Preview Mock Factory
     public static var preview: AccrualWidgetSnapshot {
         AccrualWidgetSnapshot(
@@ -211,7 +264,18 @@ public struct AccrualWidgetSnapshot: Codable {
             netEquityFormatted: "Rp 141.000.000",
             spendingVolatilityStatus: "Stable",
             dailyAverageFormatted: "Rp 326.000/d",
-            volatilityVariance: 14
+            volatilityVariance: 14,
+            liquidCashFormatted: "Rp 46.877.591",
+            liquidCashRaw: 46877591,
+            liquidCashChangeFormatted: "+0.7% vs SEP",
+            liquidCashSparkline: [25, 30, 42, 50, 65, 78, 92],
+            safeToSpendDailyFormatted: "Rp 541.250/hr",
+            safeToSpendRemainingFormatted: "Rp 3.788.000",
+            safeToSpendBudgetFormatted: "Rp 14.000.000",
+            safeToSpendPercent: 73,
+            daysLeftInMonth: 7,
+            cashflowDeltaVsLastMonth: "+36% vs SEP",
+            monthShortName: "OCT"
         )
     }
 

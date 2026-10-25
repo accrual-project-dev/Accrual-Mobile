@@ -37,6 +37,7 @@ import {
   HealthMeterCard,
   LiquidRunwayCard,
   CalendarCard,
+  SafeToSpendCard,
   WidgetFallbackCard,
 } from "./CompactHomeCards";
 import { DebtReceivablesCard } from "../debt/DebtReceivablesCard";
@@ -1625,6 +1626,19 @@ function HomeWidgetRendererComponent({
           onOpenDetail={() => {
             triggerHaptic("light");
             navigate("/calendar");
+          }}
+        />
+      );
+
+    case "safe_to_spend":
+      return (
+        <SafeToSpendCard
+          size={size}
+          spent={totalExpense}
+          budget={budgetTarget || 0}
+          onOpenDetail={() => {
+            triggerHaptic("light");
+            navigate("/statistics");
           }}
         />
       );
