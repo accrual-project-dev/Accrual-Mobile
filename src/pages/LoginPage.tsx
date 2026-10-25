@@ -564,7 +564,7 @@ export function LoginPage() {
         </div>
 
         {/* Apple Tactile Segment Pagination Dots */}
-        <div className="flex items-center justify-center gap-1.5 mt-3 mb-1">
+        <div className="flex items-center justify-center gap-1.5 mt-2.5 sm:mt-3 mb-0.5">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -599,7 +599,7 @@ export function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
-          "w-full max-w-[450px] rounded-t-[32px] sm:rounded-t-[36px] px-6 pt-4.5 pb-5 relative z-20 overflow-hidden border-t border-x transition-all",
+          "w-full max-w-[450px] rounded-t-[32px] sm:rounded-t-[36px] px-6 pt-5 sm:pt-6 relative z-20 overflow-hidden border-t border-x transition-all",
           isDark
             ? "bg-gradient-to-b from-white/[0.09] via-white/[0.04] to-[#0c0c0e]/95 border-white/[0.14]"
             : "bg-gradient-to-b from-white/85 via-white/65 to-white/90 border-white/80",
@@ -611,7 +611,7 @@ export function LoginPage() {
             ? "0 -10px 30px -10px rgba(0, 0, 0, 0.45)"
             : "0 -12px 28px -10px rgba(25, 30, 50, 0.05)",
           paddingBottom:
-            "max(calc(env(safe-area-inset-bottom, 0px) + 10px), 18px)",
+            "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 34px)",
         }}
       >
         {/* Specular Highlight Rim at the top edge */}
@@ -799,7 +799,7 @@ export function LoginPage() {
               className="w-full flex flex-col"
             >
               {/* Header */}
-              <div className="text-center space-y-0.5 mb-3 px-1">
+              <div className="text-center space-y-1 mb-3.5 sm:mb-4 px-1">
                 <h2 className="text-[19px] sm:text-[21px] font-bold tracking-tight">
                   {isIndonesian ? "Selamat Datang di Accrual" : "Welcome to Accrual"}
                 </h2>
@@ -816,7 +816,7 @@ export function LoginPage() {
               </div>
 
               {/* Actions Area */}
-              <div className="space-y-2 w-full">
+              <div className="space-y-2.5 sm:space-y-3 w-full">
                 {/* 1. Primary Solid High-Contrast Pill: Get Started */}
                 <button
                   type="button"
@@ -861,7 +861,7 @@ export function LoginPage() {
                 </button>
 
                 {/* 3. Clean Text Link: Guest Mode (no card) */}
-                <div className="pt-0.5 text-center">
+                <div className="pt-1 text-center">
                   <button
                     type="button"
                     onClick={handleContinueAsGuest}
@@ -874,7 +874,7 @@ export function LoginPage() {
                 {/* 4. Bottom Legal / Privacy Disclaimer */}
                 <p
                   className={cn(
-                    "text-[9.5px] leading-relaxed text-center pt-1 max-w-[310px] mx-auto",
+                    "text-[9.5px] leading-relaxed text-center pt-2 sm:pt-2.5 max-w-[310px] mx-auto",
                     isDark ? "text-zinc-500" : "text-zinc-500",
                   )}
                 >
