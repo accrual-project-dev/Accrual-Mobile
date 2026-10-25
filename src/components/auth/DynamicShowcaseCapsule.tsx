@@ -508,14 +508,23 @@ export function DynamicShowcaseCapsule({
         {currentSlide.visual === "domain" && (
           <motion.div
             key="domain"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full flex flex-col gap-2 items-center"
+            className={cn(
+              "w-full rounded-[26px] p-4 sm:p-4.5 border flex flex-col gap-3 transition-colors relative overflow-hidden",
+              isDark
+                ? "bg-[#141418]/70 border-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+                : "bg-white/75 border-black/[0.06] shadow-[inset_0_1.5px_0_#ffffff,0_2px_12px_rgba(0,0,0,0.03)]",
+            )}
+            style={{
+              backdropFilter: "blur(32px) saturate(180%)",
+              WebkitBackdropFilter: "blur(32px) saturate(180%)",
+            }}
           >
             {/* Header */}
-            <div className="w-full flex items-center justify-between px-1">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div
                   className={cn(
@@ -554,7 +563,7 @@ export function DynamicShowcaseCapsule({
             </div>
 
             {/* Split Bento Slabs */}
-            <div className="w-full flex items-center justify-between gap-2.5 pt-0.5">
+            <div className="w-full flex items-center justify-between gap-2.5">
               {/* Personal Slab */}
               <motion.div
                 animate={{ y: isInteracted ? -3 : 0 }}
@@ -562,13 +571,9 @@ export function DynamicShowcaseCapsule({
                 className={cn(
                   "flex-1 rounded-[20px] p-3 border flex flex-col justify-between transition-colors",
                   isDark
-                    ? "bg-[#141418]/70 border-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
-                    : "bg-white/80 border-black/[0.06] shadow-[inset_0_1.5px_0_#ffffff]",
+                    ? "bg-white/[0.035] border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "bg-white/80 border-black/[0.06] shadow-[inset_0_1px_0_#ffffff]",
                 )}
-                style={{
-                  backdropFilter: "blur(24px)",
-                  WebkitBackdropFilter: "blur(24px)",
-                }}
               >
                 <div className="flex items-center gap-1.5 mb-1">
                   <div
@@ -618,10 +623,6 @@ export function DynamicShowcaseCapsule({
                     ? "bg-[#18181d]/85 border-white/[0.15] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
                     : "bg-white border-black/[0.08] shadow-[inset_0_1.5px_0_#ffffff,0_2px_8px_rgba(0,0,0,0.03)]",
                 )}
-                style={{
-                  backdropFilter: "blur(24px)",
-                  WebkitBackdropFilter: "blur(24px)",
-                }}
               >
                 <div className="flex items-center gap-1.5 mb-1">
                   <div

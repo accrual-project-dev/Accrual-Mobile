@@ -508,7 +508,7 @@ export function LoginPage() {
       />
 
       {/* ── 3. TOP SECTION: SHOWCASE STAGE & PROPORTIONAL TITLE ── */}
-      <div className="flex-1 w-full max-w-[390px] px-5 relative z-10 flex flex-col justify-start items-center text-center pt-6 sm:pt-8 pb-2 min-h-0">
+      <div className="flex-1 w-full max-w-[390px] px-5 relative z-10 flex flex-col justify-evenly items-center text-center py-2 min-h-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSlide}
@@ -516,7 +516,7 @@ export function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-1 mb-3"
+            className="space-y-1 mb-1"
           >
             <h1 className="text-[25px] sm:text-[27px] font-bold tracking-tight leading-tight">
               {currentSlide.title}
@@ -533,7 +533,7 @@ export function LoginPage() {
         </AnimatePresence>
 
         {/* Dynamic Showcase Capsule with Organic Glass Reflection */}
-        <div className="w-full flex justify-center items-center min-h-[195px] my-2">
+        <div className="w-full flex justify-center items-center min-h-[195px] my-1">
           <DynamicShowcaseCapsule
             currentSlide={currentSlide}
             isDark={isDark}
@@ -553,7 +553,7 @@ export function LoginPage() {
         </div>
 
         {/* Apple Tactile Segment Pagination Dots */}
-        <div className="flex items-center justify-center gap-1.5 mt-3 mb-2">
+        <div className="flex items-center justify-center gap-1.5 my-1">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -785,10 +785,27 @@ export function LoginPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="w-full flex flex-col pt-1"
+              className="w-full flex flex-col"
             >
+              {/* Header */}
+              <div className="text-center space-y-0.5 mb-3 px-1">
+                <h2 className="text-[19px] sm:text-[21px] font-bold tracking-tight">
+                  {isIndonesian ? "Selamat Datang di Accrual" : "Welcome to Accrual"}
+                </h2>
+                <p
+                  className={cn(
+                    "text-[11.5px] font-medium leading-relaxed max-w-[300px] mx-auto",
+                    isDark ? "text-zinc-400" : "text-zinc-600",
+                  )}
+                >
+                  {isIndonesian
+                    ? "Pantau arus kas harian dan bangun kejelasan aset dengan presisi tinggi."
+                    : "Track everyday cashflow and build lasting wealth clarity with effortless precision."}
+                </p>
+              </div>
+
               {/* Actions Area */}
-              <div className="space-y-2.5 w-full">
+              <div className="space-y-2 w-full">
                 {/* 1. Primary Solid High-Contrast Pill: Get Started */}
                 <button
                   type="button"
