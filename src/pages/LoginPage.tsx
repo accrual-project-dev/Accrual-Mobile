@@ -508,7 +508,25 @@ export function LoginPage() {
       />
 
       {/* ── 3. TOP SECTION: SHOWCASE STAGE & PROPORTIONAL TITLE ── */}
-      <div className="flex-1 w-full max-w-[390px] px-5 relative z-10 flex flex-col justify-evenly items-center text-center py-2 min-h-0">
+      <div className="flex-1 w-full max-w-[390px] px-5 relative z-10 flex flex-col items-center text-center pt-1 sm:pt-2 pb-1 min-h-0">
+        {/* Organic Raw Brandmark Logo (No Glass/Card Container) */}
+        <div className="pt-0.5 pb-2 sm:pb-2.5 flex items-center justify-center">
+          <svg
+            viewBox="150 79 327 452"
+            className={cn(
+              "h-7 sm:h-8 w-auto transition-colors duration-300",
+              isDark ? "text-white" : "text-zinc-950",
+            )}
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path d="M 244 91 Q 244 91 257.0 91.5 Q 270 92 279.5 96.0 Q 289 100 297.5 107.5 Q 306 115 309.5 120.5 Q 313 126 316.0 135.0 Q 319 144 319.5 153.5 Q 320 163 318.5 170.5 Q 317 178 312.0 187.5 Q 307 197 301.0 203.0 Q 295 209 286.5 214.0 Q 278 219 270.5 221.0 Q 263 223 252.0 223.0 Q 241 223 232.5 220.5 Q 224 218 218.0 214.5 Q 212 211 206.0 205.5 Q 200 200 196.5 195.0 Q 193 190 189.5 181.0 Q 186 172 185.5 160.5 Q 185 149 187.0 141.5 Q 189 134 191.5 129.0 Q 194 124 199.0 117.5 Q 204 111 211.0 105.5 Q 218 100 226.0 96.5 Q 234 93 238.5 92.5 Z" />
+            <path d="M 184 202 Q 184 202 188.5 202.5 Q 193 203 199.5 209.0 Q 206 215 213.0 220.0 Q 220 225 227.0 228.5 Q 234 232 243.5 235.0 Q 253 238 266.5 240.0 Q 280 242 294.0 242.0 Q 308 242 308.5 241.5 Q 309 241 329.0 240.0 Q 349 239 357.5 240.0 Q 366 241 375.0 243.5 Q 384 246 390.0 249.5 Q 396 253 398.0 255.0 Q 400 257 402.0 261.0 Q 404 265 404.0 269.0 Q 404 273 400.5 279.5 Q 397 286 389.0 294.0 Q 381 302 371.0 309.5 Q 361 317 352.0 322.5 Q 343 328 329.5 334.0 Q 316 340 309.5 342.0 Q 303 344 294.5 345.5 Q 286 347 273.0 347.0 Q 260 347 248.0 344.0 Q 236 341 225.5 335.5 Q 215 330 207.0 323.5 Q 199 317 191.5 308.0 Q 184 299 177.5 286.0 Q 171 273 169.0 263.5 Q 167 254 167.5 241.0 Q 168 228 170.5 220.5 Q 173 213 175.0 210.0 Q 177 207 180.0 205.0 Z" />
+            <path d="M 419 292 Q 419 292 424.0 292.5 Q 429 293 431.5 294.0 Q 434 295 437.5 297.5 Q 441 300 445.5 305.5 Q 450 311 455.0 322.5 Q 460 334 462.0 344.0 Q 464 354 464.0 360.0 Q 464 366 464.5 366.5 Q 465 367 464.0 380.0 Q 463 393 459.0 407.0 Q 455 421 448.0 434.5 Q 441 448 431.5 460.0 Q 422 472 408.0 483.5 Q 394 495 385.0 500.0 Q 376 505 364.0 509.5 Q 352 514 339.0 516.5 Q 326 519 309.0 519.0 Q 292 519 283.0 517.5 Q 274 516 262.5 512.5 Q 251 509 241.5 504.5 Q 232 500 224.0 495.0 Q 216 490 206.0 481.5 Q 196 473 189.5 465.5 Q 183 458 177.5 450.0 Q 172 442 168.5 434.5 Q 165 427 163.5 420.0 Q 162 413 163.0 407.5 Q 164 402 166.0 398.5 Q 168 395 171.5 391.5 Q 175 388 182.5 384.0 Q 190 380 204.5 376.0 Q 219 372 230.5 370.5 Q 242 369 261.5 365.0 Q 281 361 297.5 355.5 Q 314 350 328.5 343.0 Q 343 336 371.0 317.5 Q 399 299 406.0 296.0 Q 413 293 415.5 293.0 Z" />
+          </svg>
+        </div>
+
+        {/* Dynamic Carousel Title & Subtitle */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSlide}
@@ -516,14 +534,14 @@ export function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-1 mb-1"
+            className="space-y-1 mb-2"
           >
-            <h1 className="text-[25px] sm:text-[27px] font-bold tracking-tight leading-tight">
+            <h1 className="text-[24px] sm:text-[26px] font-bold tracking-tight leading-tight">
               {currentSlide.title}
             </h1>
             <p
               className={cn(
-                "text-[12.5px] font-medium leading-relaxed max-w-[290px] mx-auto",
+                "text-[12px] font-medium leading-relaxed max-w-[290px] mx-auto",
                 isDark ? "text-zinc-400" : "text-zinc-600",
               )}
             >
@@ -533,7 +551,7 @@ export function LoginPage() {
         </AnimatePresence>
 
         {/* Dynamic Showcase Capsule with Organic Glass Reflection */}
-        <div className="w-full flex justify-center items-center min-h-[195px] my-1">
+        <div className="w-full flex-1 flex justify-center items-center min-h-[195px] my-1">
           <DynamicShowcaseCapsule
             currentSlide={currentSlide}
             isDark={isDark}
@@ -552,8 +570,8 @@ export function LoginPage() {
           />
         </div>
 
-        {/* Apple Tactile Segment Pagination Dots */}
-        <div className="flex items-center justify-center gap-1.5 my-1">
+        {/* Apple Tactile Segment Pagination Dots (tightened to bottom sheet rim) */}
+        <div className="flex items-center justify-center gap-1.5 mt-auto mb-2 sm:mb-2.5">
           {slides.map((_, idx) => (
             <button
               key={idx}
