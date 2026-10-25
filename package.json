@@ -1,7 +1,7 @@
 {
   "name": "accrual",
   "private": true,
-  "version": "1.3.3",
+  "version": "1.3.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "flow:automate": "node scripts/flow-automation.cjs"
   },
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/browser": "^8.0.4",

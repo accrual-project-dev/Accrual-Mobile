@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
+import { SignInWithApple, type SignInWithAppleResponse } from "@capacitor-community/apple-sign-in";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -20,6 +21,7 @@ import { useToast } from "../contexts/ToastContext";
 import {
   getBiometricLoginCredentials,
   saveBiometricLoginCredentials,
+  savePersistentSession,
   authenticateWithPin,
 } from "../lib/biometricAuth";
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
@@ -99,6 +101,55 @@ export function LoginPage() {
     try {
       const isNative =
         typeof window !== "undefined" && Capacitor.isNativePlatform();
+
+      // 1. Native Sign in with Apple (iOS only): 100% In-App Face ID / Passcode sheet, ZERO browser
+      if (provider === "apple" && isNative && Capacitor.getPlatform() === "ios") {
+        try {
+          const result: SignInWithAppleResponse = await SignInWithApple.authorize({
+            clientId: "com.syntheticae.accrual",
+            redirectURI: "https://iqjcmqkgrfmopznrfikx.supabase.co/auth/v1/callback",
+            scopes: "email name",
+          });
+
+          const identityToken = result.response?.identityToken;
+          if (!identityToken) {
+            throw new Error(
+              isIndonesian
+                ? "Tidak menerima token autentikasi dari Apple."
+                : "No identity token returned from Apple Sign-In."
+            );
+          }
+
+          const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
+            provider: "apple",
+            token: identityToken,
+          });
+
+          if (authError) throw authError;
+
+          if (authData?.session) {
+            savePersistentSession(authData.session);
+            setSession(authData.session);
+            triggerSuccessHaptic();
+          }
+          return;
+        } catch (appleErr: any) {
+          // Detect user cancellation (ASAuthorizationError code 1001 or "canceled")
+          const isCancel =
+            appleErr?.message?.toLowerCase().includes("cancel") ||
+            appleErr?.message?.includes("1001") ||
+            appleErr?.code === 1001 ||
+            appleErr?.code === "1001";
+
+          if (isCancel) {
+            // User intentionally dismissed the Apple bottom sheet - no error banner
+            return;
+          }
+          throw appleErr;
+        }
+      }
+
+      // 2. Standard OAuth flow (Google on mobile / web fallback)
       const redirectUri = isNative
         ? "accrual://auth-callback"
         : typeof window !== "undefined"
