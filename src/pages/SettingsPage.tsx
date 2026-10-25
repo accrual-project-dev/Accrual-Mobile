@@ -74,8 +74,18 @@ import {
   getIncludeReceivableInLiquid,
   setIncludeReceivableInLiquid,
 } from "../lib/financialMath";
+import {
+  APP_VERSION,
+  checkForAppUpdate,
+  type AppReleaseInfo,
+} from "../lib/appUpdateService";
 
 // Code-split heavy modular sheets and exporters
+const AppUpdateModal = lazy(() =>
+  import("../components/settings/AppUpdateModal").then((m) => ({
+    default: m.AppUpdateModal,
+  })),
+);
 const CurrencySwitcherSheet = lazy(() =>
   import("../components/currency/CurrencySwitcherSheet").then((m) => ({
     default: m.CurrencySwitcherSheet,
@@ -368,6 +378,21 @@ export function SettingsPage({
   const [webDashboardModalOpen, setWebDashboardModalOpen] = useState(false);
   const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const [releaseInfo, setReleaseInfo] = useState<AppReleaseInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const handleCheckAppUpdate = useCallback(async () => {
+    setCheckingUpdate(true);
+    try {
+      const info = await checkForAppUpdate();
+      setReleaseInfo(info);
+    } catch (err) {
+      console.warn("[AppUpdate] Failed to check for app update:", err);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }, []);
   const [confirmModalConfig, setConfirmModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -2442,6 +2467,65 @@ export function SettingsPage({
                 </button>
               </>
             )}
+
+            {/* App Version & In-App Updates */}
+            {(!searchQuery.trim() ||
+              /versi|update|pembaruan|tentang|about|release/i.test(searchQuery)) && (
+              <>
+                <div style={gradientDivider} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setUpdateModalOpen(true);
+                    if (!releaseInfo) {
+                      handleCheckAppUpdate();
+                    }
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <Sparkles size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Versi Aplikasi & Pembaruan"
+                        : "App Version & Updates"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className="text-[10.5px] font-mono px-2 py-0.5 rounded-full border"
+                      style={{
+                        borderColor: isDark
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.06)",
+                        color: "var(--text-secondary)",
+                        background: iconBg,
+                      }}
+                    >
+                      v{APP_VERSION}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      style={{ color: "var(--text-tertiary)" }}
+                    />
+                  </div>
+                </button>
+              </>
+            )}
           </div>
         </section>
       )}
@@ -2640,6 +2724,14 @@ export function SettingsPage({
         <LegalModal
           isOpen={legalOpen}
           onClose={() => setLegalOpen(false)}
+        />
+
+        <AppUpdateModal
+          isOpen={updateModalOpen}
+          onClose={() => setUpdateModalOpen(false)}
+          releaseInfo={releaseInfo}
+          checking={checkingUpdate}
+          onCheckAgain={handleCheckAppUpdate}
         />
 
         <GlassConfirmationModal
