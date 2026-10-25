@@ -508,7 +508,7 @@ export function LoginPage() {
       />
 
       {/* ── 3. TOP SECTION: SHOWCASE STAGE & PROPORTIONAL TITLE ── */}
-      <div className="flex-1 w-full max-w-sm px-6 relative z-10 flex flex-col justify-center items-center text-center py-2">
+      <div className="flex-1 w-full max-w-sm px-5 relative z-10 flex flex-col justify-center items-center text-center py-1 sm:py-2 min-h-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSlide}
@@ -516,14 +516,14 @@ export function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-1 mb-2.5"
+            className="space-y-1 mb-2"
           >
-            <h1 className="text-[25px] sm:text-[27px] font-bold tracking-tight leading-tight">
+            <h1 className="text-[24px] sm:text-[26px] font-bold tracking-tight leading-tight">
               {currentSlide.title}
             </h1>
             <p
               className={cn(
-                "text-[12.5px] font-medium leading-relaxed max-w-[290px] mx-auto",
+                "text-[12px] font-medium leading-relaxed max-w-[280px] mx-auto",
                 isDark ? "text-zinc-400" : "text-zinc-600",
               )}
             >
@@ -553,7 +553,7 @@ export function LoginPage() {
         </div>
 
         {/* Apple Tactile Segment Pagination Dots */}
-        <div className="flex items-center justify-center gap-1.5 mt-2.5">
+        <div className="flex items-center justify-center gap-1.5 mt-2">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -588,7 +588,7 @@ export function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
-          "w-full max-w-[450px] rounded-t-[34px] sm:rounded-t-[38px] px-6 pt-5 pb-6 relative z-20 overflow-hidden border-t border-x transition-all",
+          "w-full max-w-[450px] rounded-t-[32px] sm:rounded-t-[36px] px-6 pt-4.5 pb-5 relative z-20 overflow-hidden border-t border-x transition-all",
           isDark
             ? "bg-gradient-to-b from-white/[0.09] via-white/[0.04] to-[#0c0c0e]/95 border-white/[0.14]"
             : "bg-gradient-to-b from-white/85 via-white/65 to-white/90 border-white/80",
@@ -600,7 +600,7 @@ export function LoginPage() {
             ? "0 -10px 30px -10px rgba(0, 0, 0, 0.45)"
             : "0 -12px 28px -10px rgba(25, 30, 50, 0.05)",
           paddingBottom:
-            "max(calc(env(safe-area-inset-bottom, 0px) + 14px), 22px)",
+            "max(calc(env(safe-area-inset-bottom, 0px) + 10px), 18px)",
         }}
       >
         {/* Specular Highlight Rim at the top edge */}
@@ -788,13 +788,13 @@ export function LoginPage() {
               className="w-full flex flex-col"
             >
               {/* Header */}
-              <div className="text-center space-y-1 mb-4 px-1">
-                <h2 className="text-[20px] sm:text-[22px] font-bold tracking-tight">
+              <div className="text-center space-y-0.5 mb-3 px-1">
+                <h2 className="text-[19px] sm:text-[21px] font-bold tracking-tight">
                   {isIndonesian ? "Selamat Datang di Accrual" : "Welcome to Accrual"}
                 </h2>
                 <p
                   className={cn(
-                    "text-[12px] font-medium leading-relaxed max-w-[310px] mx-auto",
+                    "text-[11.5px] font-medium leading-relaxed max-w-[300px] mx-auto",
                     isDark ? "text-zinc-400" : "text-zinc-600",
                   )}
                 >
@@ -805,7 +805,7 @@ export function LoginPage() {
               </div>
 
               {/* Actions Area */}
-              <div className="space-y-2.5 w-full">
+              <div className="space-y-2 w-full">
                 {/* 1. Primary Solid High-Contrast Pill: Get Started */}
                 <button
                   type="button"
@@ -816,14 +816,14 @@ export function LoginPage() {
                     setViewMode("register");
                   }}
                   className={cn(
-                    "w-full py-3 px-4 rounded-xl font-semibold text-[13.5px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.98] select-none",
+                    "w-full py-2.5 px-4 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.98] select-none",
                     isDark
                       ? "bg-white text-black hover:bg-zinc-200"
                       : "bg-zinc-950 text-white hover:bg-zinc-900 shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
                   )}
                 >
                   <span>{isIndonesian ? "Mulai Sekarang" : "Get Started"}</span>
-                  <ArrowRight size={15} strokeWidth={2.5} />
+                  <ArrowRight size={14} strokeWidth={2.5} />
                 </button>
 
                 {/* 2. Secondary Frosted Glass Pill: Already have account? Login */}
@@ -850,11 +850,11 @@ export function LoginPage() {
                 </button>
 
                 {/* 3. Clean Text Link: Guest Mode (no card) */}
-                <div className="pt-0.5 text-center">
+                <div className="pt-0 text-center">
                   <button
                     type="button"
                     onClick={handleContinueAsGuest}
-                    className="text-[12px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors py-1 cursor-pointer"
+                    className="text-[11.5px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors py-0.5 cursor-pointer"
                   >
                     {isIndonesian ? "Coba masuk mode tamu" : "Try guest mode"}
                   </button>
@@ -863,7 +863,7 @@ export function LoginPage() {
                 {/* 4. Bottom Legal / Privacy Disclaimer */}
                 <p
                   className={cn(
-                    "text-[10px] leading-relaxed text-center pt-1.5 max-w-[320px] mx-auto",
+                    "text-[9.5px] leading-relaxed text-center pt-1 max-w-[310px] mx-auto",
                     isDark ? "text-zinc-500" : "text-zinc-500",
                   )}
                 >

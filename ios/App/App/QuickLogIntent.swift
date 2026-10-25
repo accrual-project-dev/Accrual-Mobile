@@ -272,7 +272,12 @@ struct OpenQuickAddIntent: AppIntent {
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         defaults.set("add", forKey: "pending_intent_navigation")
-        return .result()
+        defaults.synchronize()
+        if #available(iOS 18.0, *) {
+            return .result(opensIntent: OpenURLIntent(URL(string: "accrual://add")!))
+        } else {
+            return .result()
+        }
     }
 }
 
@@ -290,7 +295,35 @@ struct OpenScanReceiptIntent: AppIntent {
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         defaults.set("scan", forKey: "pending_intent_navigation")
-        return .result()
+        defaults.synchronize()
+        if #available(iOS 18.0, *) {
+            return .result(opensIntent: OpenURLIntent(URL(string: "accrual://scan")!))
+        } else {
+            return .result()
+        }
+    }
+}
+
+/// 7. Open Voice Entry Intent
+/// Direct launcher for voice modal
+@available(iOS 16.0, *)
+struct OpenVoiceModalIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open Voice Entry"
+    static var description = IntentDescription("Open the voice recording modal in Accrual.")
+
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        defaults.set("voice", forKey: "pending_intent_navigation")
+        defaults.synchronize()
+        if #available(iOS 18.0, *) {
+            return .result(opensIntent: OpenURLIntent(URL(string: "accrual://voice")!))
+        } else {
+            return .result()
+        }
     }
 }
 
@@ -357,6 +390,15 @@ struct AccrualShortcutsProvider: AppShortcutsProvider {
             ],
             shortTitle: "Scan Receipt",
             systemImageName: "doc.viewfinder.fill"
+        )
+        AppShortcut(
+            intent: OpenVoiceModalIntent(),
+            phrases: [
+                "Open voice in \(.applicationName)",
+                "Buka pencatat suara di \(.applicationName)"
+            ],
+            shortTitle: "Open Voice Entry",
+            systemImageName: "waveform"
         )
     }
 }

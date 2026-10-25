@@ -1174,7 +1174,7 @@ struct LockScreenQuickLogCircularView: View {
             AccrualZenLogoIcon(size: 26)
                 .foregroundColor(.primary)
         }
-        .widgetURL(URL(string: "accrual://log"))
+        .widgetURL(URL(string: "accrual://add"))
     }
 }
 
@@ -1515,6 +1515,7 @@ struct LockScreenQuickLogWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { _ in
             LockScreenQuickLogCircularView()
+                .widgetURL(URL(string: "accrual://add"))
         }
         .configurationDisplayName("Quick Log (Lock Screen)")
         .description("1-tap pebble logo button for instant transaction entry.")
@@ -1535,11 +1536,12 @@ struct VoiceEntryControlIntent: AppIntent {
     static var openAppWhenRun: Bool = true
 
     @MainActor
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & OpensIntent {
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         defaults.set("voice", forKey: "pending_intent_navigation")
-        return .result()
+        defaults.synchronize()
+        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://voice")!))
     }
 }
 
@@ -1550,11 +1552,12 @@ struct ScanReceiptControlIntent: AppIntent {
     static var openAppWhenRun: Bool = true
 
     @MainActor
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & OpensIntent {
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         defaults.set("scan", forKey: "pending_intent_navigation")
-        return .result()
+        defaults.synchronize()
+        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://scan")!))
     }
 }
 
@@ -1565,11 +1568,12 @@ struct QuickAddControlIntent: AppIntent {
     static var openAppWhenRun: Bool = true
 
     @MainActor
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & OpensIntent {
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
         defaults.set("add", forKey: "pending_intent_navigation")
-        return .result()
+        defaults.synchronize()
+        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://add")!))
     }
 }
 

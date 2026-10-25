@@ -12,6 +12,7 @@ import {
   Scale,
   Sparkles,
   CheckCircle2,
+  Mail,
 } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -255,6 +256,33 @@ export function LegalModal({
                 {isIndonesian
                   ? "Anda memiliki hak kapan saja untuk mengekspor seluruh catatan transaksi dalam format berkas terbuka, mereset riwayat transaksi, atau menghapus akun secara permanen yang akan melenyapkan seluruh data di peladen dan gawai seketika."
                   : "You maintain the right at any time to export all transaction records in open formats, reset transaction history, or permanently delete your account which immediately purges all server and device data."}
+              </p>
+            </div>
+
+            {/* Section 5: Official Support & Privacy Contact */}
+            <div
+              className="p-3.5 rounded-2xl border space-y-2"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Mail
+                  size={15}
+                  strokeWidth={1.8}
+                  className="text-[var(--text-primary)]"
+                />
+                <h4 className="text-[12.5px] font-semibold text-[var(--text-primary)]">
+                  {isIndonesian
+                    ? "5. Narahubung & Bantuan Privasi"
+                    : "5. Privacy & Support Contact"}
+                </h4>
+              </div>
+              <p className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
+                {isIndonesian
+                  ? "Untuk pertanyaan teknis, kendala sinkronisasi, atau permohonan audit data, Anda dapat menghubungi tim kami di accrual.project.app@gmail.com."
+                  : "For technical inquiries, sync support, or data audit requests, reach our team at accrual.project.app@gmail.com."}
               </p>
             </div>
           </div>
