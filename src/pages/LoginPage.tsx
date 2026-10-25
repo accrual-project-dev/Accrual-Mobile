@@ -6,10 +6,9 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  User,
   Loader2,
-  KeyRound,
   Check,
+  ChevronLeft,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
@@ -21,7 +20,6 @@ import { useToast } from "../contexts/ToastContext";
 import {
   getBiometricLoginCredentials,
   saveBiometricLoginCredentials,
-  getSecuritySettings,
   authenticateWithPin,
 } from "../lib/biometricAuth";
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
@@ -45,7 +43,7 @@ export function LoginPage() {
   const { showToast } = useToast();
 
   const [activeSlide, setActiveSlide] = useState(0);
-  const [viewMode, setViewMode] = useState<"welcome" | "login" | "otp">("welcome");
+  const [viewMode, setViewMode] = useState<"landing" | "register" | "login" | "otp">("landing");
 
   // OTP Verification state
   const [otpCode, setOtpCode] = useState("");
@@ -60,21 +58,18 @@ export function LoginPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [otpCooldown]);
+
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [legalTab, setLegalTab] = useState<"privacy" | "terms" | "security">(
     "privacy",
   );
 
-  // Inline email form state
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  // Email form state
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState(
     () => getBiometricLoginCredentials()?.email || "",
   );
-  const [emailTouched, setEmailTouched] = useState(false);
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -84,18 +79,17 @@ export function LoginPage() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinVerifying, setPinVerifying] = useState(false);
-  const [hasVaultPin] = useState(() => getSecuritySettings().hasPin);
 
   const slides = getShowcaseSlides(isIndonesian);
 
   // Auto-advance showcase slides every 5.5 seconds (paused when user opens form or modal)
   useEffect(() => {
-    if (showEmailForm || showPinModal) return;
+    if (viewMode !== "landing" || showPinModal) return;
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % slides.length);
     }, 5500);
     return () => clearInterval(timer);
-  }, [showEmailForm, showPinModal, slides.length]);
+  }, [viewMode, showPinModal, slides.length]);
 
   const handleOAuthLogin = async (provider: "google" | "apple") => {
     setLoading(true);
@@ -166,13 +160,6 @@ export function LoginPage() {
   const handleContinueAsGuest = () => {
     triggerHaptic("medium");
     continueAsGuest();
-  };
-
-  const handleToggleEmailForm = () => {
-    triggerHaptic("light");
-    setError(null);
-    setMessage(null);
-    setShowEmailForm((prev) => !prev);
   };
 
   const handleForgotPassword = async () => {
@@ -347,36 +334,7 @@ export function LoginPage() {
       return;
     }
 
-    const isSignUpMode = viewMode === "welcome";
-
-    if (isSignUpMode) {
-      if (!confirmPassword) {
-        triggerHaptic("heavy");
-        showToast(
-          isIndonesian
-            ? "Harap konfirmasi kata sandi Anda."
-            : "Please confirm your password.",
-          "info",
-        );
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        triggerHaptic("heavy");
-        setError(
-          isIndonesian
-            ? "Konfirmasi kata sandi tidak cocok."
-            : "Passwords do not match.",
-        );
-        showToast(
-          isIndonesian
-            ? "Konfirmasi kata sandi tidak cocok."
-            : "Passwords do not match.",
-          "error",
-        );
-        return;
-      }
-    }
+    const isSignUpMode = viewMode === "register";
 
     setLoading(true);
     setError(null);
@@ -460,7 +418,6 @@ export function LoginPage() {
             setEmail(res.email);
             setShowPinModal(false);
             setViewMode("login");
-            setShowEmailForm(true);
           } else {
             setShowPinModal(false);
           }
@@ -649,12 +606,9 @@ export function LoginPage() {
         {/* Specular Highlight Rim at the top edge */}
         <div className="absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent pointer-events-none" />
 
-        <AnimatePresence mode="wait">
+                <AnimatePresence mode="wait">
           {/* ========================================================== */}
-          {/* VIEW MODE A: WELCOME / REGISTER                           */}
-          {/* ========================================================== */}
-          {/* ========================================================== */}
-          {/* VIEW MODE C: IN-APP 6-DIGIT EMAIL OTP VERIFICATION       */}
+          {/* 1. VIEW MODE: OTP VERIFICATION                            */}
           {/* ========================================================== */}
           {viewMode === "otp" ? (
             <motion.div
@@ -665,37 +619,40 @@ export function LoginPage() {
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="w-full flex flex-col"
             >
-              <div className="text-center space-y-1 mb-3 px-1">
-                <div
-                  className="w-10 h-10 rounded-2xl mx-auto flex items-center justify-center mb-2 border"
-                  style={{
-                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-primary)",
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setError(null);
+                    setMessage(null);
+                    setViewMode("register");
                   }}
-                >
-                  <Mail size={18} strokeWidth={1.8} />
-                </div>
-                <h2 className="text-[19px] sm:text-[20px] font-bold tracking-tight">
-                  {isIndonesian ? "Verifikasi Surel Anda" : "Verify Your Email"}
-                </h2>
-                <p
                   className={cn(
-                    "text-[12px] font-medium leading-relaxed max-w-[300px] mx-auto",
-                    isDark ? "text-zinc-400" : "text-zinc-600",
+                    "w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer -ml-1",
+                    isDark ? "hover:bg-white/[0.08] text-zinc-300" : "hover:bg-black/[0.06] text-zinc-700",
                   )}
+                  aria-label={isIndonesian ? "Kembali" : "Back"}
                 >
-                  {isIndonesian
-                    ? "Masukkan 6 digit kode verifikasi yang dikirim ke "
-                    : "Enter the 6-digit verification code sent to "}
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {otpEmail}
-                  </span>
-                </p>
+                  <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[17px] font-bold tracking-tight truncate">
+                    {isIndonesian ? "Verifikasi Surel Anda" : "Verify Your Email"}
+                  </h2>
+                  <p className="text-[11px] text-[var(--text-tertiary)] truncate">
+                    {isIndonesian
+                      ? "Masukkan 6 digit kode yang dikirim ke "
+                      : "Enter 6-digit code sent to "}
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {otpEmail}
+                    </span>
+                  </p>
+                </div>
               </div>
 
               {/* 6-Box Luxury Monochrome OTP Input */}
-              <div className="relative my-4 w-full">
+              <div className="relative my-3 w-full">
                 <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                   {Array.from({ length: 6 }).map((_, idx) => {
                     const digit = otpCode[idx] || "";
@@ -745,18 +702,18 @@ export function LoginPage() {
 
               {/* Error & Message */}
               {error && (
-                <p className="text-[12px] text-rose-400 text-center font-medium mb-3">
+                <p className="text-[12px] text-rose-400 text-center font-medium mb-2.5">
                   {error}
                 </p>
               )}
               {message && (
-                <p className="text-[12px] text-zinc-300 text-center font-medium mb-3">
+                <p className="text-[12px] text-zinc-300 text-center font-medium mb-2.5">
                   {message}
                 </p>
               )}
 
               {/* Actions */}
-              <div className="space-y-2.5 w-full">
+              <div className="space-y-2 w-full">
                 <button
                   type="button"
                   disabled={otpLoading || otpCode.length !== 6}
@@ -782,7 +739,7 @@ export function LoginPage() {
                   )}
                 </button>
 
-                <div className="flex items-center justify-between px-1 pt-1 text-[11.5px]">
+                <div className="flex items-center justify-between px-1 pt-0.5 text-[11.5px]">
                   <button
                     type="button"
                     disabled={otpCooldown > 0}
@@ -807,8 +764,7 @@ export function LoginPage() {
                     type="button"
                     onClick={() => {
                       triggerHaptic("light");
-                      setViewMode("welcome");
-                      setShowEmailForm(true);
+                      setViewMode("register");
                       setError(null);
                       setMessage(null);
                     }}
@@ -819,25 +775,26 @@ export function LoginPage() {
                 </div>
               </div>
             </motion.div>
-          ) : viewMode === "welcome" ? (
+          ) : viewMode === "landing" ? (
+            /* ========================================================== */
+            /* 2. VIEW MODE: INITIAL WELCOME LANDING                      */
+            /* ========================================================== */
             <motion.div
-              key="view-welcome"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              key="view-landing"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
               className="w-full flex flex-col"
             >
               {/* Header */}
               <div className="text-center space-y-1 mb-4 px-1">
-                <h2 className="text-[19px] sm:text-[20px] font-bold tracking-tight">
-                  {isIndonesian
-                    ? "Selamat Datang di Accrual"
-                    : "Welcome to Accrual"}
+                <h2 className="text-[20px] sm:text-[22px] font-bold tracking-tight">
+                  {isIndonesian ? "Selamat Datang di Accrual" : "Welcome to Accrual"}
                 </h2>
                 <p
                   className={cn(
-                    "text-[12px] font-medium leading-relaxed max-w-[300px] mx-auto",
+                    "text-[12px] font-medium leading-relaxed max-w-[310px] mx-auto",
                     isDark ? "text-zinc-400" : "text-zinc-600",
                   )}
                 >
@@ -847,603 +804,66 @@ export function LoginPage() {
                 </p>
               </div>
 
-              {/* Action Area */}
-              <div className="space-y-2 w-full">
-                {showEmailForm ? (
-                  <motion.form
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.22, ease: "easeOut" }}
-                    onSubmit={handleSubmit}
-                    className="space-y-2 overflow-hidden"
-                  >
-                    {/* Email Input */}
-                    <div className="relative">
-                      <Mail
-                        size={15}
-                        className={cn(
-                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
-                          isDark ? "text-zinc-500" : "text-zinc-400",
-                        )}
-                      />
-                      <input
-                        id="login-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (error) setError(null);
-                        }}
-                        onBlur={() => setEmailTouched(true)}
-                        placeholder="your.email@domain.com"
-                        aria-label={
-                          isIndonesian ? "Alamat email" : "Email address"
-                        }
-                        required
-                        disabled={loading}
-                        className={cn(
-                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
-                          isDark
-                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
-                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
-                        )}
-                      />
-                    </div>
-                    {emailTouched && email.trim().length > 0 && !isValidEmail(email) && (
-                      <p
-                        className={cn(
-                          "text-[10.5px] font-medium px-1 -mt-0.5",
-                          isDark ? "text-zinc-400" : "text-zinc-500",
-                        )}
-                      >
-                        {isIndonesian
-                          ? "Format surel belum valid (contoh: nama@domain.com)"
-                          : "Invalid email format (e.g. name@domain.com)"}
-                      </p>
-                    )}
+              {/* Actions Area */}
+              <div className="space-y-2.5 w-full">
+                {/* 1. Primary Solid High-Contrast Pill: Get Started */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("medium");
+                    setError(null);
+                    setMessage(null);
+                    setViewMode("register");
+                  }}
+                  className={cn(
+                    "w-full py-3 px-4 rounded-xl font-semibold text-[13.5px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.98] select-none",
+                    isDark
+                      ? "bg-white text-black hover:bg-zinc-200"
+                      : "bg-zinc-950 text-white hover:bg-zinc-900 shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
+                  )}
+                >
+                  <span>{isIndonesian ? "Mulai Sekarang" : "Get Started"}</span>
+                  <ArrowRight size={15} strokeWidth={2.5} />
+                </button>
 
-                    {/* Password Input */}
-                    <div className="relative">
-                      <Lock
-                        size={15}
-                        className={cn(
-                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
-                          isDark ? "text-zinc-500" : "text-zinc-400",
-                        )}
-                      />
-                      <input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder={
-                          isIndonesian
-                            ? "Kata sandi (min 6 karakter)"
-                            : "Password (min 6 characters)"
-                        }
-                        aria-label={
-                          isIndonesian
-                            ? "Kata sandi akun"
-                            : "Account password"
-                        }
-                        required
-                        minLength={6}
-                        disabled={loading}
-                        className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
-                          isDark
-                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
-                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
-                        )}
-                      />
-                      <button
-                        type="button"
-                        aria-label={
-                          showPassword
-                            ? isIndonesian
-                              ? "Sembunyikan kata sandi"
-                              : "Hide password"
-                            : isIndonesian
-                              ? "Tampilkan kata sandi"
-                              : "Show password"
-                        }
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => setShowPassword(!showPassword)}
-                        className={cn(
-                          "absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none",
-                          isDark
-                            ? "text-zinc-500 hover:text-zinc-300"
-                            : "text-zinc-400 hover:text-zinc-700",
-                        )}
-                      >
-                        {showPassword ? (
-                          <EyeOff size={15} strokeWidth={1.75} />
-                        ) : (
-                          <Eye size={15} strokeWidth={1.75} />
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Password Strength Indicator */}
-                    {password.length > 0 && (
-                      <div className="px-1 space-y-1 pt-0.5">
-                        <div
-                          className={cn(
-                            "w-full h-1 rounded-full overflow-hidden flex gap-1",
-                            isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                          )}
-                        >
-                          {[1, 2, 3, 4].map((s) => {
-                            const strength = getPasswordStrength(
-                              password,
-                              isIndonesian,
-                            );
-                            const active = strength.score >= s;
-                            return (
-                              <div
-                                key={s}
-                                className={cn(
-                                  "h-full flex-1 transition-all rounded-full",
-                                  active
-                                    ? isDark
-                                      ? "bg-white"
-                                      : "bg-zinc-950"
-                                    : "bg-transparent",
-                                )}
-                                style={{
-                                  opacity: active
-                                    ? s === 1
-                                      ? 0.35
-                                      : s === 2
-                                        ? 0.6
-                                        : s === 3
-                                          ? 0.85
-                                          : 1
-                                    : 0,
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                        <div
-                          className={cn(
-                            "flex items-center justify-between text-[9.5px]",
-                            isDark ? "text-zinc-500" : "text-zinc-500",
-                          )}
-                        >
-                          <span>
-                            {isIndonesian
-                              ? "Kekuatan Kata Sandi"
-                              : "Password Strength"}
-                          </span>
-                          <span
-                            className={
-                              isDark
-                                ? "text-zinc-300 font-semibold"
-                                : "text-zinc-800 font-semibold"
-                            }
-                          >
-                            {getPasswordStrength(password, isIndonesian).label}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Confirm Password Input */}
-                    <div className="relative">
-                      <Lock
-                        size={15}
-                        className={cn(
-                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
-                          isDark ? "text-zinc-500" : "text-zinc-400",
-                        )}
-                      />
-                      <input
-                        id="register-confirm-password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => {
-                          setConfirmPassword(e.target.value);
-                          if (error) setError(null);
-                        }}
-                        placeholder={
-                          isIndonesian
-                            ? "Konfirmasi kata sandi"
-                            : "Confirm password"
-                        }
-                        aria-label={
-                          isIndonesian
-                            ? "Konfirmasi kata sandi"
-                            : "Confirm password"
-                        }
-                        required
-                        minLength={6}
-                        disabled={loading}
-                        className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
-                          isDark
-                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
-                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
-                        )}
-                      />
-                      <button
-                        type="button"
-                        aria-label={
-                          showConfirmPassword
-                            ? isIndonesian
-                              ? "Sembunyikan konfirmasi kata sandi"
-                              : "Hide confirm password"
-                            : isIndonesian
-                              ? "Tampilkan konfirmasi kata sandi"
-                              : "Show confirm password"
-                        }
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                        className={cn(
-                          "absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none",
-                          isDark
-                            ? "text-zinc-500 hover:text-zinc-300"
-                            : "text-zinc-400 hover:text-zinc-700",
-                        )}
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff size={15} strokeWidth={1.75} />
-                        ) : (
-                          <Eye size={15} strokeWidth={1.75} />
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Confirm Password Inline Feedback */}
-                    {confirmPassword.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-1 -mt-0.5">
-                        {confirmPassword === password ? (
-                          <>
-                            <Check
-                              size={12}
-                              strokeWidth={2.2}
-                              className={isDark ? "text-zinc-300" : "text-zinc-700"}
-                            />
-                            <span
-                              className={cn(
-                                "text-[10.5px] font-medium",
-                                isDark ? "text-zinc-300" : "text-zinc-700",
-                              )}
-                            >
-                              {isIndonesian
-                                ? "Kata sandi cocok"
-                                : "Passwords match"}
-                            </span>
-                          </>
-                        ) : (
-                          <span
-                            className={cn(
-                              "text-[10.5px] font-medium",
-                              isDark ? "text-zinc-400" : "text-zinc-500",
-                            )}
-                          >
-                            {isIndonesian
-                              ? "Kata sandi belum cocok"
-                              : "Passwords do not match yet"}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {error && (
-                      <p
-                        className={cn(
-                          "text-[11.5px] font-medium px-1",
-                          isDark ? "text-zinc-300" : "text-zinc-700",
-                        )}
-                      >
-                        {error}
-                      </p>
-                    )}
-                    {message && (
-                      <p
-                        className={cn(
-                          "text-[11.5px] font-medium px-1",
-                          isDark ? "text-white" : "text-zinc-900",
-                        )}
-                      >
-                        {message}
-                      </p>
-                    )}
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      onMouseDown={(e) => e.preventDefault()}
-                      className={cn(
-                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)]",
-                        isDark
-                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
-                          : "bg-zinc-950 text-white hover:bg-zinc-900",
-                      )}
-                    >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 size={15} className="animate-spin" />
-                          <span>
-                            {isIndonesian
-                              ? "Membuat Akun..."
-                              : "Creating Account..."}
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <span>
-                            {isIndonesian ? "Buat Akun" : "Create Account"}
-                          </span>
-                          <ArrowRight size={14} strokeWidth={2.2} />
-                        </>
-                      )}
-                    </button>
-
-                    <div
-                      className={cn(
-                        "flex items-center justify-between px-1 pt-1 text-[11px] font-medium",
-                        isDark ? "text-zinc-400" : "text-zinc-500",
-                      )}
-                    >
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setShowEmailForm(false);
-                          setError(null);
-                          setMessage(null);
-                          setConfirmPassword("");
-                          setShowConfirmPassword(false);
-                          setEmailTouched(false);
-                        }}
-                        className={
-                          isDark ? "hover:text-white" : "hover:text-zinc-900"
-                        }
-                      >
-                        {isIndonesian ? "Batal" : "Cancel"}
-                      </button>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setViewMode("login");
-                          setShowEmailForm(true);
-                          setError(null);
-                          setMessage(null);
-                          setConfirmPassword("");
-                          setShowConfirmPassword(false);
-                          setEmailTouched(false);
-                        }}
-                        className={
-                          isDark
-                            ? "text-white hover:underline"
-                            : "text-zinc-950 hover:underline"
-                        }
-                      >
-                        {isIndonesian
-                          ? "Sudah punya akun? Masuk"
-                          : "Already have an account? Sign in"}
-                      </button>
-                    </div>
-                  </motion.form>
-                ) : (
-                  <>
-                    {/* 1. Continue with Email */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handleToggleEmailForm}
-                      className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)] select-none",
-                        isDark
-                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
-                          : "bg-zinc-950 text-white hover:bg-zinc-900",
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Mail size={16} strokeWidth={2} />
-                        <span>
-                          {isIndonesian
-                            ? "Lanjutkan dengan Surel"
-                            : "Continue with Email"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={14}
-                        strokeWidth={2.2}
-                        className="opacity-60"
-                      />
-                    </button>
-
-                    {/* 1. Continue with Apple (Prioritized on iOS per Apple HIG / Guideline 4.8) */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleOAuthLogin("apple")}
-                      className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
-                        isDark
-                          ? "bg-white text-zinc-950 hover:bg-zinc-100 border-white/20 shadow-[0_2px_12px_rgba(255,255,255,0.06)]"
-                          : "bg-zinc-950 text-white hover:bg-zinc-800 border-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 170 170" fill="currentColor">
-                          <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.58-7.7-11.64-13.98-5.77-8.8-10.15-18.9-13.13-30.31-2.98-11.41-4.47-22.38-4.47-32.9 0-16.14 4.09-29.6 12.28-40.39 8.19-10.79 18.57-16.32 31.14-16.59 5.56 0 11.36 1.48 17.4 4.43 6.04 2.95 10.13 4.49 12.27 4.62 1.95 0 6.33-1.6 13.14-4.8 6.81-3.2 12.56-4.66 17.26-4.38 13.06.66 23.36 5.48 30.9 14.46-11.41 6.89-17.01 16.5-16.79 28.84.22 9.68 3.96 17.81 11.22 24.38 7.27 6.57 15.86 10.37 25.79 11.39-2.06 6.07-4.4 12.11-7.02 18.12zm-33.15-104.9c0-6.73 2.45-13.16 7.35-19.29 4.9-6.13 11-10.02 18.29-11.68.87 6.95-.76 13.56-4.9 19.82-4.13 6.26-10.33 10.16-18.6 11.71-.55-.18-1.12-.34-1.7-.49-.29-.02-.44-.07-.44-.07z" />
-                        </svg>
-                        <span>
-                          {isIndonesian
-                            ? "Lanjutkan dengan Apple"
-                            : "Continue with Apple"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={14}
-                        strokeWidth={2.2}
-                        className="opacity-70"
-                      />
-                    </button>
-
-                    {/* 2. Continue with Google */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleOAuthLogin("google")}
-                      className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
-                        isDark
-                          ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] text-white"
-                          : "bg-black/[0.03] hover:bg-black/[0.05] border-black/[0.06] text-zinc-950 shadow-[0_1px_3px_rgba(0,0,0,0.03)]",
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                          <path
-                            fill="#4285F4"
-                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                          />
-                          <path
-                            fill="#EA4335"
-                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                          />
-                        </svg>
-                        <span>
-                          {isIndonesian
-                            ? "Lanjutkan dengan Google"
-                            : "Continue with Google"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={14}
-                        strokeWidth={2}
-                        className="opacity-40"
-                      />
-                    </button>
-
-                    {/* 3. Continue without account */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handleContinueAsGuest}
-                      className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-medium text-[13px] transition-all cursor-pointer border select-none",
-                        isDark
-                          ? "bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] text-zinc-300"
-                          : "bg-black/[0.02] hover:bg-black/[0.04] border-black/[0.05] text-zinc-700",
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <User
-                          size={16}
-                          strokeWidth={1.75}
-                          className="opacity-70"
-                        />
-                        <span>
-                          {isIndonesian
-                            ? "Lanjutkan tanpa akun"
-                            : "Continue without an account"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={14}
-                        strokeWidth={2}
-                        className="opacity-40"
-                      />
-                    </button>
-
-                    <p
-                      className={cn(
-                        "text-[10px] text-center pt-0.5",
-                        isDark ? "text-zinc-500" : "text-zinc-500",
-                      )}
-                    >
-                      {isIndonesian
-                        ? "Privat & hanya di perangkat · Tanpa pencadangan cloud"
-                        : "Private & on-device only · No cloud backup"}
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {!showEmailForm && (
-                /* Minimal Divider */
-                <div className="flex items-center gap-3 my-3">
-                  <div
-                    className={cn(
-                      "h-[1px] flex-1",
-                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "text-[10.5px]",
-                      isDark ? "text-zinc-500" : "text-zinc-400",
-                    )}
-                  >
-                    {isIndonesian ? "atau" : "or"}
-                  </span>
-                  <div
-                    className={cn(
-                      "h-[1px] flex-1",
-                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                    )}
-                  />
-                </div>
-              )}
-
-              {/* Footer Switch */}
-              <div className="text-center">
-                {!showEmailForm && (
-                  <p
-                    className={cn(
-                      "text-[11.5px]",
-                      isDark ? "text-zinc-400" : "text-zinc-600",
-                    )}
-                  >
+                {/* 2. Secondary Frosted Glass Pill: Already have account? Login */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setError(null);
+                    setMessage(null);
+                    setViewMode("login");
+                  }}
+                  className={cn(
+                    "w-full py-2.5 px-4 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-1.5 transition-all cursor-pointer border active:scale-[0.98] select-none",
+                    isDark
+                      ? "bg-white/[0.05] hover:bg-white/[0.08] border-white/[0.1] text-white"
+                      : "bg-black/[0.03] hover:bg-black/[0.06] border-black/[0.08] text-zinc-950 shadow-[0_1px_3px_rgba(0,0,0,0.02)]",
+                  )}
+                >
+                  <span>
                     {isIndonesian
-                      ? "Sudah memiliki akun? "
-                      : "Already have an account? "}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setViewMode("login");
-                        setShowEmailForm(false);
-                        setError(null);
-                        setMessage(null);
-                        setConfirmPassword("");
-                        setShowConfirmPassword(false);
-                        setEmailTouched(false);
-                      }}
-                      className={cn(
-                        "font-semibold hover:underline cursor-pointer",
-                        isDark ? "text-white" : "text-zinc-950",
-                      )}
-                    >
-                      {isIndonesian ? "Masuk" : "Sign in"}
-                    </button>
-                  </p>
-                )}
+                      ? "Sudah punya akun? Masuk"
+                      : "Already have an account? Sign in"}
+                  </span>
+                </button>
 
-                {/* Legal & Privacy Policy Link */}
+                {/* 3. Clean Text Link: Guest Mode (no card) */}
+                <div className="pt-0.5 text-center">
+                  <button
+                    type="button"
+                    onClick={handleContinueAsGuest}
+                    className="text-[12px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors py-1 cursor-pointer"
+                  >
+                    {isIndonesian ? "Coba masuk mode tamu" : "Try guest mode"}
+                  </button>
+                </div>
+
+                {/* 4. Bottom Legal / Privacy Disclaimer */}
                 <p
                   className={cn(
-                    "text-[10px] leading-relaxed mt-2.5",
+                    "text-[10px] leading-relaxed text-center pt-1.5 max-w-[320px] mx-auto",
                     isDark ? "text-zinc-500" : "text-zinc-500",
                   )}
                 >
@@ -1464,7 +884,7 @@ export function LoginPage() {
                   >
                     {isIndonesian ? "Ketentuan Layanan" : "Terms of Service"}
                   </button>
-                  {isIndonesian ? " & " : " & "}
+                  {isIndonesian ? " dan " : " and "}
                   <button
                     type="button"
                     onClick={() => {
@@ -1482,483 +902,430 @@ export function LoginPage() {
                 </p>
               </div>
             </motion.div>
-          ) : (
+          ) : viewMode === "register" ? (
             /* ========================================================== */
-            /* VIEW MODE B: LOG IN                                        */
+            /* 3. VIEW MODE: GET STARTED / REGISTER                       */
             /* ========================================================== */
             <motion.div
-              key="view-login"
-              initial={{ opacity: 0, x: 10 }}
+              key="view-register"
+              initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
               className="w-full flex flex-col"
             >
-              {/* Header */}
-              <div className="text-center space-y-1 mb-4 px-1">
-                <h2 className="text-[19px] sm:text-[20px] font-bold tracking-tight">
-                  {isIndonesian ? "Selamat Datang Kembali" : "Welcome Back"}
-                </h2>
-                <p
+              {/* Top Back Navigation & Title */}
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setError(null);
+                    setMessage(null);
+                    setViewMode("landing");
+                  }}
                   className={cn(
-                    "text-[12px] font-medium leading-relaxed max-w-[300px] mx-auto",
-                    isDark ? "text-zinc-400" : "text-zinc-600",
+                    "w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer -ml-1",
+                    isDark ? "hover:bg-white/[0.08] text-zinc-300" : "hover:bg-black/[0.06] text-zinc-700",
+                  )}
+                  aria-label={isIndonesian ? "Kembali" : "Back"}
+                >
+                  <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[17px] font-bold tracking-tight truncate">
+                    {isIndonesian ? "Mulai dengan Accrual" : "Get Started with Accrual"}
+                  </h2>
+                  <p className="text-[11px] text-[var(--text-tertiary)] truncate">
+                    {isIndonesian
+                      ? "Pilih metode pendaftaran yang Anda inginkan"
+                      : "Choose your preferred sign up method"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Social OAuth Buttons */}
+              <div className="space-y-2 mb-2.5">
+                {/* Apple */}
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleOAuthLogin("apple")}
+                  className={cn(
+                    "w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl font-semibold text-[12.5px] transition-all cursor-pointer border select-none active:scale-[0.98]",
+                    isDark
+                      ? "bg-white hover:bg-zinc-200 text-black border-transparent shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
+                      : "bg-black hover:bg-zinc-800 text-white border-transparent shadow-[0_1px_3px_rgba(0,0,0,0.12)]",
                   )}
                 >
-                  {isIndonesian
-                    ? "Masuk untuk mengakses brankas aset dan space tersinkronisasi milik Anda."
-                    : "Sign in to access your synchronized wealth vault and spaces."}
-                </p>
+                  <div className="flex items-center gap-2.5">
+                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 170 170">
+                      <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.59-7.71-11.66-14-4.89-7.51-8.71-16.14-11.45-25.88-2.74-9.74-4.11-19.14-4.11-28.21 0-13.39 3.36-24.36 10.08-32.9 6.72-8.55 15.22-12.89 25.5-13.02 5.01 0 10.33 1.25 15.97 3.75 5.63 2.5 9.4 3.8 11.31 3.9 1.63 0 5.65-1.37 12.06-4.11 6.41-2.73 11.9-3.93 16.48-3.6 12.19.98 21.68 5.76 28.48 14.34-10.88 6.64-16.2 15.78-15.97 27.42.22 9.14 3.76 16.76 10.62 22.86 6.86 6.1 14.93 9.61 24.21 10.53-2.17 6.53-4.99 13.05-8.46 19.57zM119.22 31.84c0-7.39 2.67-14.35 8.01-20.87 5.34-6.52 11.96-10.43 19.86-11.73.65 1.52.98 3.15.98 4.9 0 7.39-2.75 14.35-8.25 20.87-5.5 6.52-12.21 10.37-20.13 11.55-.11-1.52-.47-3.09-.47-4.72z" />
+                    </svg>
+                    <span>{isIndonesian ? "Daftar dengan Apple" : "Sign up with Apple"}</span>
+                  </div>
+                  <ArrowRight size={13} strokeWidth={2.5} />
+                </button>
+
+                {/* Google */}
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleOAuthLogin("google")}
+                  className={cn(
+                    "w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl font-semibold text-[12.5px] transition-all cursor-pointer border select-none active:scale-[0.98]",
+                    isDark
+                      ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] text-white"
+                      : "bg-black/[0.03] hover:bg-black/[0.05] border-black/[0.06] text-zinc-950 shadow-[0_1px_3px_rgba(0,0,0,0.03)]",
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    </svg>
+                    <span>{isIndonesian ? "Daftar dengan Google" : "Sign up with Google"}</span>
+                  </div>
+                  <ArrowRight size={13} strokeWidth={2.5} className="opacity-45" />
+                </button>
               </div>
 
-              {/* Action Area */}
-              <div className="space-y-2 w-full">
-                {showEmailForm ? (
-                  <motion.form
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.22, ease: "easeOut" }}
-                    onSubmit={handleSubmit}
-                    className="space-y-2 overflow-hidden"
-                  >
-                    {/* Email Input */}
-                    <div className="relative">
-                      <Mail
-                        size={15}
-                        className={cn(
-                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
-                          isDark ? "text-zinc-500" : "text-zinc-400",
-                        )}
-                      />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (error) setError(null);
-                        }}
-                        onBlur={() => setEmailTouched(true)}
-                        placeholder="your.email@domain.com"
-                        required
-                        disabled={loading}
-                        className={cn(
-                          "w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
-                          isDark
-                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
-                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
-                        )}
-                      />
-                    </div>
-                    {emailTouched && email.trim().length > 0 && !isValidEmail(email) && (
-                      <p
-                        className={cn(
-                          "text-[10.5px] font-medium px-1 -mt-0.5",
-                          isDark ? "text-zinc-400" : "text-zinc-500",
-                        )}
-                      >
-                        {isIndonesian
-                          ? "Format surel belum valid (contoh: nama@domain.com)"
-                          : "Invalid email format (e.g. name@domain.com)"}
-                      </p>
-                    )}
-
-                    {/* Password Input */}
-                    <div className="relative">
-                      <Lock
-                        size={15}
-                        className={cn(
-                          "absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[1.75]",
-                          isDark ? "text-zinc-500" : "text-zinc-400",
-                        )}
-                      />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder={isIndonesian ? "Kata sandi" : "Password"}
-                        required
-                        disabled={loading}
-                        className={cn(
-                          "w-full pl-9 pr-9 py-2.5 rounded-xl text-[16px] border-0 border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 appearance-none transition-all",
-                          isDark
-                            ? "bg-white/[0.05] focus:bg-white/[0.08] text-white placeholder:text-zinc-500"
-                            : "bg-black/[0.04] focus:bg-black/[0.06] text-zinc-950 placeholder:text-zinc-400",
-                        )}
-                      />
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => setShowPassword(!showPassword)}
-                        className={cn(
-                          "absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer select-none",
-                          isDark
-                            ? "text-zinc-500 hover:text-zinc-300"
-                            : "text-zinc-400 hover:text-zinc-700",
-                        )}
-                      >
-                        {showPassword ? (
-                          <EyeOff size={15} strokeWidth={1.75} />
-                        ) : (
-                          <Eye size={15} strokeWidth={1.75} />
-                        )}
-                      </button>
-                    </div>
-
-                    {error && (
-                      <p
-                        className={cn(
-                          "text-[11.5px] font-medium px-1",
-                          isDark ? "text-zinc-300" : "text-zinc-700",
-                        )}
-                      >
-                        {error}
-                      </p>
-                    )}
-                    {message && (
-                      <p
-                        className={cn(
-                          "text-[11.5px] font-medium px-1",
-                          isDark ? "text-white" : "text-zinc-900",
-                        )}
-                      >
-                        {message}
-                      </p>
-                    )}
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      onMouseDown={(e) => e.preventDefault()}
-                      className={cn(
-                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none mt-1 border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)]",
-                        isDark
-                          ? "bg-white text-zinc-950 hover:bg-zinc-100"
-                          : "bg-zinc-950 text-white hover:bg-zinc-900",
-                      )}
-                    >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 size={15} className="animate-spin" />
-                          <span>
-                            {isIndonesian ? "Sedang Masuk..." : "Signing In..."}
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <span>
-                            {isIndonesian
-                              ? "Masuk dengan Surel"
-                              : "Sign In with Email"}
-                          </span>
-                          <ArrowRight size={14} strokeWidth={2.2} />
-                        </>
-                      )}
-                    </button>
-
-                    <div
-                      className={cn(
-                        "flex items-center justify-between px-1 pt-1 text-[11px] font-medium",
-                        isDark ? "text-zinc-400" : "text-zinc-500",
-                      )}
-                    >
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setShowEmailForm(false);
-                          setError(null);
-                          setMessage(null);
-                          setEmailTouched(false);
-                        }}
-                        className={
-                          isDark ? "hover:text-white" : "hover:text-zinc-900"
-                        }
-                      >
-                        {isIndonesian ? "Batal" : "Cancel"}
-                      </button>
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={handleForgotPassword}
-                          className={cn(
-                            "hover:underline",
-                            isDark ? "text-zinc-400" : "text-zinc-600",
-                          )}
-                        >
-                          {isIndonesian ? "Lupa kata sandi?" : "Forgot password?"}
-                        </button>
-                        <span>·</span>
-                        <button
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            setViewMode("welcome");
-                            setShowEmailForm(true);
-                            setError(null);
-                            setMessage(null);
-                            setConfirmPassword("");
-                            setShowConfirmPassword(false);
-                            setEmailTouched(false);
-                          }}
-                          className={
-                            isDark
-                              ? "text-white hover:underline"
-                              : "text-zinc-950 hover:underline"
-                          }
-                        >
-                          {isIndonesian ? "Daftar" : "Sign up"}
-                        </button>
-                      </div>
-                    </div>
-                  </motion.form>
-                ) : (
-                  <>
-                    {/* 1. Unlock with Security PIN (If Enrolled) */}
-                    {hasVaultPin && (
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => {
-                          setPinInput("");
-                          setPinError(null);
-                          setShowPinModal(true);
-                          triggerHaptic("light");
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer border-0 border-none shadow-[0_2px_8px_rgba(0,0,0,0.18)] select-none",
-                          isDark
-                            ? "bg-white text-zinc-950 hover:bg-zinc-100"
-                            : "bg-zinc-950 text-white hover:bg-zinc-900",
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <KeyRound size={16} strokeWidth={2} />
-                          <span>
-                            {isIndonesian
-                              ? "Buka dengan PIN Brankas"
-                              : "Unlock with Vault PIN"}
-                          </span>
-                        </div>
-                        <ArrowRight
-                          size={14}
-                          strokeWidth={2.2}
-                          className="opacity-60"
-                        />
-                      </button>
-                    )}
-
-                    {/* 2. Log in with Email */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handleToggleEmailForm}
-                      className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-bold text-[13px] transition-all cursor-pointer select-none",
-                        !hasVaultPin
-                          ? isDark
-                            ? "bg-white text-zinc-950 hover:bg-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.18)] border-0 border-none"
-                            : "bg-zinc-950 text-white hover:bg-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.18)] border-0 border-none"
-                          : isDark
-                            ? "bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] text-white"
-                            : "bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.06] text-zinc-950",
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Mail size={16} strokeWidth={2} />
-                        <span>
-                          {isIndonesian
-                            ? "Masuk dengan Surel"
-                            : "Log in with Email"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={14}
-                        strokeWidth={2.2}
-                        className="opacity-60"
-                      />
-                    </button>
-
-                    {/* 2. Log in with Apple (Prioritized on iOS per Apple HIG / Guideline 4.8) */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleOAuthLogin("apple")}
-                      className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
-                        isDark
-                          ? "bg-white text-zinc-950 hover:bg-zinc-100 border-white/20 shadow-[0_2px_12px_rgba(255,255,255,0.06)]"
-                          : "bg-zinc-950 text-white hover:bg-zinc-800 border-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 170 170" fill="currentColor">
-                          <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.58-7.7-11.64-13.98-5.77-8.8-10.15-18.9-13.13-30.31-2.98-11.41-4.47-22.38-4.47-32.9 0-16.14 4.09-29.6 12.28-40.39 8.19-10.79 18.57-16.32 31.14-16.59 5.56 0 11.36 1.48 17.4 4.43 6.04 2.95 10.13 4.49 12.27 4.62 1.95 0 6.33-1.6 13.14-4.8 6.81-3.2 12.56-4.66 17.26-4.38 13.06.66 23.36 5.48 30.9 14.46-11.41 6.89-17.01 16.5-16.79 28.84.22 9.68 3.96 17.81 11.22 24.38 7.27 6.57 15.86 10.37 25.79 11.39-2.06 6.07-4.4 12.11-7.02 18.12zm-33.15-104.9c0-6.73 2.45-13.16 7.35-19.29 4.9-6.13 11-10.02 18.29-11.68.87 6.95-.76 13.56-4.9 19.82-4.13 6.26-10.33 10.16-18.6 11.71-.55-.18-1.12-.34-1.7-.49-.29-.02-.44-.07-.44-.07z" />
-                        </svg>
-                        <span>
-                          {isIndonesian
-                            ? "Masuk dengan Apple"
-                            : "Log in with Apple"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={14}
-                        strokeWidth={2.2}
-                        className="opacity-70"
-                      />
-                    </button>
-
-                    {/* 3. Log in with Google */}
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleOAuthLogin("google")}
-                      className={cn(
-                        "w-full flex items-center justify-between py-3 px-4 rounded-xl font-semibold text-[13px] transition-all cursor-pointer border select-none",
-                        isDark
-                          ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] text-white"
-                          : "bg-black/[0.03] hover:bg-black/[0.05] border-black/[0.06] text-zinc-950 shadow-[0_1px_3px_rgba(0,0,0,0.03)]",
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                          <path
-                            fill="#4285F4"
-                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                          />
-                          <path
-                            fill="#EA4335"
-                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                          />
-                        </svg>
-                        <span>
-                          {isIndonesian
-                            ? "Masuk dengan Google"
-                            : "Log in with Google"}
-                        </span>
-                      </div>
-                      <ArrowRight
-                        size={14}
-                        strokeWidth={2}
-                        className="opacity-40"
-                      />
-                    </button>
-                  </>
-                )}
+              {/* Soft Divider */}
+              <div className="flex items-center gap-2 my-2 text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider">
+                <div className="flex-1 h-[1px] bg-[var(--glass-border)]" />
+                <span>{isIndonesian ? "atau daftar dengan surel" : "or sign up with email"}</span>
+                <div className="flex-1 h-[1px] bg-[var(--glass-border)]" />
               </div>
 
-              {!showEmailForm && (
-                /* Minimal Divider */
-                <div className="flex items-center gap-3 my-3">
-                  <div
-                    className={cn(
-                      "h-[1px] flex-1",
-                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                    )}
+              {/* Form Email & 1 Password */}
+              <form onSubmit={handleSubmit} className="space-y-2">
+                <div className="relative">
+                  <Mail
+                    size={15}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
                   />
-                  <span
-                    className={cn(
-                      "text-[10.5px]",
-                      isDark ? "text-zinc-500" : "text-zinc-400",
-                    )}
-                  >
-                    {isIndonesian ? "atau" : "or"}
-                  </span>
-                  <div
-                    className={cn(
-                      "h-[1px] flex-1",
-                      isDark ? "bg-white/[0.08]" : "bg-black/[0.06]",
-                    )}
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder="your.email@domain.com"
+                    required
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[13px] bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--glass-border)] focus:outline-none focus:border-[var(--text-primary)] transition-colors text-[var(--text-primary)]"
                   />
                 </div>
-              )}
 
-              {/* Footer Switch */}
-              <div className="text-center">
-                {!showEmailForm && (
-                  <p
-                    className={cn(
-                      "text-[11.5px]",
-                      isDark ? "text-zinc-400" : "text-zinc-600",
-                    )}
-                  >
-                    {isIndonesian
-                      ? "Belum memiliki akun? "
-                      : "Don't have an account? "}
+                <div className="space-y-1">
+                  <div className="relative">
+                    <Lock
+                      size={15}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                    />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (error) setError(null);
+                      }}
+                      placeholder={
+                        isIndonesian
+                          ? "Kata sandi (min. 6 karakter)"
+                          : "Password (min. 6 characters)"
+                      }
+                      required
+                      className="w-full pl-9 pr-10 py-2.5 rounded-xl text-[13px] bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--glass-border)] focus:outline-none focus:border-[var(--text-primary)] transition-colors text-[var(--text-primary)] font-mono"
+                    />
                     <button
                       type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setViewMode("welcome");
-                        setShowEmailForm(false);
-                        setError(null);
-                        setMessage(null);
-                        setConfirmPassword("");
-                        setShowConfirmPassword(false);
-                        setEmailTouched(false);
-                      }}
-                      className={cn(
-                        "font-semibold hover:underline cursor-pointer",
-                        isDark ? "text-white" : "text-zinc-950",
-                      )}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
                     >
-                      {isIndonesian ? "Daftar" : "Sign up"}
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
+                  </div>
+
+                  {/* Password strength */}
+                  {password && (() => {
+                    const str = getPasswordStrength(password, isIndonesian);
+                    const widthClass =
+                      str.score === 1
+                        ? "w-1/4"
+                        : str.score === 2
+                          ? "w-2/4"
+                          : str.score === 3
+                            ? "w-3/4"
+                            : str.score >= 4
+                              ? "w-full"
+                              : "w-0";
+                    return (
+                      <div className="flex items-center gap-1.5 px-1 pt-0.5">
+                        <div className="flex-1 h-1 bg-[var(--glass-border)] rounded-full overflow-hidden flex gap-0.5">
+                          <div
+                            className={cn(
+                              "h-full transition-all duration-300",
+                              widthClass,
+                              isDark ? "bg-white" : "bg-zinc-950",
+                            )}
+                          />
+                        </div>
+                        <span className="text-[9.5px] text-[var(--text-tertiary)]">
+                          {str.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {error && (
+                  <p className="text-[11.5px] text-rose-400 font-medium px-1">
+                    {error}
                   </p>
                 )}
 
-                {/* Legal & Privacy Policy Link */}
-                <p
+                <button
+                  type="submit"
+                  disabled={loading}
                   className={cn(
-                    "text-[10px] leading-relaxed mt-2.5",
-                    isDark ? "text-zinc-500" : "text-zinc-500",
+                    "w-full py-2.5 px-4 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98] select-none mt-1",
+                    isDark
+                      ? "bg-white text-black hover:bg-zinc-200"
+                      : "bg-zinc-950 text-white hover:bg-zinc-900",
                   )}
                 >
-                  {isIndonesian
-                    ? "Dengan melanjutkan, Anda menyetujui "
-                    : "By continuing, you agree to our "}
+                  {loading ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <span>{isIndonesian ? "Daftar Sekarang" : "Sign Up"}</span>
+                  )}
+                </button>
+
+                {/* Switch to login link */}
+                <div className="pt-1 text-center">
                   <button
                     type="button"
                     onClick={() => {
                       triggerHaptic("light");
-                      setLegalTab("terms");
-                      setShowLegalModal(true);
+                      setError(null);
+                      setMessage(null);
+                      setViewMode("login");
                     }}
-                    className={cn(
-                      "underline underline-offset-2 transition-colors cursor-pointer",
-                      isDark ? "hover:text-zinc-300" : "hover:text-zinc-800",
-                    )}
+                    className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                   >
-                    {isIndonesian ? "Ketentuan Layanan" : "Terms of Service"}
+                    {isIndonesian
+                      ? "Sudah punya akun? Masuk"
+                      : "Already have an account? Sign in"}
                   </button>
-                  {isIndonesian ? " & " : " & "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setLegalTab("privacy");
-                      setShowLegalModal(true);
-                    }}
-                    className={cn(
-                      "underline underline-offset-2 transition-colors cursor-pointer",
-                      isDark ? "hover:text-zinc-300" : "hover:text-zinc-800",
-                    )}
-                  >
-                    {isIndonesian ? "Kebijakan Privasi" : "Privacy Policy"}
-                  </button>
-                </p>
+                </div>
+              </form>
+            </motion.div>
+          ) : (
+            /* ========================================================== */
+            /* 4. VIEW MODE: LOGIN / WELCOME BACK                         */
+            /* ========================================================== */
+            <motion.div
+              key="view-login"
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 12 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="w-full flex flex-col"
+            >
+              {/* Top Back Navigation & Title */}
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setError(null);
+                    setMessage(null);
+                    setViewMode("landing");
+                  }}
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer -ml-1",
+                    isDark ? "hover:bg-white/[0.08] text-zinc-300" : "hover:bg-black/[0.06] text-zinc-700",
+                  )}
+                  aria-label={isIndonesian ? "Kembali" : "Back"}
+                >
+                  <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[17px] font-bold tracking-tight truncate">
+                    {isIndonesian ? "Selamat Datang Kembali" : "Welcome Back"}
+                  </h2>
+                  <p className="text-[11px] text-[var(--text-tertiary)] truncate">
+                    {isIndonesian
+                      ? "Masuk ke akun Anda untuk melanjutkan"
+                      : "Sign in to your account to continue"}
+                  </p>
+                </div>
               </div>
+
+              {/* Social OAuth Buttons */}
+              <div className="space-y-2 mb-2.5">
+                {/* Apple */}
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleOAuthLogin("apple")}
+                  className={cn(
+                    "w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl font-semibold text-[12.5px] transition-all cursor-pointer border select-none active:scale-[0.98]",
+                    isDark
+                      ? "bg-white hover:bg-zinc-200 text-black border-transparent shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
+                      : "bg-black hover:bg-zinc-800 text-white border-transparent shadow-[0_1px_3px_rgba(0,0,0,0.12)]",
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 170 170">
+                      <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.59-7.71-11.66-14-4.89-7.51-8.71-16.14-11.45-25.88-2.74-9.74-4.11-19.14-4.11-28.21 0-13.39 3.36-24.36 10.08-32.9 6.72-8.55 15.22-12.89 25.5-13.02 5.01 0 10.33 1.25 15.97 3.75 5.63 2.5 9.4 3.8 11.31 3.9 1.63 0 5.65-1.37 12.06-4.11 6.41-2.73 11.9-3.93 16.48-3.6 12.19.98 21.68 5.76 28.48 14.34-10.88 6.64-16.2 15.78-15.97 27.42.22 9.14 3.76 16.76 10.62 22.86 6.86 6.1 14.93 9.61 24.21 10.53-2.17 6.53-4.99 13.05-8.46 19.57zM119.22 31.84c0-7.39 2.67-14.35 8.01-20.87 5.34-6.52 11.96-10.43 19.86-11.73.65 1.52.98 3.15.98 4.9 0 7.39-2.75 14.35-8.25 20.87-5.5 6.52-12.21 10.37-20.13 11.55-.11-1.52-.47-3.09-.47-4.72z" />
+                    </svg>
+                    <span>{isIndonesian ? "Masuk dengan Apple" : "Sign in with Apple"}</span>
+                  </div>
+                  <ArrowRight size={13} strokeWidth={2.5} />
+                </button>
+
+                {/* Google */}
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleOAuthLogin("google")}
+                  className={cn(
+                    "w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl font-semibold text-[12.5px] transition-all cursor-pointer border select-none active:scale-[0.98]",
+                    isDark
+                      ? "bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] text-white"
+                      : "bg-black/[0.03] hover:bg-black/[0.05] border-black/[0.06] text-zinc-950 shadow-[0_1px_3px_rgba(0,0,0,0.03)]",
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    </svg>
+                    <span>{isIndonesian ? "Masuk dengan Google" : "Sign in with Google"}</span>
+                  </div>
+                  <ArrowRight size={13} strokeWidth={2.5} className="opacity-45" />
+                </button>
+              </div>
+
+              {/* Soft Divider */}
+              <div className="flex items-center gap-2 my-2 text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider">
+                <div className="flex-1 h-[1px] bg-[var(--glass-border)]" />
+                <span>{isIndonesian ? "atau masuk dengan surel" : "or sign in with email"}</span>
+                <div className="flex-1 h-[1px] bg-[var(--glass-border)]" />
+              </div>
+
+              {/* Form Email & Password */}
+              <form onSubmit={handleSubmit} className="space-y-2">
+                <div className="relative">
+                  <Mail
+                    size={15}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder="your.email@domain.com"
+                    required
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[13px] bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--glass-border)] focus:outline-none focus:border-[var(--text-primary)] transition-colors text-[var(--text-primary)]"
+                  />
+                </div>
+
+                {/* Password with 'Forgot password?' on the right above it */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] px-1">
+                    <span className="text-[var(--text-tertiary)]">
+                      {isIndonesian ? "Kata Sandi" : "Password"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:underline cursor-pointer transition-colors"
+                    >
+                      {isIndonesian ? "Lupa kata sandi?" : "Forgot password?"}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock
+                      size={15}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                    />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (error) setError(null);
+                      }}
+                      placeholder="••••••••"
+                      required
+                      className="w-full pl-9 pr-10 py-2.5 rounded-xl text-[13px] bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--glass-border)] focus:outline-none focus:border-[var(--text-primary)] transition-colors text-[var(--text-primary)] font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                {error && (
+                  <p className="text-[11.5px] text-rose-400 font-medium px-1">
+                    {error}
+                  </p>
+                )}
+                {message && (
+                  <p className="text-[11.5px] text-zinc-300 font-medium px-1">
+                    {message}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={cn(
+                    "w-full py-2.5 px-4 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98] select-none mt-1",
+                    isDark
+                      ? "bg-white text-black hover:bg-zinc-200"
+                      : "bg-zinc-950 text-white hover:bg-zinc-900",
+                  )}
+                >
+                  {loading ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <span>{isIndonesian ? "Masuk" : "Sign In"}</span>
+                  )}
+                </button>
+
+                {/* Switch to register link */}
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setError(null);
+                      setMessage(null);
+                      setViewMode("register");
+                    }}
+                    className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    {isIndonesian
+                      ? "Belum punya akun? Daftar"
+                      : "Don't have an account? Sign up"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           )}
         </AnimatePresence>
