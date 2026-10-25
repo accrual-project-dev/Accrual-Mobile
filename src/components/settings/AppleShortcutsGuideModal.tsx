@@ -11,10 +11,9 @@ import {
   CreditCard,
   Plus,
   ShieldCheck,
-  Eye,
-  ListFilter,
   Play,
   Search,
+  ArrowDown,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -306,7 +305,6 @@ export function AppleShortcutsGuideModal({
 
   const initialActionId = useMemo(() => resolveInitialAction(initialTab), [initialTab]);
   const [selectedActionId, setSelectedActionId] = useState<NativeActionId>(initialActionId);
-  const [mockupMode, setMockupMode] = useState<"library" | "card">("library");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const selectedAction = useMemo(
@@ -367,323 +365,7 @@ export function AppleShortcutsGuideModal({
         </div>
 
         {/* ==================================================================== */}
-        {/* TOP: AUTHENTIC REALISTIC IPHONE 16 PRO MOCKUP CHASSIS                */}
-        {/* ==================================================================== */}
-        <div className="relative w-full py-2 flex flex-col items-center justify-center">
-          {/* Subtle Ambient Studio Light Reflection */}
-          <div
-            className="pointer-events-none absolute -top-4 w-60 h-32 rounded-full"
-            style={{
-              background: isDark
-                ? "radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 70%)"
-                : "radial-gradient(ellipse, rgba(0,0,0,0.04) 0%, transparent 70%)",
-            }}
-          />
-
-          {/* iPhone 16 Pro Mockup Chassis */}
-          <div
-            className="relative"
-            style={{
-              width: 224,
-              height: 388,
-              borderRadius: 40,
-              padding: 3,
-              background: "linear-gradient(150deg, #3a3a40 0%, #1a1a1d 35%, #18181b 65%, #34343a 100%)",
-              boxShadow: isDark
-                ? "0 18px 45px -10px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.16), 0 0 0 2px #09090c"
-                : "0 16px 36px -10px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12), 0 0 0 2px #d4d4d8",
-            }}
-          >
-            {/* Side Hardware Micro Buttons */}
-            {/* Action Button */}
-            <div
-              style={{
-                position: "absolute",
-                left: -2.5,
-                top: 70,
-                width: 2.5,
-                height: 18,
-                borderRadius: "2px 0 0 2px",
-                background: "#2f2f35",
-              }}
-            />
-            {/* Volume Up */}
-            <div
-              style={{
-                position: "absolute",
-                left: -2.5,
-                top: 98,
-                width: 2.5,
-                height: 32,
-                borderRadius: "2px 0 0 2px",
-                background: "#2f2f35",
-              }}
-            />
-            {/* Volume Down */}
-            <div
-              style={{
-                position: "absolute",
-                left: -2.5,
-                top: 138,
-                width: 2.5,
-                height: 32,
-                borderRadius: "2px 0 0 2px",
-                background: "#2f2f35",
-              }}
-            />
-            {/* Power Button */}
-            <div
-              style={{
-                position: "absolute",
-                right: -2.5,
-                top: 110,
-                width: 2.5,
-                height: 48,
-                borderRadius: "0 2px 2px 0",
-                background: "#2f2f35",
-              }}
-            />
-
-            {/* OLED Screen Surface */}
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: 37,
-                background: "#000000",
-                overflow: "hidden",
-                position: "relative",
-                WebkitMaskImage: "-webkit-radial-gradient(white, black)",
-                maskImage: "radial-gradient(white, black)",
-                isolation: "isolate",
-                transform: "translateZ(0)",
-              }}
-            >
-              {/* Dynamic Island */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 74,
-                  height: 19,
-                  borderRadius: 999,
-                  background: "#000000",
-                  border: "0.5px solid rgba(255,255,255,0.1)",
-                  zIndex: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "0 7px",
-                }}
-              >
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#0a0a0f" }} />
-                <div style={{ width: 7.5, height: 7.5, borderRadius: "50%", background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.12)" }} />
-              </div>
-
-              {/* Status Bar */}
-              <div className="absolute top-2 left-0 right-0 px-4 flex items-center justify-between text-[9.5px] font-mono text-zinc-300 z-30">
-                <span className="font-semibold">09:41</span>
-                <div className="flex items-center gap-1.5 text-[8.5px]">
-                  <span>5G</span>
-                  <div className="w-4 h-2 rounded-[2px] border border-zinc-300 p-0.5 flex items-center">
-                    <div className="w-full h-full bg-zinc-200 rounded-[1px]" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Inside Screen Content */}
-              <div className="absolute inset-0 pt-9 pb-3 px-2.5 flex flex-col justify-between">
-                {/* Search Bar / Shortcuts Nav Header */}
-                <div className="space-y-1.5 shrink-0">
-                  <div className="flex items-center justify-between px-1 text-zinc-400 text-[10px]">
-                    <span className="font-semibold text-white tracking-tight">Accrual</span>
-                    <span className="font-mono text-[9px] text-zinc-500">6 Actions</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 text-[9px]">
-                    <Search size={10} className="text-zinc-500" />
-                    <span>{isIndonesian ? "Cari Tindakan" : "Search Actions"}</span>
-                  </div>
-
-                  {/* Mode Segment: Library vs Card */}
-                  <div className="flex items-center p-0.5 rounded-lg bg-zinc-900 border border-white/10">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setMockupMode("library");
-                      }}
-                      className="flex-1 py-0.5 rounded text-[9.5px] font-medium transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
-                      style={{
-                        background: mockupMode === "library" ? "rgba(255,255,255,0.15)" : "transparent",
-                        color: mockupMode === "library" ? "#ffffff" : "#71717a",
-                      }}
-                    >
-                      <ListFilter size={10} />
-                      <span>{isIndonesian ? "Daftar" : "Library"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setMockupMode("card");
-                      }}
-                      className="flex-1 py-0.5 rounded text-[9.5px] font-medium transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
-                      style={{
-                        background: mockupMode === "card" ? "rgba(255,255,255,0.15)" : "transparent",
-                        color: mockupMode === "card" ? "#ffffff" : "#71717a",
-                      }}
-                    >
-                      <Eye size={10} />
-                      <span>{isIndonesian ? "Kartu" : "Flow"}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* View 1: Real Action Library List */}
-                {mockupMode === "library" && (
-                  <div className="space-y-1 my-auto overflow-hidden">
-                    {NATIVE_ACTIONS.map((action) => {
-                      const Icon = action.icon;
-                      const isSelected = action.id === selectedActionId;
-                      return (
-                        <div
-                          key={action.id}
-                          onClick={() => {
-                            triggerHaptic("light");
-                            setSelectedActionId(action.id);
-                          }}
-                          className="flex items-center justify-between p-1.5 rounded-lg transition-all cursor-pointer border"
-                          style={{
-                            background: isSelected ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)",
-                            borderColor: isSelected ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.06)",
-                          }}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <div
-                              className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                              style={{
-                                background: isSelected ? "#ffffff" : "rgba(255,255,255,0.08)",
-                                color: isSelected ? "#000000" : "#ffffff",
-                              }}
-                            >
-                              <Icon size={10.5} strokeWidth={2} />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-[10px] font-semibold text-white truncate font-mono">
-                                {action.name}
-                              </div>
-                              <div className="text-[8px] text-zinc-400 truncate">
-                                {isIndonesian ? action.chipLabelId : action.chipLabelEn}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="w-3.5 h-3.5 rounded-full border border-white/20 flex items-center justify-center text-[7.5px] text-zinc-400 italic">
-                            i
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* View 2: Live Action Block Execution */}
-                {mockupMode === "card" && (
-                  <div className="my-auto space-y-2 p-2 rounded-xl bg-zinc-900/90 border border-white/12 text-left">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <div className="w-4 h-4 rounded bg-white text-black flex items-center justify-center text-[8px] font-bold">
-                          A
-                        </div>
-                        <span className="text-[10px] font-bold text-white truncate">
-                          {selectedAction.name}
-                        </span>
-                      </div>
-                      <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">
-                        AppIntent
-                      </span>
-                    </div>
-
-                    {/* Parameter Syntax with Authentic Blue Variable Tokens */}
-                    <div className="text-[10px] leading-relaxed text-zinc-300 font-sans">
-                      {selectedAction.id === "notif_reader" && (
-                        <div>
-                          <span>Log </span>
-                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
-                            Notification
-                          </span>
-                          <span> to Accrual automatically</span>
-                        </div>
-                      )}
-
-                      {selectedAction.id === "card_transaction" && (
-                        <div>
-                          <span>Log </span>
-                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
-                            Amount
-                          </span>
-                          <span> at </span>
-                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
-                            Merchant
-                          </span>
-                          <span> with </span>
-                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
-                            Card
-                          </span>
-                        </div>
-                      )}
-
-                      {selectedAction.id === "voice_entry" && (
-                        <div>
-                          <div className="flex items-center gap-1 mb-1 text-[#5AC8FA]">
-                            <Mic size={10} />
-                            <span className="text-[9px] font-semibold font-mono">Siri AI NLP</span>
-                          </div>
-                          <span>"Kopi 25rb bayar pakai Cash"</span>
-                        </div>
-                      )}
-
-                      {selectedAction.id === "screen_scanner" && (
-                        <div>
-                          <span>Extract receipt from </span>
-                          <span className="inline-block px-1 rounded bg-[#007AFF]/30 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[9px] font-semibold">
-                            Screenshot
-                          </span>
-                          <span> via Live Text OCR</span>
-                        </div>
-                      )}
-
-                      {selectedAction.id === "quick_action" && (
-                        <div>
-                          <span>Open transaction modal with numeric keypad focus</span>
-                        </div>
-                      )}
-
-                      {selectedAction.id === "scan_receipt" && (
-                        <div>
-                          <span>Launch document camera scanner with edge detection</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-[8px] text-zinc-500 border-t border-white/06 pt-1 flex items-center justify-between">
-                      <span>{isIndonesian ? "Eksekusi Hening" : "Silent Execution"}</span>
-                      <span className="text-zinc-400">iOS 16+</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Home Indicator */}
-                <div className="w-20 h-1 bg-white/30 rounded-full mx-auto shrink-0" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ==================================================================== */}
-        {/* ACTION SELECTOR CHIPS (HORIZONTAL SCROLL)                             */}
+        {/* 1. HORIZONTAL ACTION SELECTOR CHIPS                                  */}
         {/* ==================================================================== */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 py-1">
           {NATIVE_ACTIONS.map((action) => {
@@ -708,13 +390,13 @@ export function AppleShortcutsGuideModal({
                       : "rgba(0, 0, 0, 0.03)",
                   borderColor: isSelected
                     ? isDark
-                      ? "rgba(255, 255, 255, 0.22)"
+                      ? "rgba(255, 255, 255, 0.24)"
                       : "#18181b"
                     : isDark
                       ? "rgba(255, 255, 255, 0.06)"
                       : "rgba(0, 0, 0, 0.05)",
                   color: isSelected ? "#ffffff" : "var(--text-secondary)",
-                  boxShadow: isSelected ? "0 2px 8px rgba(0,0,0,0.2)" : "none",
+                  boxShadow: isSelected ? "0 2px 8px rgba(0,0,0,0.25)" : "none",
                 }}
               >
                 <Icon size={12} strokeWidth={1.8} />
@@ -725,7 +407,381 @@ export function AppleShortcutsGuideModal({
         </div>
 
         {/* ==================================================================== */}
-        {/* BOTTOM: CONCISE & MODERN 3-STEP HOW-TO RECIPE                         */}
+        {/* 2. DYNAMIC IPHONE PREVIEW (SYNCS TO SELECTED SHORTCUT)               */}
+        {/* ==================================================================== */}
+        <div className="relative w-full flex flex-col items-center justify-center py-1">
+          {/* Subtle Ambient Glow */}
+          <div
+            className="pointer-events-none absolute -top-2 w-56 h-28 rounded-full"
+            style={{
+              background: isDark
+                ? "radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 70%)"
+                : "radial-gradient(ellipse, rgba(0,0,0,0.03) 0%, transparent 70%)",
+            }}
+          />
+
+          {/* Compact iPhone Frame */}
+          <div
+            className="relative w-full max-w-[280px]"
+            style={{
+              borderRadius: 28,
+              padding: 2.5,
+              background: "linear-gradient(150deg, #38383e 0%, #1c1c1f 35%, #18181b 65%, #303036 100%)",
+              boxShadow: isDark
+                ? "0 14px 34px -8px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.14), 0 0 0 2px #09090c"
+                : "0 10px 24px -8px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.1), 0 0 0 2px #d4d4d8",
+            }}
+          >
+            {/* Side Hardware Micro Accents */}
+            <div
+              style={{
+                position: "absolute",
+                left: -2,
+                top: 45,
+                width: 2,
+                height: 14,
+                borderRadius: "2px 0 0 2px",
+                background: "#2f2f35",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: -2,
+                top: 66,
+                width: 2,
+                height: 24,
+                borderRadius: "2px 0 0 2px",
+                background: "#2f2f35",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                right: -2,
+                top: 72,
+                width: 2,
+                height: 36,
+                borderRadius: "0 2px 2px 0",
+                background: "#2f2f35",
+              }}
+            />
+
+            {/* OLED Screen Surface */}
+            <div
+              className="relative w-full overflow-hidden bg-black flex flex-col justify-between"
+              style={{
+                height: 192,
+                borderRadius: 25.5,
+                padding: "8px 10px 6px 10px",
+              }}
+            >
+              {/* Dynamic Island Pill */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 5,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 58,
+                  height: 14,
+                  borderRadius: 999,
+                  background: "#000000",
+                  border: "0.5px solid rgba(255,255,255,0.1)",
+                  zIndex: 30,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0 5px",
+                }}
+              >
+                <div style={{ width: 4.5, height: 4.5, borderRadius: "50%", background: "#0a0a0f" }} />
+                <div style={{ width: 5.5, height: 5.5, borderRadius: "50%", background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.12)" }} />
+              </div>
+
+              {/* Status Header */}
+              <div className="pt-3.5 pb-1 flex items-center justify-between border-b border-white/[0.08] shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3.5 h-3.5 rounded bg-white text-black flex items-center justify-center text-[7px] font-bold">
+                    A
+                  </div>
+                  <span className="text-[9.5px] font-bold text-white tracking-tight">Accrual</span>
+                </div>
+                <div className="flex items-center gap-1 text-[8.5px] text-zinc-400">
+                  <Search size={9} className="text-zinc-500" />
+                  <span>{isIndonesian ? "Cari Tindakan" : "Search Actions"}</span>
+                </div>
+              </div>
+
+              {/* Dynamic Action Execution Flow Tailored to selectedAction */}
+              <div className="flex-1 flex flex-col justify-center py-1">
+                {selectedAction.id === "notif_reader" && (
+                  <div className="space-y-1.5">
+                    {/* Trigger Event Block */}
+                    <div className="p-1.5 rounded-lg bg-white/[0.04] border border-white/08 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-4 h-4 rounded bg-white/10 flex items-center justify-center shrink-0">
+                          <Bell size={9} className="text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[7.5px] text-zinc-400 font-medium leading-none">
+                            {isIndonesian ? "Pemicu Automasi Pribadi" : "Personal Automation Trigger"}
+                          </div>
+                          <div className="text-[9px] font-semibold text-white truncate mt-0.5">
+                            {isIndonesian ? "Notifikasi: BCA, Mandiri, Jenius, GoPay..." : "Notification: BCA, Mandiri, Jenius..."}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[7.5px] font-mono px-1 py-0.5 rounded bg-white/10 text-zinc-300 shrink-0">
+                        Auto
+                      </span>
+                    </div>
+
+                    <div className="flex justify-center -my-0.5">
+                      <ArrowDown size={9} className="text-zinc-600" />
+                    </div>
+
+                    {/* Action Execution Block */}
+                    <div className="p-1.5 rounded-lg bg-white/[0.08] border border-white/14 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-semibold text-white">Log Notification Transaction</span>
+                        <span className="text-[7.5px] font-mono text-zinc-400">AppIntent</span>
+                      </div>
+                      <div className="text-[9.5px] text-zinc-200">
+                        <span>{isIndonesian ? "Catat " : "Log "}</span>
+                        <span className="inline-block px-1.5 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8.5px] font-semibold">
+                          {isIndonesian ? "Notifikasi" : "Notification"}
+                        </span>
+                        <span>{isIndonesian ? " ke Accrual" : " to Accrual"}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[7.5px] text-zinc-400 px-0.5">
+                      <span className="flex items-center gap-1">
+                        <ShieldCheck size={8} className="text-white" />
+                        <span>{isIndonesian ? "Filter promo aktif" : "Anti-promo filter active"}</span>
+                      </span>
+                      <span>{isIndonesian ? "Latar belakang" : "Background"}</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAction.id === "card_transaction" && (
+                  <div className="space-y-1.5">
+                    <div className="p-2 rounded-xl bg-white/[0.08] border border-white/14 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <CreditCard size={10} className="text-white" />
+                          <span className="text-[9.5px] font-semibold text-white">Log Card Transaction</span>
+                        </div>
+                        <span className="text-[7.5px] font-mono px-1 py-0.5 rounded bg-white/10 text-zinc-300">
+                          AppIntent
+                        </span>
+                      </div>
+                      <div className="text-[9.5px] leading-relaxed text-zinc-200 font-sans">
+                        <span>{isIndonesian ? "Catat " : "Log "}</span>
+                        <span className="inline-block px-1 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8px] font-semibold">
+                          {isIndonesian ? "Nominal" : "Amount"}
+                        </span>
+                        <span>{isIndonesian ? " di " : " at "}</span>
+                        <span className="inline-block px-1 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8px] font-semibold">
+                          {isIndonesian ? "Toko" : "Merchant"}
+                        </span>
+                        <span>{isIndonesian ? " via " : " with "}</span>
+                        <span className="inline-block px-1 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8px] font-semibold">
+                          {isIndonesian ? "Kartu" : "Card"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[7.5px] text-zinc-400 px-0.5">
+                      <span className="flex items-center gap-1">
+                        <Check size={8} className="text-white" />
+                        <span>{isIndonesian ? "Sinkronisasi instan ke buku kas" : "Instant ledger sync"}</span>
+                      </span>
+                      <span>iOS 16+</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAction.id === "voice_entry" && (
+                  <div className="space-y-1.5">
+                    <div className="p-1.5 rounded-lg bg-white/[0.04] border border-white/08 flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded bg-[#5AC8FA]/20 border border-[#5AC8FA]/30 flex items-center justify-center shrink-0">
+                        <Mic size={9} className="text-[#5AC8FA]" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[7.5px] text-zinc-400 font-mono">Siri AI NLP</div>
+                        <div className="text-[9px] font-semibold text-white truncate">
+                          "{isIndonesian ? "Kopi 25rb bayar pakai Cash" : "Coffee 25k paid with Cash"}"
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center -my-0.5">
+                      <ArrowDown size={9} className="text-zinc-600" />
+                    </div>
+
+                    <div className="p-1.5 rounded-lg bg-white/[0.08] border border-white/14 space-y-1">
+                      <div className="text-[7.5px] text-zinc-400 font-medium">
+                        {isIndonesian ? "Hasil Deteksi Otomatis:" : "Auto-Parsed Result:"}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <span className="px-1 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8px] font-semibold">
+                          Rp 25.000
+                        </span>
+                        <span className="px-1 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8px] font-semibold">
+                          {isIndonesian ? "Makanan" : "Food"}
+                        </span>
+                        <span className="px-1 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8px] font-semibold">
+                          Cash
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[7.5px] text-zinc-400 px-0.5">
+                      <span>{isIndonesian ? "Pemrosesan lokal on-device" : "On-device processing"}</span>
+                      <span>Siri AI</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAction.id === "screen_scanner" && (
+                  <div className="space-y-1.5">
+                    <div className="p-1.5 rounded-lg bg-white/[0.04] border border-white/08 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-4 h-4 rounded bg-white/10 flex items-center justify-center shrink-0">
+                          <Smartphone size={9} className="text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[7.5px] text-zinc-400 font-medium leading-none">
+                            {isIndonesian ? "Ketuk Bagian Belakang" : "Back Tap Trigger"}
+                          </div>
+                          <div className="text-[9px] font-semibold text-white truncate mt-0.5">
+                            {isIndonesian ? "Ketuk 2x Bodi iPhone" : "Double Tap Back of iPhone"}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[7.5px] font-mono px-1 py-0.5 rounded bg-white/10 text-zinc-300 shrink-0">
+                        2x Tap
+                      </span>
+                    </div>
+
+                    <div className="flex justify-center -my-0.5">
+                      <ArrowDown size={9} className="text-zinc-600" />
+                    </div>
+
+                    <div className="p-1.5 rounded-lg bg-white/[0.08] border border-white/14 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-semibold text-white">Apple Live Text OCR</span>
+                        <span className="text-[7.5px] font-mono text-zinc-400">Extract</span>
+                      </div>
+                      <div className="text-[9px] text-zinc-200 truncate">
+                        <span>{isIndonesian ? "Ekstrak struk: " : "Extract: "}</span>
+                        <span className="inline-block px-1 py-0.5 rounded bg-[#007AFF]/25 text-[#5AC8FA] border border-[#007AFF]/40 font-mono text-[8px] font-semibold">
+                          {isIndonesian ? "Tangkapan Layar" : "Screenshot"}
+                        </span>
+                      </div>
+                      <div className="text-[7.5px] text-zinc-400 font-mono truncate">
+                        ➔ Rp 85.000 • Kopi Toko Djawa
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[7.5px] text-zinc-400 px-0.5">
+                      <span>{isIndonesian ? "Ekstraksi OCR instan" : "Instant OCR extraction"}</span>
+                      <span>Live Text</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAction.id === "quick_action" && (
+                  <div className="space-y-1.5">
+                    <div className="p-1.5 rounded-lg bg-white/[0.04] border border-white/08 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-4 h-4 rounded bg-white text-black flex items-center justify-center shrink-0">
+                          <Plus size={10} strokeWidth={2.5} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[7.5px] text-zinc-400 font-medium leading-none">
+                            {isIndonesian ? "Pusat Kontrol & Layar Terkunci" : "Control Center & Lock Screen"}
+                          </div>
+                          <div className="text-[9px] font-semibold text-white truncate mt-0.5">
+                            Accrual Quick Add
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[7.5px] font-mono px-1 py-0.5 rounded bg-white/10 text-zinc-300 shrink-0">
+                        iOS 18
+                      </span>
+                    </div>
+
+                    <div className="p-1.5 rounded-lg bg-white/[0.08] border border-white/14 space-y-1">
+                      <div className="flex items-center justify-between text-[8px] text-zinc-400">
+                        <span>{isIndonesian ? "Fokus Keypad Langsung" : "Instant Keypad Focus"}</span>
+                        <span className="font-mono text-white text-[10px] font-bold">Rp 0<span className="animate-pulse">|</span></span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 pt-0.5 text-center font-mono text-[8px] text-zinc-300">
+                        <div className="py-0.5 rounded bg-white/[0.06]">1</div>
+                        <div className="py-0.5 rounded bg-white/[0.06]">2</div>
+                        <div className="py-0.5 rounded bg-white/[0.06]">3</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[7.5px] text-zinc-400 px-0.5">
+                      <span>{isIndonesian ? "Input cepat dalam 3 detik" : "1-Tap fast logging in 3s"}</span>
+                      <span>1-Tap</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAction.id === "scan_receipt" && (
+                  <div className="space-y-1.5">
+                    <div className="p-1.5 rounded-lg bg-white/[0.08] border border-white/14 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Camera size={9} className="text-white" />
+                          <span className="text-[9px] font-semibold text-white">
+                            {isIndonesian ? "Kamera Pemindai Nota" : "Camera Document Scanner"}
+                          </span>
+                        </div>
+                        <span className="text-[7.5px] font-mono px-1 py-0.5 rounded bg-white/10 text-zinc-300">
+                          VisionKit
+                        </span>
+                      </div>
+
+                      {/* Viewfinder Reticle */}
+                      <div className="relative h-12 rounded-lg bg-black/50 border border-white/10 flex items-center justify-center overflow-hidden">
+                        <div className="absolute top-1 left-1 text-white/50 text-[8px] font-mono leading-none">⌜</div>
+                        <div className="absolute top-1 right-1 text-white/50 text-[8px] font-mono leading-none">⌝</div>
+                        <div className="absolute bottom-1 left-1 text-white/50 text-[8px] font-mono leading-none">⌞</div>
+                        <div className="absolute bottom-1 right-1 text-white/50 text-[8px] font-mono leading-none">⌟</div>
+                        <div className="text-center">
+                          <div className="text-[8.5px] font-semibold text-zinc-200">
+                            {isIndonesian ? "Arahkan Kamera ke Struk" : "Point Camera at Receipt"}
+                          </div>
+                          <div className="text-[7px] text-zinc-400 font-mono">
+                            {isIndonesian ? "Deteksi batas nota otomatis" : "Auto edge detection & total"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[7.5px] text-zinc-400 px-0.5">
+                      <span>{isIndonesian ? "Pemindaian struk & nota fisik" : "Instant paper receipt scanner"}</span>
+                      <span>OCR</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Home Indicator */}
+              <div className="w-16 h-0.5 bg-white/25 rounded-full mx-auto shrink-0 mt-0.5" />
+            </div>
+          </div>
+        </div>
+
+        {/* ==================================================================== */}
+        {/* 3. CONCISE 3-STEP HOW-TO RECIPE                                      */}
         {/* ==================================================================== */}
         <div
           className="p-3.5 rounded-2xl border space-y-3"
@@ -764,19 +820,19 @@ export function AppleShortcutsGuideModal({
             </div>
           </div>
 
-          {/* 3 Streamlined Numbered Steps */}
+          {/* 3 Streamlined Numbered Steps (Clean, no redundant [1] 01) */}
           <div className="space-y-2 text-[11.5px]">
             {selectedAction.steps.map((step, idx) => (
               <div
                 key={idx}
                 className="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/05"
               >
-                <span className="font-mono text-[10px] font-semibold text-[var(--text-tertiary)] px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/08 shrink-0 mt-0.5">
-                  {idx + 1}
+                <span className="font-mono text-[10.5px] font-bold text-white px-2 py-0.5 rounded-md bg-white/[0.07] border border-white/10 shrink-0 mt-0.5">
+                  0{idx + 1}
                 </span>
                 <div className="min-w-0 leading-relaxed text-[var(--text-secondary)]">
                   <span className="font-semibold text-[var(--text-primary)] mr-1">
-                    {isIndonesian ? step.labelId : step.labelEn}:
+                    {isIndonesian ? step.labelId.replace(/^\d+\s*/, "") : step.labelEn.replace(/^\d+\s*/, "")}:
                   </span>
                   <span>{isIndonesian ? step.descId : step.descEn}</span>
                 </div>
@@ -826,8 +882,10 @@ export function AppleShortcutsGuideModal({
           )}
         </div>
 
-        {/* Bottom CTA Action Bar */}
-        <div className="pt-2 flex items-center gap-2">
+        {/* ==================================================================== */}
+        {/* 4. BOTTOM CTA ACTION BAR                                             */}
+        {/* ==================================================================== */}
+        <div className="pt-1 flex items-center gap-2">
           <button
             type="button"
             onClick={openShortcutsApp}
