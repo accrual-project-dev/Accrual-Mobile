@@ -54,7 +54,7 @@ export function DynamicShowcaseCapsule({
         triggerHaptic("light");
         setIsInteracted((prev) => !prev);
       }}
-      className="relative w-full max-w-[340px] sm:max-w-[365px] min-h-[165px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
+      className="relative w-full max-w-[355px] sm:max-w-[380px] min-h-[195px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
     >
       <AnimatePresence mode="wait">
         {/* ── SLIDE 0: MINIMALIST LIQUID GLASS HORIZON & LIVE SPLINE ── */}
@@ -66,7 +66,7 @@ export function DynamicShowcaseCapsule({
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              "w-full rounded-[24px] p-3.5 border flex flex-col gap-2.5 transition-colors relative overflow-hidden",
+              "w-full rounded-[26px] p-4 sm:p-4.5 border flex flex-col gap-2.5 transition-colors relative overflow-hidden",
               isDark
                 ? "bg-[#141418]/70 border-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
                 : "bg-white/75 border-black/[0.06] shadow-[inset_0_1.5px_0_#ffffff,0_2px_12px_rgba(0,0,0,0.03)]",
@@ -95,7 +95,7 @@ export function DynamicShowcaseCapsule({
                 </div>
                 <span
                   className={cn(
-                    "text-[11px] font-semibold tracking-tight",
+                    "text-[11.5px] font-semibold tracking-tight",
                     isDark ? "text-white/85" : "text-zinc-800",
                   )}
                 >
@@ -105,7 +105,7 @@ export function DynamicShowcaseCapsule({
 
               <div
                 className={cn(
-                  "px-2 py-0.5 rounded-full text-[9.5px] font-bold tracking-tight border",
+                  "px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-tight border",
                   isDark
                     ? "bg-white/[0.08] border-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]"
                     : "bg-black/[0.04] border-black/8 text-zinc-900 shadow-[inset_0_1px_0_#ffffff]",
@@ -116,9 +116,9 @@ export function DynamicShowcaseCapsule({
             </div>
 
             {/* Spline Curve Visualizer */}
-            <div className="relative h-18 w-full flex items-center justify-center overflow-hidden rounded-xl">
+            <div className="relative h-24 w-full flex items-center justify-center overflow-hidden rounded-xl">
               <svg
-                viewBox="0 0 320 80"
+                viewBox="0 0 320 95"
                 className="w-full h-full overflow-visible select-none"
                 preserveAspectRatio="none"
               >
@@ -144,28 +144,28 @@ export function DynamicShowcaseCapsule({
                 </defs>
 
                 <path
-                  d="M 0 65 Q 40 45, 80 50 T 160 30 T 240 16 T 320 28 L 320 80 L 0 80 Z"
+                  d="M 0 76 Q 40 54, 80 58 T 160 36 T 240 20 T 320 32 L 320 95 L 0 95 Z"
                   fill={`url(#${chartGradientId}-spline)`}
                 />
                 <path
-                  d="M 0 65 Q 40 45, 80 50 T 160 30 T 240 16 T 320 28"
+                  d="M 0 76 Q 40 54, 80 58 T 160 36 T 240 20 T 320 32"
                   fill="none"
                   stroke={isDark ? "#ffffff" : "#09090b"}
-                  strokeWidth="2"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                 />
 
                 {/* Focus Target Dot */}
                 <circle
                   cx="240"
-                  cy="16"
-                  r="7"
+                  cy="20"
+                  r="7.5"
                   fill={isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.06)"}
                 />
                 <circle
                   cx="240"
-                  cy="16"
-                  r="3.5"
+                  cy="20"
+                  r="4"
                   fill={isDark ? "#ffffff" : "#09090b"}
                 />
               </svg>
@@ -174,7 +174,7 @@ export function DynamicShowcaseCapsule({
             {/* Scale Timeline */}
             <div
               className={cn(
-                "flex items-center justify-between text-[9px] font-semibold tracking-wider px-1 pt-1 border-t",
+                "flex items-center justify-between text-[9.5px] font-semibold tracking-wider px-1 pt-1.5 border-t",
                 isDark
                   ? "border-white/[0.06] text-white/40"
                   : "border-black/[0.05] text-zinc-400",
@@ -387,7 +387,7 @@ export function DynamicShowcaseCapsule({
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              "w-full rounded-[24px] p-3.5 border flex flex-col gap-2.5 transition-colors relative overflow-hidden",
+              "w-full rounded-[26px] p-4 sm:p-4.5 border flex flex-col gap-3 transition-colors relative overflow-hidden",
               isDark
                 ? "bg-[#141418]/70 border-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
                 : "bg-white/75 border-black/[0.06] shadow-[inset_0_1.5px_0_#ffffff,0_2px_12px_rgba(0,0,0,0.03)]",
@@ -682,7 +682,7 @@ export function DynamicShowcaseCapsule({
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              "w-full rounded-[24px] p-3.5 border flex flex-col gap-2.5 transition-colors relative overflow-hidden",
+              "w-full rounded-[26px] p-4 sm:p-4.5 border flex flex-col gap-3 transition-colors relative overflow-hidden",
               isDark
                 ? "bg-[#141418]/70 border-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
                 : "bg-white/75 border-black/[0.06] shadow-[inset_0_1.5px_0_#ffffff,0_2px_12px_rgba(0,0,0,0.03)]",
@@ -734,7 +734,7 @@ export function DynamicShowcaseCapsule({
             {/* Progress Container */}
             <div
               className={cn(
-                "p-2.5 rounded-xl border flex flex-col gap-1.5",
+                "p-3 rounded-xl border flex flex-col gap-2",
                 isDark
                   ? "bg-white/[0.03] border-white/[0.08]"
                   : "bg-black/[0.025] border-black/6",
@@ -742,12 +742,12 @@ export function DynamicShowcaseCapsule({
             >
               <div className="flex items-baseline justify-between">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-[20px] font-bold tracking-tight leading-none tabular-nums">
+                  <span className="text-[24px] font-bold tracking-tight leading-none tabular-nums">
                     8.4
                   </span>
                   <span
                     className={cn(
-                      "text-[10.5px] font-medium",
+                      "text-[11px] font-medium",
                       isDark ? "text-white/60" : "text-zinc-600",
                     )}
                   >
@@ -756,7 +756,7 @@ export function DynamicShowcaseCapsule({
                 </div>
                 <span
                   className={cn(
-                    "text-[9.5px] font-mono",
+                    "text-[10px] font-mono",
                     isDark ? "text-white/45" : "text-zinc-500",
                   )}
                 >
@@ -767,7 +767,7 @@ export function DynamicShowcaseCapsule({
               {/* Minimal Progress Bar */}
               <div
                 className={cn(
-                  "h-1.5 w-full rounded-full overflow-hidden p-[0.5px] border",
+                  "h-2 w-full rounded-full overflow-hidden p-[0.5px] border",
                   isDark
                     ? "bg-black/30 border-white/10"
                     : "bg-zinc-200 border-black/8",
@@ -789,7 +789,7 @@ export function DynamicShowcaseCapsule({
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <div
                 className={cn(
-                  "flex-1 text-center py-1 rounded-xl text-[9px] font-semibold border",
+                  "flex-1 text-center py-1.5 rounded-xl text-[10px] font-semibold border",
                   isDark
                     ? "bg-white/[0.03] border-white/8 text-white/60"
                     : "bg-black/[0.02] border-black/6 text-zinc-600",
@@ -799,7 +799,7 @@ export function DynamicShowcaseCapsule({
               </div>
               <div
                 className={cn(
-                  "flex-1 text-center py-1 rounded-xl text-[9px] font-semibold border",
+                  "flex-1 text-center py-1.5 rounded-xl text-[10px] font-semibold border",
                   isDark
                     ? "bg-white/[0.03] border-white/8 text-white/60"
                     : "bg-black/[0.02] border-black/6 text-zinc-600",

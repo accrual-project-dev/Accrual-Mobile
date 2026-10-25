@@ -58,9 +58,9 @@ export function getPasswordStrength(
 export function getShowcaseSlides(isIndonesian: boolean): ShowcaseSlide[] {
   return [
     {
-      title: "Accrual",
+      title: isIndonesian ? "Trajektori Arus Kas" : "Cashflow Trajectory",
       tagline: isIndonesian
-        ? "Seluruh keuangan Anda dalam satu tempat.\nCatat, rencanakan, dan raih kejelasan finansial sejati."
+        ? "Seluruh keuangan Anda dalam satu tempat.\nCatat, pantau, dan raih kejelasan finansial sejati."
         : "Your money in one place.\nTrack, plan, and build lasting financial clarity.",
       visual: "chart",
     },

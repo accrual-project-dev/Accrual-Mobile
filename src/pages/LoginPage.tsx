@@ -494,7 +494,7 @@ export function LoginPage() {
       {/* ── 2. POLISHED CELESTIAL HORIZON ARC (CRADLES SHOWCASE & LIQUID SHEET) ── */}
       <div
         className={cn(
-          "absolute top-[37%] sm:top-[39%] left-1/2 -translate-x-1/2 w-[180vw] max-w-[960px] aspect-square rounded-[50%] pointer-events-none border-t transition-all duration-700",
+          "absolute top-[46%] sm:top-[48%] left-1/2 -translate-x-1/2 w-[180vw] max-w-[960px] aspect-square rounded-[50%] pointer-events-none border-t transition-all duration-700",
           isDark ? "border-white/[0.18]" : "border-black/[0.07]",
         )}
         style={{
@@ -508,7 +508,7 @@ export function LoginPage() {
       />
 
       {/* ── 3. TOP SECTION: SHOWCASE STAGE & PROPORTIONAL TITLE ── */}
-      <div className="flex-1 w-full max-w-sm px-5 relative z-10 flex flex-col justify-center items-center text-center py-1 sm:py-2 min-h-0">
+      <div className="flex-1 w-full max-w-[390px] px-5 relative z-10 flex flex-col justify-start items-center text-center pt-6 sm:pt-8 pb-2 min-h-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSlide}
@@ -516,14 +516,14 @@ export function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-1 mb-2"
+            className="space-y-1 mb-3"
           >
-            <h1 className="text-[24px] sm:text-[26px] font-bold tracking-tight leading-tight">
+            <h1 className="text-[25px] sm:text-[27px] font-bold tracking-tight leading-tight">
               {currentSlide.title}
             </h1>
             <p
               className={cn(
-                "text-[12px] font-medium leading-relaxed max-w-[280px] mx-auto",
+                "text-[12.5px] font-medium leading-relaxed max-w-[290px] mx-auto",
                 isDark ? "text-zinc-400" : "text-zinc-600",
               )}
             >
@@ -533,7 +533,7 @@ export function LoginPage() {
         </AnimatePresence>
 
         {/* Dynamic Showcase Capsule with Organic Glass Reflection */}
-        <div className="w-full flex justify-center items-center min-h-[160px] my-1">
+        <div className="w-full flex justify-center items-center min-h-[195px] my-2">
           <DynamicShowcaseCapsule
             currentSlide={currentSlide}
             isDark={isDark}
@@ -553,7 +553,7 @@ export function LoginPage() {
         </div>
 
         {/* Apple Tactile Segment Pagination Dots */}
-        <div className="flex items-center justify-center gap-1.5 mt-2">
+        <div className="flex items-center justify-center gap-1.5 mt-3 mb-2">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -785,27 +785,10 @@ export function LoginPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="w-full flex flex-col"
+              className="w-full flex flex-col pt-1"
             >
-              {/* Header */}
-              <div className="text-center space-y-0.5 mb-3 px-1">
-                <h2 className="text-[19px] sm:text-[21px] font-bold tracking-tight">
-                  {isIndonesian ? "Selamat Datang di Accrual" : "Welcome to Accrual"}
-                </h2>
-                <p
-                  className={cn(
-                    "text-[11.5px] font-medium leading-relaxed max-w-[300px] mx-auto",
-                    isDark ? "text-zinc-400" : "text-zinc-600",
-                  )}
-                >
-                  {isIndonesian
-                    ? "Pantau arus kas harian dan bangun kejelasan aset dengan presisi tinggi."
-                    : "Track everyday cashflow and build lasting wealth clarity with effortless precision."}
-                </p>
-              </div>
-
               {/* Actions Area */}
-              <div className="space-y-2 w-full">
+              <div className="space-y-2.5 w-full">
                 {/* 1. Primary Solid High-Contrast Pill: Get Started */}
                 <button
                   type="button"
@@ -816,14 +799,14 @@ export function LoginPage() {
                     setViewMode("register");
                   }}
                   className={cn(
-                    "w-full py-2.5 px-4 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.98] select-none",
+                    "w-full py-3 px-4 rounded-xl font-semibold text-[13.5px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.98] select-none",
                     isDark
                       ? "bg-white text-black hover:bg-zinc-200"
                       : "bg-zinc-950 text-white hover:bg-zinc-900 shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
                   )}
                 >
                   <span>{isIndonesian ? "Mulai Sekarang" : "Get Started"}</span>
-                  <ArrowRight size={14} strokeWidth={2.5} />
+                  <ArrowRight size={15} strokeWidth={2.5} />
                 </button>
 
                 {/* 2. Secondary Frosted Glass Pill: Already have account? Login */}
@@ -850,11 +833,11 @@ export function LoginPage() {
                 </button>
 
                 {/* 3. Clean Text Link: Guest Mode (no card) */}
-                <div className="pt-0 text-center">
+                <div className="pt-0.5 text-center">
                   <button
                     type="button"
                     onClick={handleContinueAsGuest}
-                    className="text-[11.5px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors py-0.5 cursor-pointer"
+                    className="text-[12px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors py-1 cursor-pointer"
                   >
                     {isIndonesian ? "Coba masuk mode tamu" : "Try guest mode"}
                   </button>
