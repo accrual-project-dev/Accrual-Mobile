@@ -229,7 +229,7 @@ struct GetFinancialSummaryIntent: AppIntent {
 /// Automatically indexes Accrual into iOS Shortcuts app on app installation
 @available(iOS 16.0, *)
 struct AccrualShortcutsProvider: AppShortcutsProvider {
-    static var shortcutTileColor: ShortcutTileColor = .gray
+    static var shortcutTileColor: ShortcutTileColor = .grayBlue
 
     @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
