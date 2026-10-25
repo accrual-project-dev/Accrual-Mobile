@@ -327,6 +327,55 @@ struct OpenVoiceModalIntent: AppIntent {
     }
 }
 
+// MARK: - iOS 18 Control Widget Intents (Main App Target Membership)
+@available(iOS 18.0, *)
+struct VoiceEntryControlIntent: AppIntent {
+    static var title: LocalizedStringResource = "Voice Entry"
+    static var description = IntentDescription("Open Accrual voice recording modal")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult & OpensIntent {
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        defaults.set("voice", forKey: "pending_intent_navigation")
+        defaults.synchronize()
+        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://voice")!))
+    }
+}
+
+@available(iOS 18.0, *)
+struct ScanReceiptControlIntent: AppIntent {
+    static var title: LocalizedStringResource = "Scan Receipt"
+    static var description = IntentDescription("Open Accrual camera scanner for receipts and invoices")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult & OpensIntent {
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        defaults.set("scan", forKey: "pending_intent_navigation")
+        defaults.synchronize()
+        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://scan")!))
+    }
+}
+
+@available(iOS 18.0, *)
+struct QuickAddControlIntent: AppIntent {
+    static var title: LocalizedStringResource = "Quick Add"
+    static var description = IntentDescription("Open Accrual transaction entry keypad")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult & OpensIntent {
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        defaults.set("add", forKey: "pending_intent_navigation")
+        defaults.synchronize()
+        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://add")!))
+    }
+}
+
 /// Central AppShortcutsProvider
 /// Automatically registers 6 native actions into iOS Shortcuts App
 @available(iOS 16.0, *)
