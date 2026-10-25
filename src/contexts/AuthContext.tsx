@@ -119,20 +119,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await Browser.close();
         } catch {}
 
-        const hashIndex = rawUrl.indexOf("#");
-        const queryIndex = rawUrl.indexOf("?");
-        const fragment =
-          hashIndex !== -1
-            ? rawUrl.substring(hashIndex + 1)
-            : queryIndex !== -1
-              ? rawUrl.substring(queryIndex + 1)
-              : "";
-        const params = new URLSearchParams(fragment);
+        let queryParams = new URLSearchParams();
+        let hashParams = new URLSearchParams();
+        try {
+          if (rawUrl.includes("?")) {
+            const qPart = rawUrl.split("?")[1].split("#")[0];
+            queryParams = new URLSearchParams(qPart);
+          }
+          if (rawUrl.includes("#")) {
+            const hPart = rawUrl.split("#")[1];
+            hashParams = new URLSearchParams(hPart);
+          }
+        } catch {}
 
-        const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
-        const code = params.get("code");
-        const type = params.get("type");
+        const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
+        const code = queryParams.get("code") || hashParams.get("code");
+        const type = queryParams.get("type") || hashParams.get("type");
 
         if (accessToken && refreshToken) {
           const { data } = await supabase.auth.setSession({

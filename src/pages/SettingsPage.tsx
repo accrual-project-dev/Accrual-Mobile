@@ -102,6 +102,11 @@ const AppleShortcutsGuideModal = lazy(() =>
     default: m.AppleShortcutsGuideModal,
   })),
 );
+const ResetPasswordModal = lazy(() =>
+  import("../components/auth/ResetPasswordModal").then((m) => ({
+    default: m.ResetPasswordModal,
+  })),
+);
 const ResetTransactionsSheet = lazy(() =>
   import("../components/settings/ResetTransactionsSheet").then((m) => ({
     default: m.ResetTransactionsSheet,
@@ -363,6 +368,7 @@ export function SettingsPage({
     setBackTapGuideOpen(true);
   };
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [vaultDefaultTab, setVaultDefaultTab] = useState<"export" | "restore">(
     "export",
@@ -2386,6 +2392,54 @@ export function SettingsPage({
                     </div>
                   </>
                 )}
+
+                {!isGuest && (
+                  <>
+                    <div style={gradientDivider} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setPasswordModalOpen(true);
+                      }}
+                      className="flex items-center justify-between py-2.5 px-3.5 min-h-[50px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div
+                          className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                          style={{
+                            background: iconBg,
+                            border: iconBorder,
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <KeyRound size={13.5} strokeWidth={1.8} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span
+                            className="text-[12.5px] font-semibold truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {isIndonesian ? "Kata Sandi Akun" : "Account Password"}
+                          </span>
+                          <span
+                            className="text-[10px] truncate"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            {isIndonesian
+                              ? "Ubah atau buat kata sandi untuk masuk dengan surel"
+                              : "Change or set password to sign in with email"}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight
+                        size={14}
+                        strokeWidth={2}
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+                    </button>
+                  </>
+                )}
               </>
             )}
 
@@ -2624,6 +2678,13 @@ export function SettingsPage({
           isOpen={pinModalOpen}
           onClose={() => setPinModalOpen(false)}
         />
+
+        <Suspense fallback={null}>
+          <ResetPasswordModal
+            isOpen={passwordModalOpen}
+            onClose={() => setPasswordModalOpen(false)}
+          />
+        </Suspense>
 
         <ResetTransactionsSheet
           isOpen={resetOpen}

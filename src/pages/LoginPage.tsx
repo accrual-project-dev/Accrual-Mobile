@@ -45,7 +45,21 @@ export function LoginPage() {
   const { showToast } = useToast();
 
   const [activeSlide, setActiveSlide] = useState(0);
-  const [viewMode, setViewMode] = useState<"welcome" | "login">("welcome");
+  const [viewMode, setViewMode] = useState<"welcome" | "login" | "otp">("welcome");
+
+  // OTP Verification state
+  const [otpCode, setOtpCode] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [legalTab, setLegalTab] = useState<"privacy" | "terms" | "security">(
     "privacy",
@@ -92,7 +106,7 @@ export function LoginPage() {
       const isNative =
         typeof window !== "undefined" && Capacitor.isNativePlatform();
       const redirectUri = isNative
-        ? "com.syntheticae.accrual://auth-callback"
+        ? "accrual://auth-callback"
         : typeof window !== "undefined"
           ? window.location.origin
           : undefined;
@@ -107,7 +121,26 @@ export function LoginPage() {
         });
         if (error) throw error;
         if (data?.url) {
-          await Browser.open({ url: data.url, windowName: "_system" });
+          // Listen for user closing the in-app browser sheet
+          let browserListener: any = null;
+          try {
+            browserListener = await Browser.addListener("browserFinished", () => {
+              setLoading(false);
+              try { browserListener?.remove(); } catch {}
+            });
+          } catch {}
+
+          // 25-second fallback timeout
+          setTimeout(() => {
+            setLoading(false);
+            try { browserListener?.remove(); } catch {}
+          }, 25000);
+
+          await Browser.open({
+            url: data.url,
+            presentationStyle: "popover",
+            toolbarColor: isDark ? "#09090c" : "#ffffff",
+          });
         }
       } else {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -183,6 +216,87 @@ export function LoginPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (codeToVerify?: string) => {
+    const code = (codeToVerify || otpCode).trim();
+    if (code.length !== 6) {
+      setError(
+        isIndonesian
+          ? "Harap masukkan 6 digit kode verifikasi."
+          : "Please enter the 6-digit verification code.",
+      );
+      return;
+    }
+
+    setOtpLoading(true);
+    setError(null);
+    setMessage(null);
+    triggerHaptic("medium");
+
+    try {
+      const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+        email: otpEmail,
+        token: code,
+        type: "signup",
+      });
+
+      if (verifyErr) throw verifyErr;
+
+      if (data?.session) {
+        triggerSuccessHaptic();
+        saveBiometricLoginCredentials(otpEmail, data.session, password);
+        setSession(data.session);
+        showToast(
+          isIndonesian
+            ? "Verifikasi berhasil! Selamat datang di Accrual."
+            : "Verification successful! Welcome to Accrual.",
+          "update",
+        );
+      }
+    } catch (err: any) {
+      triggerHaptic("heavy");
+      setError(
+        formatAuthError(err?.message, isIndonesian) ||
+          (isIndonesian
+            ? "Kode verifikasi tidak valid atau telah kedaluwarsa."
+            : "Invalid or expired verification code."),
+      );
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (otpCooldown > 0 || !otpEmail) return;
+    triggerHaptic("light");
+    setError(null);
+    try {
+      const { error: resendErr } = await supabase.auth.resend({
+        type: "signup",
+        email: otpEmail,
+      });
+      if (resendErr) throw resendErr;
+      setOtpCooldown(60);
+      setMessage(
+        isIndonesian
+          ? "Kode verifikasi baru telah dikirimkan ke surel Anda."
+          : "New verification code sent to your email.",
+      );
+      showToast(
+        isIndonesian
+          ? "Kode verifikasi baru telah dikirim."
+          : "New verification code sent.",
+        "info",
+      );
+    } catch (err: any) {
+      setError(
+        err?.message ||
+          (isIndonesian
+            ? "Gagal mengirim ulang kode verifikasi."
+            : "Failed to resend verification code."),
+      );
     }
   };
 
@@ -280,14 +394,19 @@ export function LoginPage() {
         saveBiometricLoginCredentials(email.trim(), data.session, password);
         setSession(data.session);
       } else {
-        setMessage(
+        // Transition to in-app OTP view
+        setOtpEmail(email.trim());
+        setOtpCode("");
+        setOtpCooldown(60);
+        setError(null);
+        setMessage(null);
+        setViewMode("otp");
+        showToast(
           isIndonesian
-            ? "Akun berhasil dibuat. Periksa surel Anda untuk verifikasi, atau masuk langsung."
-            : "Account created! Check your email to verify, or sign in directly.",
+            ? "Kode verifikasi 6-digit telah dikirimkan ke surel Anda."
+            : "A 6-digit verification code has been sent to your email.",
+          "info",
         );
-        setViewMode("login");
-        setConfirmPassword("");
-        setEmailTouched(false);
       }
     } else {
       const { error, data } = await supabase.auth.signInWithPassword({
@@ -295,6 +414,23 @@ export function LoginPage() {
         password,
       });
       if (error) {
+        if (error.message?.toLowerCase().includes("email not confirmed")) {
+          setOtpEmail(email.trim());
+          setOtpCode("");
+          setOtpCooldown(30);
+          setError(null);
+          setMessage(null);
+          setViewMode("otp");
+          showToast(
+            isIndonesian
+              ? "Surel Anda belum diverifikasi. Masukkan kode verifikasi 6-digit."
+              : "Email not verified. Please enter your 6-digit verification code.",
+            "info",
+          );
+          supabase.auth.resend({ type: "signup", email: email.trim() }).catch(() => {});
+          setLoading(false);
+          return;
+        }
         setError(formatAuthError(error.message, isIndonesian));
         showToast(formatAuthError(error.message, isIndonesian), "error");
       } else if (data?.session) {
@@ -517,7 +653,173 @@ export function LoginPage() {
           {/* ========================================================== */}
           {/* VIEW MODE A: WELCOME / REGISTER                           */}
           {/* ========================================================== */}
-          {viewMode === "welcome" ? (
+          {/* ========================================================== */}
+          {/* VIEW MODE C: IN-APP 6-DIGIT EMAIL OTP VERIFICATION       */}
+          {/* ========================================================== */}
+          {viewMode === "otp" ? (
+            <motion.div
+              key="view-otp"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full flex flex-col"
+            >
+              <div className="text-center space-y-1 mb-3 px-1">
+                <div
+                  className="w-10 h-10 rounded-2xl mx-auto flex items-center justify-center mb-2 border"
+                  style={{
+                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Mail size={18} strokeWidth={1.8} />
+                </div>
+                <h2 className="text-[19px] sm:text-[20px] font-bold tracking-tight">
+                  {isIndonesian ? "Verifikasi Surel Anda" : "Verify Your Email"}
+                </h2>
+                <p
+                  className={cn(
+                    "text-[12px] font-medium leading-relaxed max-w-[300px] mx-auto",
+                    isDark ? "text-zinc-400" : "text-zinc-600",
+                  )}
+                >
+                  {isIndonesian
+                    ? "Masukkan 6 digit kode verifikasi yang dikirim ke "
+                    : "Enter the 6-digit verification code sent to "}
+                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {otpEmail}
+                  </span>
+                </p>
+              </div>
+
+              {/* 6-Box Luxury Monochrome OTP Input */}
+              <div className="relative my-4 w-full">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+                  {Array.from({ length: 6 }).map((_, idx) => {
+                    const digit = otpCode[idx] || "";
+                    const isCurrent = idx === otpCode.length;
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "w-11 h-13 rounded-xl border flex items-center justify-center text-[20px] font-mono font-bold transition-all select-none",
+                          isDark ? "bg-white/[0.04]" : "bg-black/[0.03]",
+                          isCurrent
+                            ? "border-[var(--text-primary)] ring-2 ring-[var(--text-primary)]/20 shadow-sm"
+                            : digit
+                              ? "border-[var(--text-primary)]/40 text-[var(--text-primary)]"
+                              : "border-[var(--glass-border)] text-[var(--text-tertiary)]",
+                        )}
+                      >
+                        {digit ? (
+                          <span>{digit}</span>
+                        ) : isCurrent ? (
+                          <span className="w-0.5 h-5 bg-[var(--text-primary)] animate-pulse" />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                    setOtpCode(val);
+                    if (error) setError(null);
+                    if (val.length === 6) {
+                      handleVerifyOtp(val);
+                    }
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full text-transparent"
+                  autoFocus
+                  aria-label={isIndonesian ? "Kode OTP 6-digit" : "6-digit OTP code"}
+                />
+              </div>
+
+              {/* Error & Message */}
+              {error && (
+                <p className="text-[12px] text-rose-400 text-center font-medium mb-3">
+                  {error}
+                </p>
+              )}
+              {message && (
+                <p className="text-[12px] text-zinc-300 text-center font-medium mb-3">
+                  {message}
+                </p>
+              )}
+
+              {/* Actions */}
+              <div className="space-y-2.5 w-full">
+                <button
+                  type="button"
+                  disabled={otpLoading || otpCode.length !== 6}
+                  onClick={() => handleVerifyOtp()}
+                  className={cn(
+                    "w-full py-2.5 px-4 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm select-none",
+                    otpLoading || otpCode.length !== 6
+                      ? "opacity-50 cursor-not-allowed bg-zinc-800 text-zinc-400"
+                      : isDark
+                        ? "bg-white text-black hover:bg-zinc-200 active:scale-[0.98]"
+                        : "bg-zinc-950 text-white hover:bg-zinc-900 active:scale-[0.98]",
+                  )}
+                >
+                  {otpLoading ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Check size={14} strokeWidth={2.5} />
+                      <span>
+                        {isIndonesian ? "Verifikasi & Masuk" : "Verify & Sign In"}
+                      </span>
+                    </>
+                  )}
+                </button>
+
+                <div className="flex items-center justify-between px-1 pt-1 text-[11.5px]">
+                  <button
+                    type="button"
+                    disabled={otpCooldown > 0}
+                    onClick={handleResendOtp}
+                    className={cn(
+                      "font-medium transition-colors cursor-pointer",
+                      otpCooldown > 0
+                        ? "text-[var(--text-tertiary)] cursor-not-allowed"
+                        : "text-[var(--text-primary)] hover:underline",
+                    )}
+                  >
+                    {otpCooldown > 0
+                      ? isIndonesian
+                        ? `Kirim ulang (${otpCooldown}s)`
+                        : `Resend (${otpCooldown}s)`
+                      : isIndonesian
+                        ? "Kirim Ulang Kode"
+                        : "Resend Code"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setViewMode("welcome");
+                      setShowEmailForm(true);
+                      setError(null);
+                      setMessage(null);
+                    }}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    {isIndonesian ? "Ubah Alamat Surel" : "Change Email"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ) : viewMode === "welcome" ? (
             <motion.div
               key="view-welcome"
               initial={{ opacity: 0, x: -10 }}
