@@ -186,6 +186,45 @@ struct OpenScanReceiptIntent: AppIntent {
     }
 }
 
+/// 6. Get Financial Summary Intent
+/// Fast background query of user's net worth and monthly outflow snapshot
+@available(iOS 16.0, *)
+struct GetFinancialSummaryIntent: AppIntent {
+    static var title: LocalizedStringResource = "Cek Ringkasan Keuangan"
+    static var description = IntentDescription("Lihat ringkasan saldo, kekayaan bersih, dan pengeluaran di Accrual.")
+
+    static var openAppWhenRun: Bool = false
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let suiteName = "group.com.syntheticae.accrual"
+        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        
+        var netWorthText = "Rp 0"
+        var expenseText = "Rp 0"
+        
+        if let snapshotData = defaults.data(forKey: "accrual_widget_snapshot_data"),
+           let json = try? JSONSerialization.jsonObject(with: snapshotData) as? [String: Any] {
+            if let nw = json["netWorthFormatted"] as? String {
+                netWorthText = nw
+            }
+            if let exp = json["monthlyOutflowFormatted"] as? String {
+                expenseText = exp
+            }
+        } else if let snapshot = defaults.dictionary(forKey: "accrual_widget_snapshot") {
+            if let nw = snapshot["netWorthFormatted"] as? String {
+                netWorthText = nw
+            }
+            if let exp = snapshot["monthlyOutflowFormatted"] as? String {
+                expenseText = exp
+            }
+        }
+
+        let summaryDialog: LocalizedStringResource = "Kekayaan Bersih Accrual: \(netWorthText). Pengeluaran: \(expenseText)."
+        return .result(dialog: IntentDialog(summaryDialog))
+    }
+}
+
 /// Central AppShortcutsProvider
 /// Automatically indexes Accrual into iOS Shortcuts app on app installation
 @available(iOS 16.0, *)
@@ -243,6 +282,17 @@ struct AccrualShortcutsProvider: AppShortcutsProvider {
             ],
             shortTitle: "Pindai Resi",
             systemImageName: "camera.viewfinder"
+        )
+        AppShortcut(
+            intent: GetFinancialSummaryIntent(),
+            phrases: [
+                "Financial summary in \(.applicationName)",
+                "Get net worth in \(.applicationName)",
+                "Ringkasan keuangan di \(.applicationName)",
+                "Cek saldo di \(.applicationName)"
+            ],
+            shortTitle: "Cek Ringkasan",
+            systemImageName: "chart.pie.fill"
         )
     }
 }
