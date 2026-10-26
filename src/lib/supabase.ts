@@ -28,6 +28,7 @@ const resilientFetch: typeof fetch = async (input, init) => {
         err?.name === "AbortError" ||
         err?.message?.toLowerCase().includes("network connection was lost") ||
         err?.message?.toLowerCase().includes("failed to fetch") ||
+        err?.message?.toLowerCase().includes("load failed") ||
         err?.message?.includes("-1005");
 
       if (isTransient && attempt < maxRetries && !init?.signal?.aborted) {

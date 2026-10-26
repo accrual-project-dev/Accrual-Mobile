@@ -40,6 +40,7 @@ export function formatAuthError(msg: string, isIndonesian: boolean): string {
     lower.includes("network connection was lost") ||
     lower.includes("network") ||
     lower.includes("failed to fetch") ||
+    lower.includes("load failed") ||
     lower.includes("timeout") ||
     lower.includes("koneksi")
   ) {
