@@ -36,6 +36,11 @@ export function formatAuthError(msg: string, isIndonesian: boolean): string {
       ? "Kata sandi harus terdiri dari minimal 6 karakter."
       : "Password must contain at least 6 characters.";
   }
+  if (lower.includes("passed nonce and nonce in id_token") || lower.includes("nonce")) {
+    return isIndonesian
+      ? "Gagal memvalidasi token sesi Google. Silakan coba kembali."
+      : "Failed to validate Google session token. Please try again.";
+  }
   if (
     lower.includes("network connection was lost") ||
     lower.includes("network") ||

@@ -174,7 +174,15 @@ export function LoginPage() {
             clientId: "546912593526-fvfdliju0vqfchkoq2sfocd6vplfdmrm.apps.googleusercontent.com",
           });
 
-          const result = await GoogleSignIn.signIn();
+          // Generate secure cryptographic nonce
+          const rawNonce =
+            typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+              ? crypto.randomUUID()
+              : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+          const result = await GoogleSignIn.signIn({
+            nonce: rawNonce,
+          });
           const idToken = result?.idToken;
 
           if (!idToken) {
@@ -188,6 +196,7 @@ export function LoginPage() {
           const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
             provider: "google",
             token: idToken,
+            nonce: rawNonce,
           });
 
           if (authError) throw authError;
