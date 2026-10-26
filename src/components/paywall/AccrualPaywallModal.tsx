@@ -77,6 +77,18 @@ export function AccrualPaywallModal({
     return formatWithPreferred(config.price);
   };
 
+  const getPlanSecondaryPriceDisplay = (planId: SubscriptionPlanId) => {
+    const pkg = revenueCatService.resolvePackageFromOffering(offering, planId);
+    // If StoreKit returned non-IDR (e.g. USD from a US Apple ID), show approximate IDR reference
+    if (pkg?.product?.currencyCode && pkg.product.currencyCode !== "IDR") {
+      const config = PLAN_PRICING_CONFIG[planId];
+      return isIndonesian
+        ? `≈ ${formatWithPreferred(config.price)}`
+        : `≈ ${formatWithPreferred(config.price)}`;
+    }
+    return null;
+  };
+
   const getAnnualMonthlyBreakdown = () => {
     const annualPkg = revenueCatService.resolvePackageFromOffering(
       offering,
@@ -353,6 +365,11 @@ export function AccrualPaywallModal({
                 <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
                   {getPlanPriceDisplay("accrual_annual_199k")}
                 </div>
+                {getPlanSecondaryPriceDisplay("accrual_annual_199k") && (
+                  <div className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
+                    {getPlanSecondaryPriceDisplay("accrual_annual_199k")}
+                  </div>
+                )}
                 <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "/ tahun" : "/ year"}
                 </div>
@@ -385,6 +402,11 @@ export function AccrualPaywallModal({
                 <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
                   {getPlanPriceDisplay("accrual_monthly_29k")}
                 </div>
+                {getPlanSecondaryPriceDisplay("accrual_monthly_29k") && (
+                  <div className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
+                    {getPlanSecondaryPriceDisplay("accrual_monthly_29k")}
+                  </div>
+                )}
                 <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "/ bulan" : "/ month"}
                 </div>
@@ -424,6 +446,11 @@ export function AccrualPaywallModal({
                 <div className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)] tabular-nums">
                   {getPlanPriceDisplay("accrual_lifetime_499k")}
                 </div>
+                {getPlanSecondaryPriceDisplay("accrual_lifetime_499k") && (
+                  <div className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
+                    {getPlanSecondaryPriceDisplay("accrual_lifetime_499k")}
+                  </div>
+                )}
                 <div className="text-[10.5px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "sekali bayar" : "one-time"}
                 </div>

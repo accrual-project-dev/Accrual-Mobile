@@ -512,6 +512,12 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
       localStorage.setItem("trouvaille_preset_mode", "default");
       localStorage.setItem("trouvaille_onboarding_focus", "expenses");
       localStorage.setItem("trouvaille_onboarded", "true");
+      if (user?.id) {
+        localStorage.setItem(`trouvaille_onboarded_${user.id}`, "true");
+        supabase.auth.updateUser({ data: { onboarded: true, onboarding_focus: "expenses" } }).catch(() => {});
+      } else {
+        localStorage.setItem("trouvaille_onboarded_guest", "true");
+      }
       localStorage.setItem("trouvaille_tour_pending", "true");
     } catch {}
 
@@ -680,6 +686,12 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
     try {
       localStorage.setItem("trouvaille_onboarding_focus", selectedFocus);
       localStorage.setItem("trouvaille_onboarded", "true");
+      if (user?.id) {
+        localStorage.setItem(`trouvaille_onboarded_${user.id}`, "true");
+        supabase.auth.updateUser({ data: { onboarded: true, onboarding_focus: selectedFocus } }).catch(() => {});
+      } else {
+        localStorage.setItem("trouvaille_onboarded_guest", "true");
+      }
       localStorage.setItem("trouvaille_tour_pending", "true");
     } catch {}
 

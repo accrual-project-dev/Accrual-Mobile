@@ -786,6 +786,11 @@ export function SettingsPage({
         : "Your existing transaction records will remain safe, and you can re-experience the configuration wizard.",
       confirmLabel: isIndonesian ? "Atur Ulang" : "Reset",
       onConfirm: () => {
+        if (session?.user?.id) {
+          localStorage.removeItem(`trouvaille_onboarded_${session.user.id}`);
+          supabase.auth.updateUser({ data: { onboarded: false } }).catch(() => {});
+        }
+        localStorage.removeItem("trouvaille_onboarded_guest");
         localStorage.removeItem("trouvaille_onboarded");
         localStorage.removeItem("trouvaille_onboarding_focus");
         window.location.reload();

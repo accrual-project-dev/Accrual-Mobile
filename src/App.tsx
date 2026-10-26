@@ -167,11 +167,33 @@ function AppShell() {
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
   const [statementImportOpen, setStatementImportOpen] = useState(false);
   const [isOnboarded, setIsOnboarded] = useState(() => {
-    return (
-      localStorage.getItem("trouvaille_onboarded") === "true" &&
-      localStorage.getItem("trouvaille_onboarding_focus") !== null
-    );
+    if (isGuest) {
+      return (
+        localStorage.getItem("trouvaille_onboarded_guest") === "true" &&
+        localStorage.getItem("trouvaille_onboarding_focus") !== null
+      );
+    }
+    if (user?.id) {
+      if (user.user_metadata?.onboarded === true) return true;
+      return (
+        localStorage.getItem(`trouvaille_onboarded_${user.id}`) === "true" &&
+        localStorage.getItem("trouvaille_onboarding_focus") !== null
+      );
+    }
+    return false;
   });
+
+  useEffect(() => {
+    if (user?.id) {
+      const onboarded =
+        user.user_metadata?.onboarded === true ||
+        (localStorage.getItem(`trouvaille_onboarded_${user.id}`) === "true" &&
+          localStorage.getItem("trouvaille_onboarding_focus") !== null);
+      if (onboarded && !isOnboarded) {
+        setIsOnboarded(true);
+      }
+    }
+  }, [user?.id, user?.user_metadata?.onboarded, isOnboarded]);
   const [isTourOpen, setIsTourOpen] = useState(() => {
     try {
       return localStorage.getItem("trouvaille_tour_pending") === "true";
@@ -770,21 +792,22 @@ function AppShell() {
     }
   }, [syncStorageKey, user?.id, isGuest, queryClient]);
 
-  // Auto-bypass onboarding trap if user already has synced transactions, categories, or wallets from cloud
+  // Auto-bypass onboarding trap if user already has synced transactions from cloud
   useEffect(() => {
     if (
       user &&
       !isGuest &&
       !isOnboarded &&
-      (syncedTxCount > 0 || categories.length > 0 || wallets.length > 0)
+      (syncedTxCount > 0 || user.user_metadata?.onboarded === true)
     ) {
+      localStorage.setItem(`trouvaille_onboarded_${user.id}`, "true");
       localStorage.setItem("trouvaille_onboarded", "true");
       if (!localStorage.getItem("trouvaille_onboarding_focus")) {
         localStorage.setItem("trouvaille_onboarding_focus", "expenses");
       }
       setIsOnboarded(true);
     }
-  }, [user, isGuest, isOnboarded, syncedTxCount, categories.length, wallets.length]);
+  }, [user, isGuest, isOnboarded, syncedTxCount]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -921,12 +944,14 @@ function AppShell() {
             // Existing cloud users with transaction history should not be forced through onboarding modal
             const hasCloudLedger =
               freshTxs.length > 0 ||
+              user?.user_metadata?.onboarded === true ||
               (walletsRes.data &&
                 walletsRes.data.length > 0 &&
                 categoriesRes.data &&
                 categoriesRes.data.length > 0 &&
-                localStorage.getItem("trouvaille_onboarded") === "true");
+                localStorage.getItem(`trouvaille_onboarded_${user.id}`) === "true");
             if (hasCloudLedger) {
+              localStorage.setItem(`trouvaille_onboarded_${user.id}`, "true");
               localStorage.setItem("trouvaille_onboarded", "true");
               if (!localStorage.getItem("trouvaille_onboarding_focus")) {
                 localStorage.setItem("trouvaille_onboarding_focus", "expenses");
@@ -1056,6 +1081,7 @@ function AppShell() {
               onClick={async () => {
                 triggerSuccessHaptic();
                 await migrateGuestDataToCloud(user.id);
+                localStorage.setItem(`trouvaille_onboarded_${user.id}`, "true");
                 localStorage.setItem("trouvaille_onboarded", "true");
                 setIsOnboarded(true);
                 setShowGuestMigrationModal(false);
@@ -1077,8 +1103,6 @@ function AppShell() {
               onClick={() => {
                 triggerHaptic("light");
                 discardGuestData(user.id);
-                localStorage.setItem("trouvaille_onboarded", "true");
-                setIsOnboarded(true);
                 setShowGuestMigrationModal(false);
                 queryClient.invalidateQueries({ queryKey: ["categories"] });
                 queryClient.invalidateQueries({ queryKey: ["wallets"] });
@@ -1104,6 +1128,12 @@ function AppShell() {
         <OnboardingModal
           isOpen={true}
           onComplete={() => {
+            if (user?.id) {
+              localStorage.setItem(`trouvaille_onboarded_${user.id}`, "true");
+              supabase.auth.updateUser({ data: { onboarded: true } }).catch(() => {});
+            } else if (isGuest) {
+              localStorage.setItem("trouvaille_onboarded_guest", "true");
+            }
             localStorage.setItem("trouvaille_onboarded", "true");
             setIsOnboarded(true);
             setIsTourOpen(true);
