@@ -36,6 +36,17 @@ export function formatAuthError(msg: string, isIndonesian: boolean): string {
       ? "Kata sandi harus terdiri dari minimal 6 karakter."
       : "Password must contain at least 6 characters.";
   }
+  if (
+    lower.includes("network connection was lost") ||
+    lower.includes("network") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("timeout") ||
+    lower.includes("koneksi")
+  ) {
+    return isIndonesian
+      ? "Koneksi jaringan terputus. Pastikan perangkat Anda terhubung ke internet."
+      : "Network connection lost. Please check your internet connection.";
+  }
   return msg;
 }
 
