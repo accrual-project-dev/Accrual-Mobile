@@ -46,13 +46,30 @@ export function LoginPage() {
   const { showToast } = useToast();
 
   const [activeSlide, setActiveSlide] = useState(0);
-  const [viewMode, setViewMode] = useState<"landing" | "register" | "login" | "otp">("landing");
+  const [viewMode, setViewMode] = useState<"landing" | "register" | "login" | "otp" | "reset_password">("landing");
 
   // OTP Verification state
   const [otpCode, setOtpCode] = useState("");
   const [otpEmail, setOtpEmail] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
+
+  // In-App Password Reset state
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetOtp, setResetOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resetCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResetCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resetCooldown]);
 
   useEffect(() => {
     if (otpCooldown <= 0) return;
@@ -292,10 +309,17 @@ export function LoginPage() {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
+      triggerHaptic("heavy");
       setError(
         isIndonesian
           ? "Masukkan alamat surel Anda untuk menyetel ulang kata sandi."
           : "Please enter your email address to reset password.",
+      );
+      showToast(
+        isIndonesian
+          ? "Harap masukkan alamat surel Anda."
+          : "Please enter your email address.",
+        "info",
       );
       return;
     }
@@ -303,34 +327,146 @@ export function LoginPage() {
     setError(null);
     setMessage(null);
     try {
-      const resetRedirectUri =
-        typeof window !== "undefined" && Capacitor.isNativePlatform()
-          ? "com.syntheticae.accrual://reset-password"
-          : typeof window !== "undefined"
-            ? `${window.location.origin}/?type=recovery`
-            : undefined;
-
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
         {
-          redirectTo: resetRedirectUri,
+          redirectTo: "accrual://reset-password",
         },
       );
       if (error) throw error;
-      setMessage(
+      setResetEmail(email.trim());
+      setResetOtp("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setResetCooldown(60);
+      setViewMode("reset_password");
+      showToast(
         isIndonesian
-          ? "Tautan pengaturan ulang kata sandi telah dikirim ke surel Anda."
-          : "Password reset link sent to your email.",
+          ? "Kode keamanan 6-digit telah dikirimkan ke surel Anda."
+          : "A 6-digit security code has been sent to your email.",
+        "info",
+      );
+    } catch (err: any) {
+      setError(
+        formatAuthError(err?.message, isIndonesian) ||
+          (isIndonesian
+            ? "Gagal mengirimkan kode pengaturan ulang kata sandi."
+            : "Failed to send reset code."),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExecutePasswordReset = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const code = resetOtp.trim();
+    if (code.length !== 6) {
+      setError(
+        isIndonesian
+          ? "Harap masukkan 6 digit kode keamanan."
+          : "Please enter the 6-digit security code.",
+      );
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError(
+        isIndonesian
+          ? "Kata sandi baru minimal 6 karakter."
+          : "New password must be at least 6 characters.",
+      );
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError(
+        isIndonesian
+          ? "Konfirmasi kata sandi tidak cocok."
+          : "Password confirmation does not match.",
+      );
+      return;
+    }
+
+    setResetLoading(true);
+    setError(null);
+    setMessage(null);
+    triggerHaptic("medium");
+
+    try {
+      const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+        email: resetEmail.trim(),
+        token: code,
+        type: "recovery",
+      });
+      if (verifyErr) throw verifyErr;
+
+      const { error: updateErr } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (updateErr) throw updateErr;
+
+      if (data?.session) {
+        saveBiometricLoginCredentials(resetEmail.trim(), data.session, newPassword);
+        setSession(data.session);
+        triggerSuccessHaptic();
+        showToast(
+          isIndonesian
+            ? "Kata sandi berhasil diperbarui! Selamat datang kembali."
+            : "Password updated successfully! Welcome back.",
+          "update",
+        );
+      } else {
+        const { data: signData, error: signErr } = await supabase.auth.signInWithPassword({
+          email: resetEmail.trim(),
+          password: newPassword,
+        });
+        if (signErr) throw signErr;
+        if (signData?.session) {
+          saveBiometricLoginCredentials(resetEmail.trim(), signData.session, newPassword);
+          setSession(signData.session);
+          triggerSuccessHaptic();
+          showToast(
+            isIndonesian
+              ? "Kata sandi berhasil diperbarui! Selamat datang kembali."
+              : "Password updated successfully! Welcome back.",
+            "update",
+          );
+        }
+      }
+    } catch (err: any) {
+      triggerHaptic("heavy");
+      setError(
+        formatAuthError(err?.message, isIndonesian) ||
+          (isIndonesian
+            ? "Gagal mengatur ulang kata sandi. Pastikan kode verifikasi benar."
+            : "Failed to reset password. Please check your verification code."),
+      );
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleResendResetOtp = async () => {
+    if (resetCooldown > 0 || !resetEmail) return;
+    triggerHaptic("light");
+    setError(null);
+    try {
+      const { error: resendErr } = await supabase.auth.resetPasswordForEmail(
+        resetEmail.trim(),
+        { redirectTo: "accrual://reset-password" },
+      );
+      if (resendErr) throw resendErr;
+      setResetCooldown(60);
+      showToast(
+        isIndonesian
+          ? "Kode keamanan baru telah dikirimkan ke surel Anda."
+          : "New security code sent to your email.",
+        "info",
       );
     } catch (err: any) {
       setError(
         err?.message ||
-          (isIndonesian
-            ? "Gagal mengirimkan tautan pengaturan ulang."
-            : "Failed to send reset link."),
+          (isIndonesian ? "Gagal mengirim ulang kode." : "Failed to resend code."),
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -913,6 +1049,223 @@ export function LoginPage() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          ) : viewMode === "reset_password" ? (
+            /* ========================================================== */
+            /* 1B. VIEW MODE: IN-APP PASSWORD RESET VIA 6-DIGIT OTP       */
+            /* ========================================================== */
+            <motion.div
+              key="view-reset-password"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full flex flex-col"
+            >
+              {/* Back button & Title */}
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setError(null);
+                    setMessage(null);
+                    setViewMode("login");
+                  }}
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer -ml-1",
+                    isDark ? "hover:bg-white/[0.08] text-zinc-300" : "hover:bg-black/[0.06] text-zinc-700",
+                  )}
+                  aria-label={isIndonesian ? "Kembali ke Masuk" : "Back to Sign In"}
+                >
+                  <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[17px] font-bold tracking-tight truncate">
+                    {isIndonesian ? "Atur Ulang Kata Sandi" : "Reset Password"}
+                  </h2>
+                  <p className="text-[11px] text-[var(--text-tertiary)] truncate">
+                    {isIndonesian
+                      ? "Kode 6-digit dikirim ke "
+                      : "6-digit code sent to "}
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {resetEmail}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* 6-Box Luxury Monochrome OTP Input */}
+              <div className="relative my-2 w-full">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+                  {Array.from({ length: 6 }).map((_, idx) => {
+                    const digit = resetOtp[idx] || "";
+                    const isCurrent = idx === resetOtp.length;
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "w-11 h-13 rounded-xl border flex items-center justify-center text-[20px] font-mono font-bold transition-all select-none",
+                          isDark ? "bg-white/[0.04]" : "bg-black/[0.03]",
+                          isCurrent
+                            ? "border-[var(--text-primary)] ring-2 ring-[var(--text-primary)]/20 shadow-sm"
+                            : digit
+                              ? "border-[var(--text-primary)]/40 text-[var(--text-primary)]"
+                              : "border-[var(--glass-border)] text-[var(--text-tertiary)]",
+                        )}
+                      >
+                        {digit ? (
+                          <span>{digit}</span>
+                        ) : isCurrent ? (
+                          <span className="w-0.5 h-5 bg-[var(--text-primary)] animate-pulse" />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={resetOtp}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                    setResetOtp(val);
+                    if (error) setError(null);
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full text-transparent"
+                  autoFocus
+                  aria-label={isIndonesian ? "Kode Keamanan 6-digit" : "6-digit Security code"}
+                />
+              </div>
+
+              {/* Form Input Kata Sandi Baru */}
+              <form onSubmit={handleExecutePasswordReset} className="space-y-2.5 mt-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-[var(--text-tertiary)] px-1">
+                    {isIndonesian ? "Kata Sandi Baru" : "New Password"}
+                  </label>
+                  <div className="relative">
+                    <Lock
+                      size={15}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                    />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (error) setError(null);
+                      }}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                      className="w-full pl-9 pr-10 py-2.5 rounded-xl text-[13px] bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--glass-border)] focus:outline-none focus:border-[var(--text-primary)] transition-colors text-[var(--text-primary)] font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-[var(--text-tertiary)] px-1">
+                    {isIndonesian ? "Konfirmasi Kata Sandi Baru" : "Confirm New Password"}
+                  </label>
+                  <div className="relative">
+                    <Lock
+                      size={15}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                    />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={confirmNewPassword}
+                      onChange={(e) => {
+                        setConfirmNewPassword(e.target.value);
+                        if (error) setError(null);
+                      }}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-[13px] bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--glass-border)] focus:outline-none focus:border-[var(--text-primary)] transition-colors text-[var(--text-primary)] font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Error Banner */}
+                {error && (
+                  <p className="text-[12px] text-rose-400 text-center font-medium pt-1">
+                    {error}
+                  </p>
+                )}
+
+                {/* Submit Action Button */}
+                <button
+                  type="submit"
+                  disabled={resetLoading || resetOtp.length !== 6 || newPassword.length < 6}
+                  className={cn(
+                    "w-full py-2.5 px-4 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm select-none mt-2",
+                    resetLoading || resetOtp.length !== 6 || newPassword.length < 6
+                      ? "opacity-50 cursor-not-allowed bg-zinc-800 text-zinc-400"
+                      : isDark
+                        ? "bg-white text-black hover:bg-zinc-200 active:scale-[0.98]"
+                        : "bg-zinc-950 text-white hover:bg-zinc-900 active:scale-[0.98]",
+                  )}
+                >
+                  {resetLoading ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Check size={14} strokeWidth={2.5} />
+                      <span>
+                        {isIndonesian ? "Simpan Kata Sandi & Masuk" : "Save Password & Sign In"}
+                      </span>
+                    </>
+                  )}
+                </button>
+
+                {/* Resend & Back to login */}
+                <div className="flex items-center justify-between px-1 pt-1 text-[11.5px]">
+                  <button
+                    type="button"
+                    disabled={resetCooldown > 0}
+                    onClick={handleResendResetOtp}
+                    className={cn(
+                      "font-medium transition-colors cursor-pointer",
+                      resetCooldown > 0
+                        ? "text-[var(--text-tertiary)] cursor-not-allowed"
+                        : "text-[var(--text-primary)] hover:underline",
+                    )}
+                  >
+                    {resetCooldown > 0
+                      ? isIndonesian
+                        ? `Kirim ulang (${resetCooldown}s)`
+                        : `Resend (${resetCooldown}s)`
+                      : isIndonesian
+                        ? "Kirim Ulang Kode"
+                        : "Resend Code"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setViewMode("login");
+                      setError(null);
+                      setMessage(null);
+                    }}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    {isIndonesian ? "Kembali ke Masuk" : "Back to Sign In"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           ) : viewMode === "landing" ? (
             /* ========================================================== */

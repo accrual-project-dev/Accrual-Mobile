@@ -136,6 +136,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
         const code = queryParams.get("code") || hashParams.get("code");
         const type = queryParams.get("type") || hashParams.get("type");
+        const token = queryParams.get("token") || hashParams.get("token");
+        const email = queryParams.get("email") || hashParams.get("email");
+
+        if (token && email && (type === "recovery" || rawUrl.includes("reset-password"))) {
+          try {
+            const { data } = await supabase.auth.verifyOtp({
+              email: email.trim(),
+              token: token.trim(),
+              type: "recovery",
+            });
+            if (data?.session && isMounted) {
+              savePersistentSession(data.session);
+              setSession(data.session);
+              setIsGuest(false);
+              localStorage.removeItem("trouvaille_guest_mode");
+              setIsPasswordRecovery(true);
+            }
+          } catch (otpErr) {
+            console.warn("[AuthContext] Direct recovery token verification failed:", otpErr);
+          }
+        }
 
         if (accessToken && refreshToken) {
           const { data } = await supabase.auth.setSession({
