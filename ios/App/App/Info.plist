@@ -24,6 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>GIDClientID</key>
+	<string>546912593526-756pp6j701t2peo1el1e3ma84pidlimg.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>546912593526-fvfdliju0vqfchkoq2sfocd6vplfdmrm.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

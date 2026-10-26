@@ -9,6 +9,7 @@
 import { Capacitor } from "@capacitor/core";
 import {
   Purchases,
+  LOG_LEVEL,
   type CustomerInfo,
   type PurchasesOffering,
   type PurchasesPackage,
@@ -89,6 +90,10 @@ class RevenueCatService {
       }
 
       // Configure native Purchases SDK for the first time
+      try {
+        await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+      } catch {}
+
       await Purchases.configure({
         apiKey: apiKey.trim(),
         appUserID: targetUserId || undefined,
@@ -329,9 +334,61 @@ class RevenueCatService {
       console.error("[RevenueCat] Purchase failed:", err);
       return {
         success: false,
-        error: err?.message || "Transaksi tidak dapat diselesaikan.",
+        error: this.formatErrorMessage(err),
       };
     }
+  }
+
+  /**
+   * Translates native RevenueCat and StoreKit errors into user-friendly localized messages.
+   * Strictly compliant with GEMINI.md Rule 6 (zero bilingual mixing).
+   */
+  public formatErrorMessage(err: any, isIndonesian = true): string {
+    const rawMsg = typeof err?.message === "string" ? err.message.toLowerCase() : "";
+    const code = String(err?.code || "");
+
+    // 1. Configuration / StoreKit 0-products error (RC Code 23)
+    if (
+      code === "23" ||
+      rawMsg.includes("configuration") ||
+      rawMsg.includes("storeproduct") ||
+      rawMsg.includes("there is an issue with your configuration")
+    ) {
+      return isIndonesian
+        ? "Layanan langganan App Store sedang dalam penyiapan. Pastikan perjanjian Paid Applications di App Store Connect dan konfigurasi produk telah aktif."
+        : "App Store subscription service is being set up. Please ensure Paid Applications Agreement and products are active in App Store Connect.";
+    }
+
+    // 2. Network / Offline issues (RC Code 10)
+    if (
+      code === "10" ||
+      rawMsg.includes("network") ||
+      rawMsg.includes("offline") ||
+      rawMsg.includes("internet")
+    ) {
+      return isIndonesian
+        ? "Koneksi jaringan terputus. Pastikan perangkat Anda terhubung ke internet."
+        : "Network connection lost. Please check your internet connection.";
+    }
+
+    // 3. Apple StoreKit Server Problem (RC Code 2)
+    if (code === "2" || rawMsg.includes("storeproblem") || rawMsg.includes("store problem")) {
+      return isIndonesian
+        ? "Terjadi kendala pada server App Store Apple. Silakan coba kembali beberapa saat lagi."
+        : "Apple App Store servers are experiencing issues. Please try again shortly.";
+    }
+
+    // 4. Receipt already in use (RC Code 7)
+    if (code === "7" || rawMsg.includes("already in use") || rawMsg.includes("receiptinuse")) {
+      return isIndonesian
+        ? "Langganan ini telah terhubung dengan akun Apple ID yang berbeda."
+        : "This subscription is already linked to another Apple ID account.";
+    }
+
+    // 5. Default fallback
+    return isIndonesian
+      ? "Transaksi tidak dapat diselesaikan. Silakan coba kembali beberapa saat lagi."
+      : "Unable to complete transaction. Please try again later.";
   }
 
   /**
@@ -370,7 +427,7 @@ class RevenueCatService {
       return {
         success: false,
         hasActivePro: false,
-        error: err?.message || "Gagal memulihkan pembelian.",
+        error: this.formatErrorMessage(err),
       };
     }
   }
