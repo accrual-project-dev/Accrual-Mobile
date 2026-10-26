@@ -213,12 +213,26 @@ jobs:
             -exportOptionsPlist build/ExportOptions.plist \
             -exportPath build \
             -allowProvisioningUpdates
+          
+          echo "Memeriksa berkas hasil export di direktori build:"
+          ls -la build/
+          
+          IPA_FOUND=$(find build -maxdepth 1 -name "*.ipa" | head -n 1)
+          if [ -z "$IPA_FOUND" ]; then
+            echo "::error::Tidak ada berkas .ipa yang dihasilkan di build/!"
+            exit 1
+          fi
+          echo "Ditemukan berkas paket IPA: $IPA_FOUND"
+          if [ "$IPA_FOUND" != "build/App.ipa" ]; then
+            echo "Menyinkronkan ke build/App.ipa untuk kompatibilitas..."
+            cp "$IPA_FOUND" build/App.ipa
+          fi
 
       - name: Upload .ipa as GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
           name: accrual-signed-appstore-ipa
-          path: build/App.ipa
+          path: build/*.ipa
           retention-days: 14
 
       - name: Upload to App Store Connect / TestFlight
@@ -228,6 +242,7 @@ jobs:
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: |
+          set -e
           node -e '
             const fs = require("fs");
             const path = require("path");
@@ -260,8 +275,14 @@ jobs:
           KEY_ID="${APP_STORE_CONNECT_API_KEY_ID:-X4SX9VQZ44}"
           ISSUER_ID="${APP_STORE_CONNECT_API_ISSUER_ID:-c32ee50b-c9f8-4532-898e-4c793cac57f6}"
           
-          echo "Mengunggah paket aplikasi ke App Store Connect / TestFlight dengan Key ID: $KEY_ID..."
-          xcrun altool --upload-package build/App.ipa \
+          IPA_PATH=$(find build -maxdepth 1 -name "*.ipa" | head -n 1)
+          if [ -z "$IPA_PATH" ] || [ ! -f "$IPA_PATH" ]; then
+            echo "::error::Berkas .ipa tidak ditemukan di folder build/!"
+            exit 1
+          fi
+          
+          echo "Mengunggah paket aplikasi $IPA_PATH ke App Store Connect / TestFlight dengan Key ID: $KEY_ID..."
+          xcrun altool --upload-package "$IPA_PATH" \
             --type ios \
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID"

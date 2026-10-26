@@ -1,8 +1,8 @@
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 
-export const APP_VERSION = "1.3.6";
-export const APP_BUILD_NUMBER = "136";
+export const APP_VERSION = "1.3.7";
+export const APP_BUILD_NUMBER = "137";
 
 export interface AppReleaseInfo {
   currentVersion: string;
