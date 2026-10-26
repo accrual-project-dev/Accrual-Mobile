@@ -109,46 +109,79 @@ public class OAuthSessionPlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
 
     @objc public func startSession(_ call: CAPPluginCall) {
         guard let urlString = call.getString("url"),
-              let url = URL(string: urlString),
+              let initialUrl = URL(string: urlString),
               let scheme = call.getString("callbackScheme") else {
             call.reject("Parameter 'url' dan 'callbackScheme' diperlukan")
             return
         }
 
-        DispatchQueue.main.async { [weak self] in
+        // Pre-resolve 302 redirect so iOS dialog displays provider domain (e.g. google.com)
+        // instead of intermediate Supabase project hash, and enforces prompt=select_account
+        self.resolveOAuthDestination(initialUrl: initialUrl) { [weak self] resolvedUrl in
             guard let self = self else { return }
 
-            self.currentSession = ASWebAuthenticationSession(
-                url: url,
-                callbackURLScheme: scheme
-            ) { [weak self] callbackURL, error in
-                self?.currentSession = nil
+            DispatchQueue.main.async {
+                self.currentSession = ASWebAuthenticationSession(
+                    url: resolvedUrl,
+                    callbackURLScheme: scheme
+                ) { [weak self] callbackURL, error in
+                    self?.currentSession = nil
 
-                if let error = error {
-                    let nsError = error as NSError
-                    if nsError.domain == ASWebAuthenticationSessionErrorDomain &&
-                       nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
-                        call.reject("User cancelled", "CANCELLED")
-                    } else {
-                        call.reject(error.localizedDescription, "AUTH_ERROR")
+                    if let error = error {
+                        let nsError = error as NSError
+                        if nsError.domain == ASWebAuthenticationSessionErrorDomain &&
+                           nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                            call.reject("User cancelled", "CANCELLED")
+                        } else {
+                            call.reject(error.localizedDescription, "AUTH_ERROR")
+                        }
+                        return
                     }
-                    return
+
+                    guard let callbackURL = callbackURL else {
+                        call.reject("Tidak ada URL callback yang diterima", "NO_CALLBACK")
+                        return
+                    }
+
+                    call.resolve([
+                        "url": callbackURL.absoluteString
+                    ])
                 }
 
-                guard let callbackURL = callbackURL else {
-                    call.reject("Tidak ada URL callback yang diterima", "NO_CALLBACK")
-                    return
-                }
-
-                call.resolve([
-                    "url": callbackURL.absoluteString
-                ])
+                self.currentSession?.presentationContextProvider = self
+                self.currentSession?.prefersEphemeralWebBrowserSession = true
+                self.currentSession?.start()
             }
-
-            self.currentSession?.presentationContextProvider = self
-            self.currentSession?.prefersEphemeralWebBrowserSession = false
-            self.currentSession?.start()
         }
+    }
+
+    private func resolveOAuthDestination(initialUrl: URL, completion: @escaping (URL) -> Void) {
+        guard initialUrl.host?.contains("supabase.co") == true else {
+            completion(initialUrl)
+            return
+        }
+
+        var request = URLRequest(url: initialUrl)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 7.0
+
+        let delegate = NonRedirectSessionDelegate()
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+
+        let task = session.dataTask(with: request) { _, _, _ in
+            if let targetUrl = delegate.redirectLocation {
+                var components = URLComponents(url: targetUrl, resolvingAgainstBaseURL: false)
+                var queryItems = components?.queryItems ?? []
+                if !queryItems.contains(where: { $0.name == "prompt" }) {
+                    queryItems.append(URLQueryItem(name: "prompt", value: "select_account"))
+                    components?.queryItems = queryItems
+                }
+                completion(components?.url ?? targetUrl)
+            } else {
+                completion(initialUrl)
+            }
+        }
+        task.resume()
     }
 
     public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
@@ -162,5 +195,24 @@ public class OAuthSessionPlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
             return keyWindow
         }
         return ASPresentationAnchor()
+    }
+}
+
+private class NonRedirectSessionDelegate: NSObject, URLSessionTaskDelegate {
+    var redirectLocation: URL?
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        if let loc = response.allHeaderFields["Location"] as? String, let url = URL(string: loc) {
+            self.redirectLocation = url
+        } else if let url = request.url {
+            self.redirectLocation = url
+        }
+        completionHandler(nil)
     }
 }

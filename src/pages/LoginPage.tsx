@@ -158,6 +158,10 @@ export function LoginPage() {
           options: {
             redirectTo: "accrual://auth-callback",
             skipBrowserRedirect: true,
+            queryParams: {
+              prompt: "select_account",
+              access_type: "offline",
+            },
           },
         });
         if (error) throw error;
@@ -233,6 +237,10 @@ export function LoginPage() {
           options: {
             redirectTo: redirectUri,
             skipBrowserRedirect: true,
+            queryParams: {
+              prompt: "select_account",
+              access_type: "offline",
+            },
           },
         });
         if (error) throw error;
