@@ -13,6 +13,7 @@ import {
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { SignInWithApple, type SignInWithAppleResponse } from "@capacitor-community/apple-sign-in";
+import { OAuthSession } from "../lib/oauthSession";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -149,7 +150,77 @@ export function LoginPage() {
         }
       }
 
-      // 2. Standard OAuth flow (Google on mobile / web fallback)
+      // 2. Native iOS ASWebAuthenticationSession (Google on iOS)
+      // Uses Apple's system modal: zero Safari address bar/tabs, auto-dismisses on callback
+      if (isNative && Capacitor.getPlatform() === "ios") {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: "accrual://auth-callback",
+            skipBrowserRedirect: true,
+          },
+        });
+        if (error) throw error;
+        if (!data?.url) throw new Error("Gagal membuat sesi autentikasi.");
+
+        try {
+          const sessionRes = await OAuthSession.startSession({
+            url: data.url,
+            callbackScheme: "accrual",
+          });
+
+          if (sessionRes?.url) {
+            const callbackUrl = sessionRes.url;
+            let queryParams = new URLSearchParams();
+            let hashParams = new URLSearchParams();
+            if (callbackUrl.includes("?")) {
+              const qPart = callbackUrl.split("?")[1].split("#")[0];
+              queryParams = new URLSearchParams(qPart);
+            }
+            if (callbackUrl.includes("#")) {
+              const hPart = callbackUrl.split("#")[1];
+              hashParams = new URLSearchParams(hPart);
+            }
+
+            const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
+            const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
+            const code = queryParams.get("code") || hashParams.get("code");
+
+            if (accessToken && refreshToken) {
+              const { data: authData, error: sessionErr } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              if (sessionErr) throw sessionErr;
+              if (authData?.session) {
+                savePersistentSession(authData.session);
+                setSession(authData.session);
+                triggerSuccessHaptic();
+              }
+            } else if (code) {
+              const { data: authData, error: codeErr } = await supabase.auth.exchangeCodeForSession(code);
+              if (codeErr) throw codeErr;
+              if (authData?.session) {
+                savePersistentSession(authData.session);
+                setSession(authData.session);
+                triggerSuccessHaptic();
+              }
+            }
+          }
+          return;
+        } catch (oauthErr: any) {
+          const isCancelled =
+            oauthErr?.code === "CANCELLED" ||
+            oauthErr?.message?.toLowerCase().includes("cancel") ||
+            oauthErr?.message?.toLowerCase().includes("batal");
+          if (isCancelled) {
+            return;
+          }
+          throw oauthErr;
+        }
+      }
+
+      // 3. Fallback OAuth flow (Android / Web)
       const redirectUri = isNative
         ? "accrual://auth-callback"
         : typeof window !== "undefined"
@@ -166,7 +237,6 @@ export function LoginPage() {
         });
         if (error) throw error;
         if (data?.url) {
-          // Listen for user closing the in-app browser sheet
           let browserListener: any = null;
           try {
             browserListener = await Browser.addListener("browserFinished", () => {
@@ -175,7 +245,6 @@ export function LoginPage() {
             });
           } catch {}
 
-          // 25-second fallback timeout
           setTimeout(() => {
             setLoading(false);
             try { browserListener?.remove(); } catch {}

@@ -1,6 +1,7 @@
 import Foundation
 import Capacitor
 import WidgetKit
+import AuthenticationServices
 
 /**
  * WidgetBridgePlugin
@@ -87,5 +88,79 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             WidgetCenter.shared.reloadAllTimelines()
         }
         call.resolve(["success": true])
+    }
+}
+
+/**
+ * OAuthSessionPlugin
+ * Native iOS system-level OAuth session using ASWebAuthenticationSession.
+ * Eliminates standard full Safari in-app browser with address bars,
+ * intercepts custom callback schemes instantly, and auto-dismisses upon login.
+ */
+@objc(OAuthSessionPlugin)
+public class OAuthSessionPlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPresentationContextProviding {
+    public let identifier = "OAuthSessionPlugin"
+    public let jsName = "OAuthSession"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "startSession", returnType: CAPPluginReturnPromise)
+    ]
+
+    private var currentSession: ASWebAuthenticationSession?
+
+    @objc public func startSession(_ call: CAPPluginCall) {
+        guard let urlString = call.getString("url"),
+              let url = URL(string: urlString),
+              let scheme = call.getString("callbackScheme") else {
+            call.reject("Parameter 'url' dan 'callbackScheme' diperlukan")
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            self.currentSession = ASWebAuthenticationSession(
+                url: url,
+                callbackURLScheme: scheme
+            ) { [weak self] callbackURL, error in
+                self?.currentSession = nil
+
+                if let error = error {
+                    let nsError = error as NSError
+                    if nsError.domain == ASWebAuthenticationSessionErrorDomain &&
+                       nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                        call.reject("User cancelled", "CANCELLED")
+                    } else {
+                        call.reject(error.localizedDescription, "AUTH_ERROR")
+                    }
+                    return
+                }
+
+                guard let callbackURL = callbackURL else {
+                    call.reject("Tidak ada URL callback yang diterima", "NO_CALLBACK")
+                    return
+                }
+
+                call.resolve([
+                    "url": callbackURL.absoluteString
+                ])
+            }
+
+            self.currentSession?.presentationContextProvider = self
+            self.currentSession?.prefersEphemeralWebBrowserSession = false
+            self.currentSession?.start()
+        }
+    }
+
+    public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        if let window = self.bridge?.webView?.window {
+            return window
+        }
+        if let keyWindow = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+            .first(where: { $0.isKeyWindow }) {
+            return keyWindow
+        }
+        return ASPresentationAnchor()
     }
 }
