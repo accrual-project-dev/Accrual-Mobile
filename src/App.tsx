@@ -261,7 +261,6 @@ function AppShell() {
   const {
     isPaywallOpen,
     closePaywall,
-    openPaywall,
     isSuccessModalOpen,
     successModalSub,
     closeSuccessModal,
@@ -274,18 +273,7 @@ function AppShell() {
   const [joinLedgerOpen, setJoinLedgerOpen] = useState(false);
   const [joinLedgerCode, setJoinLedgerCode] = useState("");
 
-  // Auto-resume paywall if guest user signed in/registered from paywall modal
-  useEffect(() => {
-    if (user && !isGuest) {
-      try {
-        const shouldResume = sessionStorage.getItem("accrual_resume_paywall");
-        if (shouldResume === "true") {
-          sessionStorage.removeItem("accrual_resume_paywall");
-          openPaywall();
-        }
-      } catch {}
-    }
-  }, [user, isGuest, openPaywall]);
+
 
   const handleConfirmBatchReview = async (selectedItems: ParsedStatementItem[]) => {
     const payload = selectedItems.map((item) => ({

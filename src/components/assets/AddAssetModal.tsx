@@ -38,6 +38,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWallets } from "../../hooks/useWallets";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
+import { useCategories } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
 
 function parseCleanNumber(val: string): number {
@@ -161,9 +162,11 @@ export function AddAssetModal({
   // Wallet Funding Source State
   const { data: wallets = [] } = useWallets();
   const { balancesById } = useWalletBalances();
+  const { data: expenseCategories = [] } = useCategories("expense");
   const addTx = useAddTransaction();
   const [isDeductFromWallet, setIsDeductFromWallet] = useState(false);
   const [selectedDeductWalletId, setSelectedDeductWalletId] = useState<string>("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
   const fundingWallets = useMemo(() => {
     return wallets.filter(
@@ -176,6 +179,24 @@ export function AddAssetModal({
       setSelectedDeductWalletId(fundingWallets[0].id);
     }
   }, [fundingWallets, selectedDeductWalletId]);
+
+  useEffect(() => {
+    if (!selectedCategoryId && expenseCategories.length > 0) {
+      const defaultCat =
+        expenseCategories.find((c) => {
+          const n = (c.name || "").toLowerCase();
+          return (
+            n.includes("investasi") ||
+            n.includes("investment") ||
+            n.includes("tabungan") ||
+            n.includes("keuangan")
+          );
+        }) || expenseCategories[0];
+      if (defaultCat) {
+        setSelectedCategoryId(defaultCat.id);
+      }
+    }
+  }, [expenseCategories, selectedCategoryId]);
 
   // Handle ESC key to dismiss modal
   useEffect(() => {
@@ -674,7 +695,7 @@ export function AddAssetModal({
             amount: totalOutlay,
             type: "expense",
             wallet_id: selectedDeductWalletId,
-            category_id: null,
+            category_id: selectedCategoryId || null,
             occurred_on: occurredOnWithTime,
             note: isIndonesian
               ? `Pembelian Aset: ${formName.trim()} (${units} ${symbol})`
@@ -1934,6 +1955,54 @@ export function AddAssetModal({
                               })}
                             </div>
                           )}
+
+                          {/* Category selector for expense transaction */}
+                          <div className="pt-2.5 border-t border-[var(--glass-border)] space-y-1.5">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                              {isIndonesian
+                                ? "Kategori Transaksi Pengeluaran"
+                                : "Expense Transaction Category"}
+                            </span>
+                            {expenseCategories.length === 0 ? (
+                              <p className="text-[11px] text-[var(--text-tertiary)] italic">
+                                {isIndonesian
+                                  ? "Tidak ada kategori pengeluaran yang tersedia"
+                                  : "No expense categories available"}
+                              </p>
+                            ) : (
+                              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                                {expenseCategories.map((c) => {
+                                  const isSelected = selectedCategoryId === c.id;
+                                  return (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      onClick={() => {
+                                        triggerHaptic("light");
+                                        setSelectedCategoryId(c.id);
+                                      }}
+                                      className={`px-3 py-1.5 rounded-xl text-left transition-all cursor-pointer flex items-center gap-1.5 shrink-0 select-none ${
+                                        isSelected
+                                          ? isDark
+                                            ? "bg-white/12 border border-white/25 shadow-sm text-[var(--text-primary)]"
+                                            : "bg-black/10 border border-black/20 shadow-sm text-[var(--text-primary)]"
+                                          : "bg-white/[0.03] border border-[var(--glass-border)] opacity-70 hover:opacity-100 text-[var(--text-secondary)]"
+                                      }`}
+                                    >
+                                      {c.emoji && (
+                                        <span className="text-[13px] shrink-0">
+                                          <IconRenderer icon={c.emoji} size="13px" />
+                                        </span>
+                                      )}
+                                      <span className="text-[11px] font-semibold truncate block">
+                                        {c.name}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

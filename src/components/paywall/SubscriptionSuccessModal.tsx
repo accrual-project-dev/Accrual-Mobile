@@ -49,8 +49,12 @@ export function SubscriptionSuccessModal({
     onClose();
   };
 
+  const isLifetime = Boolean(
+    subscription?.isLifetime || subscription?.planId === "accrual_lifetime_499k"
+  );
+
   const planName = (() => {
-    if (subscription?.isLifetime || subscription?.planId === "accrual_lifetime_499k") {
+    if (isLifetime) {
       return isIndonesian ? "Accrual Pro Seumur Hidup" : "Accrual Pro Lifetime";
     }
     if (subscription?.planId === "accrual_annual_199k") {
@@ -62,10 +66,10 @@ export function SubscriptionSuccessModal({
     return "Accrual Pro";
   })();
 
-  const isTrial = subscription?.status === "trialing";
+  const isTrial = !isLifetime && subscription?.status === "trialing";
 
   const formattedPeriodEnd = (() => {
-    if (subscription?.isLifetime) {
+    if (isLifetime) {
       return isIndonesian
         ? "Akses Seumur Hidup (Tanpa Batas Waktu)"
         : "Lifetime Access (Never Expires)";
@@ -246,7 +250,7 @@ export function SubscriptionSuccessModal({
                 <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
                   <Calendar size={13} strokeWidth={1.7} />
                   <span>
-                    {subscription?.isLifetime
+                    {isLifetime
                       ? isIndonesian ? "Masa Berlaku:" : "Validity:"
                       : isTrial
                         ? isIndonesian ? "Uji Coba Hingga:" : "Trial Until:"
@@ -258,7 +262,7 @@ export function SubscriptionSuccessModal({
                 </span>
               </div>
 
-              {!subscription?.isLifetime && (
+              {!isLifetime && (
                 <p className="text-[10px] text-[var(--text-tertiary)] pt-0.5 leading-snug">
                   {isIndonesian
                     ? "Dikelola aman via Apple ID. Perpanjangan otomatis dapat dikelola kapan saja."

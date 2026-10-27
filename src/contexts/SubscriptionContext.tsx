@@ -151,8 +151,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           trialStartAt: data.trial_start_at || null,
           trialEndAt: data.trial_end_at || null,
           currentPeriodStart: data.current_period_start || null,
-          currentPeriodEnd: data.current_period_end || null,
-          isLifetime: Boolean(data.is_lifetime),
+          currentPeriodEnd: Boolean(data.is_lifetime || data.plan_id === "accrual_lifetime_499k")
+            ? null
+            : (data.current_period_end || null),
+          isLifetime: Boolean(data.is_lifetime || data.plan_id === "accrual_lifetime_499k"),
           updatedAt: data.updated_at || new Date().toISOString(),
         };
         saveToLocal(remoteSub);

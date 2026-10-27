@@ -39,7 +39,6 @@ export function AccrualPaywallModal({
     upgradeToPlan,
     restorePurchases,
     paywallContext,
-    isLoading: isSubLoading,
   } = useSubscription();
   const { user, exitGuestMode } = useAuth();
   const { showToast } = useToast();
@@ -117,9 +116,6 @@ export function AccrualPaywallModal({
   };
 
   const handleConfirmLoginRedirect = () => {
-    try {
-      sessionStorage.setItem("accrual_resume_paywall", "true");
-    } catch {}
     setShowGuestLoginPrompt(false);
     onClose();
     exitGuestMode();
@@ -490,7 +486,7 @@ export function AccrualPaywallModal({
         =============================================================== */}
         <button
           type="button"
-          disabled={isProcessing || isSubLoading}
+          disabled={isProcessing}
           onClick={handlePurchase}
           className="w-full h-12 rounded-2xl bg-[var(--text-primary)] font-semibold text-[14px] flex items-center justify-center active:scale-[0.985] transition-transform duration-150 disabled:opacity-50"
         >

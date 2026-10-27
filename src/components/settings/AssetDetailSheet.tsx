@@ -3,7 +3,6 @@ import {
   Plus,
   Minus,
   Edit3,
-  Trash2,
   Check,
   X,
   ArrowUpRight,
@@ -22,7 +21,6 @@ import {
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
 import { GlassSelect, type GlassSelectOption } from "../ui/GlassSelect";
-import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import { formatHoldingUnits, formatLiveAmountInput } from "../../lib/utils";
 import { triggerHaptic } from "../../lib/haptics";
 import { useToast } from "../../contexts/ToastContext";
@@ -43,7 +41,6 @@ import {
 import {
   recordHoldingActivity,
   undoHoldingActivity,
-  setHoldingDirectUnits,
   getHoldingActivities,
   generateAssetHistoryCurve,
   calculateHoldingValuation,
@@ -136,7 +133,7 @@ export function AssetDetailSheet({
   holding,
   onHoldingUpdated,
   onDeleteHolding,
-  onStartEditHolding,
+  onStartEditHolding: _onStartEditHolding,
 }: AssetDetailSheetProps) {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -152,7 +149,89 @@ export function AssetDetailSheet({
     "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL"
   >("1M");
 
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  // Unified Inline Asset Editing State (Replaces detached floating double-cards)
+  const [isEditingAsset, setIsEditingAsset] = useState<boolean>(false);
+  const [editName, setEditName] = useState<string>("");
+  const [editSymbol, setEditSymbol] = useState<string>("");
+  const [editType, setEditType] = useState<AssetType>("crypto");
+  const [editUnits, setEditUnits] = useState<string>("");
+  const [editBuyPrice, setEditBuyPrice] = useState<string>("");
+  const [editCustomPrice, setEditCustomPrice] = useState<string>("");
+  const [editIsCustomPrice, setEditIsCustomPrice] = useState<boolean>(false);
+
+  const handleOpenEditAsset = (_focusField?: "units" | "price" | "all") => {
+    if (!holding) return;
+    setEditName(holding.name || "");
+    setEditSymbol(holding.symbol || "");
+    setEditType((holding.asset_type as AssetType) || "crypto");
+    setEditUnits(String(holding.units || ""));
+    setEditBuyPrice(holding.avg_buy_price ? String(holding.avg_buy_price) : "");
+    const shouldEnableCustom = _focusField === "price" ? true : Boolean(holding.is_custom_price);
+    setEditIsCustomPrice(shouldEnableCustom);
+    setEditCustomPrice(
+      holding.custom_price
+        ? String(holding.custom_price)
+        : String(holding.current_price || holding.avg_buy_price || "")
+    );
+    setIsEditingAsset(true);
+  };
+
+  const handleSaveAssetDetails = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!holding) return;
+    triggerHaptic("medium");
+
+    const parsedUnits = parseFloat(editUnits.replace(/,/g, "."));
+    const parsedBuyPrice = parseFloat(editBuyPrice.replace(/[^0-9.]/g, ""));
+    const parsedCustomPrice = parseFloat(editCustomPrice.replace(/[^0-9.]/g, ""));
+    const trimmedName = editName.trim() || holding.name;
+    const trimmedSymbol = editSymbol.trim().toUpperCase() || holding.symbol;
+
+    if (isNaN(parsedUnits) || parsedUnits < 0) {
+      showToast(isIndonesian ? "Jumlah unit tidak valid" : "Invalid unit amount", "delete");
+      return;
+    }
+
+    // Auto-remove when units reached 0
+    if (parsedUnits === 0) {
+      onDeleteHolding(holding.id, holding.name);
+      setIsEditingAsset(false);
+      onClose();
+      showToast(
+        isIndonesian
+          ? `Aset ${trimmedSymbol} telah dihapus karena unit bernilai 0.`
+          : `Asset ${trimmedSymbol} removed as units reached 0.`,
+        "delete"
+      );
+      return;
+    }
+
+    const updatedHolding: InvestmentHolding = {
+      ...holding,
+      name: trimmedName,
+      symbol: trimmedSymbol,
+      asset_type: editType,
+      units: parsedUnits,
+      avg_buy_price: !isNaN(parsedBuyPrice) && parsedBuyPrice > 0 ? parsedBuyPrice : holding.avg_buy_price,
+      is_custom_price: editIsCustomPrice,
+      custom_price: editIsCustomPrice && !isNaN(parsedCustomPrice) ? parsedCustomPrice : undefined,
+      current_price: editIsCustomPrice && !isNaN(parsedCustomPrice) && parsedCustomPrice > 0
+        ? parsedCustomPrice
+        : holding.current_price,
+      price_source: editIsCustomPrice ? "manual" : (holding.price_source === "manual" ? "cache" : holding.price_source),
+      last_price_updated_at: new Date().toISOString(),
+    };
+
+    upsertHolding(updatedHolding, user?.id);
+    setIsEditingAsset(false);
+    onHoldingUpdated();
+    showToast(
+      isIndonesian
+        ? `Detail aset ${trimmedSymbol} berhasil diperbarui.`
+        : `Asset ${trimmedSymbol} details successfully updated.`,
+      "update"
+    );
+  };
 
   // Buy / Sell action modal states
   const [actionModal, setActionModal] = useState<"none" | "buy" | "sell">(
@@ -170,18 +249,6 @@ export function AssetDetailSheet({
   const [inputNote, setInputNote] = useState<string>("");
   const [linkToWallet, setLinkToWallet] = useState<boolean>(false);
   const [selectedWalletId, setSelectedWalletId] = useState<string>("");
-
-  // Direct Unit Balance Correction modal states
-  const [isEditingDirectUnits, setIsEditingDirectUnits] =
-    useState<boolean>(false);
-  const [directUnitsInput, setDirectUnitsInput] = useState<string>("");
-
-  // Custom Broker Price modal states
-  const [isEditingCustomPrice, setIsEditingCustomPrice] =
-    useState<boolean>(false);
-  const [isCustomPriceEnabled, setIsCustomPriceEnabled] =
-    useState<boolean>(false);
-  const [customPriceInput, setCustomPriceInput] = useState<string>("");
 
   // Valuation computations
   const valuation = useMemo(() => {
@@ -633,85 +700,6 @@ export function AssetDetailSheet({
     }
   };
 
-  const handleSaveCustomPrice = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!holding) return;
-    triggerHaptic("medium");
-    const thousandSep = isIndonesian ? "." : ",";
-    const decimalSep = isIndonesian ? "," : ".";
-    const cleanCustomStr = customPriceInput
-      .split(thousandSep)
-      .join("")
-      .replace(decimalSep, ".");
-    const parsedPrice = parseFloat(cleanCustomStr);
-    if (isCustomPriceEnabled && (isNaN(parsedPrice) || parsedPrice <= 0)) {
-      showToast(
-        isIndonesian ? "Harga manual tidak valid" : "Invalid custom price",
-        "delete",
-        () => {},
-      );
-      return;
-    }
-
-    const updatedHolding: InvestmentHolding = {
-      ...holding,
-      is_custom_price: isCustomPriceEnabled,
-      custom_price: isCustomPriceEnabled ? parsedPrice : undefined,
-      current_price: isCustomPriceEnabled ? parsedPrice : (holding.current_price || holding.avg_buy_price),
-      price_source: isCustomPriceEnabled ? "manual" : (holding.price_source === "manual" ? "cache" : holding.price_source),
-      last_price_updated_at: new Date().toISOString(),
-    };
-
-    upsertHolding(updatedHolding, user?.id);
-    setIsEditingCustomPrice(false);
-    onHoldingUpdated();
-    showToast(
-      isIndonesian
-        ? isCustomPriceEnabled
-          ? `Harga manual dikunci pada ${formatWithPreferred(parsedPrice)}`
-          : "Kunci harga manual dinonaktifkan (mengikuti pasar live)"
-        : isCustomPriceEnabled
-          ? `Custom price locked at ${formatWithPreferred(parsedPrice)}`
-          : "Custom price unlocked (resuming market feed)",
-      "update",
-      () => {},
-    );
-  };
-
-  const handleSaveDirectUnits = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!holding) return;
-    const parsed = parseFloat(directUnitsInput.replace(/,/g, "."));
-    if (isNaN(parsed) || parsed < 0) {
-      showToast(
-        isIndonesian ? "Jumlah unit tidak valid" : "Invalid unit amount",
-        "delete",
-        () => {},
-      );
-      return;
-    }
-    triggerHaptic("medium");
-    try {
-      setHoldingDirectUnits(
-        holding.id,
-        parsed,
-        user?.id,
-        isIndonesian ? "Koreksi Saldo Manual" : "Manual Balance Correction",
-      );
-      setIsEditingDirectUnits(false);
-      onHoldingUpdated();
-      showToast(
-        isIndonesian
-          ? `Saldo unit berhasil disesuaikan: ${formatHoldingUnits(parsed)} ${holding.symbol}`
-          : `Unit balance restored to ${formatHoldingUnits(parsed)} ${holding.symbol}`,
-        "update",
-        () => {},
-      );
-    } catch (err: any) {
-      showToast(err?.message || "Failed to update units", "delete", () => {});
-    }
-  };
-
   const handleUndoActivity = (act: HoldingActivity) => {
     if (!holding) return;
     triggerHaptic("medium");
@@ -757,8 +745,7 @@ export function AssetDetailSheet({
   };
 
   return (
-    <>
-      <BottomSheet isOpen={isOpen} onClose={onClose} title={holding.name}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} title={holding.name}>
       <div className="px-5 sm:px-6 space-y-3.5 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none max-w-lg mx-auto">
         {/* ============================================================ */}
         {/* 1. HERO & BALANCE (Apple Stocks Parity)                     */}
@@ -823,31 +810,13 @@ export function AssetDetailSheet({
               </div>
             </div>
 
-            {/* Edit / Delete Buttons */}
+            {/* Edit Asset Button (Replaces Trash Can with Direct Edit) */}
             <div className="flex items-center gap-1">
-              {onStartEditHolding && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    onStartEditHolding(holding);
-                  }}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.06)"
-                      : "rgba(0, 0, 0, 0.04)",
-                  }}
-                  title={isIndonesian ? "Ubah Aset" : "Edit Asset"}
-                >
-                  <Edit3 size={13} strokeWidth={1.8} />
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => {
-                  triggerHaptic("medium");
-                  setIsConfirmingDelete(true);
+                  triggerHaptic("light");
+                  handleOpenEditAsset("all");
                 }}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
                 style={{
@@ -855,9 +824,9 @@ export function AssetDetailSheet({
                     ? "rgba(255, 255, 255, 0.06)"
                     : "rgba(0, 0, 0, 0.04)",
                 }}
-                title={isIndonesian ? "Hapus Aset" : "Delete Asset"}
+                title={isIndonesian ? "Ubah Detail Aset" : "Edit Asset Details"}
               >
-                <Trash2 size={13} strokeWidth={1.8} />
+                <Edit3 size={13} strokeWidth={1.8} />
               </button>
             </div>
           </div>
@@ -1042,159 +1011,435 @@ export function AssetDetailSheet({
         </div>
 
         {/* ============================================================ */}
-        {/* 2. GROUPED METRICS: 5 ROWS DENGAN GRADASI HALUS              */}
+        {/* 2. GROUPED METRICS OR INLINE ASSET EDITOR                    */}
         {/* ============================================================ */}
-        <div
-          className="rounded-2xl overflow-hidden transition-all"
-          style={{
-            background: controlBg,
-            border: controlBorder,
-            boxShadow: controlShadow,
-          }}
-        >
-          {/* Row 1: Units Owned */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-                {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setDirectUnitsInput(String(holding.units));
-                  setIsEditingDirectUnits(true);
-                }}
-                className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                title={
-                  isIndonesian ? "Koreksi Saldo Unit" : "Correct Unit Balance"
-                }
-              >
-                <Edit3 size={11} strokeWidth={1.8} />
-              </button>
-            </div>
-            <div className="text-right">
-              <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                {formatHoldingUnits(holding.units)} {holding.symbol}
-              </span>
-            </div>
-          </div>
-
-          {/* Gradient Divider 1 */}
-          <div style={gradientDivider} />
-
-          {/* Row 2: Cost Basis (Baris Mandiri) */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-              {isIndonesian ? "Basis Biaya (Modal)" : "Cost Basis"}
-            </span>
-            <div className="text-right">
-              <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                {formatWithPreferred(valuation.costBasis)}
-              </span>
-            </div>
-          </div>
-
-          {/* Gradient Divider 2 */}
-          <div style={gradientDivider} />
-
-          {/* Row 3: Average Buy Price (DCA) */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-              {isIndonesian ? "Harga Rata-rata (DCA)" : "Average Price"}
-            </span>
-            <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">
-              {formatWithPreferred(holding.avg_buy_price)}
-            </span>
-          </div>
-
-          {/* Gradient Divider 3 */}
-          <div style={gradientDivider} />
-
-          {/* Row 4: Current Market Price with Custom Broker Price Lock */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-                {isIndonesian ? "Harga Pasar Terkini" : "Market Price"}
-              </span>
-              {holding.is_custom_price ? (
-                <span
-                  className="px-1.5 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+        {isEditingAsset ? (
+          <form
+            onSubmit={handleSaveAssetDetails}
+            className="rounded-2xl p-4 space-y-3.5 transition-all select-none"
+            style={{
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
+            }}
+          >
+            <div className="flex items-center justify-between pb-1">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                   style={{
                     background: isDark
                       ? "rgba(255, 255, 255, 0.05)"
                       : "rgba(0, 0, 0, 0.04)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--text-tertiary)",
+                    border: controlBorder,
                   }}
                 >
-                  {isIndonesian ? "Manual" : "Custom"}
-                </span>
-              ) : null}
+                  <Edit3 size={13} className="text-[var(--text-primary)]" />
+                </div>
+                <div>
+                  <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+                    {isIndonesian ? "Edit Informasi Aset" : "Edit Asset Details"}
+                  </h3>
+                  <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 leading-none">
+                    {isIndonesian
+                      ? "Perbarui parameter aset portofolio"
+                      : "Update portfolio asset parameters"}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic("light");
-                  setIsCustomPriceEnabled(holding.is_custom_price || false);
-                  const rawP = holding.custom_price
-                    ? String(holding.custom_price)
-                    : String(
-                        holding.current_price || holding.avg_buy_price || "",
-                      );
-                  const isUsd = holding.currency === "USD";
-                  const formattedP = rawP
-                    ? formatLiveAmountInput(
-                        rawP,
-                        isIndonesian,
-                        isUsd,
-                        isUsd ? 4 : 0,
-                      ).display
-                    : "";
-                  setCustomPriceInput(formattedP);
-                  setIsEditingCustomPrice(true);
+                  setIsEditingAsset(false);
                 }}
-                className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                title={
-                  isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"
-                }
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.04)",
+                  border: controlBorder,
+                }}
               >
-                <Edit3 size={11} strokeWidth={1.8} />
+                <X size={12} strokeWidth={2} />
               </button>
             </div>
-            <div className="text-right">
-              <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                {formatWithPreferred(currentPrice)}
+
+            {/* Nama Aset & Ticker Symbol */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                  {isIndonesian ? "Nama Aset" : "Asset Name"}
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Tether USD"
+                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    border: controlBorder,
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                  {isIndonesian ? "Simbol / Ticker" : "Symbol / Ticker"}
+                </label>
+                <input
+                  type="text"
+                  value={editSymbol}
+                  onChange={(e) => setEditSymbol(e.target.value.toUpperCase())}
+                  placeholder="e.g. USDT"
+                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold uppercase outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    border: controlBorder,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Klasifikasi Aset Pills */}
+            <div className="space-y-1.5">
+              <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                {isIndonesian ? "Klasifikasi Aset" : "Asset Classification"}
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: "crypto", labelId: "Kripto", labelEn: "Crypto" },
+                  { id: "stock", labelId: "Saham", labelEn: "Stock" },
+                  { id: "mutual_fund", labelId: "Reksa Dana", labelEn: "Mutual Fund" },
+                  { id: "gold", labelId: "Emas", labelEn: "Gold" },
+                  { id: "real_estate", labelId: "Properti", labelEn: "Real Estate" },
+                  { id: "other", labelId: "Lainnya", labelEn: "Other" },
+                ].map((cat) => {
+                  const isSelected = editType === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setEditType(cat.id as AssetType);
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer"
+                      style={{
+                        background: isSelected
+                          ? isDark
+                            ? "rgba(255, 255, 255, 0.12)"
+                            : "rgba(0, 0, 0, 0.08)"
+                          : isDark
+                            ? "rgba(255, 255, 255, 0.03)"
+                            : "rgba(0, 0, 0, 0.02)",
+                        border: isSelected
+                          ? isDark
+                            ? "1px solid rgba(255, 255, 255, 0.25)"
+                            : "1px solid rgba(0, 0, 0, 0.2)"
+                          : controlBorder,
+                        color: isSelected
+                          ? "var(--text-primary)"
+                          : "var(--text-tertiary)",
+                      }}
+                    >
+                      {isIndonesian ? cat.labelId : cat.labelEn}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Units & Average Buy Price (Modal Dasar) */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                  {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editUnits}
+                  onChange={(e) => setEditUnits(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    border: controlBorder,
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                  {isIndonesian ? "Harga Beli Rata-rata" : "Avg Buy Price"}
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editBuyPrice}
+                  onChange={(e) => setEditBuyPrice(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    border: controlBorder,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Apple Toggle Switch: Kunci Harga Manual (Rule 3) */}
+            <div
+              className="p-3 rounded-xl flex items-center justify-between gap-3 transition-all"
+              style={{
+                background: isDark
+                  ? "rgba(255, 255, 255, 0.03)"
+                  : "rgba(0, 0, 0, 0.02)",
+                border: controlBorder,
+              }}
+            >
+              <div className="min-w-0 pr-2">
+                <p className="text-[12.5px] font-semibold text-[var(--text-primary)] leading-snug">
+                  {isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"}
+                </p>
+                <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-normal">
+                  {isIndonesian
+                    ? "Gunakan harga broker Anda daripada feed live"
+                    : "Use broker price rather than live feed"}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={editIsCustomPrice}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setEditIsCustomPrice(!editIsCustomPrice);
+                }}
+                className={`relative shrink-0 w-10 h-5.5 rounded-full p-[2px] transition-colors duration-200 cursor-pointer focus:outline-none flex items-center ${
+                  editIsCustomPrice
+                    ? isDark ? "bg-white" : "bg-zinc-900"
+                    : isDark ? "bg-white/20" : "bg-black/20"
+                }`}
+              >
+                <span
+                  className={`inline-block w-4.5 h-4.5 rounded-full shadow-md transition-transform duration-200 ${
+                    editIsCustomPrice
+                      ? `translate-x-[18px] ${isDark ? "bg-black" : "bg-white"}`
+                      : `translate-x-0 ${isDark ? "bg-zinc-300" : "bg-white"}`
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Custom Price Input when enabled */}
+            {editIsCustomPrice && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between px-0.5">
+                  <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Harga Unit Manual" : "Custom Unit Price"}
+                  </label>
+                  <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Spot live:" : "Live spot:"}{" "}
+                    {formatWithPreferred(
+                      holding.current_price || holding.avg_buy_price || 0
+                    )}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editCustomPrice}
+                  onChange={(e) => setEditCustomPrice(e.target.value)}
+                  placeholder={
+                    holding.currency === "USD" ? "e.g. 1.05" : "e.g. 16500"
+                  }
+                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.04)"
+                      : "rgba(0, 0, 0, 0.03)",
+                    border: controlBorder,
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setIsEditingAsset(false);
+                }}
+                className="flex-1 h-9 rounded-xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
+                style={{
+                  background: isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.04)",
+                  border: controlBorder,
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {isIndonesian ? "Batal" : "Cancel"}
+              </button>
+              <button
+                type="submit"
+                className="flex-1 h-9 rounded-xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
+                style={{
+                  background: isDark ? "#ffffff" : "#18181b",
+                  color: isDark ? "#000000" : "#ffffff",
+                }}
+              >
+                {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div
+            className="rounded-2xl overflow-hidden transition-all"
+            style={{
+              background: controlBg,
+              border: controlBorder,
+              boxShadow: controlShadow,
+            }}
+          >
+            {/* Row 1: Units Owned */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                  {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    handleOpenEditAsset("units");
+                  }}
+                  className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  title={
+                    isIndonesian ? "Koreksi Saldo Unit" : "Correct Unit Balance"
+                  }
+                >
+                  <Edit3 size={11} strokeWidth={1.8} />
+                </button>
+              </div>
+              <div className="text-right">
+                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                  {formatHoldingUnits(holding.units)} {holding.symbol}
+                </span>
+              </div>
+            </div>
+
+            {/* Gradient Divider 1 */}
+            <div style={gradientDivider} />
+
+            {/* Row 2: Cost Basis (Baris Mandiri) */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                {isIndonesian ? "Basis Biaya (Modal)" : "Cost Basis"}
               </span>
-              <span className="text-[9.5px] text-[var(--text-tertiary)] block mt-0.5">
-                {holding.is_custom_price
-                  ? (isIndonesian ? "Harga Manual Broker" : "Custom Broker Price")
-                  : (holding.price_source === "live"
-                      ? "Live Open Market API"
-                      : (isIndonesian ? "Harga Tersimpan (Offline)" : "Cached Offline Price"))}
+              <div className="text-right">
+                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                  {formatWithPreferred(valuation.costBasis)}
+                </span>
+              </div>
+            </div>
+
+            {/* Gradient Divider 2 */}
+            <div style={gradientDivider} />
+
+            {/* Row 3: Average Buy Price (DCA) */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                {isIndonesian ? "Harga Rata-rata (DCA)" : "Average Price"}
+              </span>
+              <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">
+                {formatWithPreferred(holding.avg_buy_price)}
               </span>
             </div>
-          </div>
 
-          {/* Gradient Divider 4 */}
-          <div style={gradientDivider} />
+            {/* Gradient Divider 3 */}
+            <div style={gradientDivider} />
 
-          {/* Row 5: Unrealized Profit / Loss */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-              {isIndonesian ? "P&L Belum Terealisasi" : "Unrealized P&L"}
-            </span>
-            <div className="text-right">
-              <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                {isProfitable ? "+" : "−"}
-                {formatWithPreferred(Math.abs(valuation.floatingPnL))}
+            {/* Row 4: Current Market Price with Custom Broker Price Lock */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                  {isIndonesian ? "Harga Pasar Terkini" : "Market Price"}
+                </span>
+                {holding.is_custom_price ? (
+                  <span
+                    className="px-1.5 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                    style={{
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.05)"
+                        : "rgba(0, 0, 0, 0.04)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    {isIndonesian ? "Manual" : "Custom"}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    handleOpenEditAsset("price");
+                  }}
+                  className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  title={
+                    isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"
+                  }
+                >
+                  <Edit3 size={11} strokeWidth={1.8} />
+                </button>
+              </div>
+              <div className="text-right">
+                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                  {formatWithPreferred(currentPrice)}
+                </span>
+                <span className="text-[9.5px] text-[var(--text-tertiary)] block mt-0.5">
+                  {holding.is_custom_price
+                    ? (isIndonesian ? "Harga Manual Broker" : "Custom Broker Price")
+                    : (holding.price_source === "live"
+                        ? "Live Open Market API"
+                        : (isIndonesian ? "Harga Tersimpan (Offline)" : "Cached Offline Price"))}
+                </span>
+              </div>
+            </div>
+
+            {/* Gradient Divider 4 */}
+            <div style={gradientDivider} />
+
+            {/* Row 5: Unrealized Profit / Loss */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                {isIndonesian ? "P&L Belum Terealisasi" : "Unrealized P&L"}
               </span>
-              <span className="text-[9.5px] text-[var(--text-tertiary)] tabular-nums mt-0.5 block">
-                {isProfitable ? "+" : ""}
-                {valuation.floatingPnLPct.toFixed(2)}%
-              </span>
+              <div className="text-right">
+                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                  {isProfitable ? "+" : "−"}
+                  {formatWithPreferred(Math.abs(valuation.floatingPnL))}
+                </span>
+                <span className="text-[9.5px] text-[var(--text-tertiary)] tabular-nums mt-0.5 block">
+                  {isProfitable ? "+" : ""}
+                  {valuation.floatingPnLPct.toFixed(2)}%
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ============================================================ */}
         {/* 3. PRIMARY ACTIONS: Add & Reduce Units                      */}
@@ -1740,312 +1985,7 @@ export function AssetDetailSheet({
             </form>
           </div>
         )}
-
-        {/* ============================================================ */}
-        {/* 6. MODAL: DIRECT UNIT BALANCE CORRECTION                    */}
-        {/* ============================================================ */}
-        {isEditingDirectUnits && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 select-none">
-            <form
-              onSubmit={handleSaveDirectUnits}
-              className="w-full max-w-sm mx-auto rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-              style={{
-                background: isDark
-                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
-                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
-                border: controlBorder,
-              }}
-            >
-              <div className="flex items-center justify-between pb-1">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: controlBg,
-                      border: controlBorder,
-                    }}
-                  >
-                    <Edit3 size={14} className="text-[var(--text-primary)]" />
-                  </div>
-                  <div>
-                    <h3 className="text-[13.5px] font-bold text-[var(--text-primary)] leading-tight">
-                      {isIndonesian
-                        ? `Koreksi Saldo ${holding.symbol}`
-                        : `Correct ${holding.symbol} Balance`}
-                    </h3>
-                    <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-none">
-                      {isIndonesian
-                        ? "Sesuaikan total unit ke saldo riil"
-                        : "Align units with actual portfolio"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingDirectUnits(false)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                  }}
-                >
-                  <X size={14} strokeWidth={2} />
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between px-0.5">
-                  <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Total Unit Riil Baru" : "New Total Units"}
-                  </label>
-                  <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Saat ini:" : "Current:"}{" "}
-                    {holding.units.toLocaleString()} {holding.symbol}
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={directUnitsInput}
-                  onChange={(e) => setDirectUnitsInput(e.target.value)}
-                  placeholder="e.g. 1002.41"
-                  className="w-full px-3.5 h-10 rounded-2xl text-[13px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    boxShadow: controlShadow,
-                  }}
-                />
-                <p className="text-[10px] text-[var(--text-tertiary)] px-0.5 pt-0.5">
-                  {isIndonesian
-                    ? "Saldo unit akan langsung diperbarui dan disinkronkan ke cloud."
-                    : "The unit balance will be immediately synchronized to cloud storage."}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIsEditingDirectUnits(false)}
-                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {isIndonesian ? "Batal" : "Cancel"}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
-                  style={{
-                    background: isDark ? "#ffffff" : "#18181b",
-                    color: isDark ? "#000000" : "#ffffff",
-                  }}
-                >
-                  {isIndonesian ? "Simpan Saldo" : "Save Balance"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* 7. MODAL: MANUAL / CUSTOM BROKER PRICE CONFIGURATION         */}
-        {/* ============================================================ */}
-        {isEditingCustomPrice && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 select-none">
-            <form
-              onSubmit={handleSaveCustomPrice}
-              className="w-full max-w-sm mx-auto rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-              style={{
-                background: isDark
-                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
-                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
-                border: controlBorder,
-              }}
-            >
-              <div className="flex items-center justify-between pb-1">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: controlBg,
-                      border: controlBorder,
-                    }}
-                  >
-                    <Edit3 size={14} className="text-[var(--text-primary)]" />
-                  </div>
-                  <div>
-                    <h3 className="text-[13.5px] font-bold text-[var(--text-primary)] leading-tight">
-                      {isIndonesian
-                        ? `Harga Broker ${holding.symbol}`
-                        : `Broker Price: ${holding.symbol}`}
-                    </h3>
-                    <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-none">
-                      {isIndonesian
-                        ? "Kunci harga khusus atau ikuti pasar live"
-                        : "Lock custom price or follow live market"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingCustomPrice(false)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                  }}
-                >
-                  <X size={14} strokeWidth={2} />
-                </button>
-              </div>
-
-              {/* iOS Toggle Switch: Hierarchy Structure per Rule 3 */}
-              <div
-                className="p-3.5 rounded-2xl flex items-center justify-between gap-3 transition-all"
-                style={{
-                  background: controlBg,
-                  border: controlBorder,
-                }}
-              >
-                <div className="min-w-0 pr-2">
-                  <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">
-                    {isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"}
-                  </p>
-                  <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-normal">
-                    {isIndonesian
-                      ? "Abaikan feed pasar live dan gunakan harga broker Anda"
-                      : "Bypass live market feed and use your broker price"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isCustomPriceEnabled}
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setIsCustomPriceEnabled(!isCustomPriceEnabled);
-                  }}
-                  className={`relative shrink-0 w-[44px] h-[24px] rounded-full p-[2px] transition-colors duration-200 cursor-pointer focus:outline-none flex items-center ${
-                    isCustomPriceEnabled
-                      ? isDark ? "bg-white" : "bg-zinc-900"
-                      : isDark ? "bg-white/20" : "bg-black/20"
-                  }`}
-                >
-                  <span
-                    className={`inline-block w-[20px] h-[20px] rounded-full shadow-md transition-transform duration-200 ${
-                      isCustomPriceEnabled
-                        ? `translate-x-[20px] ${isDark ? "bg-black" : "bg-white"}`
-                        : `translate-x-0 ${isDark ? "bg-zinc-300" : "bg-white"}`
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Input: Custom Price when enabled */}
-              {isCustomPriceEnabled && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between px-0.5">
-                    <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                      {isIndonesian ? "Harga Unit Kustom" : "Custom Unit Price"}
-                    </label>
-                    <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
-                      {isIndonesian ? "Spot live:" : "Live spot:"} {formatWithPreferred(holding.current_price || holding.avg_buy_price || 0)}
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={customPriceInput}
-                    onChange={(e) => {
-                      const isUsd = holding.currency === "USD";
-                      const { display } = formatLiveAmountInput(
-                        e.target.value,
-                        isIndonesian,
-                        isUsd ||
-                          e.target.value.includes(".") ||
-                          e.target.value.includes(","),
-                        isUsd ? 4 : 2,
-                      );
-                      setCustomPriceInput(display);
-                    }}
-                    placeholder={
-                      holding.currency === "USD" ? "e.g. 1.05" : "e.g. 16.500"
-                    }
-                    className="w-full px-3.5 h-10 rounded-2xl text-[13px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                    style={{
-                      background: controlBg,
-                      border: controlBorder,
-                      boxShadow: controlShadow,
-                    }}
-                    autoFocus
-                  />
-                  <p className="text-[10px] text-[var(--text-tertiary)] px-0.5 pt-0.5">
-                    {isIndonesian
-                      ? "Valuasi portofolio akan dihitung berdasarkan harga kustom ini."
-                      : "Portfolio valuation will be computed based on this custom price."}
-                  </p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIsEditingCustomPrice(false)}
-                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {isIndonesian ? "Batal" : "Cancel"}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
-                  style={{
-                    background: isDark ? "#ffffff" : "#18181b",
-                    color: isDark ? "#000000" : "#ffffff",
-                  }}
-                >
-                  {isIndonesian ? "Simpan Harga" : "Save Price"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
       </div>
     </BottomSheet>
-
-    {/* Confirmation Modal for Asset Deletion */}
-    <GlassConfirmationModal
-      isOpen={isConfirmingDelete}
-      onClose={() => setIsConfirmingDelete(false)}
-      onConfirm={() => {
-        if (holding) {
-          onDeleteHolding(holding.id, holding.name);
-          setIsConfirmingDelete(false);
-          onClose();
-        }
-      }}
-      title={isIndonesian ? "Hapus Kepemilikan Aset?" : "Delete Asset Holding?"}
-      description={
-        isIndonesian
-          ? `Apakah Anda yakin ingin menghapus data kepemilikan ${holding.name} (${holding.symbol})? Seluruh riwayat transaksi aset ini akan dihapus dari portofolio.`
-          : `Are you sure you want to remove ${holding.name} (${holding.symbol})? All holding transactions for this asset will be removed from your portfolio.`
-      }
-      confirmLabel={isIndonesian ? "Hapus Aset" : "Delete Asset"}
-      cancelLabel={isIndonesian ? "Batal" : "Cancel"}
-      icon={Trash2}
-      isIndonesian={isIndonesian}
-      isDark={isDark}
-      zIndex={120}
-    />
-    </>
   );
 }
