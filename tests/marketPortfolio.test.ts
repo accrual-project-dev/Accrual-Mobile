@@ -383,6 +383,25 @@ describe("DCA Position Management & History Curves", () => {
 
     const curve1Y = generateAssetHistoryCurve(holding, "1Y", 2_500_000);
     expect(curve1Y.length).toBe(12);
+
+    // Flat price / single transaction asset MUST be completely flat (no sine-wave oscillation)
+    const flatHolding: InvestmentHolding = {
+      id: "h-flat",
+      symbol: "APPLE DEV",
+      name: "Apple Developer Program",
+      asset_type: "fixed_asset",
+      units: 1,
+      avg_buy_price: 1_700_000,
+      current_price: 1_700_000,
+      currency: "IDR",
+    };
+    const flatCurve = generateAssetHistoryCurve(flatHolding, "1M", 1_700_000);
+    expect(flatCurve.length).toBe(15);
+    for (const pt of flatCurve) {
+      expect(pt.value).toBe(1_700_000);
+      expect(pt.returnVal).toBe(0);
+      expect(pt.returnPct).toBe(0);
+    }
   });
 });
 

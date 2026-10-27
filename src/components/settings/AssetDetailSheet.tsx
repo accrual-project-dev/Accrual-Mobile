@@ -1745,10 +1745,10 @@ export function AssetDetailSheet({
         {/* 6. MODAL: DIRECT UNIT BALANCE CORRECTION                    */}
         {/* ============================================================ */}
         {isEditingDirectUnits && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 select-none">
             <form
               onSubmit={handleSaveDirectUnits}
-              className="w-full sm:max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in slide-in-from-bottom-5 duration-200"
+              className="w-full max-w-sm mx-auto rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
               style={{
                 background: isDark
                   ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
@@ -1855,10 +1855,10 @@ export function AssetDetailSheet({
         {/* 7. MODAL: MANUAL / CUSTOM BROKER PRICE CONFIGURATION         */}
         {/* ============================================================ */}
         {isEditingCustomPrice && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 select-none">
             <form
               onSubmit={handleSaveCustomPrice}
-              className="w-full sm:max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in slide-in-from-bottom-5 duration-200"
+              className="w-full max-w-sm mx-auto rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
               style={{
                 background: isDark
                   ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
@@ -1929,17 +1929,17 @@ export function AssetDetailSheet({
                     triggerHaptic("light");
                     setIsCustomPriceEnabled(!isCustomPriceEnabled);
                   }}
-                  className={`relative shrink-0 w-10 h-5.5 rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${
+                  className={`relative shrink-0 w-[44px] h-[24px] rounded-full p-[2px] transition-colors duration-200 cursor-pointer focus:outline-none flex items-center ${
                     isCustomPriceEnabled
                       ? isDark ? "bg-white" : "bg-zinc-900"
                       : isDark ? "bg-white/20" : "bg-black/20"
                   }`}
                 >
                   <span
-                    className={`inline-block w-4.5 h-4.5 rounded-full shadow-md transition-transform duration-200 ${
+                    className={`inline-block w-[20px] h-[20px] rounded-full shadow-md transition-transform duration-200 ${
                       isCustomPriceEnabled
-                        ? `translate-x-[19px] ${isDark ? "bg-black" : "bg-white"}`
-                        : `translate-x-[2px] ${isDark ? "bg-zinc-300" : "bg-white"}`
+                        ? `translate-x-[20px] ${isDark ? "bg-black" : "bg-white"}`
+                        : `translate-x-0 ${isDark ? "bg-zinc-300" : "bg-white"}`
                     }`}
                   />
                 </button>

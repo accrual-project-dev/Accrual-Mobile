@@ -11,7 +11,7 @@
 // Strictly Non-Mixed Localization (100% Pure English / Indonesian)
 // ======================================================================
 
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -190,6 +190,25 @@ export function AssetsPage() {
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
   const [isWalletManagementOpen, setIsWalletManagementOpen] = useState(false);
 
+  const lastRefreshTimeRef = useRef<number>(Date.now());
+
+  // Silent background refresh for seamless price updates without disruptive spinners/toasts
+  const silentRefreshPrices = useCallback(async () => {
+    try {
+      lastRefreshTimeRef.current = Date.now();
+      const res = await refreshAllPortfolioPrices(user?.id);
+      if (res.usdtRate > 5000 && res.usdtRate < 50000) {
+        setUsdtPref((prev: UsdtValuationPref) => ({
+          ...prev,
+          rate: res.usdtRate,
+        }));
+      }
+      if (res.updatedHoldings && res.updatedHoldings.length > 0) {
+        setHoldings(res.updatedHoldings);
+      }
+    } catch {}
+  }, [user?.id]);
+
   // Initial Sync from Supabase & live rates
   useEffect(() => {
     let isMounted = true;
@@ -220,6 +239,40 @@ export function AssetsPage() {
       isMounted = false;
     };
   }, [user?.id]);
+
+  // Background Auto-Refresh on interval (60s) and window focus / visibility change (30s throttle)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      silentRefreshPrices();
+    }, 60000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const elapsed = Date.now() - lastRefreshTimeRef.current;
+        if (elapsed > 30000) {
+          silentRefreshPrices();
+        }
+      }
+    };
+
+    const handleFocusOrOnline = () => {
+      const elapsed = Date.now() - lastRefreshTimeRef.current;
+      if (elapsed > 30000) {
+        silentRefreshPrices();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocusOrOnline);
+    window.addEventListener("online", handleFocusOrOnline);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocusOrOnline);
+      window.removeEventListener("online", handleFocusOrOnline);
+    };
+  }, [silentRefreshPrices]);
 
   // Zero-Destruction Linked Custodial Bridge:
   // Automatically convert/bridge imported USDT or Crypto account into an active USDT holding

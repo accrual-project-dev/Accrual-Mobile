@@ -308,11 +308,65 @@ export function markTxAsReconciled(txIds: string[], userId?: string): void {
   } catch {}
 }
 
+const HOLDINGS_SYNC_QUEUE_PREFIX = "trouvaille_holdings_sync_queue_";
+
+function getHoldingSyncQueue(userId: string): InvestmentHolding[] {
+  try {
+    const raw = localStorage.getItem(`${HOLDINGS_SYNC_QUEUE_PREFIX}${userId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHoldingSyncQueue(queue: InvestmentHolding[], userId: string): void {
+  try {
+    if (queue.length === 0) {
+      localStorage.removeItem(`${HOLDINGS_SYNC_QUEUE_PREFIX}${userId}`);
+    } else {
+      localStorage.setItem(`${HOLDINGS_SYNC_QUEUE_PREFIX}${userId}`, JSON.stringify(queue));
+    }
+  } catch {}
+}
+
+export function queueHoldingSync(holding: InvestmentHolding, userId: string): void {
+  if (!userId || userId === "guest_local_user") return;
+  const queue = getHoldingSyncQueue(userId);
+  const idx = queue.findIndex(
+    (h) => (h.id && h.id === holding.id) || (h.symbol && holding.symbol && h.symbol.toUpperCase() === holding.symbol.toUpperCase())
+  );
+  if (idx >= 0) {
+    queue[idx] = holding;
+  } else {
+    queue.push(holding);
+  }
+  saveHoldingSyncQueue(queue, userId);
+}
+
+export async function flushPendingHoldingSyncs(userId: string): Promise<void> {
+  if (!userId || userId === "guest_local_user") return;
+  const queue = getHoldingSyncQueue(userId);
+  if (queue.length === 0) return;
+  const remaining: InvestmentHolding[] = [];
+  for (const item of queue) {
+    try {
+      await syncHoldingToSupabase(item, userId, false);
+    } catch {
+      remaining.push(item);
+    }
+  }
+  saveHoldingSyncQueue(remaining, userId);
+}
+
 /**
  * Asynchronously synchronizes a holding row with Supabase cloud table `public.holdings`.
  */
-export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: string): Promise<void> {
-  if (!userId || userId === "guest_local_user") return;
+export async function syncHoldingToSupabase(
+  holding: InvestmentHolding,
+  userId: string,
+  queueOnFail = true,
+): Promise<void> {
+  if (!userId || userId === "guest_local_user" || !isValidUUID(userId)) return;
   // Never persist a 0-unit USDT holding into cloud holdings
   if (
     holding.symbol?.toUpperCase() === "USDT" &&
@@ -358,6 +412,7 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
       holding.custom_price,
     );
 
+    const nowIso = new Date().toISOString();
     const payload = {
       id: holdingId,
       user_id: userId,
@@ -373,7 +428,8 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
       annual_rate: holding.annual_rate || null,
       purchase_date: holding.purchase_date || null,
       wallet_id: validWalletId,
-      last_price_updated_at: holding.last_price_updated_at || new Date().toISOString(),
+      last_price_updated_at: holding.last_price_updated_at || nowIso,
+      updated_at: nowIso,
     };
 
     const { error: upsertErr } = isFixed
@@ -382,10 +438,16 @@ export async function syncHoldingToSupabase(holding: InvestmentHolding, userId: 
 
     // Safe fallback if unique constraint (user_id, symbol) has not yet been applied in DB
     if (upsertErr) {
-      await supabase.from("holdings").upsert(payload);
+      const { error: fallbackErr } = await supabase.from("holdings").upsert(payload);
+      if (fallbackErr) {
+        throw fallbackErr;
+      }
     }
   } catch (e) {
     console.warn("[syncHoldingToSupabase] Supabase sync notice:", e);
+    if (queueOnFail) {
+      queueHoldingSync(holding, userId);
+    }
   }
 }
 
@@ -420,6 +482,9 @@ export function markHoldingsHydrated(userId: string): void {
 export async function fetchHoldingsFromSupabase(userId: string): Promise<InvestmentHolding[]> {
   if (!userId || userId === "guest_local_user") return getSavedHoldings(userId);
   try {
+    // Flush any pending holding sync mutations first
+    await flushPendingHoldingSyncs(userId).catch(() => {});
+
     const { data, error } = await supabase
       .from("holdings")
       .select("*")
@@ -429,14 +494,38 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
     if (!error && Array.isArray(data)) {
       markHoldingsHydrated(userId);
       // Map deduplicating by normalized symbol for market assets, keeping unique row.id for fixed/custom assets.
-      // Data is ordered by updated_at descending, so the first encountered row is strictly the most recent state.
+      // If multiple duplicate rows exist in Supabase (e.g. from previous sync issues), pick the candidate
+      // with highest units or latest updated_at, and purge stale duplicate rows.
       const symbolMap = new Map<string, any>();
+      const duplicateIdsToDelete: string[] = [];
+
       for (const row of data) {
         const sym = (row.symbol || "").toUpperCase().trim();
         const isFixed = row.asset_type === "fixed_asset";
         const mapKey = isFixed || !sym ? `id_${row.id}` : sym;
         if (!symbolMap.has(mapKey)) {
           symbolMap.set(mapKey, row);
+        } else {
+          const existing = symbolMap.get(mapKey);
+          const rowUnits = Number(row.units) || 0;
+          const existingUnits = Number(existing.units) || 0;
+          const rowTime = new Date(row.updated_at || row.last_price_updated_at || 0).getTime();
+          const existingTime = new Date(existing.updated_at || existing.last_price_updated_at || 0).getTime();
+          if (rowUnits > existingUnits || (rowUnits === existingUnits && rowTime > existingTime)) {
+            duplicateIdsToDelete.push(existing.id);
+            symbolMap.set(mapKey, row);
+          } else {
+            duplicateIdsToDelete.push(row.id);
+          }
+        }
+      }
+
+      // Asynchronously prune stale duplicate rows in Supabase
+      if (duplicateIdsToDelete.length > 0) {
+        for (const dupId of duplicateIdsToDelete) {
+          if (isValidUUID(dupId)) {
+            supabase.from("holdings").delete().eq("id", dupId).eq("user_id", userId).then(() => {}, () => {});
+          }
         }
       }
 
@@ -483,7 +572,21 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
       if (foundUsdtRow && usdtHolding) {
         const cloudUnits = Number(foundUsdtRow.units) || 0;
         const currentUsdt = getSavedUsdtPref(userId);
-        if (cloudUnits > 0 || currentUsdt.units <= 0) {
+
+        // If local units are higher than cloud units (e.g. recent addition before logout),
+        // PRESERVE local units and immediately push sync to cloud!
+        if (currentUsdt.units > cloudUnits) {
+          syncHoldingToSupabase(
+            {
+              ...usdtHolding,
+              units: currentUsdt.units,
+              current_price: currentUsdt.rate,
+              avg_buy_price: Math.round(currentUsdt.costBasis / currentUsdt.units),
+            },
+            userId,
+          ).catch(() => {});
+          usdtHolding.units = currentUsdt.units;
+        } else if (cloudUnits > 0 || currentUsdt.units <= 0) {
           const restoredUsdt: UsdtValuationPref = {
             units: cloudUnits,
             rate: Number(foundUsdtRow.current_price) || currentUsdt.rate || USD_IDR_ESTIMATE,
@@ -493,6 +596,30 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
           localStorage.setItem(key, JSON.stringify(restoredUsdt));
         }
         const allHoldings = [usdtHolding, ...nonUsdtHoldings];
+        saveHoldings(allHoldings, userId, false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated"));
+        }
+        return allHoldings;
+      }
+
+      // If no USDT was found in cloud, but local user has saved USDT units, push to cloud
+      const currentUsdt = getSavedUsdtPref(userId);
+      if (currentUsdt.units > 0) {
+        const restoredUsdtHolding: InvestmentHolding = {
+          id: `usdt-${userId}`,
+          symbol: "USDT",
+          name: "Tether USD",
+          asset_type: "crypto",
+          units: currentUsdt.units,
+          avg_buy_price: Math.round(currentUsdt.costBasis / currentUsdt.units),
+          current_price: currentUsdt.rate,
+          currency: "IDR",
+          icon: "Coins",
+          last_price_updated_at: new Date().toISOString(),
+        };
+        syncHoldingToSupabase(restoredUsdtHolding, userId).catch(() => {});
+        const allHoldings = [restoredUsdtHolding, ...nonUsdtHoldings];
         saveHoldings(allHoldings, userId, false);
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("trouvaille_holdings_updated"));
@@ -1951,12 +2078,34 @@ export function generateAssetHistoryCurve(
   const priceDiff = livePrice - avgBuy;
   const now = new Date();
 
+  // If fixed asset, custom price, or flat price (no price deviation or single purchase):
+  // do NOT inject synthetic sine waves. Yield a clean, stable horizontal curve.
+  const isFixed = holding.asset_type === "fixed_asset";
+  const isCustomPrice = Boolean(holding.is_custom_price);
+  const isFlatPrice = Math.abs(priceDiff) < 0.0001;
+  const hasMultipleActivities = Array.isArray(holding.activities) && holding.activities.length > 1;
+
   for (let i = 0; i < numPoints; i++) {
     const progress = i / (numPoints - 1);
-    const factor = Math.sin((progress * Math.PI) / 2);
-    const wave = Math.sin(i * 1.7) * 0.015 * (1 - progress);
     
-    const simulatedPrice = avgBuy + priceDiff * factor + livePrice * wave;
+    let simulatedPrice = livePrice;
+    if (!isFixed && !isCustomPrice && !isFlatPrice && (hasMultipleActivities || Math.abs(priceDiff) >= 0.0001)) {
+      const factor = Math.sin((progress * Math.PI) / 2);
+      const wave = Math.sin(i * 1.7) * 0.015 * (1 - progress);
+      simulatedPrice = avgBuy + priceDiff * factor + livePrice * wave;
+    } else if (isFixed && holding.annual_rate && holding.purchase_date) {
+      // If fixed asset has depreciation/appreciation configured, calculate smooth linear accrual over elapsed time
+      const purchaseTime = new Date(holding.purchase_date).getTime();
+      const totalSpan = Math.max(1, now.getTime() - purchaseTime);
+      const pointTime = purchaseTime + progress * totalSpan;
+      const yearsElapsed = Math.max(0, (pointTime - purchaseTime) / (365.25 * 86400000));
+      const rateFactor = 1 + (Number(holding.annual_rate) / 100) * yearsElapsed;
+      simulatedPrice = Math.max(0, avgBuy * rateFactor);
+    } else {
+      // Completely stable flat line representing cost basis / fixed price
+      simulatedPrice = livePrice;
+    }
+
     const simulatedVal = Math.max(0, Math.round(units * simulatedPrice));
     const simulatedPnL = simulatedVal - totalCost;
     const simulatedPnLPct = totalCost > 0 ? (simulatedPnL / totalCost) * 100 : 0;

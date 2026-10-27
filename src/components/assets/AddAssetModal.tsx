@@ -11,6 +11,7 @@ import {
   AlertCircle,
   RefreshCw,
   FileText,
+  Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -1055,8 +1056,14 @@ export function AddAssetModal({
                   </div>
                 </div>
 
-                {/* 3. MINIMALIST ASSET ROW DECK (LEBIH RAMBING ~50px, APPLE STYLE) */}
-                <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-6 space-y-1.5 py-1">
+                {/* 3. MINIMALIST ASSET ROW DECK (LEBIH RAMPING ~50px, APPLE STYLE) */}
+                <div
+                  className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-6 space-y-1.5 py-1"
+                  style={{
+                    paddingBottom:
+                      "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 32px)",
+                  }}
+                >
                   {filteredPresets.map((preset) => (
                     <button
                       key={preset.symbol}
@@ -1125,28 +1132,6 @@ export function AddAssetModal({
                       </p>
                     </div>
                   )}
-                </div>
-
-                {/* 4. BOTTOM ACTION (BATAL) */}
-                <div
-                  className="px-6 pt-2 pb-4 shrink-0"
-                  style={{
-                    paddingBottom:
-                      "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 28px)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="w-full h-10 rounded-full text-[12.5px] font-semibold active:scale-95 transition-all cursor-pointer text-center"
-                    style={{
-                      background: controlBg,
-                      border: controlBorder,
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {isIndonesian ? "Batal" : "Cancel"}
-                  </button>
                 </div>
               </div>
             )}
@@ -1347,6 +1332,27 @@ export function AddAssetModal({
                           )}
                         </p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Purchase Date Input */}
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block px-1">
+                      {isIndonesian ? "Tanggal Pembelian / Perolehan" : "Purchase / Acquisition Date"}
+                    </label>
+                    <div className="relative flex items-center">
+                      <Calendar size={13} className="absolute left-3.5 text-[var(--text-tertiary)] pointer-events-none" />
+                      <input
+                        type="date"
+                        value={formPurchaseDate}
+                        onChange={(e) => setFormPurchaseDate(e.target.value)}
+                        className="w-full pl-9 pr-3.5 h-10 rounded-2xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] transition-colors cursor-pointer"
+                        style={{
+                          background: controlBg,
+                          border: controlBorder,
+                          boxShadow: controlShadow,
+                        }}
+                      />
                     </div>
                   </div>
 
