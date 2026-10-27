@@ -1,6 +1,6 @@
 # Trouvaille: Private Financial Intelligence & Luxury Architectural System
 ### Comprehensive Technical Paper & System Specification
-**Version:** 4.0.0 (Release v1.3.19) · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
+**Version:** 4.0.0 (Release v1.3.20) · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
 **Author:** DeepMind Agentic Systems & Trouvaille Core Engineering  
 **Revision Date:** Late October 2026  
 

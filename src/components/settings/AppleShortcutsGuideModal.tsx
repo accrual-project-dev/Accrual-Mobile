@@ -528,8 +528,8 @@ export function AppleShortcutsGuideModal({
             style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian
-              ? "Syntheticae Studio • Pintasan Resmi Accrual v1.3.19"
-              : "Syntheticae Studio • Official Accrual Shortcut v1.3.19"}
+              ? "Syntheticae Studio • Pintasan Resmi Accrual v1.3.20"
+              : "Syntheticae Studio • Official Accrual Shortcut v1.3.20"}
           </p>
 
           {/* Description */}
