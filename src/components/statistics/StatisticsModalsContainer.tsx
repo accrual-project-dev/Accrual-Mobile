@@ -104,6 +104,8 @@ interface StatisticsModalsContainerProps {
   applyStatsPreset: (key: StatisticsPresetKey) => void;
   activeStatsPresetKey: StatisticsPresetKey | null;
   setActiveStatsPresetKey: (key: StatisticsPresetKey | null) => void;
+  reorderStatsCards?: (reorderedIds: string[]) => void;
+  cycleStatsCardSize?: (cardId: string) => void;
 }
 
 export function StatisticsModalsContainer({
@@ -156,6 +158,8 @@ export function StatisticsModalsContainer({
   applyStatsPreset,
   activeStatsPresetKey,
   setActiveStatsPresetKey,
+  reorderStatsCards,
+  cycleStatsCardSize,
 }: StatisticsModalsContainerProps) {
   const liquidAssets = useMemo(() => {
     return (wallets || [])
@@ -306,6 +310,8 @@ export function StatisticsModalsContainer({
         onEnterGridEdit={() => setIsStatsEditMode(true)}
         activePresetKey={activeStatsPresetKey}
         onSelectPresetKey={setActiveStatsPresetKey}
+        onReorder={reorderStatsCards}
+        onCycleSize={cycleStatsCardSize}
       />
     </>
   );

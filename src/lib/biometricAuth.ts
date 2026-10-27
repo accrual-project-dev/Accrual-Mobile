@@ -8,6 +8,7 @@ export interface SecuritySettings {
   timeoutMinutes: number; // 0 = Immediately, 1 = 1 minute, 5 = 5 minutes
   hasBiometric: boolean;
   hasPin: boolean;
+  pinLength?: number;
   lastActiveTimestamp: number;
 }
 
@@ -34,9 +35,22 @@ export function getSecuritySettings(): SecuritySettings {
   try {
     const raw = localStorage.getItem(SECURITY_SETTINGS_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
+    let pinLength: number | undefined = parsed.pinLength;
+    if (!pinLength) {
+      try {
+        const pbkdf2Raw = localStorage.getItem(SECURITY_PIN_PBKDF2_KEY);
+        if (pbkdf2Raw) {
+          const pbkdf2Parsed = JSON.parse(pbkdf2Raw);
+          if (typeof pbkdf2Parsed?.pinLength === "number") {
+            pinLength = pbkdf2Parsed.pinLength;
+          }
+        }
+      } catch {}
+    }
     return {
       ...DEFAULT_SECURITY_SETTINGS,
       ...parsed,
+      pinLength,
       lastActiveTimestamp: parsed.lastActiveTimestamp || Date.now(),
       hasBiometric: !!localStorage.getItem(BIOMETRIC_CREDENTIAL_KEY),
       hasPin:
@@ -282,17 +296,23 @@ export async function setSecurityPin(pin: string): Promise<boolean> {
     salt: Array.from(salt, (b) => b.toString(16).padStart(2, "0")).join(""),
     hash,
     iterations: 100_000,
+    pinLength: pin.length,
   };
   localStorage.setItem(SECURITY_PIN_PBKDF2_KEY, JSON.stringify(payload));
   localStorage.removeItem(SECURITY_PIN_HASH_KEY); // Clean up legacy key
   resetPinLockout();
-  saveSecuritySettings({ hasPin: true });
+  saveSecuritySettings({ hasPin: true, pinLength: pin.length });
   return true;
 }
 
 export async function verifySecurityPin(pin: string): Promise<boolean> {
   const lockout = getPinLockoutState();
   if (lockout.isLocked) {
+    return false;
+  }
+
+  const settings = getSecuritySettings();
+  if (settings.pinLength && pin.length < settings.pinLength) {
     return false;
   }
 
@@ -307,6 +327,9 @@ export async function verifySecurityPin(pin: string): Promise<boolean> {
       const calculatedHash = await derivePbkdf2PinHash(pin, saltBytes);
       if (calculatedHash === hash) {
         resetPinLockout();
+        if (!settings.pinLength) {
+          saveSecuritySettings({ pinLength: pin.length });
+        }
         return true;
       }
     } catch (e) {
@@ -326,8 +349,11 @@ export async function verifySecurityPin(pin: string): Promise<boolean> {
     }
   }
 
-  // Failed attempt
-  recordFailedPinAttempt();
+  // Failed attempt: only penalize when full PIN length is reached
+  const expectedMaxLen = settings.pinLength || 6;
+  if (pin.length >= expectedMaxLen) {
+    recordFailedPinAttempt();
+  }
   return false;
 }
 
@@ -335,7 +361,7 @@ export function clearSecurityPin(): void {
   localStorage.removeItem(SECURITY_PIN_PBKDF2_KEY);
   localStorage.removeItem(SECURITY_PIN_HASH_KEY);
   resetPinLockout();
-  saveSecuritySettings({ hasPin: false });
+  saveSecuritySettings({ hasPin: false, pinLength: undefined });
 }
 
 // ======================================================================

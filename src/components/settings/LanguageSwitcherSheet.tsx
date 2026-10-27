@@ -35,7 +35,7 @@ export function LanguageSwitcherSheet({ isOpen, onClose }: LanguageSwitcherSheet
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div className="p-5 pb-8 space-y-4">
+      <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),32px)] space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">

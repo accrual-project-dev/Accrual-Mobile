@@ -100,17 +100,21 @@ export function BiometricLockOverlay() {
       triggerHaptic("heavy");
       return;
     }
-    if (pinInput.length >= 6) return;
+    const targetPinLen = securitySettings.pinLength || 6;
+    if (pinInput.length >= targetPinLen) return;
     triggerHaptic("light");
     const nextPin = pinInput + digit;
     setPinInput(nextPin);
     setPinError(false);
     setLockoutSeconds(0);
 
-    // Auto-check on 4+ digits
-    if (nextPin.length >= 4) {
+    const shouldCheck = securitySettings.pinLength
+      ? nextPin.length >= securitySettings.pinLength
+      : nextPin.length >= 4;
+
+    if (shouldCheck) {
       const ok = await unlockWithPin(nextPin);
-      if (!ok && nextPin.length >= 6) {
+      if (!ok && nextPin.length >= targetPinLen) {
         setPinError(true);
         const nextLockout = getPinLockoutState();
         if (nextLockout.isLocked) {

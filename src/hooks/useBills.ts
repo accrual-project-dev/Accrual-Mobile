@@ -497,6 +497,13 @@ export function useMarkBillPaid() {
               ? `Pembayaran tagihan: ${bill.title}`
               : `Bill payment: ${bill.title}`);
 
+          const activeSpace =
+            typeof window !== "undefined"
+              ? localStorage.getItem("trouvaille_active_space_id")
+              : null;
+          const assignedLedger =
+            activeSpace && activeSpace !== "all" ? activeSpace : "personal";
+
           await addTransaction.mutateAsync({
             amount: Number(bill.amount),
             type: "expense",
@@ -504,6 +511,8 @@ export function useMarkBillPaid() {
             wallet_id: walletId || bill.wallet_id || null,
             occurred_on: occurredOn || format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
             note: txNote,
+            ledger_id: assignedLedger,
+            space_id: assignedLedger,
           });
         } catch (err) {
           console.warn("[useMarkBillPaid] Auto-record ledger transaction warning:", err);

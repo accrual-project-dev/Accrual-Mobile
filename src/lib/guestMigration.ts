@@ -135,6 +135,7 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
     // Mark migration as completed for this user
     localStorage.setItem(migrationKey, "true");
     localStorage.removeItem("trouvaille_guest_mode");
+    localStorage.removeItem("trouvaille_pending_guest_migration");
     localStorage.removeItem("trouvaille_holdings_guest_local_user");
     localStorage.removeItem("trouvaille_usdt_pref_guest_local_user");
   } catch (err) {
@@ -166,7 +167,9 @@ export function hasGuestData(): boolean {
     const guestHoldings = getSavedHoldings("guest_local_user");
     if (guestHoldings && guestHoldings.length > 0) return true;
 
-    const wasGuestMode = localStorage.getItem("trouvaille_guest_mode") === "true";
+    const wasGuestMode =
+      localStorage.getItem("trouvaille_guest_mode") === "true" ||
+      localStorage.getItem("trouvaille_pending_guest_migration") === "true";
     const cachedWalletsRaw = localStorage.getItem(WALLETS_BACKUP_STORAGE_KEY);
     if (wasGuestMode && cachedWalletsRaw) {
       const parsedWallets = JSON.parse(cachedWalletsRaw);
@@ -185,9 +188,11 @@ export function hasGuestData(): boolean {
 export function discardGuestData(userId?: string): void {
   try {
     localStorage.removeItem(TX_BACKUP_STORAGE_KEY);
+    localStorage.removeItem(WALLETS_BACKUP_STORAGE_KEY);
     localStorage.removeItem("trouvaille_holdings_guest_local_user");
     localStorage.removeItem("trouvaille_usdt_pref_guest_local_user");
     localStorage.removeItem("trouvaille_guest_mode");
+    localStorage.removeItem("trouvaille_pending_guest_migration");
 
     // Clean mutations originating from guest
     const remainingMutations = getPendingMutations().filter(

@@ -985,6 +985,7 @@ export function isCorrectionTx(t: Transaction): boolean {
     t.type === "adjustment" ||
     !!t.note?.toLowerCase().includes("correction") ||
     !!t.note?.toLowerCase().includes("koreksi saldo") ||
+    !!t.note?.toLowerCase().includes("penyesuaian saldo") ||
     !!t.note?.toLowerCase().includes("balance adjustment")
   );
 }

@@ -149,14 +149,14 @@ export function ResetPasswordModal({ isOpen, onClose }: ResetPasswordModalProps)
           </p>
         </div>
 
-        {/* Error Notification Banner */}
+        {/* Error Notification Banner (Monochrome Luxury Rule 7) */}
         {error && (
           <div
             className="p-3.5 rounded-2xl flex items-center gap-2.5 text-[12px] font-medium leading-relaxed"
             style={{
-              background: "rgba(239, 68, 68, 0.08)",
-              border: "1px solid rgba(239, 68, 68, 0.2)",
-              color: "#f87171",
+              background: "var(--glass-fill)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text-primary)",
             }}
           >
             <AlertCircle size={16} strokeWidth={1.75} className="shrink-0" />

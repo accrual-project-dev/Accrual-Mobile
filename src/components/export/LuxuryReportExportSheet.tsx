@@ -16,10 +16,12 @@ import { useAllTransactions } from "../../hooks/useTransactions";
 import { useWallets } from "../../hooks/useWallets";
 import { useCategories } from "../../hooks/useCategories";
 import { useSpace } from "../../contexts/SpaceContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useToast } from "../../contexts/ToastContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
+import { getSavedHoldings } from "../../lib/marketPriceService";
 import { format, parseISO } from "date-fns";
 import {
   filterTransactionsForReport,
@@ -50,6 +52,7 @@ export function LuxuryReportExportSheet({
   defaultSpaceId,
 }: LuxuryReportExportSheetProps) {
   const { isIndonesian } = useLanguage();
+  const { user } = useAuth();
   const { formatWithPreferred, preferredCurrency } = useCurrency();
   const { data: allTxs = [] } = useAllTransactions();
   const { data: wallets = [] } = useWallets();
@@ -84,8 +87,9 @@ export function LuxuryReportExportSheet({
       transactionType,
       formatCurrency: formatWithPreferred,
       preferredCurrency,
+      holdings: getSavedHoldings(user?.id),
     };
-  }, [dateRange, customStart, customEnd, selectedSpaceId, spaceName, transactionType, formatWithPreferred, preferredCurrency]);
+  }, [dateRange, customStart, customEnd, selectedSpaceId, spaceName, transactionType, formatWithPreferred, preferredCurrency, user?.id]);
 
   const filteredTransactions = useMemo(() => {
     return filterTransactionsForReport(allTxs, filterOptions);
@@ -203,6 +207,7 @@ export function LuxuryReportExportSheet({
           wallets,
           categories,
           summary,
+          allTxs,
         );
         const filename = isIndonesian
           ? `Trouvaille - Cadangan Data Vault${spaceSegment} - ${safePeriod}.json`

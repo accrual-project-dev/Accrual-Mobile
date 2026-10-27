@@ -910,13 +910,15 @@ export function TransactionSheet({
     if (type !== "expense" && type !== "transfer") return false;
     if (isCreditOrLoan || !activeSourceWallet) return false;
     if (currentNumericAmount <= 0) return false;
-    return currentNumericAmount > effectiveSourceBalance;
+    const idrAmount = convertToIdr(currentNumericAmount);
+    return idrAmount > effectiveSourceBalance;
   }, [
     type,
     isCreditOrLoan,
     activeSourceWallet,
     currentNumericAmount,
     effectiveSourceBalance,
+    convertToIdr,
   ]);
 
   const lastSaveTriggeredAt = useRef<number>(0);
@@ -1069,7 +1071,7 @@ export function TransactionSheet({
       space_id: selectedSpaceId === "personal" ? null : selectedSpaceId,
       ledger_id: selectedSpaceId || "personal",
       occurred_on: format(txDate, "yyyy-MM-dd'T'HH:mm:ss"),
-      created_at: txDate.toISOString(),
+      created_at: transaction?.created_at || txDate.toISOString(),
       category_id:
         type === "transfer"
           ? null

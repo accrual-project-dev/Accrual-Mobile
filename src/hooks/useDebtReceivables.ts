@@ -27,8 +27,22 @@ import {
   calculateDebtReceivableSummary,
   generateUUID,
 } from "../lib/debtReceivableEngine";
-import { useAddTransaction, useDeleteTransaction } from "./useTransactions";
+import {
+  useAddTransaction,
+  useUpdateTransaction,
+  useDeleteTransaction,
+} from "./useTransactions";
 import { syncDebtReceivableNotifications } from "../lib/notifications";
+
+function getActiveLedgerId(): string {
+  if (typeof window === "undefined") return "personal";
+  try {
+    const active = localStorage.getItem("trouvaille_active_space_id");
+    return active && active !== "all" ? active : "personal";
+  } catch {
+    return "personal";
+  }
+}
 
 function formatFullIsoOccurredOn(dateStr?: string | null): string {
   const now = new Date();
@@ -48,6 +62,7 @@ export function useDebtReceivables() {
   const { isIndonesian } = useLanguage();
 
   const addTxMutation = useAddTransaction();
+  const updateTxMutation = useUpdateTransaction();
   const deleteTxMutation = useDeleteTransaction();
 
   const [records, setRecords] = useState<DebtReceivableRecord[]>(() =>
@@ -107,12 +122,15 @@ export function useDebtReceivables() {
           linkedTxId = generatedTxId;
           const isReceivable = input.type === "receivable";
 
+          const assignedLedger = getActiveLedgerId();
           await addTxMutation.mutateAsync({
             id: generatedTxId,
             type: isReceivable ? "expense" : "income",
             amount: input.totalAmount,
             wallet_id: input.walletId,
             category_id: null,
+            ledger_id: assignedLedger,
+            space_id: assignedLedger,
             note: isReceivable
               ? isIndonesian
                 ? `Pinjaman diberikan ke ${input.personName}`
@@ -150,11 +168,35 @@ export function useDebtReceivables() {
       id: string,
       updates: Partial<Omit<DebtReceivableRecord, "id" | "repayments" | "createdAt">>,
     ) => {
+      const target = records.find((r) => r.id === id);
       const updated = updateDebtReceivableRecord(id, updates, userId);
+      if (
+        target &&
+        target.disbursementTxId &&
+        (updates.totalAmount !== undefined || updates.personName !== undefined)
+      ) {
+        const isReceivable = target.type === "receivable";
+        const nextPerson = updates.personName ?? target.personName;
+        const nextAmount = updates.totalAmount ?? target.totalAmount;
+        updateTxMutation.mutate({
+          id: target.disbursementTxId,
+          type: isReceivable ? "expense" : "income",
+          amount: nextAmount,
+          category_id: null,
+          occurred_on: formatFullIsoOccurredOn(target.createdDate),
+          note: isReceivable
+            ? isIndonesian
+              ? `Pinjaman diberikan ke ${nextPerson}`
+              : `Loan given to ${nextPerson}`
+            : isIndonesian
+              ? `Pinjaman diterima dari ${nextPerson}`
+              : `Loan received from ${nextPerson}`,
+        });
+      }
       reloadRecords();
       return updated;
     },
-    [userId, reloadRecords],
+    [records, userId, isIndonesian, updateTxMutation, reloadRecords],
   );
 
   /**
@@ -217,12 +259,15 @@ export function useDebtReceivables() {
           linkedTxId = generatedTxId;
           const isReceivable = target.type === "receivable";
 
+          const assignedLedger = getActiveLedgerId();
           await addTxMutation.mutateAsync({
             id: generatedTxId,
             type: isReceivable ? "income" : "expense",
             amount: safeAmount,
             wallet_id: repaymentInput.walletId,
             category_id: null,
+            ledger_id: assignedLedger,
+            space_id: assignedLedger,
             note: isReceivable
               ? isIndonesian
                 ? `Pelunasan piutang dari ${target.personName}`

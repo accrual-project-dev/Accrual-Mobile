@@ -613,6 +613,14 @@ function parseCryptoNumber(str: string, isCurrency = false): number {
     }
   }
   if (trimmed.includes(",")) {
+    const commaCount = (trimmed.match(/,/g) || []).length;
+    if (commaCount > 1) {
+      return parseFloat(trimmed.replace(/,/g, ""));
+    }
+    const parts = trimmed.split(",");
+    if (parts[1] && parts[1].length === 3 && parts[0] && parts[0] !== "0") {
+      return parseFloat(trimmed.replace(/,/g, ""));
+    }
     return parseFloat(trimmed.replace(",", "."));
   }
   if (trimmed.includes(".")) {

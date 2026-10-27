@@ -131,6 +131,7 @@ export function ConsolidatedBalanceSheetDrawer({
   // Tier 2 items
   const growthItems = liquidHoldings.filter(
     (h) =>
+      Number(h.units || 0) > 0 &&
       (h.asset_type === "stock" ||
         (h.asset_type === "crypto" && h.symbol?.toUpperCase() !== "USDT") ||
         h.asset_type === "mutual_fund" ||
@@ -146,9 +147,10 @@ export function ConsolidatedBalanceSheetDrawer({
     .concat(liquidHoldings.filter((h) => h.asset_type === "gold"))
     .filter(
       (h) =>
-        !query ||
-        h.name.toLowerCase().includes(query) ||
-        h.symbol.toLowerCase().includes(query),
+        Number(h.units || 0) > 0 &&
+        (!query ||
+          h.name.toLowerCase().includes(query) ||
+          h.symbol.toLowerCase().includes(query)),
     );
   const hasTier3 = fixedItems.length > 0;
 

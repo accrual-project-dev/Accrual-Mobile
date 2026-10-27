@@ -29,10 +29,12 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useWallets } from "../../hooks/useWallets";
+import { useCategories } from "../../hooks/useCategories";
 import {
   useAddTransaction,
   useAllTransactions,
 } from "../../hooks/useTransactions";
+import { parseCleanNumber } from "../assets/AddAssetModal";
 import {
   isInvestmentOrCryptoWallet,
   estimateHistoricalAssetPrice,
@@ -142,6 +144,7 @@ export function AssetDetailSheet({
   const { isIndonesian } = useLanguage();
   const { formatWithPreferred } = useCurrency();
   const { data: wallets = [] } = useWallets();
+  const { data: categories = [] } = useCategories();
   const addTx = useAddTransaction();
   const { data: allTxs = [] } = useAllTransactions();
 
@@ -163,15 +166,36 @@ export function AssetDetailSheet({
     if (!holding) return;
     setEditName(holding.name || "");
     setEditSymbol(holding.symbol || "");
-    setEditType((holding.asset_type as AssetType) || "crypto");
+    const rawType = holding.asset_type as string;
+    const normalizedType: AssetType =
+      rawType === "real_estate" || rawType === "other"
+        ? "fixed_asset"
+        : (holding.asset_type as AssetType) || "crypto";
+    setEditType(normalizedType);
     setEditUnits(String(holding.units || ""));
-    setEditBuyPrice(holding.avg_buy_price ? String(holding.avg_buy_price) : "");
+    setEditBuyPrice(
+      holding.avg_buy_price
+        ? formatLiveAmountInput(
+            String(Math.round(holding.avg_buy_price)),
+            isIndonesian,
+            false,
+            0,
+          ).display
+        : "",
+    );
     const shouldEnableCustom = _focusField === "price" ? true : Boolean(holding.is_custom_price);
     setEditIsCustomPrice(shouldEnableCustom);
+    const initialCustom =
+      holding.custom_price || holding.current_price || holding.avg_buy_price || 0;
     setEditCustomPrice(
-      holding.custom_price
-        ? String(holding.custom_price)
-        : String(holding.current_price || holding.avg_buy_price || "")
+      initialCustom > 0
+        ? formatLiveAmountInput(
+            String(Math.round(initialCustom)),
+            isIndonesian,
+            false,
+            0,
+          ).display
+        : "",
     );
     setIsEditingAsset(true);
   };
@@ -182,8 +206,8 @@ export function AssetDetailSheet({
     triggerHaptic("medium");
 
     const parsedUnits = parseFloat(editUnits.replace(/,/g, "."));
-    const parsedBuyPrice = parseFloat(editBuyPrice.replace(/[^0-9.]/g, ""));
-    const parsedCustomPrice = parseFloat(editCustomPrice.replace(/[^0-9.]/g, ""));
+    const parsedBuyPrice = parseCleanNumber(editBuyPrice, !isIndonesian);
+    const parsedCustomPrice = parseCleanNumber(editCustomPrice, !isIndonesian);
     const trimmedName = editName.trim() || holding.name;
     const trimmedSymbol = editSymbol.trim().toUpperCase() || holding.symbol;
 
@@ -249,6 +273,7 @@ export function AssetDetailSheet({
   const [inputNote, setInputNote] = useState<string>("");
   const [linkToWallet, setLinkToWallet] = useState<boolean>(false);
   const [selectedWalletId, setSelectedWalletId] = useState<string>("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
   // Valuation computations
   const valuation = useMemo(() => {
@@ -393,25 +418,52 @@ export function AssetDetailSheet({
     }));
   }, [wallets]);
 
+  const categoryOptions: GlassSelectOption[] = useMemo(() => {
+    const targetType = actionModal === "sell" ? "income" : "expense";
+    const filtered = categories.filter((c) => !c.type || c.type === targetType);
+    const list = filtered.length > 0 ? filtered : categories;
+    return list.map((c) => ({
+      value: c.id,
+      label: c.name,
+      icon: c.emoji || "Tag",
+    }));
+  }, [categories, actionModal]);
+
   // Early return setelah seluruh hook dipanggil
   if (!holding || !valuation) return null;
 
   const currentPrice = holding.current_price || holding.avg_buy_price;
   const isProfitable = valuation.floatingPnL >= 0;
 
+  const resolveDefaultCategoryId = (mode: "buy" | "sell") => {
+    const targetType = mode === "sell" ? "income" : "expense";
+    const typed = categories.filter((c) => !c.type || c.type === targetType);
+    const investMatch = typed.find((c) => {
+      const n = (c.name || "").toLowerCase();
+      return (
+        n.includes("invest") ||
+        n.includes("aset") ||
+        n.includes("asset") ||
+        n.includes("crypto") ||
+        n.includes("saham") ||
+        n.includes("tabungan")
+      );
+    });
+    return investMatch?.id || typed[0]?.id || categories[0]?.id || "";
+  };
+
   // Handlers
   const handleOpenBuy = () => {
     triggerHaptic("light");
     setInputNominal("");
     setInputUnits("");
-    const isUsd = holding?.currency === "USD";
     const formattedPrice =
       currentPrice > 0
         ? formatLiveAmountInput(
-            String(currentPrice),
+            String(Math.round(currentPrice)),
             isIndonesian,
-            isUsd,
-            isUsd ? 4 : 0,
+            false,
+            0,
           ).display
         : "";
     setInputPrice(formattedPrice);
@@ -420,6 +472,7 @@ export function AssetDetailSheet({
     setInputNote("DCA Purchase");
     setLinkToWallet(false);
     setSelectedWalletId(wallets[0]?.id || "");
+    setSelectedCategoryId(resolveDefaultCategoryId("buy"));
     setActionModal("buy");
   };
 
@@ -427,14 +480,13 @@ export function AssetDetailSheet({
     triggerHaptic("light");
     setInputNominal("");
     setInputUnits("");
-    const isUsd = holding?.currency === "USD";
     const formattedPrice =
       currentPrice > 0
         ? formatLiveAmountInput(
-            String(currentPrice),
+            String(Math.round(currentPrice)),
             isIndonesian,
-            isUsd,
-            isUsd ? 4 : 0,
+            false,
+            0,
           ).display
         : "";
     setInputPrice(formattedPrice);
@@ -444,13 +496,12 @@ export function AssetDetailSheet({
     setLinkToWallet(true);
     const nonCryptoWallet = wallets.find((w) => !isInvestmentOrCryptoWallet(w));
     setSelectedWalletId(nonCryptoWallet?.id || wallets[0]?.id || "");
+    setSelectedCategoryId(resolveDefaultCategoryId("sell"));
     setActionModal("sell");
   };
 
   // Dual-Input Smart Handler: Otomatis memformat titik pemisah ribuan saat mengetik Rupiah
   const handleNominalChange = (valStr: string) => {
-    const thousandSep = isIndonesian ? "." : ",";
-    const decimalSep = isIndonesian ? "," : ".";
     const cleanDigits = valStr.replace(/\D/g, "");
     const formattedDisplay = cleanDigits
       ? Number(cleanDigits).toLocaleString(isIndonesian ? "id-ID" : "en-US")
@@ -458,11 +509,7 @@ export function AssetDetailSheet({
     setInputNominal(formattedDisplay);
 
     const nominal = cleanDigits ? parseFloat(cleanDigits) : 0;
-    const cleanPriceStr = inputPrice
-      .split(thousandSep)
-      .join("")
-      .replace(decimalSep, ".");
-    const cleanPrice = parseFloat(cleanPriceStr) || currentPrice;
+    const cleanPrice = parseCleanNumber(inputPrice, !isIndonesian) || currentPrice;
     if (nominal > 0 && cleanPrice > 0) {
       const computedUnits = nominal / cleanPrice;
       const decimals =
@@ -481,13 +528,7 @@ export function AssetDetailSheet({
   const handleUnitsChange = (valStr: string) => {
     setInputUnits(valStr);
     const units = parseFloat(valStr.replace(/,/g, "."));
-    const thousandSep = isIndonesian ? "." : ",";
-    const decimalSep = isIndonesian ? "," : ".";
-    const cleanPriceStr = inputPrice
-      .split(thousandSep)
-      .join("")
-      .replace(decimalSep, ".");
-    const cleanPrice = parseFloat(cleanPriceStr) || currentPrice;
+    const cleanPrice = parseCleanNumber(inputPrice, !isIndonesian) || currentPrice;
     if (!isNaN(units) && units > 0 && cleanPrice > 0) {
       const computedNominal = Math.round(units * cleanPrice);
       setInputNominal(
@@ -499,12 +540,11 @@ export function AssetDetailSheet({
   };
 
   const handlePriceChange = (valStr: string) => {
-    const isUsd = holding?.currency === "USD";
     const { display, rawNumber } = formatLiveAmountInput(
       valStr,
       isIndonesian,
-      isUsd || valStr.includes(".") || valStr.includes(","),
-      isUsd ? 4 : 2,
+      false,
+      0,
     );
     setInputPrice(display);
     const units = parseFloat(inputUnits.replace(/,/g, "."));
@@ -520,12 +560,11 @@ export function AssetDetailSheet({
     setInputDate(newDate);
     if (modalPriceMode === "auto" && holding) {
       const estimatedRate = estimateHistoricalAssetPrice(holding, newDate);
-      const isUsd = holding?.currency === "USD";
       const formattedRate = formatLiveAmountInput(
-        String(estimatedRate),
+        String(Math.round(estimatedRate)),
         isIndonesian,
-        isUsd,
-        isUsd ? 4 : 0,
+        false,
+        0,
       ).display;
       setInputPrice(formattedRate);
       const units = parseFloat(inputUnits.replace(/,/g, "."));
@@ -541,18 +580,8 @@ export function AssetDetailSheet({
   const handleConfirmAction = (e: React.FormEvent) => {
     e.preventDefault();
     const units = parseFloat(inputUnits.replace(/,/g, "."));
-    const thousandSep = isIndonesian ? "." : ",";
-    const decimalSep = isIndonesian ? "," : ".";
-    const cleanPriceStr = inputPrice
-      .split(thousandSep)
-      .join("")
-      .replace(decimalSep, ".");
-    const price = parseFloat(cleanPriceStr) || currentPrice;
-    const cleanNominalStr = inputNominal
-      .split(thousandSep)
-      .join("")
-      .replace(decimalSep, ".");
-    const cleanNominal = parseFloat(cleanNominalStr);
+    const price = parseCleanNumber(inputPrice, !isIndonesian) || currentPrice;
+    const cleanNominal = parseCleanNumber(inputNominal, !isIndonesian);
     const totalAmount =
       !isNaN(cleanNominal) && cleanNominal > 0 ? cleanNominal : units * price;
 
@@ -641,7 +670,7 @@ export function AssetDetailSheet({
           addTx.mutate({
             type: "income",
             amount: totalAmount,
-            category_id: null,
+            category_id: selectedCategoryId || null,
             wallet_id: selectedWalletId,
             occurred_on: occurredOnWithTime,
             note: txNote,
@@ -665,7 +694,7 @@ export function AssetDetailSheet({
           addTx.mutate({
             type: "expense",
             amount: totalAmount,
-            category_id: null,
+            category_id: selectedCategoryId || null,
             wallet_id: selectedWalletId,
             occurred_on: occurredOnWithTime,
             note: txNote,
@@ -676,6 +705,10 @@ export function AssetDetailSheet({
 
     setActionModal("none");
     onHoldingUpdated();
+
+    if (actionModal === "sell" && result.updatedHolding.units <= 0) {
+      onClose();
+    }
 
     if (actionModal === "buy") {
       showToast(
@@ -1116,8 +1149,8 @@ export function AssetDetailSheet({
                   { id: "stock", labelId: "Saham", labelEn: "Stock" },
                   { id: "mutual_fund", labelId: "Reksa Dana", labelEn: "Mutual Fund" },
                   { id: "gold", labelId: "Emas", labelEn: "Gold" },
-                  { id: "real_estate", labelId: "Properti", labelEn: "Real Estate" },
-                  { id: "other", labelId: "Lainnya", labelEn: "Other" },
+                  { id: "bond", labelId: "Obligasi / SBN", labelEn: "Bond" },
+                  { id: "fixed_asset", labelId: "Properti / Aset Tetap", labelEn: "Real Estate / Fixed" },
                 ].map((cat) => {
                   const isSelected = editType === cat.id;
                   return (
@@ -1492,7 +1525,7 @@ export function AssetDetailSheet({
             </span>
           </div>
 
-          <div className="space-y-1.5 overflow-y-auto no-scrollbar pr-0.5">
+          <div className="space-y-1.5 pr-0.5">
             {activities.length === 0 ? (
               <div
                 className="p-4 rounded-2xl text-center text-[11px] text-[var(--text-tertiary)]"
@@ -1936,17 +1969,31 @@ export function AssetDetailSheet({
                   </div>
 
                   {linkToWallet && (
-                    <GlassSelect
-                      value={selectedWalletId}
-                      onChange={setSelectedWalletId}
-                      options={walletOptions}
-                      placeholder={
-                        isIndonesian
-                          ? "Pilih akun dompet..."
-                          : "Select wallet account..."
-                      }
-                      className="mt-2"
-                    />
+                    <div className="mt-2 space-y-2">
+                      <GlassSelect
+                        value={selectedWalletId}
+                        onChange={setSelectedWalletId}
+                        options={walletOptions}
+                        placeholder={
+                          isIndonesian
+                            ? "Pilih akun dompet..."
+                            : "Select wallet account..."
+                        }
+                      />
+                      {categoryOptions.length > 0 &&
+                        !(holding.wallet_id && holding.wallet_id !== selectedWalletId) && (
+                          <GlassSelect
+                            value={selectedCategoryId}
+                            onChange={setSelectedCategoryId}
+                            options={categoryOptions}
+                            placeholder={
+                              isIndonesian
+                                ? "Pilih kategori transaksi..."
+                                : "Select transaction category..."
+                            }
+                          />
+                        )}
+                    </div>
                   )}
                 </div>
               )}

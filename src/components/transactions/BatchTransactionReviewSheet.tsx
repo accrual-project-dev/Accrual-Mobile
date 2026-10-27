@@ -26,6 +26,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 import { useBills, useMarkBillPaid } from "../../hooks/useBills";
+import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { saveMerchantMemory } from "../../lib/merchantCategoryMemory";
 import { findBestMatchingBill } from "../../lib/billMatchingEngine";
 
@@ -57,6 +58,7 @@ export function BatchTransactionReviewSheet({
 
   const { data: bills = [] } = useBills();
   const markBillPaid = useMarkBillPaid();
+  const { balancesById } = useWalletBalances();
 
   const [items, setItems] = useState<ParsedStatementItem[]>(initialItems);
   const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({});
@@ -311,6 +313,7 @@ export function BatchTransactionReviewSheet({
     : "rgba(0, 0, 0, 0.06)";
 
   return (
+    <>
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div
         className="px-4 pt-2.5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] max-w-lg mx-auto select-none font-sans"
@@ -522,31 +525,33 @@ export function BatchTransactionReviewSheet({
                         </span>
                       </button>
 
-                      {/* Category Pill */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveItemForCategory(it.id);
-                        }}
-                        className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
-                        style={{
-                          background: buttonGlassBg,
-                          border: buttonGlassBorder,
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {it.suggestedCategoryEmoji && (
-                          <IconRenderer
-                            icon={it.suggestedCategoryEmoji}
-                            size="w-3 h-3"
-                          />
-                        )}
-                        <span className="truncate max-w-[85px]">
-                          {it.suggestedCategoryName ||
-                            (isIndonesian ? "Kategori" : "Category")}
-                        </span>
-                      </button>
+                      {/* Category Pill (Hidden for transfers) */}
+                      {!isTransfer && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveItemForCategory(it.id);
+                          }}
+                          className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                          style={{
+                            background: buttonGlassBg,
+                            border: buttonGlassBorder,
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {it.suggestedCategoryEmoji && (
+                            <IconRenderer
+                              icon={it.suggestedCategoryEmoji}
+                              size="w-3 h-3"
+                            />
+                          )}
+                          <span className="truncate max-w-[85px]">
+                            {it.suggestedCategoryName ||
+                              (isIndonesian ? "Kategori" : "Category")}
+                          </span>
+                        </button>
+                      )}
 
                       {/* Wallet Pill(s) */}
                       {wallets.length > 0 && (
@@ -797,8 +802,10 @@ export function BatchTransactionReviewSheet({
             )}
           </button>
         </div>
+      </div>
+    </BottomSheet>
 
-        {/* ── 5. Category Picker Popover Sheet ── */}
+    {/* ── 5. Category Picker Popover Sheet (Rendered outside transformed BottomSheet) ── */}
         {activeItemForCategory && (
           <div
             className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
@@ -1065,11 +1072,9 @@ export function BatchTransactionReviewSheet({
                             >
                               {w.name}
                             </span>
-                            {w.balance !== undefined && (
-                              <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums block">
-                                {formatWithPreferred(w.balance)}
-                              </span>
-                            )}
+                            <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums block">
+                              {formatWithPreferred(balancesById[w.id] ?? w.balance ?? 0)}
+                            </span>
                           </div>
                         </div>
                         {isSelected ? (
@@ -1093,7 +1098,6 @@ export function BatchTransactionReviewSheet({
             </div>
           </div>
         )}
-      </div>
-    </BottomSheet>
+    </>
   );
 }

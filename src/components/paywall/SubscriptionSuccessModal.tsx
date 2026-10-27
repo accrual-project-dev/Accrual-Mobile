@@ -329,7 +329,7 @@ export function SubscriptionSuccessModal({
               <ArrowRight size={14} strokeWidth={2} />
             </button>
 
-            {!subscription?.isLifetime && onOpenCancelModal && (
+            {!Boolean(subscription?.isLifetime || subscription?.planId === "accrual_lifetime_499k") && onOpenCancelModal && (
               <button
                 type="button"
                 onClick={() => {

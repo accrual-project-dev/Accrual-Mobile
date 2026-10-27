@@ -176,8 +176,8 @@ export function batchUpsertTransactionsAcrossCaches(
     }
 
     if (mode === "day") {
-      const date = String(key[3] ?? "");
-      const matched = txs.filter((t) => t.occurred_on === date);
+      const date = String(key[3] ?? "").slice(0, 10);
+      const matched = txs.filter((t) => (t.occurred_on || "").slice(0, 10) === date);
       qc.setQueryData(query.queryKey, sortTransactionsDesc([...matched, ...kept]));
       return;
     }
@@ -229,10 +229,15 @@ export function upsertTransactionAcrossCaches(
   tx: Transaction,
 ) {
   // 1. Immediately update in-memory snapshot and offline vault backup so fresh queries always see the item
+  let mergedForMem: Transaction = tx;
   try {
     const current = inMemoryTransactionsSnapshot || [];
+    const existingInMem = current.find((item) => item.id === tx.id);
+    if (existingInMem) {
+      mergedForMem = { ...existingInMem, ...tx };
+    }
     const withoutTx = current.filter((item) => item.id !== tx.id);
-    inMemoryTransactionsSnapshot = sortTransactionsDesc([tx, ...withoutTx]);
+    inMemoryTransactionsSnapshot = sortTransactionsDesc([mergedForMem, ...withoutTx]);
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem(TX_BACKUP_STORAGE_KEY, JSON.stringify(inMemoryTransactionsSnapshot));
@@ -249,12 +254,14 @@ export function upsertTransactionAcrossCaches(
 
     const key = query.queryKey as unknown as any[];
     const mode = key[1];
+    const existingInQuery = data.find((item) => item.id === tx.id);
+    const mergedTx = existingInQuery ? { ...existingInQuery, ...tx } : mergedForMem;
     const withoutTx = data.filter((item) => item.id !== tx.id);
 
     if (mode === "all") {
       const filters = (key[3] ?? null) as TransactionFilters | null;
-      const next = matchesTransactionFilters(tx, filters)
-        ? sortTransactionsDesc([tx, ...withoutTx])
+      const next = matchesTransactionFilters(mergedTx, filters)
+        ? sortTransactionsDesc([mergedTx, ...withoutTx])
         : sortTransactionsDesc(withoutTx);
       qc.setQueryData(query.queryKey, next);
       return;
@@ -264,18 +271,18 @@ export function upsertTransactionAcrossCaches(
       const year = Number(key[3]);
       const month = Number(key[4]);
       const monthKey = `${year}-${String(month).padStart(2, "0")}`;
-      const next = tx.occurred_on?.startsWith(monthKey)
-        ? sortTransactionsDesc([tx, ...withoutTx])
+      const next = mergedTx.occurred_on?.startsWith(monthKey)
+        ? sortTransactionsDesc([mergedTx, ...withoutTx])
         : sortTransactionsDesc(withoutTx);
       qc.setQueryData(query.queryKey, next);
       return;
     }
 
     if (mode === "day") {
-      const date = String(key[3] ?? "");
+      const date = String(key[3] ?? "").slice(0, 10);
       const next =
-        tx.occurred_on === date
-          ? sortTransactionsDesc([tx, ...withoutTx])
+        (mergedTx.occurred_on || "").slice(0, 10) === date
+          ? sortTransactionsDesc([mergedTx, ...withoutTx])
           : sortTransactionsDesc(withoutTx);
       qc.setQueryData(query.queryKey, next);
       return;
@@ -285,7 +292,7 @@ export function upsertTransactionAcrossCaches(
       const limit = Number(key[3]) || 10;
       qc.setQueryData(
         query.queryKey,
-        sortTransactionsDesc([tx, ...withoutTx]).slice(0, limit),
+        sortTransactionsDesc([mergedTx, ...withoutTx]).slice(0, limit),
       );
     }
   });
@@ -460,6 +467,12 @@ async function fetchTransactionChunk(
   to: number,
   filters?: TransactionFilters,
 ): Promise<Transaction[]> {
+  const queryEndDate = filters?.endDate
+    ? filters.endDate.length === 10
+      ? `${filters.endDate}T23:59:59.999Z`
+      : filters.endDate
+    : undefined;
+
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       let query = supabase
@@ -477,7 +490,7 @@ async function fetchTransactionChunk(
       }
       if (filters?.categoryId) query = query.eq("category_id", filters.categoryId);
       if (filters?.startDate) query = query.gte("occurred_on", filters.startDate);
-      if (filters?.endDate) query = query.lte("occurred_on", filters.endDate);
+      if (queryEndDate) query = query.lte("occurred_on", queryEndDate);
 
       let { data, error } = await withTimeout(query, 15000);
       if (error) {
@@ -496,7 +509,7 @@ async function fetchTransactionChunk(
         }
         if (filters?.categoryId) fallbackQuery = fallbackQuery.eq("category_id", filters.categoryId);
         if (filters?.startDate) fallbackQuery = fallbackQuery.gte("occurred_on", filters.startDate);
-        if (filters?.endDate) fallbackQuery = fallbackQuery.lte("occurred_on", filters.endDate);
+        if (queryEndDate) fallbackQuery = fallbackQuery.lte("occurred_on", queryEndDate);
 
         const fallbackRes = await withTimeout(fallbackQuery, 15000);
         if (fallbackRes.error) {
@@ -515,7 +528,7 @@ async function fetchTransactionChunk(
           }
           if (filters?.categoryId) starQuery = starQuery.eq("category_id", filters.categoryId);
           if (filters?.startDate) starQuery = starQuery.gte("occurred_on", filters.startDate);
-          if (filters?.endDate) starQuery = starQuery.lte("occurred_on", filters.endDate);
+          if (queryEndDate) starQuery = starQuery.lte("occurred_on", queryEndDate);
 
           const starRes = await withTimeout(starQuery, 15000);
           if (starRes.error) throw starRes.error;
@@ -1020,25 +1033,30 @@ export function useDayTransactions(date: string) {
     queryKey: transactionKeys.day(userId, date),
     queryFn: async () => {
       if (!userId) return [];
+      const dayPrefix = date.slice(0, 10);
+      const dayEnd = `${dayPrefix}T23:59:59.999Z`;
       const { data, error } = await supabase
         .from("transactions")
         .select(TRANSACTION_SELECT_COLUMNS)
         .eq("user_id", userId)
-        .eq("occurred_on", date)
+        .gte("occurred_on", dayPrefix)
+        .lte("occurred_on", dayEnd)
         .order("created_at", { ascending: false });
       if (error) {
         const { data: fb, error: fbErr } = await supabase
           .from("transactions")
           .select(TRANSACTION_FALLBACK_COLUMNS)
           .eq("user_id", userId)
-          .eq("occurred_on", date)
+          .gte("occurred_on", dayPrefix)
+          .lte("occurred_on", dayEnd)
           .order("created_at", { ascending: false });
         if (fbErr) {
           const { data: starData, error: starErr } = await supabase
             .from("transactions")
             .select("*")
             .eq("user_id", userId)
-            .eq("occurred_on", date)
+            .gte("occurred_on", dayPrefix)
+            .lte("occurred_on", dayEnd)
             .order("created_at", { ascending: false });
           if (starErr) throw starErr;
           return ((starData || []) as unknown) as Transaction[];
@@ -1052,7 +1070,11 @@ export function useDayTransactions(date: string) {
   });
 }
 
-import { computeMonthAggregates } from "../lib/financialMath";
+import {
+  computeMonthAggregates,
+  isCorrectionTx,
+  isOpeningBalanceTx,
+} from "../lib/financialMath";
 
 export function useMonthSummary(year: number, month: number) {
   const { data: monthTxs = [] } = useMonthTransactions(year, month);
@@ -1489,7 +1511,10 @@ export function useUpdateTransaction() {
         cleanCatId = null;
       }
       const cleanWalletId = input.wallet_id !== undefined ? (input.wallet_id && isUUID(input.wallet_id) ? input.wallet_id : null) : undefined;
-      const cleanToWalletId = input.to_wallet_id !== undefined ? (input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null) : undefined;
+      let cleanToWalletId = input.to_wallet_id !== undefined ? (input.to_wallet_id && isUUID(input.to_wallet_id) ? input.to_wallet_id : null) : undefined;
+      if (input.type && input.type !== "transfer") {
+        cleanToWalletId = null;
+      }
 
       const cleanUpdate: any = {};
       if (input.type) cleanUpdate.type = input.type;
@@ -1559,11 +1584,13 @@ export function useUpdateTransaction() {
       if (existing) {
         const assignedLedger =
           updated.ledger_id || updated.space_id || existing.ledger_id || existing.space_id || "personal";
+        const effectiveType = updated.type || existing.type;
         upsertTransactionAcrossCaches(qc, {
           ...existing,
           ...updated,
           id,
-          category_id: updated.type === "transfer" ? null : (updated.category_id !== undefined ? updated.category_id : existing.category_id),
+          category_id: effectiveType === "transfer" ? null : (updated.category_id !== undefined ? updated.category_id : existing.category_id),
+          to_wallet_id: effectiveType === "transfer" ? (updated.to_wallet_id !== undefined ? updated.to_wallet_id : existing.to_wallet_id) : null,
           ledger_id: assignedLedger,
           space_id: assignedLedger,
           categories: categoryObj,
@@ -1734,21 +1761,24 @@ export function useSixMonthTrend() {
         months.map(async (m) => {
           let query = supabase
             .from("transactions")
-            .select("type,amount")
+            .select("type,amount,note")
             .gte("occurred_on", m.start)
-            .lte("occurred_on", m.end);
+            .lte("occurred_on", `${m.end}T23:59:59.999Z`);
 
           if (userId && userId !== "guest_local_user") {
             query = query.eq("user_id", userId);
           }
 
           const { data } = await query;
+          const validData = data?.filter(
+            (t: any) => !isCorrectionTx(t) && !isOpeningBalanceTx(t),
+          );
           const income =
-            data
+            validData
               ?.filter((t) => t.type === "income")
               .reduce((s, t) => s + Number(t.amount), 0) ?? 0;
           const expense =
-            data
+            validData
               ?.filter((t) => t.type === "expense")
               .reduce((s, t) => s + Number(t.amount), 0) ?? 0;
           return { ...m, income, expense };
@@ -1818,9 +1848,9 @@ export function useSevenDayTrend() {
       const end = days[days.length - 1].dateStr;
       let query = supabase
         .from("transactions")
-        .select("type,amount,occurred_on")
+        .select("type,amount,occurred_on,note")
         .gte("occurred_on", start)
-        .lte("occurred_on", end);
+        .lte("occurred_on", `${end}T23:59:59.999Z`);
 
       if (userId && userId !== "guest_local_user") {
         query = query.eq("user_id", userId);
@@ -1828,7 +1858,13 @@ export function useSevenDayTrend() {
 
       const { data } = await query;
       return days.map(({ dateStr, label }) => {
-        const dayTxs = data?.filter((t) => t.occurred_on === dateStr) ?? [];
+        const dayTxs =
+          data?.filter(
+            (t: any) =>
+              (t.occurred_on || "").slice(0, 10) === dateStr &&
+              !isCorrectionTx(t) &&
+              !isOpeningBalanceTx(t),
+          ) ?? [];
         const expense = dayTxs
           .filter((t) => t.type === "expense")
           .reduce((s, t) => s + Number(t.amount), 0);

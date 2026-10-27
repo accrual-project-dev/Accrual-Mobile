@@ -58,6 +58,7 @@ import {
   calculateAssetTrend,
   calculateWhatIfScenario,
   isCorrectionTx,
+  isOpeningBalanceTx,
   type CategoryMoMShift,
 } from "../lib/financialMath";
 
@@ -289,7 +290,9 @@ export function StatisticsPage() {
     }
 
     return cards.sort(
-      (a, b) => storyOrder.indexOf(a.id) - storyOrder.indexOf(b.id),
+      (a, b) =>
+        (a.order ?? storyOrder.indexOf(a.id)) -
+        (b.order ?? storyOrder.indexOf(b.id)),
     );
   }, [visibleStatsCards, hiddenStatsCards]);
 
@@ -327,7 +330,9 @@ export function StatisticsPage() {
     });
 
     return cards.sort(
-      (a, b) => cashflowOrder.indexOf(a.id) - cashflowOrder.indexOf(b.id),
+      (a, b) =>
+        (a.order ?? cashflowOrder.indexOf(a.id)) -
+        (b.order ?? cashflowOrder.indexOf(b.id)),
     );
   }, [visibleStatsCards, hiddenStatsCards]);
 
@@ -366,7 +371,9 @@ export function StatisticsPage() {
     });
 
     return cards.sort(
-      (a, b) => simulationOrder.indexOf(a.id) - simulationOrder.indexOf(b.id),
+      (a, b) =>
+        (a.order ?? simulationOrder.indexOf(a.id)) -
+        (b.order ?? simulationOrder.indexOf(b.id)),
     );
   }, [visibleStatsCards, hiddenStatsCards]);
 
@@ -867,7 +874,12 @@ export function StatisticsPage() {
     );
 
     rangeTxs
-      .filter((t) => t.type === breakdownType)
+      .filter(
+        (t) =>
+          t.type === breakdownType &&
+          !isCorrectionTx(t) &&
+          !isOpeningBalanceTx(t),
+      )
       .forEach((t) => {
         const resolved = resolveTransactionCategory(t, categories);
         const name = resolved.name;
@@ -927,7 +939,12 @@ export function StatisticsPage() {
     );
 
     rangeTxs
-      .filter((t) => t.type === breakdownType)
+      .filter(
+        (t) =>
+          t.type === breakdownType &&
+          !isCorrectionTx(t) &&
+          !isOpeningBalanceTx(t),
+      )
       .forEach((t) => {
         const resolved = resolveTransactionCategory(t, categories);
         const catName = resolved.name;
@@ -1367,6 +1384,8 @@ export function StatisticsPage() {
         applyStatsPreset={applyStatsPreset}
         activeStatsPresetKey={activeStatsPresetKey}
         setActiveStatsPresetKey={setActiveStatsPresetKey}
+        reorderStatsCards={reorderStatsCards}
+        cycleStatsCardSize={cycleStatsCardSize}
       />
     </div>
   );

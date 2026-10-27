@@ -24,6 +24,7 @@ import {
   saveBiometricLoginCredentials,
   savePersistentSession,
   authenticateWithPin,
+  getSecuritySettings,
 } from "../lib/biometricAuth";
 import { triggerHaptic, triggerSuccessHaptic } from "../lib/haptics";
 import {
@@ -647,16 +648,22 @@ export function LoginPage() {
   };
 
   const handlePinDigit = async (digit: string) => {
-    if (pinInput.length >= 6 || pinVerifying) return;
+    const settings = getSecuritySettings();
+    const targetPinLen = settings.pinLength || 6;
+    if (pinInput.length >= targetPinLen || pinVerifying) return;
     triggerHaptic("light");
     const nextPin = pinInput + digit;
     setPinInput(nextPin);
     setPinError(null);
 
-    if (nextPin.length >= 4) {
+    const shouldVerify = settings.pinLength
+      ? nextPin.length >= settings.pinLength
+      : nextPin.length >= 4;
+
+    if (shouldVerify) {
       setPinVerifying(true);
       try {
-        const res = await authenticateWithPin(nextPin);
+        const res = await authenticateWithPin(nextPin, isIndonesian);
         if (res.success) {
           triggerSuccessHaptic();
           if (res.session) {
@@ -668,7 +675,7 @@ export function LoginPage() {
           } else {
             setShowPinModal(false);
           }
-        } else {
+        } else if (nextPin.length >= targetPinLen) {
           triggerHaptic("heavy");
           setPinError(
             res.error || (isIndonesian ? "PIN tidak valid." : "Invalid PIN."),
@@ -676,14 +683,16 @@ export function LoginPage() {
           setTimeout(() => setPinInput(""), 600);
         }
       } catch (err: any) {
-        triggerHaptic("heavy");
-        setPinError(
-          err?.message ||
-            (isIndonesian
-              ? "Gagal memverifikasi PIN."
-              : "Failed to verify PIN."),
-        );
-        setTimeout(() => setPinInput(""), 600);
+        if (nextPin.length >= targetPinLen) {
+          triggerHaptic("heavy");
+          setPinError(
+            err?.message ||
+              (isIndonesian
+                ? "Gagal memverifikasi PIN."
+                : "Failed to verify PIN."),
+          );
+          setTimeout(() => setPinInput(""), 600);
+        }
       } finally {
         setPinVerifying(false);
       }
@@ -960,7 +969,7 @@ export function LoginPage() {
 
               {/* Error & Message */}
               {error && (
-                <p className="text-[12px] text-rose-400 text-center font-medium mb-2.5">
+                <p className="text-[12px] text-[var(--text-primary)] bg-black/[0.04] dark:bg-white/[0.06] border border-[var(--glass-border)] rounded-lg px-2.5 py-1.5 text-center font-medium mb-2.5">
                   {error}
                 </p>
               )}
@@ -1183,7 +1192,7 @@ export function LoginPage() {
 
                 {/* Error Banner */}
                 {error && (
-                  <p className="text-[12px] text-rose-400 text-center font-medium pt-1">
+                  <p className="text-[12px] text-[var(--text-primary)] bg-black/[0.04] dark:bg-white/[0.06] border border-[var(--glass-border)] rounded-lg px-2.5 py-1.5 text-center font-medium pt-1">
                     {error}
                   </p>
                 )}
@@ -1557,7 +1566,7 @@ export function LoginPage() {
                 </div>
 
                 {error && (
-                  <p className="text-[11.5px] text-rose-400 font-medium px-1">
+                  <p className="text-[11.5px] text-[var(--text-primary)] bg-black/[0.04] dark:bg-white/[0.06] border border-[var(--glass-border)] rounded-lg px-2.5 py-1.5 font-medium">
                     {error}
                   </p>
                 )}
@@ -1756,7 +1765,7 @@ export function LoginPage() {
                 </div>
 
                 {error && (
-                  <p className="text-[11.5px] text-rose-400 font-medium px-1">
+                  <p className="text-[11.5px] text-[var(--text-primary)] bg-black/[0.04] dark:bg-white/[0.06] border border-[var(--glass-border)] rounded-lg px-2.5 py-1.5 font-medium">
                     {error}
                   </p>
                 )}

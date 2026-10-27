@@ -3,10 +3,12 @@ import type {
   Wallet,
   Category,
   AccountClassification,
+  InvestmentHolding,
 } from "./types";
 import { resolveWalletClassification } from "../hooks/useWallets";
 import { getCategoryCashflowNature } from "../hooks/useCategories";
 import { isCorrectionTx, calculateWalletBalances } from "./financialMath";
+import { calculateHoldingValuation } from "./marketPriceService";
 
 // ======================================================================
 // INTERFACES & ACCOUNTING TYPES
@@ -142,6 +144,7 @@ export function calculateBalanceSheet(
   allTransactions?: Transaction[],
   options: {
     endDate?: string;
+    holdings?: InvestmentHolding[];
   } = {},
 ): BalanceSheetStatement {
   // 1. Calculate raw balances per wallet using the central calculateWalletBalances engine
@@ -212,7 +215,7 @@ export function calculateBalanceSheet(
         percentageOfTotal: 0,
       };
 
-      if (classification === "investment") {
+      if (classification === "investment" || classification === "fixed_asset") {
         investmentItems.push(item);
         totalInvestment += assetBal;
       } else if (classification === "receivable") {
@@ -224,6 +227,25 @@ export function calculateBalanceSheet(
       }
     }
   });
+
+  if (options.holdings && options.holdings.length > 0) {
+    options.holdings.forEach((h) => {
+      if (Number(h.units || 0) <= 0) return;
+      const val = calculateHoldingValuation(h);
+      const holdingBal = Math.max(0, val.marketValue);
+      if (holdingBal > 0) {
+        investmentItems.push({
+          id: h.id,
+          name: `${h.name}${h.symbol ? ` (${h.symbol})` : ""}`,
+          icon: h.icon || "TrendingUp",
+          balance: holdingBal,
+          classification: "investment",
+          percentageOfTotal: 0,
+        });
+        totalInvestment += holdingBal;
+      }
+    });
+  }
 
   const totalAssets = totalLiquid + totalInvestment + totalReceivable;
   const totalLiabilities = totalCurrentLiabilities + totalLongTermLiabilities;
@@ -647,6 +669,7 @@ export function generateFinancialReportPackage(
     endDate?: string;
     periodLabel?: string;
     allTransactions?: Transaction[];
+    holdings?: InvestmentHolding[];
   } = {},
 ): FinancialReportPackage {
   // Balance Sheet reflects cumulative financial position as of the end of the period

@@ -56,7 +56,7 @@ export function CancelSubscriptionModal({
   };
 
   const formattedPeriodEnd = (() => {
-    if (subscription?.isLifetime) {
+    if (Boolean(subscription?.isLifetime || subscription?.planId === "accrual_lifetime_499k")) {
       return isIndonesian
         ? "Akses Seumur Hidup (Tidak memerlukan perpanjangan)"
         : "Lifetime Access (No renewal required)";

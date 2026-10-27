@@ -34,7 +34,7 @@ interface AuthContextType {
   setSession: (session: Session | null) => void;
   signOut: () => Promise<void>;
   continueAsGuest: () => void;
-  exitGuestMode: () => void;
+  exitGuestMode: (options?: { wipeGuestData?: boolean }) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -102,7 +102,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
   const continueAsGuest = () => {
-    clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: true }).catch(() => {});
+    const returningToPendingGuest =
+      typeof window !== "undefined" &&
+      localStorage.getItem("trouvaille_pending_guest_migration") === "true";
+    if (returningToPendingGuest) {
+      localStorage.removeItem("trouvaille_pending_guest_migration");
+    } else {
+      clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: true }).catch(() => {});
+    }
     try {
       supabase.auth.signOut().catch(() => {});
     } catch {}
@@ -111,8 +118,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsGuest(true);
   };
 
-  const exitGuestMode = () => {
-    clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: false }).catch(() => {});
+  const exitGuestMode = (options?: { wipeGuestData?: boolean }) => {
+    if (options?.wipeGuestData) {
+      clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: false }).catch(() => {});
+      localStorage.removeItem("trouvaille_pending_guest_migration");
+    } else {
+      localStorage.setItem("trouvaille_pending_guest_migration", "true");
+    }
     localStorage.removeItem("trouvaille_guest_mode");
     setIsGuest(false);
   };

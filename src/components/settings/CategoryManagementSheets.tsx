@@ -125,7 +125,12 @@ export function CategoryManagementSheets({
   const handleSaveCategory = () => {
     if (!catName.trim() || isDuplicateCatName) return;
     const finalIcon = catIcon || autoSuggestIcon(catName) || "Tag";
-    const rawBudget = parseFloat(catBudget.replace(/,/g, ""));
+    const rawBudget = formatLiveAmountInput(
+      catBudget,
+      isIndonesian && !allowDecimals,
+      allowDecimals,
+      maxDecimals,
+    ).rawNumber;
     const numBudget = !isNaN(rawBudget) && rawBudget > 0
       ? Math.round(convertToIdr(rawBudget, preferredCurrency))
       : undefined;
@@ -152,7 +157,12 @@ export function CategoryManagementSheets({
 
   const handleUpdateCategory = () => {
     if (!editCategory?.name.trim()) return;
-    const rawBudget = parseFloat(editCategoryBudget.replace(/,/g, ""));
+    const rawBudget = formatLiveAmountInput(
+      editCategoryBudget,
+      isIndonesian && !allowDecimals,
+      allowDecimals,
+      maxDecimals,
+    ).rawNumber;
     const numBudget = !isNaN(rawBudget) && rawBudget > 0
       ? Math.round(convertToIdr(rawBudget, preferredCurrency))
       : null;
@@ -182,16 +192,26 @@ export function CategoryManagementSheets({
     triggerHaptic("light");
     setQuickBudgetCategory(cat);
     const converted = cat.budget_amount
-      ? (preferredCurrency === "IDR"
-          ? String(Math.round(cat.budget_amount))
-          : String(Math.round(convertFromIdr(cat.budget_amount) * 100) / 100))
+      ? formatLiveAmountInput(
+          preferredCurrency === "IDR"
+            ? String(Math.round(cat.budget_amount))
+            : String(Math.round(convertFromIdr(cat.budget_amount) * 100) / 100),
+          isIndonesian && !allowDecimals,
+          allowDecimals,
+          maxDecimals,
+        ).formatted
       : "";
     setQuickBudgetValue(converted);
   };
 
   const handleSaveQuickBudget = () => {
     if (!quickBudgetCategory) return;
-    const rawBudget = parseFloat(quickBudgetValue.replace(/,/g, ""));
+    const rawBudget = formatLiveAmountInput(
+      quickBudgetValue,
+      isIndonesian && !allowDecimals,
+      allowDecimals,
+      maxDecimals,
+    ).rawNumber;
     const numBudget = !isNaN(rawBudget) && rawBudget > 0
       ? Math.round(convertToIdr(rawBudget, preferredCurrency))
       : null;
@@ -475,9 +495,14 @@ export function CategoryManagementSheets({
                               type: cat.type,
                             });
                             const converted = cat.budget_amount
-                              ? (preferredCurrency === "IDR"
-                                  ? String(Math.round(cat.budget_amount))
-                                  : String(Math.round(convertFromIdr(cat.budget_amount) * 100) / 100))
+                              ? formatLiveAmountInput(
+                                  preferredCurrency === "IDR"
+                                    ? String(Math.round(cat.budget_amount))
+                                    : String(Math.round(convertFromIdr(cat.budget_amount) * 100) / 100),
+                                  isIndonesian && !allowDecimals,
+                                  allowDecimals,
+                                  maxDecimals,
+                                ).formatted
                               : "";
                             setEditCategoryBudget(converted);
                             setViewMode("edit");
@@ -967,7 +992,16 @@ export function CategoryManagementSheets({
                   type="button"
                   onClick={() => {
                     triggerHaptic("light");
-                    setQuickBudgetValue(p.val === 0 ? "" : String(p.val));
+                    setQuickBudgetValue(
+                      p.val === 0
+                        ? ""
+                        : formatLiveAmountInput(
+                            String(p.val),
+                            isIndonesian && !allowDecimals,
+                            allowDecimals,
+                            maxDecimals,
+                          ).formatted,
+                    );
                   }}
                   className="px-2.5 py-1 rounded-lg text-[10.5px] border border-[var(--glass-border)] bg-[var(--glass-fill)] hover:border-black/20 dark:hover:border-white/20 active:scale-95 transition-all cursor-pointer"
                   style={{

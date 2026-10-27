@@ -65,34 +65,7 @@ import {
   type PresetAsset,
   type PresetCategory,
 } from "../../lib/assetPresets";
-
-function parseCleanNumber(val: string): number {
-  if (!val) return 0;
-  const s = val.trim();
-  const lastDot = s.lastIndexOf(".");
-  const lastComma = s.lastIndexOf(",");
-
-  if (lastDot !== -1 && lastComma !== -1) {
-    if (lastComma > lastDot) {
-      return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
-    } else {
-      return parseFloat(s.replace(/,/g, "")) || 0;
-    }
-  } else if (lastComma !== -1) {
-    const commaCount = (s.match(/,/g) || []).length;
-    if (commaCount > 1) {
-      return parseFloat(s.replace(/,/g, "")) || 0;
-    }
-    return parseFloat(s.replace(",", ".")) || 0;
-  } else if (lastDot !== -1) {
-    const dotCount = (s.match(/\./g) || []).length;
-    if (dotCount > 1) {
-      return parseFloat(s.replace(/\./g, "")) || 0;
-    }
-    return parseFloat(s) || 0;
-  }
-  return parseFloat(s) || 0;
-}
+import { parseCleanNumber } from "../assets/AddAssetModal";
 
 function formatHoldingPrice(
   val: number | string | null | undefined,
@@ -573,9 +546,16 @@ export function AssetValuationSheet({
       return;
     }
 
-    const units = formType === "fixed_asset" ? 1 : parseCleanNumber(formUnits);
-    const rawBuy = parseCleanNumber(formBuyPrice);
-    const rawCurrent = parseCleanNumber(formCurrentPrice) || rawBuy;
+    const isUsd = formCurrency === "USD";
+    const parsedFormUnits = parseFloat(formUnits.replace(/,/g, "."));
+    const units =
+      formType === "fixed_asset"
+        ? !isNaN(parsedFormUnits) && parsedFormUnits > 0
+          ? parsedFormUnits
+          : 1
+        : parseCleanNumber(formUnits, false);
+    const rawBuy = parseCleanNumber(formBuyPrice, isUsd);
+    const rawCurrent = parseCleanNumber(formCurrentPrice, isUsd) || rawBuy;
 
     if (isNaN(units) || units <= 0 || isNaN(rawBuy) || rawBuy <= 0) {
       showToast(
@@ -619,7 +599,12 @@ export function AssetValuationSheet({
       return;
     }
 
+    const existingHolding = editingHoldingId
+      ? holdings.find((h) => h.id === editingHoldingId)
+      : undefined;
+
     const newH: InvestmentHolding = {
+      ...(existingHolding || {}),
       id: editingHoldingId || `h_${Date.now()}`,
       symbol: symbol.toUpperCase(),
       name: formName.trim(),
@@ -630,8 +615,8 @@ export function AssetValuationSheet({
       currency: formCurrency,
       last_price_updated_at: new Date().toISOString(),
       icon: formIcon,
-      purchase_date: formPurchaseDate || undefined,
-      notes: formPlatform ? `Platform: ${formPlatform}` : undefined,
+      purchase_date: formPurchaseDate || existingHolding?.purchase_date || undefined,
+      notes: formPlatform ? `Platform: ${formPlatform}` : existingHolding?.notes,
     };
 
     const updated = upsertHolding(newH, user?.id);
@@ -1938,7 +1923,7 @@ export function AssetValuationSheet({
                 <p className="text-[10px] text-[var(--text-tertiary)]  mt-1 px-1">
                   ≈{" "}
                   {formatWithPreferred(
-                    parseCleanNumber(formBuyPrice) * usdtPref.rate,
+                    parseCleanNumber(formBuyPrice, true) * usdtPref.rate,
                   )}
                 </p>
               )}
@@ -1986,7 +1971,7 @@ export function AssetValuationSheet({
               <p className="text-[10px] text-[var(--text-tertiary)]  mt-1 px-1">
                 ≈{" "}
                 {formatWithPreferred(
-                  parseCleanNumber(formCurrentPrice) * usdtPref.rate,
+                  parseCleanNumber(formCurrentPrice, true) * usdtPref.rate,
                 )}
               </p>
             )}

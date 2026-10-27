@@ -1523,7 +1523,7 @@ export function calculateHoldingValuation(holding: InvestmentHolding): HoldingVa
   // Self-healing legacy fallback ONLY for un-converted raw USD prices (where avg_buy_price is literally < $10,000 and has no native_price):
   // If holding already has native_price or avg_buy_price is in IDR range (> 50,000), it is ALREADY in IDR.
   if (
-    !holding.native_price &&
+    (!holding.native_price || holding.native_price === buyPrice) &&
     (holding.currency === "USD" || holding.native_currency === "USD") &&
     buyPrice > 0 &&
     buyPrice < 10000 &&

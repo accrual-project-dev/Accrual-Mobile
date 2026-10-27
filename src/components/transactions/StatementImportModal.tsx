@@ -1765,7 +1765,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
                     : "Committing batch transactions to local vault & Supabase"}
                 </p>
               </div>
-              <div className="w-full max-w-xs h-2 rounded-full overflow-hidden bg-white/10">
+              <div className="w-full max-w-xs h-2 rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
                 <div
                   className="h-full transition-all duration-200"
                   style={{ width: `${importProgress}%`, background: "var(--accent)" }}

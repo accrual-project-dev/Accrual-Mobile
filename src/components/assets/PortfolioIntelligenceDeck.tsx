@@ -135,16 +135,16 @@ export function PortfolioIntelligenceDeck({
       );
   }, [wallets, balancesById]);
 
-  // Tier 2: Stable / Fixed Income (Gold, Property, Fixed Assets)
+  // Tier 2: Stable / Fixed Income (Gold, Property, Fixed Assets, Bonds)
   const stableFixed = otherValuations
-    .filter((h) => h.asset_type === "fixed_asset" || h.asset_type === "gold")
+    .filter((h) => h.asset_type === "fixed_asset" || h.asset_type === "gold" || h.asset_type === "bond")
     .reduce((sum, h) => sum + h.marketValue, 0);
 
-  // Tier 3: Growth / Volatile (Equities, Crypto, USDT)
+  // Tier 3: Growth / Volatile (Equities, Crypto, Mutual Funds, USDT)
   const growthVolatile =
     usdtMarketValue +
     otherValuations
-      .filter((h) => h.asset_type === "crypto" || h.asset_type === "stock")
+      .filter((h) => h.asset_type === "crypto" || h.asset_type === "stock" || h.asset_type === "mutual_fund")
       .reduce((sum, h) => sum + h.marketValue, 0);
 
   const grossPortfolioSum = Math.max(1, defensiveLiquid + stableFixed + growthVolatile);

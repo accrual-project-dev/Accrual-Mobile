@@ -122,9 +122,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   );
 
   // Fetch remote subscription from Supabase if logged in
-  const fetchRemoteSubscription = useCallback(async () => {
+  const fetchRemoteSubscription = useCallback(async (): Promise<UserSubscription | null> => {
     if (!user || user.id === GUEST_USER_ID) {
-      return;
+      return null;
     }
 
     try {
@@ -138,7 +138,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       if (error) {
         // Table may not exist yet if migration hasn't been executed
         console.warn("[SubscriptionContext] Failed to fetch subscription:", error.message);
-        return;
+        return null;
       }
 
       if (data) {
@@ -158,13 +158,27 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           updatedAt: data.updated_at || new Date().toISOString(),
         };
         saveToLocal(remoteSub);
+        return remoteSub;
       }
+      return null;
     } catch (err) {
       console.warn("[SubscriptionContext] Network or schema error:", err);
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, [user, saveToLocal]);
+
+  useEffect(() => {
+    const handleTeardown = () => {
+      setSubscription(DEFAULT_SUBSCRIPTION);
+      setIsPaywallOpen(false);
+      setIsSuccessModalOpen(false);
+      setIsCancelModalOpen(false);
+    };
+    window.addEventListener("trouvaille_session_teardown", handleTeardown);
+    return () => window.removeEventListener("trouvaille_session_teardown", handleTeardown);
+  }, []);
 
   useEffect(() => {
     if (!user || user.id === GUEST_USER_ID) {
@@ -375,8 +389,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       // 2. In offline/mock mode, check remote Supabase record if logged in
       if (user && user.id !== GUEST_USER_ID) {
-        await fetchRemoteSubscription();
-        return { success: true, hasActivePro: subscription.tier === "premium" };
+        const remoteSub = await fetchRemoteSubscription();
+        const activeSub = remoteSub || subscription;
+        const hasPro = Boolean(
+          activeSub.isLifetime ||
+          (activeSub.tier === "premium" &&
+            (activeSub.status === "active" || activeSub.status === "trialing"))
+        );
+        if (hasPro && remoteSub) {
+          closePaywall();
+          openSuccessModal(remoteSub);
+        }
+        return { success: true, hasActivePro: hasPro };
       }
 
       return { success: true, hasActivePro: false };

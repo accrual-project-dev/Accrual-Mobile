@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Plus, Trash2, Check, Bell, Calendar as CalendarIcon } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { GlassDatePicker } from "../ui/GlassDatePicker";
@@ -29,7 +29,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { formatLiveAmountInput } from "../../lib/utils";
 import { format, parseISO } from "date-fns";
 
-function parseCleanAmount(str: string, isIndo: boolean): number {
+function parseRawCleanAmount(str: string, isIndo: boolean): number {
   if (!str) return 0;
   const thousandSep = isIndo ? "." : ",";
   const decimalSep = isIndo ? "," : ".";
@@ -47,7 +47,16 @@ export function BillManagementSheets({
   onClose,
 }: BillManagementSheetsProps) {
   const { isIndonesian } = useLanguage();
-  const { preferredCurrency, currencyMeta, formatWithPreferred } = useCurrency();
+  const {
+    preferredCurrency,
+    currencyMeta,
+    formatWithPreferred,
+    convertToIdr,
+    convertFromIdr,
+  } = useCurrency();
+  const isSubmittingRef = useRef(false);
+  const parseCleanAmount = (str: string, isIndo: boolean) =>
+    parseRawCleanAmount(str, isIndo && currencyMeta.decimals === 0);
   const { data: bills = [] } = useBills();
   const { data: wallets = [] } = useWallets();
   const addBill = useAddBill();
@@ -208,7 +217,23 @@ export function BillManagementSheets({
   const handleOpenEditBill = (b: any) => {
     setEditingBill(b);
     setBillTitle(b.title || "");
-    setBillAmount(b.amount ? formatLiveAmountInput(String(b.amount), isIndonesian).display : "");
+    const displayAmt = b.amount
+      ? preferredCurrency === "IDR"
+        ? Math.round(Number(b.amount))
+        : Math.round(
+            convertFromIdr(Number(b.amount), preferredCurrency) * 100,
+          ) / 100
+      : 0;
+    setBillAmount(
+      displayAmt > 0
+        ? formatLiveAmountInput(
+            String(displayAmt),
+            isIndonesian && currencyMeta.decimals === 0,
+            currencyMeta.decimals > 0,
+            currencyMeta.decimals,
+          ).display
+        : "",
+    );
     setBillDate(b.due_date ? parseISO(b.due_date) : new Date());
     setBillRepeat(b.repeat_rule || "monthly");
     setBillIsPaid(!!b.is_paid);
@@ -267,6 +292,7 @@ export function BillManagementSheets({
   };
 
   const handleSaveBill = () => {
+    if (isSubmittingRef.current) return;
     if (!billTitle.trim()) {
       showToast(
         isIndonesian ? "Nama tagihan wajib diisi" : "Bill title is required",
@@ -276,15 +302,18 @@ export function BillManagementSheets({
       return;
     }
     const num = parseCleanAmount(billAmount, isIndonesian);
+    const idrAmount =
+      num > 0 ? Math.round(convertToIdr(num, preferredCurrency)) : null;
     const payload = {
       title: billTitle.trim(),
-      amount: num > 0 ? num : null,
+      amount: idrAmount,
       due_date: format(billDate, "yyyy-MM-dd"),
       repeat_rule: billRepeat,
       is_paid: billIsPaid,
       wallet_id: billWalletId || null,
       category_id: billCategoryId || null,
     };
+    isSubmittingRef.current = true;
     if (editingBill) {
       updateBill.mutate(
         { id: editingBill.id, ...payload },
@@ -302,6 +331,9 @@ export function BillManagementSheets({
               () => {},
             );
           },
+          onSettled: () => {
+            isSubmittingRef.current = false;
+          },
         },
       );
     } else {
@@ -317,6 +349,9 @@ export function BillManagementSheets({
             "add",
             () => {},
           );
+        },
+        onSettled: () => {
+          isSubmittingRef.current = false;
         },
       });
     }
@@ -605,7 +640,13 @@ export function BillManagementSheets({
         isOpen={billSheetOpen}
         onClose={() => setBillSheetOpen(false)}
       >
-        <div className="p-5 pb-16 space-y-4">
+        <div
+          className="p-5 space-y-4"
+          style={{
+            paddingBottom:
+              "max(calc(env(safe-area-inset-bottom, 0px) + 24px), 36px)",
+          }}
+        >
           <h3
             className="font-semibold text-lg"
             style={{ color: "var(--text-primary)" }}
@@ -666,15 +707,16 @@ export function BillManagementSheets({
                   billAmount
                     ? formatLiveAmountInput(
                         billAmount,
-                        isIndonesian,
+                        isIndonesian && currencyMeta.decimals === 0,
                         currencyMeta.decimals > 0,
                         currencyMeta.decimals,
                       ).display
                     : ""
                 }
                 onChange={(e) => {
-                  const thousandSep = isIndonesian ? "." : ",";
-                  const decimalSep = isIndonesian ? "," : ".";
+                  const useIndoSep = isIndonesian && currencyMeta.decimals === 0;
+                  const thousandSep = useIndoSep ? "." : ",";
+                  const decimalSep = useIndoSep ? "," : ".";
                   const clean = e.target.value
                     .split(thousandSep)
                     .join("")

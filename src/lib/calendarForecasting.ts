@@ -8,7 +8,11 @@ import {
   parseISO,
 } from "date-fns";
 import type { Transaction, Bill } from "./types";
-import type { DetectedRecurringItem } from "./financialMath";
+import {
+  isCorrectionTx,
+  isOpeningBalanceTx,
+  type DetectedRecurringItem,
+} from "./financialMath";
 
 export interface CalendarDayForecast {
   date: string; // "YYYY-MM-DD"
@@ -97,7 +101,11 @@ export interface CalendarRunwayOptions {
  */
 export function calculateOutlierResistantDailyBurn(transactions: Transaction[]): number {
   const expenseTxs = transactions.filter(
-    (t) => t.type === "expense" && Number(t.amount || 0) > 0,
+    (t) =>
+      t.type === "expense" &&
+      Number(t.amount || 0) > 0 &&
+      !isCorrectionTx(t) &&
+      !isOpeningBalanceTx(t),
   );
   if (expenseTxs.length === 0) return 0;
 
@@ -189,7 +197,10 @@ export function calculateMonthCalendarRunway(
 
     // Actual transactions (normalize full ISO timestamps YYYY-MM-DDTHH:mm:ss per Rule 8.1)
     const dayTxs = transactions.filter(
-      (t) => (t.occurred_on || "").slice(0, 10) === dStr,
+      (t) =>
+        (t.occurred_on || "").slice(0, 10) === dStr &&
+        !isCorrectionTx(t) &&
+        !isOpeningBalanceTx(t),
     );
     const actualInflow = dayTxs
       .filter((t) => t.type === "income")

@@ -72,6 +72,7 @@ const PRESERVED_SETTINGS_KEYS = new Set([
   "trouvaille_language",
   "trouvaille_currency",
   "trouvaille_app_currency",
+  "trouvaille_preferred_currency",
   "trouvaille_privacy_stealth",
   "trouvaille_stealth_mode",
   "trouvaille_haptics_enabled",

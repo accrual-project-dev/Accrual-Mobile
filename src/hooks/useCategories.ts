@@ -905,22 +905,67 @@ export function useAddCategory() {
 
 export function useDeleteCategory() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isGuest =
+    !user ||
+    user.id === "guest_local_user" ||
+    (typeof window !== "undefined" &&
+      localStorage.getItem("trouvaille_guest_mode") === "true");
+
   return useMutation({
     mutationFn: async (id: string) => {
-      const { count, error: refError } = await supabase
-        .from("transactions")
-        .select("id", { count: "exact", head: true })
-        .eq("category_id", id);
-
-      if (refError) throw refError;
-      if ((count || 0) > 0) {
-        throw new Error(
-          "Category is currently used by transactions. Please reassign or delete its transactions first.",
-        );
+      if (isGuest) {
+        try {
+          const raw = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+          if (raw) {
+            const list: Category[] = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              const filtered = list.filter((c) => c.id !== id);
+              localStorage.setItem(
+                CATEGORIES_BACKUP_STORAGE_KEY,
+                JSON.stringify(filtered),
+              );
+            }
+          }
+          const rawTx = localStorage.getItem("TROUVAILLE_TX_BACKUP_V1");
+          if (rawTx) {
+            const txList = JSON.parse(rawTx);
+            if (Array.isArray(txList)) {
+              const updatedTxs = txList.map((t: any) =>
+                t.category_id === id
+                  ? { ...t, category_id: null, categories: null }
+                  : t,
+              );
+              localStorage.setItem(
+                "TROUVAILLE_TX_BACKUP_V1",
+                JSON.stringify(updatedTxs),
+              );
+            }
+          }
+        } catch {}
+        return id;
       }
+
+      // Unassign linked transactions so deletion succeeds and transitions them to uncategorized
+      await supabase
+        .from("transactions")
+        .update({ category_id: null })
+        .eq("category_id", id);
 
       const { error } = await supabase.from("categories").delete().eq("id", id);
       if (error) throw error;
+      try {
+        const raw = localStorage.getItem(CATEGORIES_BACKUP_STORAGE_KEY);
+        if (raw) {
+          const list: Category[] = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            localStorage.setItem(
+              CATEGORIES_BACKUP_STORAGE_KEY,
+              JSON.stringify(list.filter((c) => c.id !== id)),
+            );
+          }
+        }
+      } catch {}
       return id;
     },
     onSuccess: (deletedId) => {
@@ -929,6 +974,7 @@ export function useDeleteCategory() {
         return old.filter((c) => c.id !== deletedId);
       });
       qc.invalidateQueries({ queryKey: ["categories"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
     },
   });
 }
@@ -1046,13 +1092,16 @@ export function useUpdateCategory() {
         name: name || "Category",
         emoji: emoji || "Tag",
         budget_amount,
-        type: "expense",
       } as Category;
     },
     onSuccess: (updated) => {
       qc.setQueriesData<Category[]>({ queryKey: ["categories"] }, (old) => {
         if (!old) return [updated];
-        return old.map((c) => (c.id === updated.id ? { ...c, ...updated } : c));
+        return old.map((c) =>
+          c.id === updated.id
+            ? { ...c, ...updated, type: updated.type || c.type }
+            : c,
+        );
       });
       qc.invalidateQueries({ queryKey: ["categories"] });
     },

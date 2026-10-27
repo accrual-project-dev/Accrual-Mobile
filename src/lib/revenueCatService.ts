@@ -460,14 +460,26 @@ class RevenueCatService {
     customerInfo: CustomerInfo,
     planIdHint?: SubscriptionPlanId
   ): UserSubscription {
-    const entitlement = customerInfo.entitlements?.active?.[REVENUECAT_ENTITLEMENT_ID];
-    const isPro = Boolean(entitlement);
-    const isLifetime = entitlement?.productIdentifier?.includes("lifetime") || planIdHint === "accrual_lifetime_499k";
+    const activeEntitlements = customerInfo.entitlements?.active || {};
+    const entitlement =
+      activeEntitlements[REVENUECAT_ENTITLEMENT_ID] ||
+      Object.values(activeEntitlements)[0];
+    const fallbackSubId = customerInfo.activeSubscriptions?.[0] || null;
+    const isPro = Boolean(entitlement || fallbackSubId);
+    const resolvedPlanId =
+      planIdHint ||
+      (entitlement?.productIdentifier as SubscriptionPlanId | undefined) ||
+      (fallbackSubId as SubscriptionPlanId | null) ||
+      null;
+    const isLifetime = Boolean(
+      entitlement?.productIdentifier?.includes("lifetime") ||
+      resolvedPlanId === "accrual_lifetime_499k"
+    );
 
     return {
       tier: isPro ? "premium" : "free",
       status: isPro ? (entitlement?.periodType === "TRIAL" ? "trialing" : "active") : "expired",
-      planId: planIdHint || (entitlement?.productIdentifier as any) || null,
+      planId: resolvedPlanId,
       store: "app_store",
       originalTransactionId: entitlement?.originalPurchaseDate || null,
       trialStartAt: entitlement?.periodType === "TRIAL" ? entitlement.originalPurchaseDate : null,

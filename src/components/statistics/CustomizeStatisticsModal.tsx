@@ -7,7 +7,7 @@
 // ======================================================================
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, RotateCcw, Check } from "lucide-react";
+import { X, RotateCcw, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { triggerHaptic } from "../../lib/haptics";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -169,6 +169,8 @@ export interface CustomizeStatisticsModalProps {
   onEnterGridEdit?: () => void;
   activePresetKey?: StatisticsPresetKey | null;
   onSelectPresetKey?: (key: StatisticsPresetKey | null) => void;
+  onReorder?: (reorderedIds: string[]) => void;
+  onCycleSize?: (cardId: string) => void;
 }
 
 export function CustomizeStatisticsModal({
@@ -180,6 +182,8 @@ export function CustomizeStatisticsModal({
   onApplyPreset,
   activePresetKey = "executive",
   onSelectPresetKey,
+  onReorder,
+  onCycleSize,
 }: CustomizeStatisticsModalProps) {
   const { t, language } = useLanguage();
   const { theme } = useTheme();
@@ -446,9 +450,9 @@ export function CustomizeStatisticsModal({
             =============================================================== */}
             <div className="space-y-3.5 px-5 pb-5">
               {groups.map((group) => {
-                const groupWidgets = widgets.filter((widget) =>
-                  group.ids.includes(widget.id),
-                );
+                const groupWidgets = widgets
+                  .filter((widget) => group.ids.includes(widget.id))
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
                 if (groupWidgets.length === 0) return null;
 
@@ -480,6 +484,31 @@ export function CustomizeStatisticsModal({
                           ? (meta?.id.subtitle ?? widget.subtitle)
                           : (meta?.en.subtitle ?? widget.subtitle);
 
+                        const canMoveUp = Boolean(onReorder && index > 0);
+                        const canMoveDown = Boolean(
+                          onReorder && index < groupWidgets.length - 1,
+                        );
+                        const handleMoveInGroup = (direction: -1 | 1) => {
+                          if (!onReorder) return;
+                          const targetIdx = index + direction;
+                          if (targetIdx < 0 || targetIdx >= groupWidgets.length) return;
+                          triggerHaptic("light");
+                          onSelectPresetKey?.(null);
+                          const sortedAll = [...widgets].sort(
+                            (a, b) => (a.order ?? 0) - (b.order ?? 0),
+                          );
+                          const idA = groupWidgets[index].id;
+                          const idB = groupWidgets[targetIdx].id;
+                          const posA = sortedAll.findIndex((w) => w.id === idA);
+                          const posB = sortedAll.findIndex((w) => w.id === idB);
+                          if (posA !== -1 && posB !== -1) {
+                            const temp = sortedAll[posA];
+                            sortedAll[posA] = sortedAll[posB];
+                            sortedAll[posB] = temp;
+                            onReorder(sortedAll.map((w) => w.id));
+                          }
+                        };
+
                         return (
                           <div key={widget.id}>
                             {index > 0 && <div style={gradientDivider} />}
@@ -500,11 +529,52 @@ export function CustomizeStatisticsModal({
                                   onToggleVisibility(widget.id);
                                 }
                               }}
-                              className="flex items-center justify-between gap-3 min-h-[54px] px-3.5 py-2.5 cursor-pointer select-none transition-all active:bg-white/[0.04]"
+                              className="flex items-center justify-between gap-2.5 min-h-[54px] px-3.5 py-2.5 cursor-pointer select-none transition-all active:bg-white/[0.04]"
                               style={{
                                 opacity: isEnabled ? 1 : 0.6,
                               }}
                             >
+                              {/* 1-Tap Up/Down Stepper */}
+                              {groupWidgets.length > 1 && onReorder && (
+                                <div
+                                  className="flex flex-col items-center gap-0.5 shrink-0"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    disabled={!canMoveUp}
+                                    onClick={() => handleMoveInGroup(-1)}
+                                    className="w-6 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer disabled:opacity-25 disabled:cursor-default active:scale-90"
+                                    style={{
+                                      background: isDark
+                                        ? "rgba(255,255,255,0.06)"
+                                        : "rgba(0,0,0,0.04)",
+                                      border: controlBorder,
+                                      color: "var(--text-secondary)",
+                                    }}
+                                    aria-label={isIndonesian ? "Pindah ke atas" : "Move up"}
+                                  >
+                                    <ChevronUp size={12} strokeWidth={2.2} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={!canMoveDown}
+                                    onClick={() => handleMoveInGroup(1)}
+                                    className="w-6 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer disabled:opacity-25 disabled:cursor-default active:scale-90"
+                                    style={{
+                                      background: isDark
+                                        ? "rgba(255,255,255,0.06)"
+                                        : "rgba(0,0,0,0.04)",
+                                      border: controlBorder,
+                                      color: "var(--text-secondary)",
+                                    }}
+                                    aria-label={isIndonesian ? "Pindah ke bawah" : "Move down"}
+                                  >
+                                    <ChevronDown size={12} strokeWidth={2.2} />
+                                  </button>
+                                </div>
+                              )}
+
                               {/* Text Info */}
                               <div className="min-w-0 flex-1 pr-1">
                                 <p className="text-[12.5px] font-semibold text-[var(--text-primary)] leading-tight truncate">
@@ -515,11 +585,32 @@ export function CustomizeStatisticsModal({
                                 </p>
                               </div>
 
-                              {/* Toggle Switch */}
+                              {/* Optional Size Pill + Toggle Switch */}
                               <div
-                                className="shrink-0 ml-2"
+                                className="shrink-0 flex items-center gap-2 ml-1"
                                 onClick={(event) => event.stopPropagation()}
                               >
+                                {onCycleSize &&
+                                  widget.supportedSizes &&
+                                  widget.supportedSizes.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        triggerHaptic("light");
+                                        onCycleSize(widget.id);
+                                      }}
+                                      className="h-6 px-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95"
+                                      style={{
+                                        background: isDark
+                                          ? "rgba(255,255,255,0.06)"
+                                          : "rgba(0,0,0,0.04)",
+                                        border: controlBorder,
+                                        color: "var(--text-secondary)",
+                                      }}
+                                    >
+                                      {widget.size === "half" ? "1/2" : "100%"}
+                                    </button>
+                                  )}
                                 <ToggleSwitch
                                   checked={isEnabled}
                                   onChange={() => {

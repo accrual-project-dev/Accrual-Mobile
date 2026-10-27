@@ -11,7 +11,7 @@
 // - Rule 7: Zero vibrant rainbow utility classes in UI controls
 // ======================================================================
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { GlassConfirmationModal } from "../ui/GlassConfirmationModal";
 import {
@@ -50,7 +50,7 @@ import {
 import { formatLiveAmountInput } from "../../lib/utils";
 import { format } from "date-fns";
 
-function parseCleanAmount(str: string, isIndo: boolean): number {
+function parseRawCleanAmount(str: string, isIndo: boolean): number {
   if (!str) return 0;
   const thousandSep = isIndo ? "." : ",";
   const decimalSep = isIndo ? "," : ".";
@@ -142,7 +142,16 @@ export function DebtReceivablesSheet({
   const { showToast } = useToast();
   const { data: wallets = [] } = useWallets();
 
-  const { formatWithPreferred, currencyMeta } = useCurrency();
+  const {
+    preferredCurrency,
+    formatWithPreferred,
+    currencyMeta,
+    convertToIdr,
+    convertFromIdr,
+  } = useCurrency();
+  const isSubmittingRef = useRef(false);
+  const parseCleanAmount = (str: string, isIndo: boolean) =>
+    parseRawCleanAmount(str, isIndo && currencyMeta.decimals === 0);
 
   const {
     records,
@@ -240,6 +249,7 @@ export function DebtReceivablesSheet({
   };
 
   const handleSaveNewRecord = async () => {
+    if (isSubmittingRef.current) return;
     const rawAmt = parseCleanAmount(formAmountStr, isIndonesian);
     if (!formPersonName.trim()) {
       showToast(
@@ -260,13 +270,15 @@ export function DebtReceivablesSheet({
       return;
     }
 
+    const idrAmount = Math.round(convertToIdr(rawAmt, preferredCurrency));
     const matchedWallet = wallets.find((w) => w.id === formWalletId);
+    isSubmittingRef.current = true;
 
     try {
       await createRecord({
         type: formType,
         personName: formPersonName.trim(),
-        totalAmount: rawAmt,
+        totalAmount: idrAmount,
         walletId: formWalletId || null,
         walletName: matchedWallet?.name || null,
         isAdministrativeOnly: formIsAdminOnly,
@@ -291,15 +303,23 @@ export function DebtReceivablesSheet({
         isIndonesian ? "Gagal menyimpan catatan" : "Failed to save record",
         "info",
       );
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
   const handleOpenRepayModal = (record: DebtReceivableRecord) => {
     triggerHaptic("light");
     setRepayingRecord(record);
+    const displayRemaining =
+      preferredCurrency === "IDR"
+        ? Math.round(record.remainingAmount)
+        : Math.round(
+            convertFromIdr(record.remainingAmount, preferredCurrency) * 100,
+          ) / 100;
     const formattedRemaining = formatLiveAmountInput(
-      record.remainingAmount.toString(),
-      isIndonesian,
+      displayRemaining.toString(),
+      isIndonesian && currencyMeta.decimals === 0,
       currencyMeta.decimals > 0,
       currencyMeta.decimals,
     ).display;
@@ -311,7 +331,7 @@ export function DebtReceivablesSheet({
   };
 
   const handleConfirmRepayment = async () => {
-    if (!repayingRecord) return;
+    if (!repayingRecord || isSubmittingRef.current) return;
     const rawAmt = parseCleanAmount(repayAmountStr, isIndonesian);
     if (rawAmt <= 0) {
       showToast(
@@ -321,11 +341,13 @@ export function DebtReceivablesSheet({
       return;
     }
 
+    const idrAmount = Math.round(convertToIdr(rawAmt, preferredCurrency));
     const matchedWallet = wallets.find((w) => w.id === repayWalletId);
+    isSubmittingRef.current = true;
 
     try {
       await recordRepayment(repayingRecord.id, {
-        amount: rawAmt,
+        amount: idrAmount,
         date: repayDate,
         walletId: repayWalletId || null,
         walletName: matchedWallet?.name || null,
@@ -346,6 +368,8 @@ export function DebtReceivablesSheet({
         isIndonesian ? "Gagal mencatat pembayaran" : "Failed to record payment",
         "info",
       );
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -355,9 +379,15 @@ export function DebtReceivablesSheet({
     setEditPersonName(record.personName);
     setEditDueDate(record.dueDate || "");
     setEditNote(record.note || "");
+    const displayTotal =
+      preferredCurrency === "IDR"
+        ? Math.round(record.totalAmount)
+        : Math.round(
+            convertFromIdr(record.totalAmount, preferredCurrency) * 100,
+          ) / 100;
     const formattedTotal = formatLiveAmountInput(
-      record.totalAmount.toString(),
-      isIndonesian,
+      displayTotal.toString(),
+      isIndonesian && currencyMeta.decimals === 0,
       currencyMeta.decimals > 0,
       currencyMeta.decimals,
     ).display;
@@ -365,7 +395,7 @@ export function DebtReceivablesSheet({
   };
 
   const handleSaveEditRecord = () => {
-    if (!editingRecord) return;
+    if (!editingRecord || isSubmittingRef.current) return;
     const trimmedName = editPersonName.trim();
     if (!trimmedName) {
       showToast(
@@ -384,11 +414,12 @@ export function DebtReceivablesSheet({
       );
       return;
     }
+    const idrAmount = Math.round(convertToIdr(rawAmt, preferredCurrency));
     const totalRepaid = editingRecord.repayments.reduce(
       (acc, r) => acc + (Number(r.amount) || 0),
       0,
     );
-    if (rawAmt < totalRepaid) {
+    if (idrAmount < totalRepaid) {
       showToast(
         isIndonesian
           ? `Nominal tidak boleh kurang dari total cicilan (${formatWithPreferred(totalRepaid)})`
@@ -398,12 +429,13 @@ export function DebtReceivablesSheet({
       return;
     }
 
+    isSubmittingRef.current = true;
     try {
       updateRecord(editingRecord.id, {
         personName: trimmedName,
         dueDate: editDueDate || null,
         note: editNote || null,
-        totalAmount: rawAmt,
+        totalAmount: idrAmount,
       });
 
       triggerSuccessHaptic();
@@ -419,6 +451,8 @@ export function DebtReceivablesSheet({
         isIndonesian ? "Gagal menyimpan perubahan" : "Failed to save changes",
         "info",
       );
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -880,7 +914,7 @@ export function DebtReceivablesSheet({
                   onChange={(e) => {
                     const { display } = formatLiveAmountInput(
                       e.target.value,
-                      isIndonesian,
+                      isIndonesian && currencyMeta.decimals === 0,
                       currencyMeta.decimals > 0,
                       currencyMeta.decimals,
                     );
@@ -1069,9 +1103,18 @@ export function DebtReceivablesSheet({
               <button
                 type="button"
                 onClick={() => {
+                  const displayRem =
+                    preferredCurrency === "IDR"
+                      ? Math.round(repayingRecord.remainingAmount)
+                      : Math.round(
+                          convertFromIdr(
+                            repayingRecord.remainingAmount,
+                            preferredCurrency,
+                          ) * 100,
+                        ) / 100;
                   const fullFormatted = formatLiveAmountInput(
-                    repayingRecord.remainingAmount.toString(),
-                    isIndonesian,
+                    displayRem.toString(),
+                    isIndonesian && currencyMeta.decimals === 0,
                     currencyMeta.decimals > 0,
                     currencyMeta.decimals,
                   ).display;
@@ -1091,10 +1134,16 @@ export function DebtReceivablesSheet({
               <button
                 type="button"
                 onClick={() => {
-                  const half = Math.floor(repayingRecord.remainingAmount / 2);
+                  const halfIdr = repayingRecord.remainingAmount / 2;
+                  const displayHalf =
+                    preferredCurrency === "IDR"
+                      ? Math.floor(halfIdr)
+                      : Math.round(
+                          convertFromIdr(halfIdr, preferredCurrency) * 100,
+                        ) / 100;
                   const halfFormatted = formatLiveAmountInput(
-                    half.toString(),
-                    isIndonesian,
+                    displayHalf.toString(),
+                    isIndonesian && currencyMeta.decimals === 0,
                     currencyMeta.decimals > 0,
                     currencyMeta.decimals,
                   ).display;
@@ -1137,7 +1186,7 @@ export function DebtReceivablesSheet({
                   onChange={(e) => {
                     const { display } = formatLiveAmountInput(
                       e.target.value,
-                      isIndonesian,
+                      isIndonesian && currencyMeta.decimals === 0,
                       currencyMeta.decimals > 0,
                       currencyMeta.decimals,
                     );
@@ -1377,7 +1426,7 @@ export function DebtReceivablesSheet({
                   onChange={(e) => {
                     const { display } = formatLiveAmountInput(
                       e.target.value,
-                      isIndonesian,
+                      isIndonesian && currencyMeta.decimals === 0,
                       currencyMeta.decimals > 0,
                       currencyMeta.decimals,
                     );

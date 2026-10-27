@@ -43,6 +43,7 @@ import {
   calculatePersonalBaselines,
   calculateDynamicGoalMilestones,
   isCorrectionTx,
+  isOpeningBalanceTx,
 } from "../lib/financialMath";
 import type { WidgetSize } from "../lib/widgetLayoutTypes";
 import type { ParsedStatementItem } from "../lib/statementParser";
@@ -295,8 +296,8 @@ export function HomePage({
       (t: any) =>
         !t.wallet_id ||
         liquidAccountIds.has(t.wallet_id) ||
-        (t.destination_wallet_id &&
-          liquidAccountIds.has(t.destination_wallet_id)),
+        ((t.to_wallet_id || t.destination_wallet_id) &&
+          liquidAccountIds.has(t.to_wallet_id || t.destination_wallet_id)),
     );
     return calculateAssetTrend(liquidTxs, liquidAssets, stockRange);
   }, [allTxs, liquidAssets, liquidAccounts, stockRange]);
@@ -357,7 +358,13 @@ export function HomePage({
     >();
 
     allTxs.forEach((t) => {
-      if (!t.occurred_on || !t.occurred_on.startsWith(currentMonthKey)) return;
+      if (
+        !t.occurred_on ||
+        !t.occurred_on.startsWith(currentMonthKey) ||
+        isCorrectionTx(t) ||
+        isOpeningBalanceTx(t)
+      )
+        return;
       const amt = Number(t.amount || 0);
       const resCat = resolveTransactionCategory(t, categories);
       const catName = resCat.name;
@@ -439,8 +446,8 @@ export function HomePage({
   const monthlyStats = useMemo(() => {
     const map = new Map<string, { income: number; expense: number }>();
     allTxs.forEach((tx) => {
-      const dStr = tx.occurred_on;
-      if (!dStr) return;
+      if (!tx.occurred_on || isCorrectionTx(tx) || isOpeningBalanceTx(tx)) return;
+      const dStr = tx.occurred_on.slice(0, 10);
       const existing = map.get(dStr) || { income: 0, expense: 0 };
       if (tx.type === "income") existing.income += Number(tx.amount || 0);
       else if (tx.type === "expense")
@@ -463,7 +470,10 @@ export function HomePage({
       const dStr = format(d, "yyyy-MM-dd");
       const dayTxs = allTxs.filter(
         (t) =>
-          t.occurred_on === dStr && t.type === "expense" && !isCorrectionTx(t),
+          (t.occurred_on || "").slice(0, 10) === dStr &&
+          t.type === "expense" &&
+          !isCorrectionTx(t) &&
+          !isOpeningBalanceTx(t),
       );
       const amount = dayTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
       return {
@@ -671,7 +681,7 @@ export function HomePage({
   const selectedDayTxs = useMemo(() => {
     if (!selectedDate) return [];
     const dStr = format(selectedDate, "yyyy-MM-dd");
-    return allTxs.filter((t) => t.occurred_on === dStr);
+    return allTxs.filter((t) => (t.occurred_on || "").slice(0, 10) === dStr);
   }, [selectedDate, allTxs]);
 
   const [customDisplayName, setCustomDisplayName] = useState<string | null>(

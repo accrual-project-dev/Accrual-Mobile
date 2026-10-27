@@ -726,7 +726,7 @@ export function WalletManagementSheets({
         }}
         zIndex={zIndex ? zIndex + 2 : undefined}
       >
-        <div className="p-5 pb-10 space-y-4">
+        <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),32px)] space-y-4">
           <div className="flex items-center gap-3 mb-1">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -913,7 +913,7 @@ export function WalletManagementSheets({
         onClose={handleCloseEditWallet}
         zIndex={zIndex ? zIndex + 2 : 1001}
       >
-        <div className="p-5 pb-12 space-y-4">
+        <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),32px)] space-y-4">
           <div className="flex items-center justify-between">
             <h3
               className="font-semibold text-lg"
@@ -1150,7 +1150,7 @@ export function WalletManagementSheets({
         onClose={() => setAddWalletOpen(false)}
         zIndex={zIndex ? zIndex + 2 : undefined}
       >
-        <div className="p-5 pb-12 space-y-4">
+        <div className="p-5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),32px)] space-y-4">
           <div className="flex items-center justify-between">
             <h3
               className="font-semibold text-lg"

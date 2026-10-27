@@ -12,7 +12,6 @@
 
 import { useMemo } from "react";
 import { Sparkles } from "lucide-react";
-import { formatCurrency } from "../../lib/utils";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -43,7 +42,8 @@ export function WealthTacticalInsightsDeck({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { user } = useAuth();
-  const { preferredCurrency } = useCurrency();
+  const { preferredCurrency, formatWithPreferred } = useCurrency();
+  const formatCurrency = (val: number, _curr?: string) => formatWithPreferred(val);
 
   // 1. USDT & Recorded Wallet Balances
   const usdtPref = getSavedUsdtPref(user?.id);

@@ -166,6 +166,7 @@ export function PortfolioHoldingsDeck({
     }
 
     for (const h of holdings) {
+      if (Number(h.units || 0) <= 0) continue;
       const isUsdtItem =
         h.symbol?.toUpperCase() === "USDT" || h.id.startsWith("usdt-");
       const val = calculateHoldingValuation(h);

@@ -850,11 +850,11 @@ export function SettingsPage({
   );
   const showValuation = matches(
     "Asset Valuation",
-    "crypto stock usdt holdings investment",
+    "crypto stock usdt holdings investment aset portofolio valuasi saham kripto emas",
   );
   const showCurrency = matches(
     "Base Currency",
-    "rates exchange valuation usd idr forex",
+    "rates exchange valuation usd idr forex mata uang kurs",
   );
   const showLanguage = matches(
     "App Language",
@@ -874,15 +874,15 @@ export function SettingsPage({
   // Section 2: Preferences
   const showTheme = matches(
     "Light Appearance",
-    "dark light obsidian theme appearance color",
+    "dark light obsidian theme appearance color tampilan terang gelap mode",
   );
   const showKeypad = matches(
     "Liquid Numeric Keypad",
-    "keypad keyboard input calculator custom number pad",
+    "keypad keyboard input calculator custom number pad angka kalkulator papan ketik",
   );
   const showTags = matches(
     "Transaction Tags (#)",
-    "tags hashtag work reimburse personal",
+    "tags hashtag work reimburse personal label tanda tagar",
   );
   const showReceivableInLiquid = matches(
     "Include Receivables in Liquid Cash",
@@ -897,22 +897,22 @@ export function SettingsPage({
   // Section 3: Automations & Shortcuts
   const showAutomations = matches(
     "Apple Shortcuts & Automations",
-    "ios accessibility double tap shortcut back tap siri dynamic island glass action button quick presets 1-tap apple pay pintasan otomatisasi",
+    "ios accessibility double tap shortcut back tap siri dynamic island glass action button quick presets 1-tap apple pay pintasan otomatisasi tur panduan",
   );
   const hasAutomations = showAutomations;
 
   // Section 4: Notifications
   const showDailyReminder = matches(
     "Daily Streak Reminder",
-    "streak 20:00 night notification alert",
+    "streak 20:00 night notification alert pengingat harian notifikasi malam",
   );
   const showBillReminders = matches(
     "Bill Due Alerts",
-    "bill reminders scheduled commit due",
+    "bill reminders scheduled commit due pengingat jatuh tempo tagihan",
   );
   const showWeeklyDigest = matches(
     "Weekly Financial Digest",
-    "rekap mingguan digest sunday performa",
+    "rekap mingguan digest sunday performa ringkasan",
   );
   const showBudgetAlerts = matches(
     "Budget Threshold Alerts",
@@ -920,7 +920,7 @@ export function SettingsPage({
   );
   const showMonthEndReview = matches(
     "Month-End Wealth Review",
-    "evaluasi akhir bulan neraca arus kas",
+    "evaluasi akhir bulan neraca arus kas tinjauan",
   );
   const hasNotifications =
     showDailyReminder ||
@@ -932,7 +932,7 @@ export function SettingsPage({
   // Section 5: Security & Privacy
   const showPrivacyShield = matches(
     "Privacy Shield",
-    "mask hide numbers balance monetary figures",
+    "mask hide numbers balance monetary figures perisai privasi sembunyikan saldo sensor",
   );
   const showPinLock = matches(
     "Kunci PIN Keamanan Security PIN Lock",
@@ -970,11 +970,11 @@ export function SettingsPage({
   // Section 6: Data & Vault
   const showCloudSync = matches(
     "Cloud Sync",
-    "backup database synchronization live",
+    "backup database synchronization live sinkronisasi awan cadangan",
   );
   const showWebDashboard = matches(
     "Web Dashboard",
-    "link web scan qr desktop laptop browser workstation tautkan",
+    "link web scan qr desktop laptop browser workstation tautkan dasbor",
   );
   const showExportVault = matches(
     "Report Export & Data Vault",
@@ -1886,6 +1886,7 @@ export function SettingsPage({
                 triggerHaptic("medium");
                 try {
                   localStorage.setItem("trouvaille_tour_pending", "true");
+                  localStorage.setItem("trouvaille_force_onboarding", "true");
                 } catch {}
                 if (onStartTour) {
                   onStartTour();

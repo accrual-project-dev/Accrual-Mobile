@@ -108,10 +108,14 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     if (valid) {
       setIsLocked(false);
       updateLastActiveTimestamp();
+      setSecuritySettingsState(getSecuritySettings());
       triggerHaptic("medium");
       return true;
     }
-    triggerHaptic("heavy");
+    const maxLen = getSecuritySettings().pinLength || 6;
+    if (pin.length >= maxLen) {
+      triggerHaptic("heavy");
+    }
     return false;
   }, []);
 
@@ -142,7 +146,7 @@ export function SecurityLockProvider({ children }: { children: ReactNode }) {
     async (pin: string): Promise<boolean> => {
       const success = await setSecurityPin(pin);
       if (success) {
-        updateSettings({ hasPin: true });
+        updateSettings({ hasPin: true, pinLength: pin.length });
         triggerSuccessHaptic();
       }
       return success;

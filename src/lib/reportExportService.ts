@@ -2,9 +2,10 @@ import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, su
 import { id as idLocale } from "date-fns/locale";
 import { jsPDF } from "jspdf";
 import { Capacitor } from "@capacitor/core";
-import type { Transaction, Wallet, Category } from "./types";
+import type { Transaction, Wallet, Category, InvestmentHolding } from "./types";
 import { formatRupiah } from "./utils";
 import { generateFinancialReportPackage } from "./financialAccounting";
+import { isCorrectionTx, isOpeningBalanceTx, calculateWalletBalances } from "./financialMath";
 
 export type ReportDateRange =
   | "this_month"
@@ -25,6 +26,7 @@ export interface ReportFilterOptions {
   transactionType?: ReportTransactionType;
   formatCurrency?: (val: number) => string;
   preferredCurrency?: string;
+  holdings?: InvestmentHolding[];
 }
 
 export function resolveCurrencyFormatter(options?: ReportFilterOptions): (val: number) => string {
@@ -203,20 +205,25 @@ export function calculateReportSummary(
   filteredTxs.forEach((tx) => {
     const amt = tx.amount || 0;
     const catName = tx.categories?.name || (tx.type === "transfer" ? "Transfer" : "General");
+    const isSynthetic = isOpeningBalanceTx(tx) || isCorrectionTx(tx);
 
     if (tx.type === "income") {
-      totalIncome += amt;
+      if (!isSynthetic) {
+        totalIncome += amt;
+      }
       if (tx.wallet_id) {
         const cur = walletMap.get(tx.wallet_id) || { inflow: 0, outflow: 0 };
         cur.inflow += amt;
         walletMap.set(tx.wallet_id, cur);
       }
     } else if (tx.type === "expense") {
-      totalExpense += amt;
-      const curCat = categoryMap.get(catName) || { amount: 0, count: 0 };
-      curCat.amount += amt;
-      curCat.count += 1;
-      categoryMap.set(catName, curCat);
+      if (!isSynthetic) {
+        totalExpense += amt;
+        const curCat = categoryMap.get(catName) || { amount: 0, count: 0 };
+        curCat.amount += amt;
+        curCat.count += 1;
+        categoryMap.set(catName, curCat);
+      }
 
       if (tx.wallet_id) {
         const cur = walletMap.get(tx.wallet_id) || { inflow: 0, outflow: 0 };
@@ -413,7 +420,9 @@ export function generateJsonVaultContent(
   wallets: Wallet[],
   categories: Category[],
   summary: ReportSummary,
+  allTransactions?: Transaction[],
 ): string {
+  const walletBalances = calculateWalletBalances(allTransactions || transactions, wallets);
   const vault = {
     trouvaille_vault_version: "2.0",
     generated_at: new Date().toISOString(),
@@ -433,7 +442,7 @@ export function generateJsonVaultContent(
     accounts: wallets.map((w) => ({
       id: w.id,
       name: w.name,
-      balance: w.balance || 0,
+      balance: walletBalances.balancesById[w.id] ?? w.balance ?? 0,
     })),
     categories: categories.map((c) => ({
       id: c.id,
@@ -1113,6 +1122,7 @@ export function generateLuxuryPdf(
     periodLabel: summary.periodLabel,
     endDate: endDateStr,
     allTransactions: effectiveAllTxs,
+    holdings: options?.holdings,
   });
   const { balanceSheet, cashFlow, calk } = reportPkg;
 

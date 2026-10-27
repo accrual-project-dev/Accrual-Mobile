@@ -2327,9 +2327,7 @@ export function AppleShortcutsGuideModal({
                   </div>
                 </div>
               </div>
-            </>
-          ) : (
-            <>
+
               {/* --- TAB 6: PINDAI STRUK (RECEIPT SCANNER) --- */}
               {/* STRUK - SLIDE 0: CAMERA VIEWFINDER & LIVE OCR HUD */}
               <div
@@ -2527,7 +2525,9 @@ export function AppleShortcutsGuideModal({
                   </p>
                 </div>
               </div>
-
+            </>
+          ) : (
+            <>
               {/* --- ANDROID SLIDE SCREENS --- */}
               {/* ANDROID - SLIDE 0: HERO BANK NOTIFICATION SHOWCASE */}
               <div
