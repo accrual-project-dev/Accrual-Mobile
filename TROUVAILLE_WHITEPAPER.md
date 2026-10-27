@@ -1,8 +1,8 @@
 # Trouvaille: Private Financial Intelligence & Luxury Architectural System
 ### Comprehensive Technical Paper & System Specification
-**Version:** 3.6.0 · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
+**Version:** 4.0.0 (Release v1.3.19) · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS & Web PWA  
 **Author:** DeepMind Agentic Systems & Trouvaille Core Engineering  
-**Revision Date:** Late September 2026  
+**Revision Date:** Late October 2026  
 
 ---
 
@@ -1354,14 +1354,14 @@ Trouvaille delivers a dedicated **11-Slide Financial Wrapped** engine (`Financia
 
 ---
 
-## 12. Verification, Invariants & Test Coverage (48 Suites, 422 Tests)
+## 12. Verification, Invariants & Test Coverage (117 Suites, 1,205 Tests)
 
-Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **48 test suites (422 tests)** pass unconditionally:
+Trouvaille enforces strict automated testing powered by **Vitest** (`vitest run`). All **117 test suites (1,205 tests)** pass unconditionally:
 
 ```
-Test Files  48 passed (48 total)
-Tests       422 passed (422 total)
-Duration    ~44.9 seconds
+Test Files  117 passed (117 total)
+Tests       1205 passed (1205 total)
+Duration    ~100 seconds
 ```
 
 ### Complete Test Suite Matrix
@@ -1416,7 +1416,13 @@ Duration    ~44.9 seconds
 | 46 | `src/components/onboarding/__tests__/onboardingCurrency.test.ts` | Onboarding initial currency selection and symbol propagation | 3 | PASS |
 | 47 | `tests/merchantMemory.test.ts` | Adaptive merchant memory learning & confidence scoring | 3 | PASS |
 | 48 | `tests/emoneyNfc.test.ts` | Contactless E-Money NFC card presets & transit validation | 3 | PASS |
-| **TOTAL** | **48 Test Suites** | **Complete Codebase Domain Verification** | **422** | **100%** |
+| 49 | `tests/preLaunchAuditRemediation.test.ts` | 14-Point Pre-launch audit verification, PIN length, guest migration, Neraca | 5 | PASS |
+| 50 | `tests/inputSeparatorsAndModalErgonomics.test.ts` | IDR period & USD comma separators, live amount input & 92dvh ergonomics | 32 | PASS |
+| 51 | `tests/assetValuationIntegrity.test.ts` | Unit adjustments, historical asset price curves, legacy USD self-healing | 8 | PASS |
+| 52 | `tests/revenueCatService.test.ts` | StoreKit 2 paywall resilience, mock fallback mode & entitlement resolution | 12 | PASS |
+| 53 | `tests/userIdentityAndSessionTeardown.test.ts` | Multi-tenant session teardown, user tenant purging & guest isolation | 19 | PASS |
+| 54 | `tests/phase4GlassConfirmationAndLocalization.test.ts` | Zero window.confirm, 100% pure EN/ID non-mixed localization | 5 | PASS |
+| **TOTAL** | **117 Test Suites** | **Complete Codebase Domain Verification** | **1,205** | **100%** |
 
 ---
 
@@ -1513,7 +1519,7 @@ d:\Project\Trouvaille\
 │   │   └── TransactionsPage.tsx          # Infinite-scroll virtualized transaction journal
 │   ├── App.tsx                           # Root layout, routing & background sync lifecycles
 │   └── main.tsx                          # Entry point & TanStack Query persister init
-└── tests\                                # 41 Vitest test suites (369 tests passing 100%)
+└── tests\                                # 117 Vitest test suites (1,205 tests passing 100%)
 ```
 
 ---

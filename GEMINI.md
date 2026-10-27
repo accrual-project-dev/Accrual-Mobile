@@ -236,3 +236,60 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Multi-Session Independence**: The web version (`trouvaille-web`) is developed in its own dedicated sessions or by other AI agents. Unsolicited modifications break work-in-progress, produce merge conflicts, and cause confusion across sessions.
 - **Strict Mobile Focus**: Unless the user explicitly issues a command targeting the web repository in that specific prompt, all changes, fixes, and features must remain strictly contained within the mobile codebase (`Trouvaille`).
 - **Never Assume Parity**: Do NOT assume mobile components, sheets, or states can be blindly duplicated to the web without separate planning and explicit confirmation.
+
+---
+
+## 10. Multi-Tenant Session Teardown & Guest-to-Cloud Migration Rule (STRICT)
+
+> [!IMPORTANT]
+> **ZERO GUEST DATA LOSS & ABSOLUTE CROSS-TENANT ISOLATION**
+> When a guest user transitions to the login page to authenticate or create an account, their offline guest data must NEVER be prematurely wiped. Conversely, on authenticated logout, user tenant keys must be purged completely.
+
+### Session Guidelines:
+- **Preserve Guest Migration Data**: When exiting guest mode to navigate to `LoginPage`, set `trouvaille_pending_guest_migration: "true"`. The function `clearPreviousSessionData({ preserveGuestMigrationData: true })` must preserve guest transactions, guest wallets, and guest holdings so the `GuestDataMigrationModal` can present the transfer prompt upon successful sign-in.
+- **Tear Down on Clean Logout**: On explicit logout, wipe all user-scoped keys (`trouvaille_usdt_*`, `trouvaille_holdings_*`, `trouvaille_market_quotes_*`, `trouvaille_transactions_*`, `trouvaille_wallets_*`).
+- **Complete Discard on User Request**: When the user explicitly declines guest migration via `discardGuestData()`, purge `TX_BACKUP_STORAGE_KEY`, `WALLETS_BACKUP_STORAGE_KEY` (`TROUVAILLE_WALLETS_BACKUP_V1`), guest preferences, and pending guest mutations so zero phantom records survive.
+
+---
+
+## 11. Transaction Timestamps, Ledger Reconciliation & Math Invariants (STRICT)
+
+> [!IMPORTANT]
+> **FULL ISO TIMESTAMPS & DOUBLE-ENTRY LEDGER RECONCILIATION**
+> Every transaction record must adhere to strict mathematical and ledger invariants.
+
+### Ledger & Math Guidelines:
+- **Full ISO Timestamps**: `occurred_on` must NEVER be date-only `YYYY-MM-DD`. It MUST always be a full ISO timestamp `YYYY-MM-DDTHH:mm:ss`. Kueri filter tanggal harus menggunakan normalisasi `(t.occurred_on || "").slice(0, 10)` atau batas atas `${endStr}T23:59:59.999Z` agar transaksi di akhir hari/bulan selalu terhitung.
+- **Pure Operational Cashflow Filtering**: Transaksi buatan Saldo Awal (`isOpeningBalanceTx`) dan Penyesuaian Saldo (`isCorrectionTx` mencakup `"correction"`, `"koreksi saldo"`, `"penyesuaian saldo"`, `"balance adjustment"`) dilarang keras merusak arus kas operasional harian, landasan runway kalender, atau rata-rata belanja bulanan.
+- **Asset Buy/Sell Double-Entry Ledger**:
+  - Penambahan aset (Beli) atau likuidasi parsial/penuh (Jual) pada `AssetDetailSheet` dan `AssetValuationSheet` wajib menyediakan opsi pemilihan dompet sumber/tujuan dan kategori transaksi.
+  - Transaksi mutasi kas yang dihasilkan wajib dicatat via `useAddTransaction` dan langsung ditandai ke `markTransactionReconciled` agar saldo dompet terpotong/bertambah secara akurat tanpa terhitung ganda oleh `holdingSyncEngine`.
+- **Transfer Sanity Guard**: Dompet sumber dan dompet tujuan transfer dilarang keras sama (`walletId !== toWalletId`). Validasi harus memblokir penyimpanan dan menampilkan notifikasi kesalahan.
+- **Number Parsing Across Locales**: Gunakan `parseCleanNumber` untuk membedakan pemisah ribuan titik pada IDR (`100.000`) dan koma pada USD (`79,839.00`). Hindari `parseFloat` mentah pada string yang telah diformat.
+
+---
+
+## 12. Biometric PIN Security & Variable Digit Length (STRICT)
+
+> [!IMPORTANT]
+> **DYNAMIC PIN LENGTH (4, 5, 6 DIGITS) WITH ZERO FALSE LOCKOUTS**
+> Sistem keamanan PIN harus menghormati panjang PIN tersimpan tanpa menghukum masukan digit yang belum lengkap.
+
+### PIN Security Guidelines:
+- **Stored `pinLength`**: Saat PIN dibuat atau diubah via `setSecurityPin`, simpan `pinLength` (`4 | 5 | 6`) di dalam pengaturan keamanan.
+- **No False Failed Attempts**: `verifySecurityPin` tidak boleh menambah hitungan kegagalan (`attempts`) atau memicu lockout selama jumlah digit masukan pengguna belum mencapai `pinLength` yang sebenarnya.
+- **Graceful Lockout**: Lockout hanya aktif setelah 5 kali kesalahan input PIN lengkap, dengan timer hitung mundur yang jelas dan sinkron ke seluruh sesi.
+
+---
+
+## 13. Subscription Resilience & StoreKit 2 Reconciliation (STRICT)
+
+> [!IMPORTANT]
+> **NO STALE CLOSURES ON RESTORE & LIFETIME ENTITLEMENT RECOGNITION**
+> Penanganan status langganan RevenueCat / StoreKit 2 harus bebas dari stale closure dan secara akurat mengenali paket seumur hidup (Lifetime).
+
+### Subscription Guidelines:
+- **Instant Boolean Return on Restore**: `restorePurchases` di dalam `SubscriptionContext` harus mengembalikan boolean langsung dari hasil sinkronisasi cloud (`syncCloudSubscription()`), bukan membaca state React yang belum diperbarui.
+- **Active Entitlement Resolution**: `extractEntitlementStatus` wajib memprioritaskan entitlement `accrual_pro` sebelum fallback ke kunci entitlement aktif lainnya.
+- **Lifetime Package Handling**: Paket seumur hidup (`accrual_lifetime_499k` / `is_lifetime === true`) wajib memiliki `currentPeriodEnd: null` dan `isLifetime: true` tanpa menampilkan tanggal kedaluwarsa semu.
+- **Session Purge Sync**: Saat event `trouvaille:session-cleared` dipancarkan pada saat logout, state langganan lokal harus segera dibersihkan ke status gratis (`isPro: false`).

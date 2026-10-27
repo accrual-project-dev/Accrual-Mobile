@@ -63,3 +63,23 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+# Accrual (formerly Trouvaille) Invariants & Rulebook Linkage
+
+For the complete, non-negotiable architectural and operational rulebook, always adhere strictly to:
+- **[GEMINI.md](file:///d:/Project/Trouvaille/GEMINI.md)**
+- **[TROUVAILLE_RULES.md](file:///d:/Project/Trouvaille/TROUVAILLE_RULES.md)**
+- **[TROUVAILLE_WHITEPAPER.md](file:///d:/Project/Trouvaille/TROUVAILLE_WHITEPAPER.md)**
+
+### Non-Negotiable Core Principles:
+1. **Rule 1**: Zero native colored system emojis in UI controls (`lucide-react` vector icons only).
+2. **Rule 2 & 7**: Strictly Monochrome Apple Luxury glassmorphism (`#09090c` obsidian / `#f4f4f7` alabaster); zero rainbow utility classes.
+3. **Rule 3**: Dynamic Island top safe-area insets (`max(calc(env(safe-area-inset-top, 0px) + 18px), 28px)`).
+4. **Rule 5**: Single unified scroll container in `BottomSheet` up to `92dvh`, zero artificial `max-h-[55vh]`, and generous bottom safe-area insets (`max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px)`).
+5. **Rule 6**: Strict 100% pure localization ("No Gado-Gado" mixing).
+6. **Rule 8.3**: Exhaustive balance sheet (Neraca) export without truncation or `+account` placeholders.
+7. **Rule 9 & 10**: Absolute isolation from `trouvaille-web` (never modify without explicit user prompt).
+8. **Rule 10 & 11**: Guest-to-cloud migration safeguards (`trouvaille_pending_guest_migration`), full ISO timestamps (`YYYY-MM-DDTHH:mm:ss`), and operational cashflow isolation from artificial opening balances/corrections.
+9. **Rule 12 & 13**: 4/5/6-digit PIN resilience without false lockouts, and StoreKit 2 / RevenueCat entitlement synchronization without stale closures.

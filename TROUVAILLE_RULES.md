@@ -222,3 +222,55 @@
 - **Independent Agent Sessions**: The web workspace (`trouvaille-web`) operates under its own distinct development session, architecture, and agent context. Unsolicited modifications pollute Git staging, create uncoordinated regressions, and break other agent workflows.
 - **Strict Boundary**: All mobile enhancements (including assets, sheets, modals, math helpers, and UI refinements) must remain strictly scoped to `Trouvaille`.
 - **Explicit Instruction Mandate**: Cross-repo synchronization is strictly prohibited unless the user explicitly prompts: *"sinkronkan ke web"* or *"update web"*, followed by user review and verification before applying.
+
+---
+
+## 11. Multi-Tenant Session Teardown & Guest-to-Cloud Migration Safeguards (STRICT)
+
+> [!IMPORTANT]
+> **ZERO GUEST DATA LOSS & UNCOMPROMISING CROSS-TENANT PURGE**  
+> Guest sessions must transition seamlessly into authenticated cloud accounts without premature data loss, while authenticated sessions must purge cleanly on teardown.
+
+### 11.1 Migration Invariants
+- **Preserve Flag on Guest Exit**: When a user transitions from Guest Mode to `LoginPage`, set `trouvaille_pending_guest_migration: "true"`. Calling `clearPreviousSessionData({ preserveGuestMigrationData: true })` must leave guest transactions (`trouvaille_transactions_backup`), guest wallets (`TROUVAILLE_WALLETS_BACKUP_V1`), and guest holdings untouched until `GuestDataMigrationModal` executes.
+- **Full Teardown on Account Logout**: Explicit logout must immediately purge all user-scoped storage keys (`trouvaille_usdt_*`, `trouvaille_holdings_*`, `trouvaille_market_quotes_*`, `trouvaille_transactions_*`, `trouvaille_wallets_*`).
+- **Complete Guest Discard**: Calling `discardGuestData()` must wipe `TX_BACKUP_STORAGE_KEY`, `WALLETS_BACKUP_STORAGE_KEY`, guest preferences, and pending guest mutations so zero orphaned records remain.
+
+---
+
+## 12. Full ISO Timestamps, Ledger Reconciliation & Double-Entry Math Invariants (STRICT)
+
+> [!IMPORTANT]
+> **STRICT TIMESTAMP FORMATTING & DUAL-ENTRY RECONCILIATION**
+
+### 12.1 Timestamp & Cashflow Invariants
+- **Full ISO Timestamp**: `occurred_on` must always adhere to `YYYY-MM-DDTHH:mm:ss`. Date-only filtering must normalize with `(t.occurred_on || "").slice(0, 10)` or end-of-day bounds `${endStr}T23:59:59.999Z`.
+- **Pure Operational Cashflow**: `isOpeningBalanceTx` (Saldo Awal) and `isCorrectionTx` (Koreksi/Penyesuaian Saldo) must be excluded from operational burn rates, calendar runways, and monthly expense metrics.
+- **Asset Buy/Sell Double-Entry**: Buying or liquidating assets in `AssetDetailSheet` or `AssetValuationSheet` must allow selecting the source/destination wallet and category, and must register a cash transaction with `markTransactionReconciled` to guarantee mathematical ledger balance without double-deduction.
+- **Transfer Sanity Invariant**: Source wallet and destination wallet must never be identical (`walletId !== toWalletId`).
+- **Locale-Aware Number Parsing**: Use `parseCleanNumber` for numerical inputs to properly handle IDR period separators (`100.000`) and USD comma separators (`79,839.00`).
+
+---
+
+## 13. Biometric PIN Security & Dynamic Digit Length (STRICT)
+
+> [!IMPORTANT]
+> **SUPPORT 4, 5, AND 6 DIGIT PINs WITHOUT FALSE LOCKOUTS**
+
+### 13.1 Invariants
+- **Dynamic `pinLength`**: Store `pinLength` (`4 | 5 | 6`) in `SecuritySettings` upon PIN creation.
+- **Zero Premature Failed Attempts**: Partial entries (`input.length < pinLength`) must never increment failed attempt counts or trigger false lockout timers.
+- **Lockout Integrity**: Lockouts trigger strictly after 5 consecutive incorrect submissions of the full PIN length, accompanied by a synchronous countdown timer.
+
+---
+
+## 14. Subscription Resilience & StoreKit 2 Recognition (STRICT)
+
+> [!IMPORTANT]
+> **NO STALE CLOSURES ON RESTORE & LIFETIME ENTITLEMENT RECOGNITION**
+
+### 14.1 Invariants
+- **Direct Boolean Return**: `restorePurchases` must return the direct boolean result from `syncCloudSubscription()`, eliminating stale React state reads.
+- **Entitlement Precedence**: `extractEntitlementStatus` prioritizes `accrual_pro` before generic entitlement fallbacks.
+- **Lifetime Package Invariant**: `accrual_lifetime_499k` / `is_lifetime === true` must have `currentPeriodEnd: null` and `isLifetime: true` with zero artificial expiration dates.
+- **Teardown Subscription Reset**: When `trouvaille:session-cleared` fires on logout, reset local subscription state to default free tier (`isPro: false`).
