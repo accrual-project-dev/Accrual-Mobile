@@ -3,46 +3,59 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || "https://iqjcmqkgrfmopznrfikx.supabase.co"
 const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxamNtcWtncmZtb3B6bnJmaWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODA0NzcsImV4cCI6MjEwMjg1NjQ3N30.ujfATs0huUkR9tCNB0Rs8JlqJG3dkz13EKtkr-eFiDg"
 
-// Resilient fetch wrapper with Promise.race safe timeout and auto-retry for spotty WiFi and 4G connections
+// Resilient fetch wrapper with 7s timeout and fast auto-retry for spotty WiFi and mobile connections
 const resilientFetch: typeof fetch = async (input, init) => {
   const maxRetries = 2;
   let lastError: any = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    let isTimedOut = false;
+    const timeoutId = setTimeout(() => {
+      isTimedOut = true;
+      controller.abort();
+    }, 7000);
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        reject(new Error("Koneksi jaringan melebihi batas waktu (timeout). Periksa koneksi internet Anda."));
-      }, 20000);
-    });
+    if (init?.signal) {
+      if (init.signal.aborted) {
+        clearTimeout(timeoutId);
+        controller.abort();
+      } else {
+        init.signal.addEventListener("abort", () => controller.abort(), { once: true });
+      }
+    }
 
     try {
-      const response = await Promise.race([
-        fetch(input, init),
-        timeoutPromise,
-      ]);
+      const response = await fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
       return response;
     } catch (err: any) {
       lastError = err;
       const msg = typeof err?.message === "string" ? err.message.toLowerCase() : "";
       const isTransient =
+        isTimedOut ||
         msg.includes("network connection was lost") ||
         msg.includes("failed to fetch") ||
         msg.includes("load failed") ||
         msg.includes("-1005") ||
         msg.includes("timeout") ||
-        err?.name === "AbortError";
+        (err?.name === "AbortError" && isTimedOut);
 
-      if (isTransient && attempt < maxRetries) {
-        console.warn(`[Supabase:fetch] Transient network issue on attempt ${attempt + 1}/${maxRetries}. Retrying in 800ms...`);
-        await new Promise((resolve) => setTimeout(resolve, 800));
+      if (isTransient && attempt < maxRetries && !init?.signal?.aborted) {
+        const backoffMs = attempt === 0 ? 300 : 600;
+        console.warn(`[Supabase:fetch] Transient network issue on attempt ${attempt + 1}/${maxRetries}. Retrying in ${backoffMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
         continue;
       }
 
+      if (isTimedOut) {
+        throw new Error("Koneksi jaringan melebihi batas waktu (timeout). Periksa koneksi internet Anda.");
+      }
       throw err;
     } finally {
-      if (timer) clearTimeout(timer);
+      clearTimeout(timeoutId);
     }
   }
 

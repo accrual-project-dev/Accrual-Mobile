@@ -72,13 +72,32 @@ function getStoredSupabaseSession(): Session | null {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  // Synchronous session restore from local vault for instant 0ms startup
+  const [session, setSession] = useState<Session | null>(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      const storedIsGuest = localStorage.getItem("trouvaille_guest_mode") === "true";
+      if (storedIsGuest) return null;
+      return getPersistentSession() || getStoredSupabaseSession();
+    } catch {
+      return null;
+    }
+  });
+
   const [isGuest, setIsGuest] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("trouvaille_guest_mode") === "true";
   });
+
+  // Only block initial render if user status is completely undetermined
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const storedIsGuest = localStorage.getItem("trouvaille_guest_mode") === "true";
+    const initialSession = getPersistentSession() || getStoredSupabaseSession();
+    // If we already have a local session OR user is in guest mode, render immediately (0ms)
+    return !storedIsGuest && !initialSession;
+  });
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -320,7 +339,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    initAuth();
+    // Watchdog fallback: Guarantee loading is NEVER stuck longer than 3.0s under any network condition
+    const watchdogTimer = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 3000);
+
+    initAuth().finally(() => {
+      clearTimeout(watchdogTimer);
+    });
 
     const {
       data: { subscription },
