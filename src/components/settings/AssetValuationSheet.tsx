@@ -84,6 +84,7 @@ function formatHoldingPrice(
 }
 
 const getTypeLabel = (type: string, isIndonesian: boolean): string => {
+  if (!type) return isIndonesian ? "Lainnya" : "Other";
   const labels: Record<string, { en: string; id: string }> = {
     all: { en: "All", id: "Semua" },
     fixed_asset: { en: "Fixed Asset", id: "Aset Tetap" },
@@ -94,7 +95,7 @@ const getTypeLabel = (type: string, isIndonesian: boolean): string => {
     bond: { en: "Bonds", id: "Obligasi" },
   };
   const item = labels[type];
-  if (!item) return type.replace("_", " ");
+  if (!item) return (type || "").replace("_", " ");
   return isIndonesian ? item.id : item.en;
 };
 
