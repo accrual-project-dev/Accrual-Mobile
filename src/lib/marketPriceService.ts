@@ -644,6 +644,53 @@ export async function fetchHoldingsFromSupabase(userId: string): Promise<Investm
  * Retrieve saved investment holdings from localStorage scoped to user.
  * Strictly isolated per user / guest session without cross-session leakage.
  */
+/**
+ * Auto-heal holdings that suffered from the 1000x single-comma parsing distortion
+ * where buy price was divided by 1000 (e.g. 79,839 parsed as 79.839).
+ */
+export function sanitizeAndHealHoldings(holdings: InvestmentHolding[]): {
+  healedHoldings: InvestmentHolding[];
+  didHeal: boolean;
+} {
+  let didHeal = false;
+  const healed = holdings.map((h) => {
+    if (h.symbol?.toUpperCase() === "BTC") {
+      const isCorruptedNative =
+        typeof h.native_price === "number" &&
+        h.native_price > 10 &&
+        h.native_price < 250;
+      const isCorruptedBuyPrice =
+        typeof h.avg_buy_price === "number" &&
+        h.avg_buy_price > 100_000 &&
+        h.avg_buy_price < 5_000_000 &&
+        typeof h.current_price === "number" &&
+        h.current_price > 500_000_000;
+
+      if (isCorruptedNative || isCorruptedBuyPrice) {
+        didHeal = true;
+        const healedNative = isCorruptedNative
+          ? Math.round((h.native_price as number) * 1000 * 100) / 100
+          : h.native_price;
+        const healedBuy = isCorruptedBuyPrice
+          ? Math.round((h.avg_buy_price || 0) * 1000)
+          : h.avg_buy_price;
+        return {
+          ...h,
+          native_price: healedNative,
+          avg_buy_price: healedBuy,
+        };
+      }
+    }
+    return h;
+  });
+
+  return { healedHoldings: healed, didHeal };
+}
+
+/**
+ * Retrieve saved investment holdings from localStorage.
+ * Strictly isolated per user / guest session without cross-session leakage.
+ */
 export function getSavedHoldings(userId?: string): InvestmentHolding[] {
   try {
     const key = getHoldingsStorageKey(userId);
@@ -651,7 +698,16 @@ export function getSavedHoldings(userId?: string): InvestmentHolding[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const { healedHoldings, didHeal } = sanitizeAndHealHoldings(parsed);
+        if (didHeal) {
+          safeSetItem(key, JSON.stringify(healedHoldings));
+          if (userId && userId !== "guest_local_user") {
+            for (const h of healedHoldings) {
+              syncHoldingToSupabase(h, userId).catch(() => {});
+            }
+          }
+        }
+        return healedHoldings;
       }
     }
     return [];
@@ -1464,11 +1520,14 @@ export function calculateHoldingValuation(holding: InvestmentHolding): HoldingVa
       ? holding.custom_price
       : Number(holding.current_price || buyPrice);
 
-  // Self-healing legacy fallback: If holding was saved with USD buyPrice but IDR currentPrice (ratio > 500x)
+  // Self-healing legacy fallback ONLY for un-converted raw USD prices (where avg_buy_price is literally < $10,000 and has no native_price):
+  // If holding already has native_price or avg_buy_price is in IDR range (> 50,000), it is ALREADY in IDR.
   if (
+    !holding.native_price &&
     (holding.currency === "USD" || holding.native_currency === "USD") &&
     buyPrice > 0 &&
-    currentPrice > buyPrice * 500
+    buyPrice < 10000 &&
+    currentPrice > 1000000
   ) {
     buyPrice = Math.round(buyPrice * USD_IDR_ESTIMATE);
   }

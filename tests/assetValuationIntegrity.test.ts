@@ -28,12 +28,15 @@ import {
   getSavedHoldings,
   getSavedUsdtPref,
   saveUsdtPref,
+  calculateHoldingValuation,
+  sanitizeAndHealHoldings,
 } from "../src/lib/marketPriceService";
 import {
   estimateHistoricalAssetPrice,
   estimateHistoricalUsdtBuyRate,
 } from "../src/lib/holdingSyncEngine";
 import type { InvestmentHolding, Wallet } from "../src/lib/types";
+import { parseCleanNumber } from "../src/components/assets/AddAssetModal";
 
 describe("Asset Valuation & Unit Adjustment Integrity Suite", () => {
   beforeEach(() => {
@@ -197,5 +200,71 @@ describe("Asset Valuation & Unit Adjustment Integrity Suite", () => {
 
     const isInvestment = "asset_type" in investmentItem;
     expect(isInvestment).toBe(true);
+  });
+
+  it("calculates holding valuation for 0.1 BTC accurately without false 16,300x secondary inflation", () => {
+    const btcHolding: InvestmentHolding = {
+      id: "h-btc-test",
+      symbol: "BTC",
+      name: "Bitcoin",
+      asset_type: "crypto",
+      units: 0.1,
+      avg_buy_price: 1_448_056_000, // Rp 1.448 Miliar (from $79,839 * rate)
+      current_price: 1_446_443_160, // Rp 1.446 Miliar
+      currency: "USD",
+      native_currency: "USD",
+      native_price: 79839,
+    };
+
+    const val = calculateHoldingValuation(btcHolding);
+    expect(val.costBasis).toBe(144_805_600); // 0.1 * 1.448B = 144.8M
+    expect(val.marketValue).toBe(144_644_316); // 0.1 * 1.446B = 144.6M
+    // Floating P&L should be ~ -161k (-0.11%), NOT -2.2 Miliar (-93.9%)!
+    expect(val.floatingPnL).toBeCloseTo(-161_284, -2);
+    expect(val.floatingPnLPct).toBeCloseTo(-0.11, 1);
+  });
+
+  it("auto-heals 1000x distorted BTC holdings corrupted by legacy comma parsing", () => {
+    const corruptedBtc: InvestmentHolding = {
+      id: "h-btc-corrupted",
+      symbol: "BTC",
+      name: "Bitcoin",
+      asset_type: "crypto",
+      units: 0.1,
+      avg_buy_price: 1_448_056, // Distorted by 1000x
+      current_price: 1_446_443_160,
+      currency: "USD",
+      native_currency: "USD",
+      native_price: 79.839, // Distorted from 79839
+    };
+
+    const { healedHoldings, didHeal } = sanitizeAndHealHoldings([corruptedBtc]);
+    expect(didHeal).toBe(true);
+    expect(healedHoldings[0].native_price).toBe(79839);
+    expect(healedHoldings[0].avg_buy_price).toBe(1_448_056_000);
+
+    // After healing, calculateHoldingValuation produces accurate valuation
+    const val = calculateHoldingValuation(healedHoldings[0]);
+    expect(val.costBasis).toBe(144_805_600);
+    expect(val.marketValue).toBe(144_644_316);
+    expect(val.floatingPnLPct).toBeGreaterThan(-1); // Not -93.9%!
+  });
+
+  it("parses clean numbers accurately across USD comma and IDR dot formats", () => {
+    // US / USD price formatted with thousands comma
+    expect(parseCleanNumber("79,839", true)).toBe(79839);
+    expect(parseCleanNumber("79,839.50", true)).toBe(79839.5);
+    expect(parseCleanNumber("$79,839.00", true)).toBe(79839);
+
+    // Crypto units (fractional)
+    expect(parseCleanNumber("0.1")).toBe(0.1);
+    expect(parseCleanNumber("0,1")).toBe(0.1);
+    expect(parseCleanNumber("0.005")).toBe(0.005);
+    expect(parseCleanNumber("1,5")).toBe(1.5);
+
+    // IDR numbers with dot thousands
+    expect(parseCleanNumber("100.000", false)).toBe(100000);
+    expect(parseCleanNumber("1.448.056", false)).toBe(1448056);
+    expect(parseCleanNumber("1.448.056,00", false)).toBe(1448056);
   });
 });

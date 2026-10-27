@@ -54,8 +54,12 @@ export function ReorderableWidgetGrid({
       if (!isEditMode || !containerRef.current) return;
 
       const now = Date.now();
-      // 220ms cooldown to allow FLIP animation and avoid rapid thrashing
-      if (now - lastSwapTimeRef.current < 220) return;
+      // 350ms cooldown to allow layout FLIP animation to complete cleanly without thrashing
+      if (now - lastSwapTimeRef.current < 350) return;
+
+      // Require deliberate drag past 32px deadzone threshold to avoid twitchy accidental swaps
+      const totalMovement = Math.hypot(info.offset.x, info.offset.y);
+      if (totalMovement < 32) return;
 
       const draggedIndex = renderedItems.findIndex(
         (item) => item.card.id === draggedId,
@@ -68,8 +72,9 @@ export function ReorderableWidgetGrid({
       let bestTargetId: string | null = null;
       let minDistance = Infinity;
 
-      const padX = 14;
-      const padY = 20;
+      // Zero padding so touch point must actually be within the target card boundaries
+      const padX = 0;
+      const padY = 0;
 
       for (let i = 0; i < elements.length; i++) {
         const el = elements[i];

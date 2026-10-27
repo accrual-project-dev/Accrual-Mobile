@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { X } from "lucide-react";
+import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { BottomSheet } from "../ui/BottomSheet";
@@ -96,6 +96,9 @@ export interface HomeModalsContainerProps {
   onCloseCustomizeHome: () => void;
   widgets: any[];
   toggleCardVisibility: (id: string) => void;
+  onMoveCardUp?: (id: string) => void;
+  onMoveCardDown?: (id: string) => void;
+  onCycleCardSize?: (id: string) => void;
   activePresetKey: string;
   setActivePresetKey: (key: any) => void;
   applyPreset: (key: any) => void;
@@ -153,6 +156,9 @@ export function HomeModalsContainer({
   onCloseCustomizeHome,
   widgets,
   toggleCardVisibility,
+  onMoveCardUp,
+  onMoveCardDown,
+  onCycleCardSize,
   activePresetKey,
   setActivePresetKey,
   applyPreset,
@@ -469,7 +475,7 @@ export function HomeModalsContainer({
 
             {/* Grouped Feature Rows for All Dashboard Cards */}
             <div className="space-y-2 flex-1 min-h-0 overflow-y-auto no-scrollbar pr-0.5">
-              {widgets.map((w: any) => {
+              {widgets.map((w: any, index: number) => {
                 const isEnabled = w.isVisible;
                 const locMeta = getLocalizedWidgetMeta(
                   w.id,
@@ -501,24 +507,49 @@ export function HomeModalsContainer({
                       opacity: isEnabled ? 1 : 0.6,
                     }}
                   >
-                    <div className="min-w-0 pr-3 text-left">
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 pr-2 text-left flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <p
                           className="text-[13px] font-semibold leading-snug"
                           style={{ color: "var(--text-primary)" }}
                         >
                           {locMeta.title}
                         </p>
-                        <span
-                          className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md"
-                          style={{
-                            background: "var(--glass-fill)",
-                            color: "var(--text-tertiary)",
-                            border: "1px solid var(--glass-border)",
-                          }}
-                        >
-                          {w.size}
-                        </span>
+                        {w.supportedSizes && w.supportedSizes.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCycleCardSize?.(w.id);
+                            }}
+                            className="text-[8.5px] font-bold uppercase px-1.5 py-0.5 rounded-md transition-all cursor-pointer hover:bg-white/10 active:scale-95 flex items-center"
+                            style={{
+                              background: isDark
+                                ? "rgba(255, 255, 255, 0.08)"
+                                : "rgba(0, 0, 0, 0.06)",
+                              color: "var(--text-secondary)",
+                              border: "1px solid var(--glass-border)",
+                            }}
+                            title={
+                              isIndonesian
+                                ? "Ubah ukuran kartu"
+                                : "Change card size"
+                            }
+                          >
+                            {w.size === "half" ? "1/2" : "Full"}
+                          </button>
+                        ) : (
+                          <span
+                            className="text-[8.5px] font-bold uppercase px-1.5 py-0.5 rounded-md"
+                            style={{
+                              background: "var(--glass-fill)",
+                              color: "var(--text-tertiary)",
+                              border: "1px solid var(--glass-border)",
+                            }}
+                          >
+                            {w.size}
+                          </span>
+                        )}
                       </div>
                       <p
                         className="text-[11px] leading-relaxed mt-0.5"
@@ -527,10 +558,53 @@ export function HomeModalsContainer({
                         {locMeta.subtitle}
                       </p>
                     </div>
+
                     <div
-                      className="shrink-0 ml-3"
+                      className="flex items-center gap-1.5 shrink-0 ml-2"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      {/* Move Up / Down Buttons */}
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => onMoveCardUp?.(w.id)}
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                            index === 0
+                              ? "opacity-20 pointer-events-none"
+                              : "hover:bg-white/10 active:scale-90"
+                          }`}
+                          style={{
+                            background: "var(--glass-fill)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-primary)",
+                          }}
+                          title={isIndonesian ? "Pindah ke atas" : "Move up"}
+                          aria-label={isIndonesian ? "Pindah ke atas" : "Move up"}
+                        >
+                          <ChevronUp size={13} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === widgets.length - 1}
+                          onClick={() => onMoveCardDown?.(w.id)}
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                            index === widgets.length - 1
+                              ? "opacity-20 pointer-events-none"
+                              : "hover:bg-white/10 active:scale-90"
+                          }`}
+                          style={{
+                            background: "var(--glass-fill)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-primary)",
+                          }}
+                          title={isIndonesian ? "Pindah ke bawah" : "Move down"}
+                          aria-label={isIndonesian ? "Pindah ke bawah" : "Move down"}
+                        >
+                          <ChevronDown size={13} strokeWidth={2} />
+                        </button>
+                      </div>
+
                       <ToggleSwitch
                         checked={isEnabled}
                         onChange={() => toggleCardVisibility(w.id)}

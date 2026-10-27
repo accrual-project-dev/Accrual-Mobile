@@ -41,21 +41,34 @@ import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { useCategories } from "../../hooks/useCategories";
 import { useAddTransaction } from "../../hooks/useTransactions";
 
-function parseCleanNumber(val: string): number {
+export function parseCleanNumber(val: string, isUSD: boolean = false): number {
   if (!val) return 0;
-  const s = val.trim();
+  // Strip currency prefixes/suffixes and whitespace (e.g. "$", "Rp", " ")
+  const s = val.replace(/[^0-9.,-]/g, "").trim();
+  if (!s) return 0;
   const lastDot = s.lastIndexOf(".");
   const lastComma = s.lastIndexOf(",");
 
   if (lastDot !== -1 && lastComma !== -1) {
     if (lastComma > lastDot) {
+      // European/Indonesian format: 1.234.567,89 -> 1234567.89
       return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
     } else {
+      // US format: 1,234,567.89 -> 1234567.89
       return parseFloat(s.replace(/,/g, "")) || 0;
     }
   } else if (lastComma !== -1) {
+    if (isUSD) {
+      // In USD or US standard notation, commas are strictly thousand separators
+      return parseFloat(s.replace(/,/g, "")) || 0;
+    }
     const commaCount = (s.match(/,/g) || []).length;
     if (commaCount > 1) {
+      return parseFloat(s.replace(/,/g, "")) || 0;
+    }
+    // Single comma: check if it's thousands separator (e.g. "79,839", "1,000") or decimal (e.g. "0,1", "1,5")
+    const parts = s.split(",");
+    if (parts[1] && parts[1].length === 3 && parts[0] && parts[0] !== "0") {
       return parseFloat(s.replace(/,/g, "")) || 0;
     }
     return parseFloat(s.replace(",", ".")) || 0;
@@ -63,6 +76,13 @@ function parseCleanNumber(val: string): number {
     const dotCount = (s.match(/\./g) || []).length;
     if (dotCount > 1) {
       return parseFloat(s.replace(/\./g, "")) || 0;
+    }
+    // In IDR, single dot followed by exactly 3 digits is standard thousand separator (e.g. "100.000")
+    if (!isUSD) {
+      const parts = s.split(".");
+      if (parts[1] && parts[1].length === 3 && parts[0] && parts[0] !== "0") {
+        return parseFloat(s.replace(/\./g, "")) || 0;
+      }
     }
     return parseFloat(s) || 0;
   }
@@ -324,7 +344,7 @@ export function AddAssetModal({
           setFormCurrentPrice(formatHoldingPrice(numVal, "IDR"));
         }
       } else {
-        const curPriceNum = parseCleanNumber(formCurrentPrice);
+        const curPriceNum = parseCleanNumber(formCurrentPrice, oldCurrency === "USD");
         if (curPriceNum > 0) {
           if (newCurrency === "USD" && oldCurrency === "IDR") {
             const numVal = parseFloat((curPriceNum / rate).toFixed(4));
@@ -337,7 +357,7 @@ export function AddAssetModal({
       }
 
       // 2. Convert buy price proportionally if filled
-      const buyPriceNum = parseCleanNumber(formBuyPrice);
+      const buyPriceNum = parseCleanNumber(formBuyPrice, oldCurrency === "USD");
       if (buyPriceNum > 0) {
         if (newCurrency === "USD" && oldCurrency === "IDR") {
           const numVal = parseFloat((buyPriceNum / rate).toFixed(4));
@@ -585,9 +605,10 @@ export function AddAssetModal({
 
   // Real-time valuation and PnL calculation
   const { totalMarketValue, unrealizedDelta, unrealizedPct } = useMemo(() => {
+    const isUSD = formCurrency === "USD";
     const units = parseCleanNumber(formUnits);
-    const buy = parseCleanNumber(formBuyPrice);
-    const current = parseCleanNumber(formCurrentPrice) || buy;
+    const buy = parseCleanNumber(formBuyPrice, isUSD);
+    const current = parseCleanNumber(formCurrentPrice, isUSD) || buy;
 
     const totalVal = units * current;
     const totalCost = units * buy;
@@ -599,12 +620,13 @@ export function AddAssetModal({
       unrealizedDelta: delta,
       unrealizedPct: pct,
     };
-  }, [formUnits, formBuyPrice, formCurrentPrice]);
+  }, [formUnits, formBuyPrice, formCurrentPrice, formCurrency]);
 
   // Fat-Finger Price Deviation Detection (> 5x or < 0.2x)
   const priceDeviation = useMemo(() => {
-    const rawBuy = parseCleanNumber(formBuyPrice);
-    const rawCurrent = parseCleanNumber(formCurrentPrice);
+    const isUSD = formCurrency === "USD";
+    const rawBuy = parseCleanNumber(formBuyPrice, isUSD);
+    const rawCurrent = parseCleanNumber(formCurrentPrice, isUSD);
     if (rawBuy <= 0 || rawCurrent <= 0) return null;
 
     const ratio = rawBuy / rawCurrent;
@@ -623,13 +645,14 @@ export function AddAssetModal({
       };
     }
     return null;
-  }, [formBuyPrice, formCurrentPrice]);
+  }, [formBuyPrice, formCurrentPrice, formCurrency]);
 
   // Handle Save
   const handleSave = async () => {
+    const isUSD = formCurrency === "USD";
     const units = parseCleanNumber(formUnits);
-    const rawBuy = parseCleanNumber(formBuyPrice);
-    const rawCurrent = parseCleanNumber(formCurrentPrice) || rawBuy;
+    const rawBuy = parseCleanNumber(formBuyPrice, isUSD);
+    const rawCurrent = parseCleanNumber(formCurrentPrice, isUSD) || rawBuy;
 
     if (!formName.trim()) {
       showToast(
@@ -653,7 +676,6 @@ export function AddAssetModal({
 
     triggerHaptic("medium");
 
-    const isUSD = formCurrency === "USD";
     const liveRate = usdtRate > 0 ? usdtRate : 16415;
     const baseBuyPrice = isUSD ? Math.round(rawBuy * liveRate) : rawBuy;
     const baseCurrentPrice = isUSD
@@ -1349,7 +1371,7 @@ export function AddAssetModal({
                         <p className="text-[9.5px] text-[var(--text-tertiary)]  mt-0.5 px-1">
                           ≈{" "}
                           {formatWithPreferred(
-                            parseCleanNumber(formBuyPrice) * usdtRate,
+                            parseCleanNumber(formBuyPrice, true) * usdtRate,
                           )}
                         </p>
                       )}
@@ -1457,7 +1479,7 @@ export function AddAssetModal({
                           onClick={() => {
                             triggerHaptic("light");
                             setPriceMode("live");
-                            const cur = parseCleanNumber(formCurrentPrice);
+                            const cur = parseCleanNumber(formCurrentPrice, formCurrency === "USD");
                             if (cur <= 0) {
                               fetchLiveQuote(formSymbol, formType, formCurrency, true, false);
                             }
@@ -1538,7 +1560,7 @@ export function AddAssetModal({
                       <p className="text-[9.5px] text-[var(--text-tertiary)]  px-1">
                         ≈{" "}
                         {formatWithPreferred(
-                          parseCleanNumber(formCurrentPrice) * usdtRate,
+                          parseCleanNumber(formCurrentPrice, true) * usdtRate,
                         )}
                       </p>
                     )}
@@ -2010,7 +2032,7 @@ export function AddAssetModal({
 
                   {/* Live Position Valuation Hero Card Preview */}
                   {parseCleanNumber(formUnits) > 0 &&
-                    parseCleanNumber(formBuyPrice) > 0 && (
+                    parseCleanNumber(formBuyPrice, formCurrency === "USD") > 0 && (
                       <div
                         className="p-3.5 rounded-2xl space-y-2 transition-all"
                         style={{

@@ -7,6 +7,8 @@ import {
   toggleWidgetVisibility,
   filterVisibleWidgets,
   swapWidgetPosition,
+  moveWidgetUp,
+  moveWidgetDown,
   applyPresetToWidgets,
   detectMatchingHomePreset,
 } from "../src/lib/widgetLayoutEngine";
@@ -329,6 +331,32 @@ describe("Widget Layout Engine", () => {
 
       const executiveWidgets = applyPresetToWidgets(DEFAULT_HOME_WIDGETS, "executive", "home");
       expect(detectMatchingHomePreset(executiveWidgets)).toBe("executive");
+    });
+
+    it("moves widget up and down sequentially with normalized order", () => {
+      const widgets = [
+        { ...DEFAULT_HOME_WIDGETS[0], id: "card_a", order: 0 },
+        { ...DEFAULT_HOME_WIDGETS[1], id: "card_b", order: 1 },
+        { ...DEFAULT_HOME_WIDGETS[2], id: "card_c", order: 2 },
+      ];
+
+      // Move card_b up
+      const movedUp = moveWidgetUp(widgets, "card_b");
+      expect(movedUp.map((w) => w.id)).toEqual(["card_b", "card_a", "card_c"]);
+      expect(movedUp.map((w) => w.order)).toEqual([0, 1, 2]);
+
+      // Move top card up (no-op boundary)
+      const topBoundary = moveWidgetUp(movedUp, "card_b");
+      expect(topBoundary.map((w) => w.id)).toEqual(["card_b", "card_a", "card_c"]);
+
+      // Move card_a down
+      const movedDown = moveWidgetDown(movedUp, "card_a");
+      expect(movedDown.map((w) => w.id)).toEqual(["card_b", "card_c", "card_a"]);
+      expect(movedDown.map((w) => w.order)).toEqual([0, 1, 2]);
+
+      // Move bottom card down (no-op boundary)
+      const bottomBoundary = moveWidgetDown(movedDown, "card_a");
+      expect(bottomBoundary.map((w) => w.id)).toEqual(["card_b", "card_c", "card_a"]);
     });
   });
 });

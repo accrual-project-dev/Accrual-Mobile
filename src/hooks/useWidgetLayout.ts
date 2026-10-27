@@ -25,6 +25,8 @@ import {
   filterVisibleWidgets,
   applyPresetToWidgets,
   swapWidgetPosition,
+  moveWidgetUp,
+  moveWidgetDown,
   detectMatchingHomePreset,
   detectMatchingStatsPreset,
 } from "../lib/widgetLayoutEngine";
@@ -171,6 +173,16 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     [],
   );
 
+  const moveCardUpHandler = useCallback((cardId: string) => {
+    triggerHaptic("light");
+    setWidgets((prev) => moveWidgetUp(prev, cardId));
+  }, []);
+
+  const moveCardDownHandler = useCallback((cardId: string) => {
+    triggerHaptic("light");
+    setWidgets((prev) => moveWidgetDown(prev, cardId));
+  }, []);
+
   const visibleCards = useMemo(() => {
     return filterVisibleWidgets(widgets);
   }, [widgets]);
@@ -187,6 +199,8 @@ export function useWidgetLayout(options?: UseWidgetLayoutOptions) {
     setIsEditMode,
     reorderCards,
     swapCardPosition: swapCardPositionHandler,
+    moveCardUp: moveCardUpHandler,
+    moveCardDown: moveCardDownHandler,
     cycleCardSize: cycleCardSizeHandler,
     setCardSize: setCardSizeHandler,
     toggleCardVisibility: toggleCardVisibilityHandler,

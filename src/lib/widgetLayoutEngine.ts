@@ -73,6 +73,42 @@ export function reorderWidgets(
     .sort((a, b) => a.order - b.order);
 }
 
+/**
+ * Move a widget up (earlier in order) in the widgets array.
+ */
+export function moveWidgetUp(
+  widgets: CardWidgetConfig[],
+  cardId: string
+): CardWidgetConfig[] {
+  const sorted = [...widgets].sort((a, b) => a.order - b.order);
+  const idx = sorted.findIndex((w) => w.id === cardId);
+  if (idx <= 0) return sorted;
+
+  const temp = sorted[idx];
+  sorted[idx] = sorted[idx - 1];
+  sorted[idx - 1] = temp;
+
+  return sorted.map((w, i) => ({ ...w, order: i }));
+}
+
+/**
+ * Move a widget down (later in order) in the widgets array.
+ */
+export function moveWidgetDown(
+  widgets: CardWidgetConfig[],
+  cardId: string
+): CardWidgetConfig[] {
+  const sorted = [...widgets].sort((a, b) => a.order - b.order);
+  const idx = sorted.findIndex((w) => w.id === cardId);
+  if (idx === -1 || idx >= sorted.length - 1) return sorted;
+
+  const temp = sorted[idx];
+  sorted[idx] = sorted[idx + 1];
+  sorted[idx + 1] = temp;
+
+  return sorted.map((w, i) => ({ ...w, order: i }));
+}
+
 export function cycleWidgetSize(
   widgets: CardWidgetConfig[],
   cardId: string

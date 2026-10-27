@@ -257,6 +257,8 @@ export function HomePage({
     setIsEditMode,
     reorderCards,
     cycleCardSize,
+    moveCardUp,
+    moveCardDown,
     toggleCardVisibility,
     resetLayout,
     applyPreset,
@@ -1027,6 +1029,9 @@ export function HomePage({
         onCloseCustomizeHome={() => setCustomizeHomeOpen(false)}
         widgets={widgets}
         toggleCardVisibility={toggleCardVisibility}
+        onMoveCardUp={moveCardUp}
+        onMoveCardDown={moveCardDown}
+        onCycleCardSize={cycleCardSize}
         activePresetKey={activePresetKey}
         setActivePresetKey={setActivePresetKey}
         applyPreset={applyPreset}
