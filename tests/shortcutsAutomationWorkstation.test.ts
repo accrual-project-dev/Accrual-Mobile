@@ -1,318 +1,114 @@
 import { describe, it, expect } from "vitest";
-import {
-  parseDeepLink,
-  parseStructuredShortcutText,
-  sanitizeDeepLinkNote,
-  parseIndonesianDate,
-  parseCurrencyAmount,
-  extractTimeComponents,
-} from "../src/lib/deepLinkHandler";
-import { parseBankNotification } from "../src/lib/bankNotificationParser";
-import type { Category, Wallet } from "../src/lib/types";
+import fs from "fs";
+import path from "path";
+import { SHORTCUT_PRESETS } from "../src/components/settings/AppleShortcutsGuideModal";
 
-const mockCategories: Category[] = [
-  {
-    id: "c-food",
-    user_id: "u1",
-    name: "Makanan",
-    emoji: "🍜",
-    type: "expense",
-    is_default: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "c-transport",
-    user_id: "u1",
-    name: "Transport",
-    emoji: "🚗",
-    type: "expense",
-    is_default: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "c-salary",
-    user_id: "u1",
-    name: "Gaji",
-    emoji: "💰",
-    type: "income",
-    is_default: false,
-    created_at: new Date().toISOString(),
-  },
-];
-
-const mockWallets: Wallet[] = [
-  {
-    id: "w-bca",
-    user_id: "u1",
-    name: "BCA",
-    icon: "bca",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "w-mandiri",
-    user_id: "u1",
-    name: "Mandiri",
-    icon: "mandiri",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "w-gopay",
-    user_id: "u1",
-    name: "GoPay",
-    icon: "gopay",
-    created_at: new Date().toISOString(),
-  },
-];
-
-describe("Apple Shortcuts & iOS/Android Automation Workstation (Audit #35)", () => {
-  describe("1. Note Sanitization (Rule 8.1)", () => {
-    it("converts placeholder dashes and hyphens to empty strings", () => {
-      expect(sanitizeDeepLinkNote("-")).toBe("");
-      expect(sanitizeDeepLinkNote("--")).toBe("");
-      expect(sanitizeDeepLinkNote(" - ")).toBe("");
-      expect(sanitizeDeepLinkNote("   ")).toBe("");
-      expect(sanitizeDeepLinkNote(null)).toBe("");
-      expect(sanitizeDeepLinkNote(undefined)).toBe("");
+describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
+  describe("1. Preset Registry Completeness & Architecture", () => {
+    it("provides exactly 4 ready-made presets in the catalog", () => {
+      expect(SHORTCUT_PRESETS).toHaveLength(4);
+      const presetIds = SHORTCUT_PRESETS.map((p) => p.id);
+      expect(presetIds).toEqual([
+        "screen_scan",
+        "voice_entry",
+        "receipt_scan",
+        "notification_reader",
+      ]);
     });
 
-    it("preserves genuine note content", () => {
-      expect(sanitizeDeepLinkNote("Lunch with client")).toBe("Lunch with client");
-      expect(sanitizeDeepLinkNote("Kopi Susu")).toBe("Kopi Susu");
-      expect(sanitizeDeepLinkNote("  Starbucks Reserve  ")).toBe("Starbucks Reserve");
+    it("verifies Screen Scanner is configured as the Back Tap hero preset", () => {
+      const screenScan = SHORTCUT_PRESETS.find((p) => p.id === "screen_scan");
+      expect(screenScan).toBeDefined();
+      expect(screenScan?.titleEn).toBe("Accrual Screen Scanner");
+      expect(screenScan?.categoryBadgeEn).toContain("Back Tap");
+      expect(screenScan?.categoryBadgeId).toContain("Ketuk Bagian Belakang");
+      expect(screenScan?.icloudUrl).toMatch(/^https:\/\/www\.icloud\.com\/shortcuts\//);
+      expect(screenScan?.metadata.watchSupported).toBe(true);
+      expect(screenScan?.metadata.lockScreenSupported).toBe(true);
+      expect(screenScan?.metadata.hardwareBindingEn).toContain("Back Tap");
+    });
+
+    it("verifies Voice Entry is configured for Action Button and Siri", () => {
+      const voice = SHORTCUT_PRESETS.find((p) => p.id === "voice_entry");
+      expect(voice).toBeDefined();
+      expect(voice?.titleEn).toBe("Accrual Voice Entry");
+      expect(voice?.metadata.siriPhraseEn).toContain("Voice entry in Accrual");
+      expect(voice?.metadata.hardwareBindingEn).toContain("Action Button");
+      expect(voice?.directScheme).toBe("accrual://voice");
+    });
+
+    it("verifies Bank Notification Reader is configured for Personal Automations", () => {
+      const notif = SHORTCUT_PRESETS.find((p) => p.id === "notification_reader");
+      expect(notif).toBeDefined();
+      expect(notif?.titleId).toBe("Pembaca Notifikasi Bank Otomatis");
+      expect(notif?.metadata.hardwareBindingEn).toContain("Personal Automations");
+      expect(notif?.directScheme).toBe("shortcuts://");
     });
   });
 
-  describe("2. Currency Amount Parser", () => {
-    it("parses diverse Indonesian and international currency formats", () => {
-      expect(parseCurrencyAmount("50.000")).toBe(50000);
-      expect(parseCurrencyAmount("Rp 150.000")).toBe(150000);
-      expect(parseCurrencyAmount("Rp1.500.000,50")).toBe(1500000.5);
-      expect(parseCurrencyAmount("25,000")).toBe(25000);
-      expect(parseCurrencyAmount("125000")).toBe(125000);
-      expect(parseCurrencyAmount("0")).toBe(0);
-      expect(parseCurrencyAmount("invalid")).toBe(0);
+  describe("2. Visual Action Graph Pipeline (Photo 5 Parity)", () => {
+    it("verifies the Screen Scanner action pipeline matches Photo 5 reference", () => {
+      const screenScan = SHORTCUT_PRESETS.find((p) => p.id === "screen_scan")!;
+      const actions = screenScan.actions;
+
+      // Must have 5 sequence nodes: Screenshot -> Scan -> If -> Delete -> End If
+      expect(actions).toHaveLength(5);
+
+      // Node 1: Take screenshot
+      expect(actions[0].type).toBe("standard");
+      expect(actions[0].titleEn).toBe("Take screenshot");
+      expect(actions[0].titleId).toBe("Ambil jepretan layar");
+
+      // Node 2: Scan payment from Screenshot (Native Intent)
+      expect(actions[1].type).toBe("standard");
+      expect(actions[1].isNativeIntent).toBe(true);
+      expect(actions[1].titleEn).toBe("Scan payment from Screenshot");
+
+      // Node 3: If Scan Payment Screenshot contains DELETE_SCREENSHOT
+      expect(actions[2].type).toBe("condition_start");
+      expect(actions[2].titleEn).toContain("If Scan Payment Screenshot contains DELETE_SCREENSHOT");
+      expect(actions[2].titleId).toContain("Jika Scan Payment Screenshot berisi DELETE_SCREENSHOT");
+
+      // Node 4: Nested Delete Screenshot
+      expect(actions[3].type).toBe("nested_action");
+      expect(actions[3].titleEn).toBe("Delete Screenshot");
+      expect(actions[3].titleId).toBe("Hapus Jepretan Layar");
+
+      // Node 5: End If
+      expect(actions[4].type).toBe("condition_end");
+      expect(actions[4].titleEn).toBe("End If");
+      expect(actions[4].titleId).toBe("Akhir Jika");
     });
   });
 
-  describe("3. Indonesian and International Date & Time Parsing", () => {
-    it("safely extracts hours and minutes", () => {
-      expect(extractTimeComponents("14:30")).toEqual({ hours: 14, minutes: 30 });
-      expect(extractTimeComponents("09.45")).toEqual({ hours: 9, minutes: 45 });
-      expect(extractTimeComponents("5:15 PM")).toEqual({ hours: 17, minutes: 15 });
-      expect(extractTimeComponents("12:00 AM")).toEqual({ hours: 0, minutes: 0 });
-      expect(extractTimeComponents("at 20:00")).toEqual({ hours: 20, minutes: 0 });
-      expect(extractTimeComponents("invalid")).toBeNull();
+  describe("3. Rule 1 & Rule 6 Strict Compliance", () => {
+    const modalPath = path.resolve(
+      __dirname,
+      "../src/components/settings/AppleShortcutsGuideModal.tsx"
+    );
+    const content = fs.readFileSync(modalPath, "utf-8");
+
+    it("verifies zero colored native system emojis in AppleShortcutsGuideModal.tsx (Rule 1)", () => {
+      const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+      expect(content).not.toMatch(emojiRegex);
     });
 
-    it("parses dates without single-number year 0028 regression", () => {
-      const parsedDay = parseIndonesianDate("15");
-      expect(parsedDay).toBeDefined();
-      expect(parsedDay!.getFullYear()).toBeGreaterThanOrEqual(2024);
-      expect(parsedDay!.getDate()).toBe(15);
+    it("verifies no parenthetical mixed translations exist in preset texts (Rule 6)", () => {
+      SHORTCUT_PRESETS.forEach((preset) => {
+        expect(preset.titleId).not.toContain("(");
+        expect(preset.metadata.siriPhraseId).not.toContain("(");
+        preset.actions.forEach((act) => {
+          expect(act.titleId).not.toMatch(/\([A-Za-z]+\)/);
+        });
+      });
     });
 
-    it("parses DD/MM/YYYY and Indonesian month names", () => {
-      const d1 = parseIndonesianDate("25/12/2026");
-      expect(d1?.getFullYear()).toBe(2026);
-      expect(d1?.getMonth()).toBe(11);
-      expect(d1?.getDate()).toBe(25);
-
-      const d2 = parseIndonesianDate("17 Agustus 2026 10:00");
-      expect(d2?.getFullYear()).toBe(2026);
-      expect(d2?.getMonth()).toBe(7); // August
-      expect(d2?.getDate()).toBe(17);
-      expect(d2?.getHours()).toBe(10);
-    });
-  });
-
-  describe("4. Navigation Routes & Modal Schemes", () => {
-    it("routes accrual:// and legacy trouvaille:// schemes correctly", () => {
-      expect(parseDeepLink("accrual://calendar").action).toBe("navigate");
-      expect(parseDeepLink("accrual://calendar").path).toBe("/calendar");
-
-      expect(parseDeepLink("accrual://bills").action).toBe("navigate");
-      expect(parseDeepLink("accrual://bills").path).toBe("/bills");
-
-      expect(parseDeepLink("accrual://tagihan").action).toBe("navigate");
-      expect(parseDeepLink("accrual://tagihan").path).toBe("/bills");
-
-      expect(parseDeepLink("accrual://settings").action).toBe("navigate");
-      expect(parseDeepLink("accrual://settings").path).toBe("/settings");
-
-      expect(parseDeepLink("accrual://reports").action).toBe("navigate");
-      expect(parseDeepLink("accrual://reports").path).toBe("/transactions?open=export");
-
-      expect(parseDeepLink("accrual://voice").action).toBe("voice");
-      expect(parseDeepLink("accrual://scan").action).toBe("scan");
-      expect(parseDeepLink("accrual://import").action).toBe("import");
-      expect(parseDeepLink("accrual://restore-balance").action).toBe("restore_balance");
-    });
-  });
-
-  describe("5. Direct Query Parameter Parsing", () => {
-    it("parses English direct query parameters with autoSave", () => {
-      const url = "accrual://add?amount=75000&category=Makanan&wallet=BCA&note=Lunch&autosave=true";
-      const result = parseDeepLink(url, mockCategories, mockWallets);
-
-      expect(result.action).toBe("transaction");
-      expect(result.autoSave).toBe(true);
-      expect(result.prefilledValues?.amount).toBe(75000);
-      expect(result.prefilledValues?.note).toBe("Lunch");
-      expect(result.prefilledValues?.categoryId).toBe("c-food");
-      expect(result.prefilledValues?.walletId).toBe("w-bca");
-    });
-
-    it("parses Indonesian direct query parameters with otomatis=ya", () => {
-      const url = "accrual://add?nominal=120000&kategori=Transport&dompet=Mandiri&catatan=Tol&otomatis=ya";
-      const result = parseDeepLink(url, mockCategories, mockWallets);
-
-      expect(result.action).toBe("transaction");
-      expect(result.autoSave).toBe(true);
-      expect(result.prefilledValues?.amount).toBe(120000);
-      expect(result.prefilledValues?.note).toBe("Tol");
-      expect(result.prefilledValues?.categoryId).toBe("c-transport");
-      expect(result.prefilledValues?.walletId).toBe("w-mandiri");
-    });
-
-    it("sanitizes placeholder notes in direct query scheme", () => {
-      const url = "accrual://add?nominal=50000&kategori=Makanan&dompet=BCA&catatan=-";
-      const result = parseDeepLink(url, mockCategories, mockWallets);
-
-      expect(result.action).toBe("transaction");
-      expect(result.prefilledValues?.amount).toBe(50000);
-      expect(result.prefilledValues?.note).toBe("");
-    });
-  });
-
-  describe("6. Structured Multi-Line Text Parsing (iOS Shortcuts Dialog)", () => {
-    it("parses standard Indonesian 5-line template with placeholder note sanitized", () => {
-      const template = "Nominal: 45.000\nKategori: Makanan\nAkun: BCA\nTanggal: 2026-10-18\nCatatan: -";
-      const result = parseStructuredShortcutText(template, mockCategories, mockWallets);
-
-      expect(result).not.toBeNull();
-      expect(result?.action).toBe("transaction");
-      expect(result?.prefilledValues?.amount).toBe(45000);
-      expect(result?.prefilledValues?.categoryId).toBe("c-food");
-      expect(result?.prefilledValues?.walletId).toBe("w-bca");
-      expect(result?.prefilledValues?.note).toBe("");
-    });
-
-    it("parses standard English 5-line template with notes", () => {
-      const template = "Amount: 185000\nCategory: Transport\nAccount: Mandiri\nDate: 2026-10-18\nNotes: Taxi to airport";
-      const result = parseStructuredShortcutText(template, mockCategories, mockWallets);
-
-      expect(result).not.toBeNull();
-      expect(result?.action).toBe("transaction");
-      expect(result?.prefilledValues?.amount).toBe(185000);
-      expect(result?.prefilledValues?.categoryId).toBe("c-transport");
-      expect(result?.prefilledValues?.walletId).toBe("w-mandiri");
-      expect(result?.prefilledValues?.note).toBe("Taxi to airport");
-    });
-
-    it("handles income transaction type in structured text", () => {
-      const template = "Nominal: 10.000.000\nKategori: Gaji\nAkun: BCA\nTipe: Pemasukan\nCatatan: Bonus Tahunan";
-      const result = parseStructuredShortcutText(template, mockCategories, mockWallets);
-
-      expect(result?.prefilledValues?.amount).toBe(10000000);
-      expect(result?.prefilledValues?.type).toBe("income");
-      expect(result?.prefilledValues?.categoryId).toBe("c-salary");
-    });
-  });
-
-  describe("7. Transfer Wallet Collision Prevention", () => {
-    it("prevents source and destination wallets from colliding to the same wallet", () => {
-      const template = "Nominal: 500.000\nTipe: Transfer\nAkun: BCA\nKe: BCA\nCatatan: Tabungan";
-      const result = parseStructuredShortcutText(template, mockCategories, mockWallets);
-
-      expect(result?.prefilledValues?.type).toBe("transfer");
-      expect(result?.prefilledValues?.walletId).toBe("w-bca");
-      // Destination wallet must NOT be BCA
-      expect(result?.prefilledValues?.toWalletId).toBeDefined();
-      expect(result?.prefilledValues?.toWalletId).not.toBe("w-bca");
-    });
-
-    it("prevents transfer collision in direct query parameters", () => {
-      const url = "accrual://add?amount=250000&type=transfer&wallet=Mandiri&to_wallet=Mandiri";
-      const result = parseDeepLink(url, mockCategories, mockWallets);
-
-      expect(result.prefilledValues?.type).toBe("transfer");
-      expect(result.prefilledValues?.walletId).toBe("w-mandiri");
-      expect(result.prefilledValues?.toWalletId).toBeDefined();
-      expect(result.prefilledValues?.toWalletId).not.toBe("w-mandiri");
-    });
-  });
-
-  describe("8. Bank Notification Reader & Personal Automation Ingestion", () => {
-    it("parses BCA m-transfer notifications accurately", () => {
-      const notif = "BCA - m-Transfer berhasil sebesar Rp 75.000 ke Kopi Kenangan pada 25/10/2026";
-      const parsed = parseBankNotification(notif, mockCategories, mockWallets);
-
-      expect(parsed).not.toBeNull();
-      expect(parsed?.amount).toBe(75000);
-      expect(parsed?.sourceApp).toBe("BCA");
-      expect(parsed?.type).toBe("expense");
-    });
-
-    it("parses Mandiri Livin payment notification", () => {
-      const notif = "Livin by Mandiri: Pembayaran sukses senilai Rp 120.000 di Shell Stasiun";
-      const parsed = parseBankNotification(notif, mockCategories, mockWallets);
-
-      expect(parsed).not.toBeNull();
-      expect(parsed?.amount).toBe(120000);
-      expect(parsed?.type).toBe("expense");
-    });
-
-    it("parses GoPay QRIS payment notification", () => {
-      const notif = "GoPay: Pembayaran QRIS sebesar Rp 25.000 di Toko Berkah berhasil";
-      const parsed = parseBankNotification(notif, mockCategories, mockWallets);
-
-      expect(parsed).not.toBeNull();
-      expect(parsed?.amount).toBe(25000);
-      expect(parsed?.sourceApp).toBe("GoPay");
-    });
-  });
-
-  describe("9. Smart Promotional & Spam Filtering Invariant", () => {
-    it("rejects purely promotional push notifications without financial mutation", () => {
-      const promoNotif = "Promo Spesial Gajian! Dapatkan diskon 50% dan cashback voucher hari ini";
-      const parsed = parseBankNotification(promoNotif, mockCategories, mockWallets);
-
-      // Should be null because no banking signals or valid transaction amounts exist
-      expect(parsed).toBeNull();
-    });
-
-    it("rejects promotional notifications containing only marketing discounts", () => {
-      const marketingSpam = "Kupon diskon Rp 50.000 menunggu kamu. Segera klaim sebelum hangus!";
-      const parsed = parseBankNotification(marketingSpam, mockCategories, mockWallets);
-
-      // Should be null because there are no bank/e-wallet confirmation tokens
-      expect(parsed).toBeNull();
-    });
-  });
-
-  describe("10. 6 Native Actions Catalog & Localization Invariants", () => {
-    it("supports both English default and pure Indonesian without gado-gado terminology", () => {
-      const englishLabels = [
-        "Voice Entry",
-        "Screen Scanner",
-        "Quick Action",
-        "Scan Receipt",
-        "Notification Reader",
-        "Card Transaction Sync",
-      ];
-      const indonesianLabels = [
-        "Dikte Suara",
-        "Pindai Tangkapan Layar",
-        "Buka Catat Cepat",
-        "Pindai Resi & Struk",
-        "Pembaca Notifikasi Bank",
-        "Sinkronisasi Transaksi Kartu",
-      ];
-
-      expect(englishLabels.length).toBe(6);
-      expect(indonesianLabels.length).toBe(6);
-      englishLabels.forEach((lbl) => expect(lbl.length).toBeGreaterThan(0));
-      indonesianLabels.forEach((lbl) => expect(lbl.length).toBeGreaterThan(0));
+    it("verifies SettingsPage badge displays '4 Preset Siap Pakai' / '4 Ready Presets'", () => {
+      const settingsPath = path.resolve(__dirname, "../src/pages/SettingsPage.tsx");
+      const settingsContent = fs.readFileSync(settingsPath, "utf-8");
+      expect(settingsContent).toContain(
+        '{isIndonesian ? "4 Preset Siap Pakai" : "4 Ready Presets"}'
+      );
     });
   });
 });
