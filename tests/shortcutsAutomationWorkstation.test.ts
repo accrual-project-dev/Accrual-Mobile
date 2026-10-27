@@ -1,7 +1,31 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import fs from "fs";
 import path from "path";
-import { SHORTCUT_PRESETS } from "../src/components/settings/AppleShortcutsGuideModal";
+import {
+  SHORTCUT_PRESETS,
+  isValidICloudLink,
+  getSavedICloudLinks,
+  saveICloudLink,
+  ACCRUAL_SHORTCUT_ICLOUD_LINKS_KEY,
+} from "../src/components/settings/AppleShortcutsGuideModal";
+
+if (typeof globalThis.localStorage === "undefined") {
+  const store: Record<string, string> = {};
+  globalThis.localStorage = {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, val: string) => {
+      store[key] = String(val);
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      Object.keys(store).forEach((k) => delete store[k]);
+    },
+    length: 0,
+    key: () => null,
+  };
+}
 
 describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
   describe("1. Preset Registry Completeness & Architecture", () => {
@@ -109,6 +133,46 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       expect(settingsContent).toContain(
         '{isIndonesian ? "4 Preset Siap Pakai" : "4 Ready Presets"}'
       );
+    });
+  });
+
+  describe("4. Official iCloud Link Validation & 404 Error Protection", () => {
+    beforeEach(() => {
+      localStorage.removeItem(ACCRUAL_SHORTCUT_ICLOUD_LINKS_KEY);
+    });
+
+    it("accepts valid 32-character hexadecimal Apple iCloud URLs", () => {
+      const validLinks = [
+        "https://www.icloud.com/shortcuts/670d8a5b28e44ca6a3371900388d01d4",
+        "https://www.icloud.com/shortcuts/670d8a5b28e44ca6a3371900388d01d4/",
+        "https://www.icloud.com/shortcuts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "https://www.icloud.com/shortcuts/0123456789abcdef0123456789abcdef",
+      ];
+      validLinks.forEach((link) => {
+        expect(isValidICloudLink(link)).toBe(true);
+      });
+    });
+
+    it("rejects non-hexadecimal placeholder slugs to prevent Apple 'Shortcut Not Found' error", () => {
+      const invalidLinks = [
+        "https://www.icloud.com/shortcuts/accrual-screen-scanner",
+        "https://www.icloud.com/shortcuts/accrual-voice-entry",
+        "https://www.icloud.com/shortcuts/short-hash",
+        "https://example.com/shortcuts/670d8a5b28e44ca6a3371900388d01d4",
+        "",
+        undefined,
+      ];
+      invalidLinks.forEach((link) => {
+        expect(isValidICloudLink(link)).toBe(false);
+      });
+    });
+
+    it("persists custom iCloud links per preset in localStorage", () => {
+      expect(getSavedICloudLinks()).toEqual({});
+
+      saveICloudLink("screen_scan", "https://www.icloud.com/shortcuts/670d8a5b28e44ca6a3371900388d01d4");
+      const saved = getSavedICloudLinks();
+      expect(saved["screen_scan"]).toBe("https://www.icloud.com/shortcuts/670d8a5b28e44ca6a3371900388d01d4");
     });
   });
 });
