@@ -53,7 +53,7 @@ export function ProfileSheet({
   const { showToast } = useToast();
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
-  const { isPremium, openPaywall } = useSubscription();
+  const { isPremium, openPaywall, openSuccessModal, subscription } = useSubscription();
   const isDark = theme !== "light";
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -499,7 +499,11 @@ export function ProfileSheet({
         <div
           onClick={() => {
             triggerHaptic("light");
-            openPaywall({ feature: "settings_manual" });
+            if (isPremium) {
+              openSuccessModal(subscription);
+            } else {
+              openPaywall({ feature: "settings_manual" });
+            }
           }}
           className="rounded-2xl p-3.5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all select-none"
           style={{

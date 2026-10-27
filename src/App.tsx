@@ -144,6 +144,16 @@ const AccrualPaywallModal = lazy(() =>
     default: module.AccrualPaywallModal,
   })),
 );
+const SubscriptionSuccessModal = lazy(() =>
+  import("./components/paywall/SubscriptionSuccessModal").then((module) => ({
+    default: module.SubscriptionSuccessModal,
+  })),
+);
+const CancelSubscriptionModal = lazy(() =>
+  import("./components/paywall/CancelSubscriptionModal").then((module) => ({
+    default: module.CancelSubscriptionModal,
+  })),
+);
 
 import { useTheme } from "./contexts/ThemeContext";
 
@@ -248,7 +258,18 @@ function AppShell() {
   const [batchSourceTitle, setBatchSourceTitle] = useState("");
   const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
-  const { isPaywallOpen, closePaywall, openPaywall } = useSubscription();
+  const {
+    isPaywallOpen,
+    closePaywall,
+    openPaywall,
+    isSuccessModalOpen,
+    successModalSub,
+    closeSuccessModal,
+    isCancelModalOpen,
+    openCancelModal,
+    closeCancelModal,
+    subscription,
+  } = useSubscription();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
   const [joinLedgerOpen, setJoinLedgerOpen] = useState(false);
   const [joinLedgerCode, setJoinLedgerCode] = useState("");
@@ -1430,6 +1451,29 @@ function AppShell() {
           <AccrualPaywallModal
             isOpen={isPaywallOpen}
             onClose={closePaywall}
+          />
+        </Suspense>
+      )}
+
+      {/* Accrual Pro Membership Success & Privileges Modal */}
+      {isSuccessModalOpen && (
+        <Suspense fallback={null}>
+          <SubscriptionSuccessModal
+            isOpen={isSuccessModalOpen}
+            onClose={closeSuccessModal}
+            subscription={successModalSub || subscription}
+            onOpenCancelModal={openCancelModal}
+          />
+        </Suspense>
+      )}
+
+      {/* Accrual Pro Cancel / Manage Auto-Renewal Modal */}
+      {isCancelModalOpen && (
+        <Suspense fallback={null}>
+          <CancelSubscriptionModal
+            isOpen={isCancelModalOpen}
+            onClose={closeCancelModal}
+            subscription={subscription}
           />
         </Suspense>
       )}

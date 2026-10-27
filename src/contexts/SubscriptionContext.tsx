@@ -49,9 +49,16 @@ export interface SubscriptionContextValue {
   isPremium: boolean;
   isLoading: boolean;
   isPaywallOpen: boolean;
+  isSuccessModalOpen: boolean;
+  successModalSub: UserSubscription | null;
+  isCancelModalOpen: boolean;
   paywallContext: PaywallTriggerContext | null;
   openPaywall: (ctx?: PaywallTriggerContext) => void;
   closePaywall: () => void;
+  openSuccessModal: (sub?: UserSubscription) => void;
+  closeSuccessModal: () => void;
+  openCancelModal: () => void;
+  closeCancelModal: () => void;
   upgradeToPlan: (planId: SubscriptionPlanId) => Promise<UpgradePlanResult>;
   restorePurchases: () => Promise<RestorePurchasesResult>;
   setLocalTierOverride: (tier: "free" | "premium") => void; // for debug/testing
@@ -79,6 +86,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [paywallContext, setPaywallContext] = useState<PaywallTriggerContext | null>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [successModalSub, setSuccessModalSub] = useState<UserSubscription | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   // Initialize from local offline cache for immediate synchronous boot
   const [subscription, setSubscription] = useState<UserSubscription>(() => {
@@ -210,6 +220,26 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     setPaywallContext(null);
   }, []);
 
+  const openSuccessModal = useCallback((sub?: UserSubscription) => {
+    triggerHaptic("light");
+    setSuccessModalSub(sub || subscription);
+    setIsSuccessModalOpen(true);
+  }, [subscription]);
+
+  const closeSuccessModal = useCallback(() => {
+    setIsSuccessModalOpen(false);
+    setSuccessModalSub(null);
+  }, []);
+
+  const openCancelModal = useCallback(() => {
+    triggerHaptic("light");
+    setIsCancelModalOpen(true);
+  }, []);
+
+  const closeCancelModal = useCallback(() => {
+    setIsCancelModalOpen(false);
+  }, []);
+
   const upgradeToPlan = useCallback(
     async (planId: SubscriptionPlanId): Promise<UpgradePlanResult> => {
       try {
@@ -287,6 +317,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }
 
         closePaywall();
+        openSuccessModal(updatedSub);
         return { success: true };
       } catch (err: any) {
         console.error("[SubscriptionContext] Upgrade error:", err);
@@ -295,7 +326,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [user, saveToLocal, closePaywall]
+    [user, saveToLocal, closePaywall, openSuccessModal]
   );
 
   const restorePurchases = useCallback(async (): Promise<RestorePurchasesResult> => {
@@ -331,6 +362,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             console.warn("[SubscriptionContext] Restore sync error:", syncErr);
           }
         }
+        closePaywall();
+        openSuccessModal(restoredSub);
         return { success: true, hasActivePro: true };
       }
 
@@ -350,7 +383,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, saveToLocal, fetchRemoteSubscription, subscription.tier]);
+  }, [user, saveToLocal, fetchRemoteSubscription, subscription.tier, closePaywall, openSuccessModal]);
 
   const setLocalTierOverride = useCallback(
     (tier: "free" | "premium") => {
@@ -373,9 +406,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       isPremium,
       isLoading,
       isPaywallOpen,
+      isSuccessModalOpen,
+      successModalSub,
+      isCancelModalOpen,
       paywallContext,
       openPaywall,
       closePaywall,
+      openSuccessModal,
+      closeSuccessModal,
+      openCancelModal,
+      closeCancelModal,
       upgradeToPlan,
       restorePurchases,
       setLocalTierOverride,
@@ -386,9 +426,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       isPremium,
       isLoading,
       isPaywallOpen,
+      isSuccessModalOpen,
+      successModalSub,
+      isCancelModalOpen,
       paywallContext,
       openPaywall,
       closePaywall,
+      openSuccessModal,
+      closeSuccessModal,
+      openCancelModal,
+      closeCancelModal,
       upgradeToPlan,
       restorePurchases,
       setLocalTierOverride,
@@ -411,9 +458,16 @@ export function useSubscription(): SubscriptionContextValue {
       isPremium: false,
       isLoading: false,
       isPaywallOpen: false,
+      isSuccessModalOpen: false,
+      successModalSub: null,
+      isCancelModalOpen: false,
       paywallContext: null,
       openPaywall: () => {},
       closePaywall: () => {},
+      openSuccessModal: () => {},
+      closeSuccessModal: () => {},
+      openCancelModal: () => {},
+      closeCancelModal: () => {},
       upgradeToPlan: async () => ({ success: false }),
       restorePurchases: async () => ({ success: false, hasActivePro: false }),
       setLocalTierOverride: () => {},
