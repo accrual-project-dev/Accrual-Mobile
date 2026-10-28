@@ -2,6 +2,8 @@
 import Foundation
 import AppIntents
 import SwiftUI
+import Vision
+import UIKit
 
 /// ======================================================================
 /// ACCRUAL APP INTENTS & SHORTCUTS SUITE (iOS 16.0+)
@@ -186,7 +188,7 @@ struct VoiceLogExpenseIntent: AppIntent {
     static var title: LocalizedStringResource = "Voice Entry"
     static var description = IntentDescription("Add a transaction by speaking naturally.")
 
-    static var openAppWhenRun: Bool = false
+    static var openAppWhenRun: Bool = true
 
     @Parameter(title: "Ucapan Transaksi")
     var spokenText: String?
@@ -198,7 +200,11 @@ struct VoiceLogExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let text = spokenText, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw $spokenText.needsValueError("Apa yang Anda belanjakan? (Contoh: Kopi 25rb bayar pakai Cash)")
+            let suiteName = "group.com.syntheticae.accrual"
+            let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+            defaults.set("voice", forKey: "pending_intent_navigation")
+            defaults.synchronize()
+            return .result(dialog: IntentDialog("Membuka pencatat suara Accrual."))
         }
 
         let record: [String: Any] = [
@@ -213,6 +219,8 @@ struct VoiceLogExpenseIntent: AppIntent {
         var pending = defaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
         pending.append(record)
         defaults.set(pending, forKey: "pending_backtap_voice")
+        defaults.set("voice", forKey: "pending_intent_navigation")
+        defaults.synchronize()
 
         let displayDialog: LocalizedStringResource = "Suara berhasil dicatat: \"\(text)\""
         return .result(dialog: IntentDialog(displayDialog))
@@ -220,19 +228,24 @@ struct VoiceLogExpenseIntent: AppIntent {
 }
 
 /// 4. Scan Payment Screenshot Intent (Screen Scanner)
-/// Parameter Summary: "Pindai tangkapan layar transaksi [Extracted Text]"
+/// Parameter Summary: Supports both direct Screenshot Image (IntentFile) and Pre-Extracted Text
 @available(iOS 16.0, *)
 struct ScanPaymentScreenshotIntent: AppIntent {
     static var title: LocalizedStringResource = "Scan Payment Screenshot"
     static var description = IntentDescription("Add a transaction by scanning a payment screenshot or QRIS confirmation.")
 
-    static var openAppWhenRun: Bool = false
+    static var openAppWhenRun: Bool = true
 
-    @Parameter(title: "Teks dari Gambar")
+    @Parameter(title: "Screenshot Image", description: "Payment screenshot image to parse")
+    var screenshot: IntentFile?
+
+    @Parameter(title: "Teks dari Gambar", description: "Optional pre-extracted text from image")
     var extractedText: String?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Pindai tangkapan layar transaksi \(\.$extractedText)")
+        Summary("Pindai tangkapan layar transaksi \(\.$screenshot)") {
+            \.$extractedText
+        }
     }
 
     @MainActor
@@ -240,21 +253,67 @@ struct ScanPaymentScreenshotIntent: AppIntent {
         let suiteName = "group.com.syntheticae.accrual"
         let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
 
-        if let text = extractedText, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        var recognizedText = extractedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        // If an image file was piped in (e.g. from iOS "Take screenshot"), run Apple Vision OCR on-device
+        if recognizedText.isEmpty, let file = screenshot {
+            if let ocrResult = await performVisionOCR(from: file) {
+                recognizedText = ocrResult
+            }
+        }
+
+        if !recognizedText.isEmpty {
             let record: [String: Any] = [
                 "id": UUID().uuidString,
-                "text": text,
+                "text": recognizedText,
                 "source": "screenshot_ocr",
                 "createdAt": Date().timeIntervalSince1970
             ]
             var pending = defaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
             pending.append(record)
             defaults.set(pending, forKey: "pending_backtap_voice")
+            defaults.set("scan", forKey: "pending_intent_navigation")
+            defaults.synchronize()
             return .result(dialog: IntentDialog("Tangkapan layar berhasil diproses ke Accrual."))
         }
 
         defaults.set("scan", forKey: "pending_intent_navigation")
+        defaults.synchronize()
         return .result(dialog: IntentDialog("Membuka pemindai Accrual."))
+    }
+
+    private func performVisionOCR(from file: IntentFile) async -> String? {
+        do {
+            let data = file.data
+            guard let uiImage = UIImage(data: data), let cgImage = uiImage.cgImage else {
+                return nil
+            }
+
+            return await withCheckedContinuation { continuation in
+                let request = VNRecognizeTextRequest { request, error in
+                    guard error == nil, let observations = request.results as? [VNRecognizedTextObservation] else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    let candidates = observations.compactMap { $0.topCandidates(1).first?.string }
+                    let joined = candidates.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                    continuation.resume(returning: joined.isEmpty ? nil : joined)
+                }
+                request.recognitionLevel = .accurate
+                request.usesLanguageCorrection = true
+
+                let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        try handler.perform([request])
+                    } catch {
+                        continuation.resume(returning: nil)
+                    }
+                }
+            }
+        } catch {
+            return nil
+        }
     }
 }
 

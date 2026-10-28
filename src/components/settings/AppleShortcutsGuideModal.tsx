@@ -3,7 +3,6 @@ import {
   Copy,
   Check,
   Mic,
-  SlidersHorizontal,
   Sparkles,
   ExternalLink,
   Camera,
@@ -15,7 +14,6 @@ import {
   Plus,
   Trash2,
   Play,
-  CheckCircle2,
   Link as LinkIcon,
   AlertCircle,
 } from "lucide-react";
@@ -150,48 +148,32 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         icon: ScanLine,
         titleId: "Scan payment from Screenshot",
         titleEn: "Scan payment from Screenshot",
-        subtitleId: "Tindakan Asli Accrual • Live Text OCR Lokal",
-        subtitleEn: "Accrual Native Intent • On-Device OCR",
+        subtitleId: "Tindakan Asli Accrual • Vision OCR & Buka Aplikasi Otomatis",
+        subtitleEn: "Accrual Native Intent • Vision OCR & Instant App Launch",
         isNativeIntent: true,
       },
       {
         id: "act-3",
-        type: "condition_start",
-        icon: SlidersHorizontal,
-        titleId: "Jika Scan Payment Screenshot berisi DELETE_SCREENSHOT",
-        titleEn: "If Scan Payment Screenshot contains DELETE_SCREENSHOT",
-        subtitleId: "Kondisi logika otomatis",
-        subtitleEn: "Automated logic condition",
-      },
-      {
-        id: "act-4",
-        type: "nested_action",
+        type: "standard",
         icon: Trash2,
-        titleId: "Hapus Jepretan Layar",
-        titleEn: "Delete Screenshot",
+        titleId: "Hapus Foto (Jepretan Layar)",
+        titleEn: "Delete Photo (Screenshot)",
         subtitleId: "Pembersihan otomatis agar galeri foto tetap rapi",
         subtitleEn: "Auto cleanup to keep your photo library clean",
       },
-      {
-        id: "act-5",
-        type: "condition_end",
-        icon: CheckCircle2,
-        titleId: "Akhir Jika",
-        titleEn: "End If",
-      },
     ],
     hardwareGuide: {
-      titleId: "Tautkan ke Ketuk Bagian Belakang (Back Tap)",
-      titleEn: "Bind to Back Tap (Double Tap)",
+      titleId: "Cara Paling Mudah: Tautkan ke Ketuk Bagian Belakang (Back Tap)",
+      titleEn: "Easiest Way: Bind to Back Tap (Double Tap)",
       stepsId: [
-        "Buka Pengaturan iOS › Aksesibilitas › Sentuh › Ketuk Bagian Belakang.",
-        "Pilih 'Ketuk Dua Kali' › Gulir ke bagian Pintasan › Centang 'Accrual Screen Scanner'.",
-        "Kini cukup ketuk 2x bodi belakang iPhone saat melihat bukti transfer atau struk pembayaran.",
+        "Metode 1 (Rekomendasi 0-Setup): Buka Pengaturan iOS › Aksesibilitas › Sentuh › Ketuk Bagian Belakang › Ketuk Dua Kali › langsung pilih tindakan resmi 'Scan Payment Screenshot' dari Accrual.",
+        "Metode 2 (Pintasan 3-Langkah): Di aplikasi Pintasan, buat pintasan baru dengan 3 tindakan di atas (Ambil Tangkapan Layar › Scan payment with Accrual › Hapus Foto), lalu tautkan ke Ketuk Dua Kali.",
+        "Kini cukup ketuk 2x bodi belakang iPhone saat melihat bukti transfer atau struk. Accrual langsung terbuka dan membaca transaksi secara otomatis.",
       ],
       stepsEn: [
-        "Open iOS Settings › Accessibility › Touch › Back Tap.",
-        "Select 'Double Tap' › Scroll down to Shortcuts › Choose 'Accrual Screen Scanner'.",
-        "Now double-tap the back of your iPhone whenever viewing any transfer confirmation or receipt.",
+        "Method 1 (Recommended 0-Setup): Open iOS Settings › Accessibility › Touch › Back Tap › Double Tap › choose Accrual's official 'Scan Payment Screenshot' action directly.",
+        "Method 2 (3-Step Pipeline): In Shortcuts app, create a new shortcut with the 3 actions above (Take screenshot › Scan payment with Accrual › Delete photo), then bind it to Double Tap.",
+        "Now simply double-tap the back of your iPhone whenever viewing any transfer receipt. Accrual opens instantly and parses details automatically.",
       ],
     },
   },
@@ -453,6 +435,20 @@ export function AppleShortcutsGuideModal({
   const handleOpenShortcutsApp = () => {
     triggerHaptic("medium");
     window.location.href = "shortcuts://";
+  };
+
+  const handleDirectLaunch = () => {
+    triggerHaptic("medium");
+    try {
+      window.location.href = activePreset.directScheme;
+    } catch {
+      window.open(activePreset.directScheme, "_system");
+    }
+    showToast(
+      isIndonesian ? "Memicu tindakan langsung Accrual..." : "Triggering Accrual action...",
+      "info",
+      () => {}
+    );
   };
 
   const handleTestHud = () => {
@@ -937,6 +933,80 @@ export function AppleShortcutsGuideModal({
               </div>
             </div>
           )}
+        </div>
+
+        {/* 2.5 Apple Official Icon & Native Shortcuts Insight Card */}
+        <div
+          className="rounded-3xl p-4.5 border relative overflow-hidden flex flex-col gap-3 text-left transition-all"
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse at top left, rgba(255,255,255,0.04) 0%, rgba(14,14,18,0.98) 100%)"
+              : "radial-gradient(ellipse at top left, rgba(0,0,0,0.02) 0%, rgba(248,248,250,0.98) 100%)",
+            borderColor: "var(--glass-border)",
+          }}
+        >
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
+                borderColor: "var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <Sparkles size={14} strokeWidth={1.8} />
+            </div>
+            <div>
+              <h3 className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                {isIndonesian
+                  ? "Pintasan Resmi Berlogo Accrual Asli"
+                  : "Official Shortcuts with Accrual Logo"}
+              </h3>
+              <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                {isIndonesian ? "Pintasan Bawaan Otomatis (0-Setup)" : "Zero-Setup Native App Shortcuts"}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            {isIndonesian
+              ? "Di iOS, Apple secara otomatis menyematkan logo resmi Accrual pada Pintasan Bawaan (App Shortcuts). Pintasan kustom buatan manual dibatasi oleh iOS hanya menggunakan simbol bawaan. Semua tindakan resmi Accrual sudah otomatis tersedia di aplikasi Pintasan iPhone Anda."
+              : "On iOS, Apple automatically embeds the authentic Accrual app logo on Native App Shortcuts. User-assembled custom shortcuts are restricted by iOS to system symbols. All official Accrual actions are already pre-loaded inside your iPhone Shortcuts app."}
+          </p>
+
+          <div className="flex items-center gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={handleOpenShortcutsApp}
+              className="flex-1 h-9.5 rounded-xl border flex items-center justify-center gap-1.5 text-[11.5px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+                borderColor: "var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <ExternalLink size={13} strokeWidth={1.8} />
+              <span>
+                {isIndonesian ? "Buka Aplikasi Pintasan" : "Open Shortcuts App"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDirectLaunch}
+              className="flex-1 h-9.5 rounded-xl border flex items-center justify-center gap-1.5 text-[11.5px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)",
+                borderColor: "var(--glass-border)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <Play size={13} strokeWidth={1.8} />
+              <span>
+                {isIndonesian ? "Jalankan Langsung" : "Direct Launch"}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* 3. Action Sequence Graph (Photo 5 Parity) */}

@@ -75,8 +75,8 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       const screenScan = SHORTCUT_PRESETS.find((p) => p.id === "screen_scan")!;
       const actions = screenScan.actions;
 
-      // Must have 5 sequence nodes: Screenshot -> Scan -> If -> Delete -> End If
-      expect(actions).toHaveLength(5);
+      // Streamlined 3-step pipeline: Take screenshot -> Scan payment (Native Intent) -> Delete Screenshot
+      expect(actions).toHaveLength(3);
 
       // Node 1: Take screenshot
       expect(actions[0].type).toBe("standard");
@@ -88,20 +88,10 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       expect(actions[1].isNativeIntent).toBe(true);
       expect(actions[1].titleEn).toBe("Scan payment from Screenshot");
 
-      // Node 3: If Scan Payment Screenshot contains DELETE_SCREENSHOT
-      expect(actions[2].type).toBe("condition_start");
-      expect(actions[2].titleEn).toContain("If Scan Payment Screenshot contains DELETE_SCREENSHOT");
-      expect(actions[2].titleId).toContain("Jika Scan Payment Screenshot berisi DELETE_SCREENSHOT");
-
-      // Node 4: Nested Delete Screenshot
-      expect(actions[3].type).toBe("nested_action");
-      expect(actions[3].titleEn).toBe("Delete Screenshot");
-      expect(actions[3].titleId).toBe("Hapus Jepretan Layar");
-
-      // Node 5: End If
-      expect(actions[4].type).toBe("condition_end");
-      expect(actions[4].titleEn).toBe("End If");
-      expect(actions[4].titleId).toBe("Akhir Jika");
+      // Node 3: Delete Photo (Screenshot)
+      expect(actions[2].type).toBe("standard");
+      expect(actions[2].titleEn).toContain("Delete Photo");
+      expect(actions[2].titleId).toContain("Hapus Foto");
     });
   });
 
