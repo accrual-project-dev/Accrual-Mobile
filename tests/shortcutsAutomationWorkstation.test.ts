@@ -31,14 +31,15 @@ if (typeof globalThis.localStorage === "undefined") {
 
 describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
   describe("1. Preset Registry Completeness & Architecture", () => {
-    it("provides exactly 4 ready-made presets in the catalog", () => {
-      expect(SHORTCUT_PRESETS).toHaveLength(4);
+    it("provides exactly 5 ready-made presets in the catalog", () => {
+      expect(SHORTCUT_PRESETS).toHaveLength(5);
       const presetIds = SHORTCUT_PRESETS.map((p) => p.id);
       expect(presetIds).toEqual([
         "screen_scan",
+        "glass_dialog",
+        "notification_reader",
         "voice_entry",
         "receipt_scan",
-        "notification_reader",
       ]);
     });
 
@@ -119,11 +120,11 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       });
     });
 
-    it("verifies SettingsPage badge displays '4 Preset Siap Pakai' / '4 Ready Presets'", () => {
+    it("verifies SettingsPage badge displays '5 Preset Siap Pakai' / '5 Ready Presets'", () => {
       const settingsPath = path.resolve(__dirname, "../src/pages/SettingsPage.tsx");
       const settingsContent = fs.readFileSync(settingsPath, "utf-8");
       expect(settingsContent).toContain(
-        '{isIndonesian ? "4 Preset Siap Pakai" : "4 Ready Presets"}'
+        '{isIndonesian ? "5 Preset Siap Pakai" : "5 Ready Presets"}'
       );
     });
   });
@@ -245,7 +246,7 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       expect(GLASS_DIALOG_ACTIONS[3].titleEn).toBe("Ask for Date and Time");
 
       // Step 5: Keterangan / catatan (opsional)
-      expect(GLASS_DIALOG_ACTIONS[4].titleId).toBe("Minta Catatan (Opsional)");
+      expect(GLASS_DIALOG_ACTIONS[4].titleId).toBe("Minta Catatan Opsional");
       expect(GLASS_DIALOG_ACTIONS[4].titleEn).toBe("Ask for Note (Optional)");
 
       // Step 6: Buka URL Simpan Otomatis

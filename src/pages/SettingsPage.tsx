@@ -1880,7 +1880,7 @@ export function SettingsPage({
                     background: iconBg,
                   }}
                 >
-                  {isIndonesian ? "4 Preset Siap Pakai" : "4 Ready Presets"}
+                  {isIndonesian ? "5 Preset Siap Pakai" : "5 Ready Presets"}
                 </span>
                 <ChevronRight
                   size={14}

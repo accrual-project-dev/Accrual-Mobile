@@ -336,7 +336,7 @@ public struct OpenInboxIntent: AppIntent {
 public struct ScanPaymentScreenshotIntent: AppIntent {
     public static var title: LocalizedStringResource = "Scan Payment Screenshot"
     public static var description = IntentDescription("Add a transaction by scanning a payment screenshot or QRIS confirmation.")
-    public static var openAppWhenRun: Bool = false
+    public static var openAppWhenRun: Bool = true
 
     @Parameter(title: "Screenshot Image", description: "Payment screenshot image to parse")
     public var screenshot: IntentFile?
