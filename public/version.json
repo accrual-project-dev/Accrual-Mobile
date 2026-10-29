@@ -1,9 +1,10 @@
 {
-  "version": "1.3.24",
-  "build": 1324,
+  "version": "1.3.25",
+  "build": 1325,
   "releaseDate": "2026-10-29",
-  "name": "Accrual v1.3.24",
+  "name": "Accrual v1.3.25",
   "changelog": [
+    "Perbaikan inkompatibilitas parameter IntentFile pada iOS 16/17 (penghapusan supportedContentTypes iOS 18)",
     "Perbaikan kompilasi Xcode archive pada target iOS 16/17 (OpenURLIntent & UNUserNotificationCenter compatibility)",
     "Audit & remediasi menyeluruh Apple Shortcuts & App Intents",
     "Pembersihan duplikasi aksi pintasan di Shortcuts library via isDiscoverable guard",
@@ -12,6 +13,7 @@
     "Penyempurnaan pemindai layar Back Tap dengan pembersihan token Unicode dan OCR otomatis"
   ],
   "changelog_en": [
+    "Fixed IntentFile parameter initializer incompatibility on iOS 16/17 (removed iOS 18-only supportedContentTypes)",
     "Fixed Xcode archive compilation on iOS 16/17 targets (OpenURLIntent & UNUserNotificationCenter compatibility)",
     "Comprehensive Apple Shortcuts & App Intents audit and remediation",
     "Eliminated duplicate actions in Shortcuts library using isDiscoverable guard",

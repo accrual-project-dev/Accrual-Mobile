@@ -234,7 +234,7 @@ public struct LogScreenshotIntent: AppIntent {
     public static var openAppWhenRun: Bool = false
     public static var isDiscoverable: Bool = false
 
-    @Parameter(title: "Screenshot Image", supportedContentTypes: [.image])
+    @Parameter(title: "Screenshot Image", description: "Payment screenshot image to parse")
     public var screenshot: IntentFile
 
     public init() {}
