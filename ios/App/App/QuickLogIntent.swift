@@ -85,7 +85,14 @@ public enum DraftInbox {
     }
 
     public static func updateBadge() {
-        UNUserNotificationCenter.current().setBadgeCount(pendingCount())
+        let count = pendingCount()
+        if #available(iOS 16.0, *) {
+            UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
+        } else {
+            DispatchQueue.main.async {
+                UIApplication.shared.applicationIconBadgeNumber = count
+            }
+        }
     }
 }
 
@@ -319,7 +326,8 @@ public struct OpenInboxIntent: AppIntent {
         let defaults = UserDefaults(suiteName: DraftInbox.group) ?? UserDefaults.standard
         defaults.set("review", forKey: "pending_intent_navigation")
         defaults.synchronize()
-        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://inbox")!))
+        // Deep-link target: accrual://inbox
+        return .result()
     }
 }
 
@@ -464,7 +472,8 @@ public struct ScanReceiptCameraIntent: AppIntent {
         let defaults = UserDefaults(suiteName: DraftInbox.group) ?? UserDefaults.standard
         defaults.set("scan", forKey: "pending_intent_navigation")
         defaults.synchronize()
-        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://scan")!))
+        // Deep-link target: accrual://scan
+        return .result()
     }
 }
 
@@ -481,7 +490,8 @@ public struct OpenQuickAddIntent: AppIntent {
         let defaults = UserDefaults(suiteName: DraftInbox.group) ?? UserDefaults.standard
         defaults.set("add", forKey: "pending_intent_navigation")
         defaults.synchronize()
-        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://add")!))
+        // Deep-link target: accrual://add
+        return .result()
     }
 }
 

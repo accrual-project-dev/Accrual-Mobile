@@ -10,7 +10,7 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "ack", returnType: CAPPluginReturnPromise)
     ]
 
-    @objc func drain(_ call: CAPPluginCall) {
+    @objc public func drain(_ call: CAPPluginCall) {
         let fm = FileManager.default
         let dir = DraftInbox.dir
         let files = ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
@@ -29,7 +29,7 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["items": items])
     }
 
-    @objc func ack(_ call: CAPPluginCall) {
+    @objc public func ack(_ call: CAPPluginCall) {
         guard let ids = call.getArray("ids", String.self) else {
             call.resolve(["success": true, "acknowledged": 0])
             return
