@@ -410,12 +410,7 @@ class RevenueCatService {
 
     try {
       const { customerInfo } = await Purchases.restorePurchases();
-      const hasActivePro = Boolean(
-        (customerInfo.entitlements?.active &&
-          (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] ||
-           Object.keys(customerInfo.entitlements.active).length > 0)) ||
-        (customerInfo.activeSubscriptions && customerInfo.activeSubscriptions.length > 0)
-      );
+      const hasActivePro = this.isProEntitlementActive(customerInfo);
 
       return {
         success: true,
@@ -433,6 +428,37 @@ class RevenueCatService {
   }
 
   /**
+   * Strictly validates whether customer has active 'accrual_pro' entitlement
+   * and verifies that its expirationDate (if any) is still in the future.
+   */
+  public isProEntitlementActive(customerInfo: CustomerInfo): boolean {
+    const entitlement = customerInfo.entitlements?.active?.[REVENUECAT_ENTITLEMENT_ID];
+    if (entitlement) {
+      const isActiveFlag = entitlement.isActive !== false;
+      if (!isActiveFlag) return false;
+
+      // Lifetime or non-expiring entitlement
+      if (!entitlement.expirationDate) {
+        return true;
+      }
+      const expiryTime = new Date(entitlement.expirationDate).getTime();
+      return !Number.isNaN(expiryTime) && expiryTime > Date.now();
+    }
+
+    // Strict fallback: ONLY accept known Accrual Pro subscription product IDs if present in activeSubscriptions
+    if (customerInfo.activeSubscriptions && customerInfo.activeSubscriptions.length > 0) {
+      const knownProProductIds = new Set<string>([
+        REVENUECAT_PRODUCT_IDS.accrual_monthly_29k,
+        REVENUECAT_PRODUCT_IDS.accrual_annual_199k,
+        REVENUECAT_PRODUCT_IDS.accrual_lifetime_499k,
+      ]);
+      return customerInfo.activeSubscriptions.some((subId) => knownProProductIds.has(subId));
+    }
+
+    return false;
+  }
+
+  /**
    * Checks whether the user currently has an active 'accrual_pro' entitlement.
    */
   public async checkProEntitlement(): Promise<boolean> {
@@ -442,12 +468,7 @@ class RevenueCatService {
 
     try {
       const { customerInfo } = await Purchases.getCustomerInfo();
-      return Boolean(
-        (customerInfo.entitlements?.active &&
-          (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] ||
-           Object.keys(customerInfo.entitlements.active).length > 0)) ||
-        (customerInfo.activeSubscriptions && customerInfo.activeSubscriptions.length > 0)
-      );
+      return this.isProEntitlementActive(customerInfo);
     } catch {
       return false;
     }
@@ -461,11 +482,20 @@ class RevenueCatService {
     planIdHint?: SubscriptionPlanId
   ): UserSubscription {
     const activeEntitlements = customerInfo.entitlements?.active || {};
-    const entitlement =
-      activeEntitlements[REVENUECAT_ENTITLEMENT_ID] ||
-      Object.values(activeEntitlements)[0];
-    const fallbackSubId = customerInfo.activeSubscriptions?.[0] || null;
-    const isPro = Boolean(entitlement || fallbackSubId);
+    const entitlement = activeEntitlements[REVENUECAT_ENTITLEMENT_ID] || null;
+
+    const knownProProductIds = new Set<string>([
+      REVENUECAT_PRODUCT_IDS.accrual_monthly_29k,
+      REVENUECAT_PRODUCT_IDS.accrual_annual_199k,
+      REVENUECAT_PRODUCT_IDS.accrual_lifetime_499k,
+    ]);
+    const fallbackSubId =
+      customerInfo.activeSubscriptions?.find((id) => knownProProductIds.has(id)) || null;
+
+    const isPro = Boolean(
+      (entitlement && entitlement.isActive !== false) || fallbackSubId
+    );
+
     const resolvedPlanId =
       planIdHint ||
       (entitlement?.productIdentifier as SubscriptionPlanId | undefined) ||

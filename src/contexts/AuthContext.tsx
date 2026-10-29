@@ -11,6 +11,7 @@ import {
 } from "../lib/biometricAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearAllLocalUserSessionData } from "../lib/sessionCleanup";
+import { revenueCatService } from "../lib/revenueCatService";
 
 export const GUEST_USER_ID = "guest_local_user";
 
@@ -431,6 +432,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: false });
     } catch (cleanErr) {
       console.warn("[AuthContext] clearAllLocalUserSessionData warning:", cleanErr);
+    }
+    try {
+      await revenueCatService.logOut();
+    } catch (rcErr) {
+      console.warn("[AuthContext] revenueCatService.logOut warning:", rcErr);
     }
     await supabase.auth.signOut();
     setSession(null);

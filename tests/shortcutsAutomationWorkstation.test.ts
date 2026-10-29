@@ -165,4 +165,63 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       expect(saved["screen_scan"]).toBe("https://www.icloud.com/shortcuts/670d8a5b28e44ca6a3371900388d01d4");
     });
   });
+
+  describe("5. Support & Feedback Section and Web Dashboard Parity", () => {
+    it("verifies SettingsPage includes the dedicated Support & Feedback section with What's New, Rate Accrual, and Feedback", () => {
+      const settingsPath = path.resolve(__dirname, "../src/pages/SettingsPage.tsx");
+      const settingsContent = fs.readFileSync(settingsPath, "utf-8");
+
+      // Header
+      expect(settingsContent).toContain(
+        '{isIndonesian ? "Bantuan & Dukungan" : "Support & Feedback"}'
+      );
+
+      // What's New
+      expect(settingsContent).toContain(
+        '{isIndonesian ? "Yang Baru" : "What\'s New"}'
+      );
+
+      // Rate Accrual
+      expect(settingsContent).toContain(
+        '{isIndonesian ? "Beri Nilai Accrual" : "Rate Accrual"}'
+      );
+      expect(settingsContent).toContain("https://apps.apple.com/app/id6825272166?action=write-review");
+
+      // Feedback & Requests
+      expect(settingsContent).toContain(
+        '{isIndonesian\n                          ? "Saran & Masukan"\n                          : "Feedback & Requests"}'
+      );
+      expect(settingsContent).toContain("mailto:support@syntheticae.studio");
+    });
+
+    it("verifies Web Dashboard modal and settings display the official Cloudflare Workers domain", () => {
+      const modalPath = path.resolve(
+        __dirname,
+        "../src/components/settings/WebDashboardLinkModal.tsx"
+      );
+      const modalContent = fs.readFileSync(modalPath, "utf-8");
+      expect(modalContent).toContain(
+        "https://accrual-dashboard.accrual-project-app.workers.dev"
+      );
+
+      const dataVaultPath = path.resolve(
+        __dirname,
+        "../src/components/settings/SettingsDataVaultSection.tsx"
+      );
+      const dataVaultContent = fs.readFileSync(dataVaultPath, "utf-8");
+      expect(dataVaultContent).toContain(
+        "accrual-dashboard.accrual-project-app.workers.dev"
+      );
+    });
+
+    it("verifies QuickLogIntent.swift routes screenshot OCR to review navigation instead of scan", () => {
+      const swiftPath = path.resolve(
+        __dirname,
+        "../ios/App/App/QuickLogIntent.swift"
+      );
+      const swiftContent = fs.readFileSync(swiftPath, "utf-8");
+      expect(swiftContent).toContain('defaults.set("review", forKey: "pending_intent_navigation")');
+      expect(swiftContent).not.toContain('defaults.set("scan", forKey: "pending_intent_navigation")\n            defaults.synchronize()\n            return .result(dialog: IntentDialog("Tangkapan layar');
+    });
+  });
 });

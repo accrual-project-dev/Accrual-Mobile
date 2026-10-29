@@ -120,6 +120,42 @@ describe("RevenueCat In-App Purchase Service (StoreKit 2)", () => {
       expect(sub.status).toBe("expired");
       expect(sub.isLifetime).toBe(false);
     });
+
+    it("rejects entitlement with past expirationDate in isProEntitlementActive", () => {
+      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const mockExpired = {
+        entitlements: {
+          active: {
+            accrual_pro: {
+              identifier: "accrual_pro",
+              productIdentifier: "accrual_annual_199k",
+              isActive: true,
+              expirationDate: pastDate,
+            },
+          },
+        },
+      } as unknown as CustomerInfo;
+
+      expect(revenueCatService.isProEntitlementActive(mockExpired)).toBe(false);
+    });
+
+    it("rejects unknown entitlement names and random activeSubscriptions", () => {
+      const mockUnknown = {
+        entitlements: {
+          active: {
+            random_entitlement: {
+              identifier: "random_entitlement",
+              productIdentifier: "random_prod",
+              isActive: true,
+              expirationDate: null,
+            },
+          },
+        },
+        activeSubscriptions: ["random_third_party_product"],
+      } as unknown as CustomerInfo;
+
+      expect(revenueCatService.isProEntitlementActive(mockUnknown)).toBe(false);
+    });
   });
 
   describe("4. Package Resolution Engine (resolvePackageFromOffering)", () => {

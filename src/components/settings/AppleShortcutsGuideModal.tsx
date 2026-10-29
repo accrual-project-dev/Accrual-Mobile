@@ -11,11 +11,8 @@ import {
   ScanLine,
   Watch,
   Lock,
-  Plus,
   Trash2,
   Play,
-  Link as LinkIcon,
-  AlertCircle,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
@@ -387,50 +384,47 @@ export function AppleShortcutsGuideModal({
   };
 
   const handleAddShortcut = () => {
-    if (!isUrlValid) {
-      triggerHaptic("medium");
-      setConfigInputUrl(customLinks[selectedPresetId] || "");
-      setConfigError(null);
-      setIsConfigOpen(true);
+    triggerSuccessHaptic();
+    if (isUrlValid) {
+      try {
+        window.open(effectiveICloudUrl, "_system");
+      } catch {
+        window.location.href = effectiveICloudUrl;
+      }
       showToast(
         isIndonesian
-          ? "Tautan iCloud resmi diperlukan untuk pemasangan 1-ketukan."
-          : "Official iCloud link required for 1-tap installation.",
+          ? "Membuka tautan iCloud di Apple Shortcuts..."
+          : "Opening iCloud link in Apple Shortcuts...",
         "info",
         () => {}
       );
-      return;
+    } else {
+      window.location.href = "shortcuts://";
+      showToast(
+        isIndonesian
+          ? "Membuka aplikasi Pintasan iOS..."
+          : "Opening iOS Shortcuts app...",
+        "info",
+        () => {}
+      );
     }
-
-    triggerSuccessHaptic();
-    // Open the official iCloud shortcut link which triggers the native iOS "Add Shortcut" sheet
-    try {
-      window.open(effectiveICloudUrl, "_system");
-    } catch {
-      window.location.href = effectiveICloudUrl;
-    }
-    showToast(
-      isIndonesian
-        ? "Membuka pintasan di Apple Shortcuts..."
-        : "Opening shortcut in Apple Shortcuts...",
-      "add",
-      () => {}
-    );
   };
 
-  const handleCopyLink = () => {
+  const handleCopyDirectScheme = () => {
     triggerSuccessHaptic();
-    navigator.clipboard.writeText(effectiveICloudUrl);
-    setCopiedKey(activePreset.id);
+    const scheme = activePreset.directScheme;
+    navigator.clipboard.writeText(scheme);
+    setCopiedKey(activePreset.id + "-scheme");
     showToast(
       isIndonesian
-        ? "Tautan pintasan berhasil disalin ke papan klip"
-        : "Shortcut link copied to clipboard",
-      "add",
+        ? `Skema URL (${scheme}) berhasil disalin`
+        : `URL scheme (${scheme}) copied to clipboard`,
+      "info",
       () => {}
     );
     setTimeout(() => setCopiedKey(null), 2200);
   };
+
 
   const handleOpenShortcutsApp = () => {
     triggerHaptic("medium");
@@ -673,7 +667,7 @@ export function AppleShortcutsGuideModal({
             </div>
           </div>
 
-          {/* Primary Action Button: + Add Shortcut */}
+          {/* Primary Action Button */}
           <div className="w-full flex flex-col gap-2.5">
             <button
               type="button"
@@ -684,35 +678,39 @@ export function AppleShortcutsGuideModal({
                 color: isDark ? "#09090c" : "#ffffff",
               }}
             >
-              <Plus size={16} strokeWidth={2.5} />
+              <ExternalLink size={16} strokeWidth={2} />
               <span>
-                {isIndonesian ? "Tambah ke Pintasan" : "Add Shortcut"}
+                {isUrlValid
+                  ? isIndonesian
+                    ? "Buka Tautan iCloud Pintasan"
+                    : "Open iCloud Shortcut"
+                  : isIndonesian
+                  ? "Buka Aplikasi Pintasan iOS"
+                  : "Open iOS Shortcuts App"}
               </span>
             </button>
 
-            {!isUrlValid && (
-              <div
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] leading-tight text-center justify-center"
-                style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-tertiary)",
-                }}
-              >
-                <AlertCircle size={12} strokeWidth={1.8} />
-                <span>
-                  {isIndonesian
-                    ? "Tautan iCloud resmi diperlukan untuk instalasi 1-ketukan"
-                    : "Official iCloud link required for 1-tap install"}
-                </span>
-              </div>
-            )}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] leading-tight text-center justify-center"
+              style={{
+                background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
+                borderColor: "var(--glass-border)",
+                color: "var(--text-tertiary)",
+              }}
+            >
+              <Sparkles size={12} strokeWidth={1.8} />
+              <span>
+                {isIndonesian
+                  ? "Tindakan Bawaan: Accrual otomatis terdaftar di Pintasan & Ketuk Belakang tanpa unduhan."
+                  : "Native Action: Accrual actions are built into Shortcuts & Back Tap without downloads."}
+              </span>
+            </div>
 
             {/* Auxiliary actions row */}
             <div className="flex items-center gap-2 w-full">
               <button
                 type="button"
-                onClick={handleCopyLink}
+                onClick={handleCopyDirectScheme}
                 className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
                 style={{
                   background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
@@ -720,56 +718,37 @@ export function AppleShortcutsGuideModal({
                   color: "var(--text-primary)",
                 }}
               >
-                {copiedKey === activePreset.id ? (
+                {copiedKey === activePreset.id + "-scheme" ? (
                   <>
                     <Check size={14} strokeWidth={2} />
-                    <span>{isIndonesian ? "Tautan Tersalin" : "Link Copied"}</span>
+                    <span>{isIndonesian ? "Skema Tersalin" : "Scheme Copied"}</span>
                   </>
                 ) : (
                   <>
                     <Copy size={14} strokeWidth={1.8} />
-                    <span>{isIndonesian ? "Salin Tautan" : "Copy Link"}</span>
+                    <span>{isIndonesian ? "Salin Skema URL" : "Copy URL Scheme"}</span>
                   </>
                 )}
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setConfigInputUrl(customLinks[selectedPresetId] || "");
-                  setConfigError(null);
-                  setIsConfigOpen((prev) => !prev);
-                }}
+                onClick={handleDirectLaunch}
                 className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
                 style={{
-                  background: isConfigOpen
-                    ? isDark
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "rgba(0, 0, 0, 0.08)"
-                    : isDark
-                    ? "rgba(255, 255, 255, 0.04)"
-                    : "rgba(0, 0, 0, 0.04)",
-                  borderColor: isUrlValid ? "var(--glass-border)" : "rgba(255, 255, 255, 0.2)",
+                  background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                  borderColor: "var(--glass-border)",
                   color: "var(--text-primary)",
                 }}
               >
-                <LinkIcon size={13} strokeWidth={1.8} />
-                <span>
-                  {isUrlValid
-                    ? isIndonesian
-                      ? "Ubah Tautan"
-                      : "Edit Link"
-                    : isIndonesian
-                    ? "Atur Tautan"
-                    : "Set Link"}
-                </span>
+                <Play size={13} strokeWidth={1.8} />
+                <span>{isIndonesian ? "Uji Langsung" : "Direct Launch"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleTestHud}
-                className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                className="h-10 px-3 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
                 style={{
                   background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
                   borderColor: "var(--glass-border)",

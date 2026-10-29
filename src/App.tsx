@@ -385,13 +385,23 @@ function AppShell() {
     const handleOpenVoice = () => {
       setVoiceModalOpen(true);
     };
+    const handleOpenDraftReview = (e: any) => {
+      const items = e?.detail?.items;
+      if (Array.isArray(items) && items.length > 0) {
+        setBatchReviewItems(items);
+        setBatchSourceTitle(e?.detail?.title || (isIndonesian ? "Tangkapan Layar" : "Screenshot"));
+        setBatchReviewOpen(true);
+      }
+    };
     window.addEventListener("trouvaille:open-quick-add", handleOpenQuickAdd);
     window.addEventListener("trouvaille:open-scanner", handleOpenScanner);
     window.addEventListener("trouvaille:open-voice", handleOpenVoice);
+    window.addEventListener("trouvaille:open-draft-review", handleOpenDraftReview);
     return () => {
       window.removeEventListener("trouvaille:open-quick-add", handleOpenQuickAdd);
       window.removeEventListener("trouvaille:open-scanner", handleOpenScanner);
       window.removeEventListener("trouvaille:open-voice", handleOpenVoice);
+      window.removeEventListener("trouvaille:open-draft-review", handleOpenDraftReview);
     };
   }, []);
 

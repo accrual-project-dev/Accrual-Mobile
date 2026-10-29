@@ -272,14 +272,14 @@ struct ScanPaymentScreenshotIntent: AppIntent {
             var pending = defaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
             pending.append(record)
             defaults.set(pending, forKey: "pending_backtap_voice")
-            defaults.set("scan", forKey: "pending_intent_navigation")
+            defaults.set("review", forKey: "pending_intent_navigation")
             defaults.synchronize()
-            return .result(dialog: IntentDialog("Tangkapan layar berhasil diproses ke Accrual."))
+            return .result(dialog: IntentDialog("Tangkapan layar berhasil diproses ke antrean tinjauan Accrual."))
         }
 
-        defaults.set("scan", forKey: "pending_intent_navigation")
+        defaults.set("review", forKey: "pending_intent_navigation")
         defaults.synchronize()
-        return .result(dialog: IntentDialog("Membuka pemindai Accrual."))
+        return .result(dialog: IntentDialog("Membuka Accrual."))
     }
 
     private func performVisionOCR(from file: IntentFile) async -> String? {

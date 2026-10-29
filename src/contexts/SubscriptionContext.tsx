@@ -222,7 +222,17 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const isPremium = useMemo(() => {
     if (subscription.isLifetime) return true;
     if (subscription.tier !== "premium") return false;
-    return subscription.status === "active" || subscription.status === "trialing";
+    const isActiveStatus = subscription.status === "active" || subscription.status === "trialing";
+    if (!isActiveStatus) return false;
+
+    // Strict expiration guard: if currentPeriodEnd is present and in the past, treat as not premium
+    if (subscription.currentPeriodEnd) {
+      const expiry = new Date(subscription.currentPeriodEnd).getTime();
+      if (!Number.isNaN(expiry) && expiry <= Date.now()) {
+        return false;
+      }
+    }
+    return true;
   }, [subscription]);
 
   const openPaywall = useCallback((ctx?: PaywallTriggerContext) => {

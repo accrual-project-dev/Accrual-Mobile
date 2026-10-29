@@ -28,6 +28,8 @@ import {
   Scale,
   Fingerprint,
   ScanFace,
+  Star,
+  MessageSquarePlus,
 } from "lucide-react";
 import { usePrivacy } from "../contexts/PrivacyContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -982,12 +984,28 @@ export function SettingsPage({
   );
   const hasDataVault = showCloudSync || showWebDashboard || showExportVault;
 
+  // Section 7: Support & Feedback
+  const showWhatsNew = matches(
+    "What's New Yang Baru Versi Aplikasi Pembaruan App Version Updates",
+    "version versi update pembaruan changelog rilis release notes what is new baru",
+  );
+  const showRateApp = matches(
+    "Rate Accrual Beri Nilai Ulasan Review App Store",
+    "rate review star bintang ulasan nilai app store dukung support feedback",
+  );
+  const showFeedback = matches(
+    "Feature Request Saran Masukan Permintaan Fitur Feedback Support",
+    "feedback request feature saran masukan fitur kontak email bantuan bug lapor ide",
+  );
+  const hasSupport = showWhatsNew || showRateApp || showFeedback;
+
   const hasAnyMatch =
     hasArchitecture ||
     hasPreferences ||
     hasAutomations ||
     hasNotifications ||
     hasSecurity ||
+    hasSupport ||
     hasDataVault;
 
   // ── Apple Inset Grouped Styling Tokens (Clean, Zero Glow Shadow) ──
@@ -2528,18 +2546,106 @@ export function SettingsPage({
               </>
             )}
 
-            {/* App Version & In-App Updates */}
-            {(!searchQuery.trim() ||
-              /versi|update|pembaruan|tentang|about|release/i.test(searchQuery)) && (
+          </div>
+        </section>
+      )}
+
+      {/* ── 9. Support & Feedback ── */}
+      {hasSupport && (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span
+              className="text-[10px] font-bold tracking-wider uppercase"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {isIndonesian ? "Bantuan & Dukungan" : "Support & Feedback"}
+            </span>
+          </div>
+
+          <div
+            className="rounded-2xl border overflow-hidden transition-all duration-200"
+            style={{
+              background: groupBg,
+              border: groupBorder,
+              boxShadow: groupShadow,
+            }}
+          >
+            {/* What's New & App Version */}
+            {showWhatsNew && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setUpdateModalOpen(true);
+                  if (!releaseInfo) {
+                    handleCheckAppUpdate();
+                  }
+                }}
+                className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: iconBg,
+                      border: iconBorder,
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Sparkles size={13.5} strokeWidth={1.8} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="text-[12.5px] font-semibold truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Yang Baru" : "What's New"}
+                    </span>
+                    <span
+                      className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5"
+                    >
+                      {isIndonesian
+                        ? "Catatan rilis & periksa pembaruan"
+                        : "Release notes & check for updates"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="text-[10.5px] font-mono px-2 py-0.5 rounded-full border"
+                    style={{
+                      borderColor: isDark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.06)",
+                      color: "var(--text-secondary)",
+                      background: iconBg,
+                    }}
+                  >
+                    v{APP_VERSION}
+                  </span>
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </div>
+              </button>
+            )}
+
+            {/* Leave us a review / Rate Accrual */}
+            {showRateApp && (
               <>
-                <div style={gradientDivider} />
+                {showWhatsNew && <div style={gradientDivider} />}
                 <button
                   type="button"
                   onClick={() => {
-                    triggerHaptic("light");
-                    setUpdateModalOpen(true);
-                    if (!releaseInfo) {
-                      handleCheckAppUpdate();
+                    triggerSuccessHaptic();
+                    const reviewUrl =
+                      "https://apps.apple.com/app/id6825272166?action=write-review";
+                    try {
+                      window.open(reviewUrl, "_system");
+                    } catch {
+                      window.location.href = reviewUrl;
                     }
                   }}
                   className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
@@ -2553,36 +2659,87 @@ export function SettingsPage({
                         color: "var(--text-primary)",
                       }}
                     >
-                      <Sparkles size={13.5} strokeWidth={1.8} />
+                      <Star size={13.5} strokeWidth={1.8} />
                     </div>
-                    <span
-                      className="text-[12.5px] font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian
-                        ? "Versi Aplikasi & Pembaruan"
-                        : "App Version & Updates"}
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span
+                        className="text-[12.5px] font-semibold truncate leading-tight"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {isIndonesian ? "Beri Nilai Accrual" : "Rate Accrual"}
+                      </span>
+                      <span
+                        className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5"
+                      >
+                        {isIndonesian
+                          ? "Dukung kami dengan ulasan di App Store"
+                          : "Support development on the App Store"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span
-                      className="text-[10.5px] font-mono px-2 py-0.5 rounded-full border"
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </button>
+              </>
+            )}
+
+            {/* Feature Request & Feedback */}
+            {showFeedback && (
+              <>
+                {(showWhatsNew || showRateApp) && (
+                  <div style={gradientDivider} />
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    const subject = encodeURIComponent(
+                      "Accrual Feature Request & Feedback"
+                    );
+                    const body = encodeURIComponent(
+                      `Halo Tim Accrual,\n\nSaya ingin memberikan saran / masukan fitur:\n\n---\nVersi: v${APP_VERSION}\nPlatform: iOS`
+                    );
+                    window.location.href = `mailto:support@syntheticae.studio?subject=${subject}&body=${body}`;
+                  }}
+                  className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
                       style={{
-                        borderColor: isDark
-                          ? "rgba(255, 255, 255, 0.08)"
-                          : "rgba(0, 0, 0, 0.06)",
-                        color: "var(--text-secondary)",
                         background: iconBg,
+                        border: iconBorder,
+                        color: "var(--text-primary)",
                       }}
                     >
-                      v{APP_VERSION}
-                    </span>
-                    <ChevronRight
-                      size={14}
-                      strokeWidth={2}
-                      style={{ color: "var(--text-tertiary)" }}
-                    />
+                      <MessageSquarePlus size={13.5} strokeWidth={1.8} />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span
+                        className="text-[12.5px] font-semibold truncate leading-tight"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {isIndonesian
+                          ? "Saran & Masukan"
+                          : "Feedback & Requests"}
+                      </span>
+                      <span
+                        className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5"
+                      >
+                        {isIndonesian
+                          ? "Sampaikan ide atau kendala fitur langsung ke tim kami"
+                          : "Share ideas or feature requests with our team"}
+                      </span>
+                    </div>
                   </div>
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
                 </button>
               </>
             )}

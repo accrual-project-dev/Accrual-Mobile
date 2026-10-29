@@ -15,6 +15,8 @@ import {
   AlertCircle,
   Loader2,
   Trash2,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { BottomSheet } from "../ui/BottomSheet";
@@ -395,6 +397,69 @@ export function WebDashboardLinkModal({
               </div>
             </div>
 
+            {/* Web Dashboard Direct Link Card */}
+            <div
+              className="p-3 rounded-xl border flex items-center justify-between gap-2.5 text-left"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider block text-[var(--text-tertiary)]">
+                  {isIndonesian ? "Alamat Web Dashboard" : "Web Dashboard URL"}
+                </span>
+                <span className="text-[11.5px] font-mono text-[var(--text-primary)] block truncate select-all mt-0.5">
+                  https://accrual-dashboard.accrual-project-app.workers.dev
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerSuccessHaptic();
+                    navigator.clipboard.writeText(
+                      "https://accrual-dashboard.accrual-project-app.workers.dev"
+                    );
+                    showToast(
+                      isIndonesian
+                        ? "Tautan Web Dashboard berhasil disalin"
+                        : "Dashboard URL copied to clipboard",
+                      "info"
+                    );
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                  style={{
+                    background: "var(--glass-fill)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Copy size={12} strokeWidth={1.8} />
+                  <span>{isIndonesian ? "Salin" : "Copy"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    window.open(
+                      "https://accrual-dashboard.accrual-project-app.workers.dev",
+                      "_system"
+                    );
+                  }}
+                  className="p-1.5 rounded-lg border flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                  style={{
+                    background: "var(--glass-fill)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                  title={isIndonesian ? "Buka di Browser" : "Open in Browser"}
+                >
+                  <ExternalLink size={13} strokeWidth={1.8} />
+                </button>
+              </div>
+            </div>
+
             {/* Scan Button CTA */}
             <button
               type="button"
@@ -464,8 +529,8 @@ export function WebDashboardLinkModal({
                   </span>
                   <p style={{ color: "var(--text-tertiary)" }}>
                     {isIndonesian
-                      ? "Buka Accrual Web di peramban komputer Anda dan pilih 'Pindai dengan Aplikasi'."
-                      : "Open Accrual Web on your desktop browser and select 'Scan with App'."}
+                      ? "Buka https://accrual-dashboard.accrual-project-app.workers.dev di komputer Anda dan pilih 'Pindai dengan Aplikasi'."
+                      : "Open https://accrual-dashboard.accrual-project-app.workers.dev on your computer and select 'Scan with App'."}
                   </p>
                 </div>
                 <div className="flex items-start gap-2.5">
