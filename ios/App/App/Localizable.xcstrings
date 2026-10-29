@@ -1,0 +1,316 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Scan Payment Screenshot": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pindai pembayaran dari tangkapan layar"
+          }
+        }
+      }
+    },
+    "Log Notification Transaction": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catat transaksi dari notifikasi"
+          }
+        }
+      }
+    },
+    "Open Draft Inbox": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka kotak tinjauan"
+          }
+        }
+      }
+    },
+    "Voice Entry": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catat dengan suara"
+          }
+        }
+      }
+    },
+    "Log Card Transaction": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catat transaksi kartu"
+          }
+        }
+      }
+    },
+    "Scan Receipt Camera": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pindai struk"
+          }
+        }
+      }
+    },
+    "Quick Add": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambah cepat"
+          }
+        }
+      }
+    },
+    "Capture screenshot text for review in Accrual.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangkap teks layar untuk ditinjau di Accrual."
+          }
+        }
+      }
+    },
+    "Capture payment screenshot text for review in Accrual.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangkap teks bukti pembayaran untuk ditinjau di Accrual."
+          }
+        }
+      }
+    },
+    "Capture notification text for review in Accrual.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangkap teks notifikasi untuk ditinjau di Accrual."
+          }
+        }
+      }
+    },
+    "Review captured transactions in Accrual.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinjau transaksi yang ditangkap di Accrual."
+          }
+        }
+      }
+    },
+    "Capture spoken text for review in Accrual.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangkap teks ucapan untuk ditinjau di Accrual."
+          }
+        }
+      }
+    },
+    "Capture card transaction details for review.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangkap rincian transaksi kartu untuk ditinjau."
+          }
+        }
+      }
+    },
+    "Open the receipt camera in Accrual.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka kamera pemindai struk di Accrual."
+          }
+        }
+      }
+    },
+    "Open transaction entry in Accrual.": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka formulir transaksi di Accrual."
+          }
+        }
+      }
+    },
+    "Screenshot Image": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gambar tangkapan layar"
+          }
+        }
+      }
+    },
+    "Extracted Text": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teks hasil ekstraksi"
+          }
+        }
+      }
+    },
+    "Notification": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifikasi"
+          }
+        }
+      }
+    },
+    "Body": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isi"
+          }
+        }
+      }
+    },
+    "Title": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Judul"
+          }
+        }
+      }
+    },
+    "Notif Title": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Judul notifikasi"
+          }
+        }
+      }
+    },
+    "Subtitle": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subjudul"
+          }
+        }
+      }
+    },
+    "Notif Subtitle": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subjudul notifikasi"
+          }
+        }
+      }
+    },
+    "App": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplikasi"
+          }
+        }
+      }
+    },
+    "Received At": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waktu diterima"
+          }
+        }
+      }
+    },
+    "Speech": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ucapan"
+          }
+        }
+      }
+    },
+    "Amount": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nominal"
+          }
+        }
+      }
+    },
+    "Merchant": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pedagang"
+          }
+        }
+      }
+    },
+    "Card": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kartu"
+          }
+        }
+      }
+    },
+    "Review Captures": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tinjau tangkapan"
+          }
+        }
+      }
+    },
+    "Capture Screenshot": {
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangkap layar"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

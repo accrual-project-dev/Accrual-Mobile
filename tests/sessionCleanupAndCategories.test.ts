@@ -41,7 +41,7 @@ describe("Session Cleanup & Global vs Indonesian Category Taxonomy Suite", () =>
     it("wipes all sensitive financial keys, backups, and dynamic user caches", async () => {
       // Seed dummy user data
       USER_SESSION_STORAGE_KEYS.forEach((k) => {
-        localStorage.setItem(k, "some_secret_user_data");
+        localStorage.setItem(k, k === "trouvaille_draft_transactions" ? JSON.stringify([{items:[{id:"legacy"}]}]) : k === "TROUVAILLE_PENDING_MUTATIONS_V2" ? JSON.stringify([{payload:{id:"ordinary"}}]) : "some_secret_user_data");
       });
       localStorage.setItem("trouvaille_guest_mode", "true");
       localStorage.setItem("trouvaille_migrated_guest_user123", "true");

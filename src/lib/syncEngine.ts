@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import type { Transaction } from "./types";
 
 export interface PendingMutation {
+  captureOwnerId?: string;
   id: string;
   type: "insert" | "update" | "delete";
   entity: "transaction";
@@ -27,10 +28,11 @@ export function getPendingMutations(): PendingMutation[] {
   }
 }
 
-export function savePendingMutations(mutations: PendingMutation[]): void {
+export function savePendingMutations(mutations: PendingMutation[], strict = false): void {
   try {
     localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(mutations));
   } catch (err) {
+    if (strict) throw err;
     console.error("[syncEngine] Failed to persist pending mutations:", err);
   }
 }
@@ -157,6 +159,7 @@ export function getMutationBackoffMs(retryCount: number): number {
 export function enqueuePendingMutation(
   type: "insert" | "update" | "delete",
   payload: any,
+  captureOwnerId?: string,
 ): PendingMutation {
   // Enqueue must fail if the durable queue cannot be read or persisted.
   const raw = localStorage.getItem(PENDING_STORAGE_KEY);
@@ -165,6 +168,7 @@ export function enqueuePendingMutation(
     throw new Error("Invalid pending mutation queue");
   }
   const newMutation: PendingMutation = {
+    captureOwnerId: captureOwnerId || mutations.find(m => m.payload?.id === payload.id)?.captureOwnerId,
     id: `mut-${Date.now()}-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 8)}`,
     type,
     entity: "transaction",
@@ -312,6 +316,7 @@ export async function flushPendingMutations(options?: {
     };
 
     for (const mutation of mutations) {
+      if (mutation.captureOwnerId && mutation.captureOwnerId !== user.id) continue;
       if (mutation.type === "insert" && mutation.payload?.user_id !== user.id) {
         errors.push("Queued insert belongs to a different or unknown session");
         continue;

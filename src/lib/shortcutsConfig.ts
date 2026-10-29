@@ -37,7 +37,7 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
     summaryEn: "Take a screenshot and pass the image to Accrual’s native background action. Captures needing attention go to the review inbox.",
     actions: [
       { id: "take_screenshot", type: "standard", icon: Camera, titleId: "Ambil tangkapan layar", titleEn: "Take Screenshot" },
-      { id: "scan_payment", type: "standard", icon: ScanLine, titleId: "Pindai pembayaran dari tangkapan layar", titleEn: "Scan payment from Screenshot", intent: "ScanPaymentScreenshotIntent", parameters: ["screenshot"], isNativeIntent: true,
+      { id: "scan_payment", type: "standard", icon: ScanLine, titleId: "Pindai pembayaran dari tangkapan layar", titleEn: "Scan Payment Screenshot", intent: "ScanPaymentScreenshotIntent", parameters: ["screenshot"], isNativeIntent: true,
         subtitleId: "Masukan gambar: hasil tindakan sebelumnya. Pemrosesan berlangsung di perangkat.", subtitleEn: "Image input: output from the previous action. Processing stays on device." },
     ],
     stepsId: ["Di aplikasi Pintasan, buat pintasan baru dengan dua tindakan di atas. Hubungkan hasil tangkapan layar ke masukan gambar Accrual.", "iOS 16 ke atas: buka Pengaturan › Aksesibilitas › Sentuh › Ketuk Bagian Belakang, lalu pilih pintasan. Pada iPhone yang mendukung, pintasan juga dapat ditautkan ke Tombol Tindakan. iOS 27 menyediakan pemicu tangkapan layar sebagai pilihan tambahan.", "Uji saat bukti pembayaran terlihat. Jalankan pintasan lalu buka kotak tinjauan untuk memeriksa hasil. Tangkapan layar tidak dihapus."],

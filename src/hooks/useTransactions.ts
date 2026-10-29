@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { assertCaptureSession } from "../features/inbox/captureOwner";
+import { assertCaptureSession, getCaptureOwner } from "../features/inbox/captureOwner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionType, Category } from "../lib/types";
@@ -572,6 +572,7 @@ export async function fetchAllTransactionsFromSupabase(
     const pendingDeletes = new Set<string>();
     const pendingUpserts = new Map<string, Transaction>();
     for (const m of pendingMutations) {
+      if (m.captureOwnerId && m.captureOwnerId !== getCaptureOwner(effectiveUserId)) continue;
       if (m.type === "delete") {
         const id = m.payload?.id || m.payload;
         if (id) pendingDeletes.add(id);
@@ -730,6 +731,7 @@ export async function fetchAllTransactionsFromSupabase(
           const pendingDeletes = new Set<string>();
           const pendingUpserts = new Map<string, Transaction>();
           for (const m of pendingMutations) {
+            if (m.captureOwnerId && m.captureOwnerId !== getCaptureOwner(effectiveUserId)) continue;
             if (m.type === "delete") {
               const id = m.payload?.id || m.payload;
               if (id) pendingDeletes.add(id);
@@ -827,6 +829,7 @@ export async function fetchAllTransactionsFromSupabase(
     const pendingUpserts = new Map<string, Transaction>();
 
     for (const m of pendingMutations) {
+      if (m.captureOwnerId && m.captureOwnerId !== getCaptureOwner(effectiveUserId)) continue;
       if (m.type === "delete") {
         const id = m.payload?.id || m.payload;
         if (id) pendingDeletes.add(id);
@@ -1170,7 +1173,7 @@ export function useAddTransaction() {
       };
 
       // Always save to persistent pending mutations queue first
-      const mutation = enqueuePendingMutation("insert", fullTx);
+      const mutation = enqueuePendingMutation("insert", fullTx, input.expectedUserId ? getCaptureOwner(input.expectedUserId) || undefined : undefined);
 
       if (!currentUser?.id) {
         return fullTx;

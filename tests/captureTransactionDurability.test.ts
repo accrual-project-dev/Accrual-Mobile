@@ -70,3 +70,28 @@ it('does not publish or invalidate after the actual authenticated session change
   expect(state.qc.getQueryData(queryKey)).toEqual([]);
   expect(invalidate).not.toHaveBeenCalled();
 });
+
+it('isolates retained captures in cloud offline recovery with an existing backup',async()=>{
+ const {fetchAllTransactionsFromSupabase,TX_BACKUP_STORAGE_KEY}=await import('../src/hooks/useTransactions');
+ storage.set(TX_BACKUP_STORAGE_KEY,JSON.stringify([{id:'b-backup',user_id:'owner-b',occurred_on:'2026-10-29T10:00:00',amount:1,type:'expense'}]));
+ storage.set('TROUVAILLE_PENDING_MUTATIONS_V2',JSON.stringify([
+  {id:'a',type:'insert',captureOwnerId:'owner-a',payload:{id:'a-capture',user_id:'owner-a',occurred_on:'2026-10-29T10:00:00'}},
+  {id:'b',type:'insert',captureOwnerId:'owner-b',payload:{id:'b-capture',user_id:'owner-b',occurred_on:'2026-10-29T10:00:00'}}
+ ]));
+ vi.mocked(supabase.auth.getSession).mockResolvedValue({data:{session:{user:{id:'owner-b'}}},error:null} as any);
+ vi.spyOn(supabase,'from').mockImplementation(()=>{throw new Error('offline');});
+ const result=await fetchAllTransactionsFromSupabase({userId:'owner-b'});
+ expect(result.map(tx=>tx.id).sort()).toEqual(['b-backup','b-capture']);
+});
+
+it('hides retained authenticated and prior-guest captures from a fresh guest session',async()=>{
+ const {fetchAllTransactionsFromSupabase}=await import('../src/hooks/useTransactions');
+ storage.set('ACCRUAL_CAPTURE_GUEST_OWNER','guest:current');
+ storage.set('TROUVAILLE_PENDING_MUTATIONS_V2',JSON.stringify([
+  {id:'auth',type:'insert',captureOwnerId:'owner-a',payload:{id:'auth',user_id:'owner-a'}},
+  {id:'old',type:'insert',captureOwnerId:'guest:old',payload:{id:'old',user_id:'guest_local_user'}},
+  {id:'current',type:'insert',captureOwnerId:'guest:current',payload:{id:'current',user_id:'guest_local_user',occurred_on:'2026-10-29T10:00:00'}}
+ ]));
+ const result=await fetchAllTransactionsFromSupabase({userId:'guest_local_user'});
+ expect(result.map(tx=>tx.id)).toEqual(['current']);
+});

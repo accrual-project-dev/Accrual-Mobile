@@ -1058,6 +1058,7 @@ function AppShell() {
               type="button"
               onClick={async () => {
                 triggerSuccessHaptic();
+                try {
                 const guestOwner = localStorage.getItem(GUEST_CAPTURE_OWNER_KEY);
                 if (guestOwner && Capacitor.getPlatform() === "ios") {
                   await AccrualInbox.setOwner({ ownerId: user.id });
@@ -1074,6 +1075,10 @@ function AppShell() {
                 queryClient.invalidateQueries({ queryKey: ["wallets"] });
                 queryClient.invalidateQueries({ queryKey: ["transactions"] });
                 queryClient.invalidateQueries({ queryKey: ["categories"] });
+                } catch (error) {
+                  console.error("[CaptureMigration]", error);
+                  showToast(isIndonesian ? "Pemindahan belum selesai. Data tamu tetap disimpan. Coba lagi." : "Migration is incomplete. Guest data is retained. Please retry.", "info");
+                }
               }}
               className={`w-full py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
                 isDark
@@ -1088,6 +1093,7 @@ function AppShell() {
               type="button"
               onClick={async () => {
                 triggerHaptic("light");
+                try {
                 const guestOwner=localStorage.getItem(GUEST_CAPTURE_OWNER_KEY);
                 if(guestOwner && Capacitor.getPlatform()==="ios") await AccrualInbox.discardGuestOwner({ownerId:guestOwner});
                 if(guestOwner){discardCaptureDrafts(guestOwner);ackLocalCaptures(guestOwner,readLocalCaptures(guestOwner).map(item=>item.id));}
@@ -1097,6 +1103,10 @@ function AppShell() {
                 queryClient.invalidateQueries({ queryKey: ["categories"] });
                 queryClient.invalidateQueries({ queryKey: ["wallets"] });
                 queryClient.invalidateQueries({ queryKey: ["transactions"] });
+                } catch (error) {
+                  console.error("[CaptureDiscard]", error);
+                  showToast(isIndonesian ? "Penghapusan data tamu belum selesai. Coba lagi." : "Guest data removal is incomplete. Please retry.", "info");
+                }
               }}
               className={`w-full py-3 rounded-[22px] font-medium text-[12.5px] active:scale-[0.98] transition-all cursor-pointer ${
                 isDark ? "text-white/50 hover:text-white" : "text-zinc-500 hover:text-zinc-900"

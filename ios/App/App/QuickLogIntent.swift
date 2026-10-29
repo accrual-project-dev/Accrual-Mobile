@@ -34,7 +34,7 @@ public enum CaptureError: LocalizedError {
         case .noOwner: return CaptureLanguage.text("Open Accrual and sign in before capturing.", "Buka Accrual dan masuk sebelum membuat tangkapan.")
         case .ownerChanged: return CaptureLanguage.text("Your session changed. Capture again in the current session.", "Sesi Anda berubah. Buat tangkapan kembali dalam sesi saat ini.")
         case .empty: return CaptureLanguage.text("No readable text was captured.", "Tidak ada teks terbaca yang ditangkap.")
-        case .invalidID: return "Invalid capture identifier."
+        case .invalidID: return CaptureLanguage.text("Invalid capture identifier.", "Identitas tangkapan tidak valid.")
         }
     }
 }
@@ -184,7 +184,7 @@ public struct ScanPaymentScreenshotIntent: AppIntent {
 
 @available(iOS 16.0, *)
 public struct LogNotificationTransactionIntent: AppIntent {
-    public static var title: LocalizedStringResource = "Capture Notification"
+    public static var title: LocalizedStringResource = "Log Notification Transaction"
     public static var description = IntentDescription("Capture notification text for review in Accrual.")
     public static var openAppWhenRun = false
     @Parameter(title: "Notification") public var notificationText: String?

@@ -297,3 +297,21 @@ describe("Audit #36: User Identity, Profile Capsule, Password Recovery & Multi-T
     });
   });
 });
+
+it("retains owner-bound captures and captured offline bookings across logout without retaining general session data", async () => {
+  store = {
+    "accrual_local_captures:owner-a": "[]",
+    "accrual_capture_receipts:owner-a": '["capture"]',
+    "accrual_capture_review_ids:owner-a": '{"draft":"capture"}',
+    "trouvaille_draft_transactions": JSON.stringify([{id:"batch",items:[{id:"owned",captureOwnerId:"owner-a"},{id:"legacy"}]}]),
+    "TROUVAILLE_PENDING_MUTATIONS_V2": JSON.stringify([{id:"capture",captureOwnerId:"owner-a",payload:{user_id:"owner-a"}},{id:"ordinary",payload:{user_id:"owner-a"}}]),
+    "trouvaille_avatar":"old-user"
+  };
+  await clearAllLocalUserSessionData();
+  expect(store["accrual_local_captures:owner-a"]).toBe("[]");
+  expect(store["accrual_capture_receipts:owner-a"]).toBe('["capture"]');
+  expect(store["accrual_capture_review_ids:owner-a"]).toBe('{"draft":"capture"}');
+  expect(JSON.parse(store["trouvaille_draft_transactions"])[0].items.map((i:any)=>i.id)).toEqual(["owned"]);
+  expect(JSON.parse(store["TROUVAILLE_PENDING_MUTATIONS_V2"]).map((i:any)=>i.id)).toEqual(["capture"]);
+  expect(store["trouvaille_avatar"]).toBeUndefined();
+});

@@ -9,3 +9,11 @@ it('hides other capture owners and only adopts or discards explicit guest scope'
  adoptCaptureDrafts('guest:1','user');expect(getAllDraftItems().map(i=>i.id)).toEqual(['a']);
  discardCaptureDrafts('user');setCaptureDraftOwner('other');expect(getAllDraftItems().map(i=>i.id)).toEqual(['b']);
 });
+
+it('clears only the current owners visible drafts',async()=>{
+ const {clearAllDrafts}=await import('../src/lib/draftTransactionService');
+ let value:string|null=null;vi.stubGlobal('window',{dispatchEvent:()=>true});vi.stubGlobal('CustomEvent',class{});vi.stubGlobal('localStorage',{getItem:()=>value,setItem:(_k:string,v:string)=>{value=v;},removeItem:()=>{value=null;}});
+ saveDraftBatch([{id:'a',captureOwnerId:'owner-a'} as ParsedStatementItem,{id:'b',captureOwnerId:'owner-b'} as ParsedStatementItem]);
+ setCaptureDraftOwner('owner-a');clearAllDrafts();expect(getAllDraftItems()).toEqual([]);
+ setCaptureDraftOwner('owner-b');expect(getAllDraftItems().map(i=>i.id)).toEqual(['b']);
+});

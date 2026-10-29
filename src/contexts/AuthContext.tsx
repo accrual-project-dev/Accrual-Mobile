@@ -112,7 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (returningToPendingGuest) {
       localStorage.removeItem("trouvaille_pending_guest_migration");
     } else {
-      localStorage.removeItem(GUEST_CAPTURE_OWNER_KEY);
       clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: true }).catch(() => {});
     }
     try {
@@ -433,7 +432,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    localStorage.removeItem(GUEST_CAPTURE_OWNER_KEY);
     if (Capacitor.getPlatform() === "ios") {
       try { await AccrualInbox.setOwner({ ownerId: null }); } catch (error) { console.error(error); }
     }

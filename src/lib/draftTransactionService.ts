@@ -130,7 +130,8 @@ export function removeDraftItem(itemId: string): void {
  */
 export function clearAllDrafts(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    const retained = readAllDraftBatches().map(batch => ({...batch, items: batch.items.filter(item => item.captureOwnerId && item.captureOwnerId !== captureDraftOwner)})).filter(batch => batch.items.length);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(retained));
     notifyDraftsUpdated();
   } catch (err) {
     console.error("[DraftService] Failed to clear drafts:", err);
