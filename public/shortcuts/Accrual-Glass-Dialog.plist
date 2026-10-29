@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>WFWorkflowClientVersion</key>
+    <string>2600.0.1</string>
+    <key>WFWorkflowClientRelease</key>
+    <string>2.0</string>
+    <key>WFWorkflowMinimumClientVersion</key>
+    <integer>900</integer>
+    <key>WFWorkflowMinimumClientVersionString</key>
+    <string>900</string>
+    <key>WFWorkflowIcon</key>
+    <dict>
+      <key>WFWorkflowIconGlyphNumber</key>
+      <integer>59681</integer>
+      <key>WFWorkflowIconStartColor</key>
+      <integer>4282601983</integer>
+    </dict>
+    <key>WFWorkflowTypes</key>
+    <array>
+      <string>ActionExtension</string>
+      <string>QuickLook</string>
+    </array>
+    <key>WFWorkflowActions</key>
+    <array>
+      <dict>
+        <key>WFWorkflowActionIdentifier</key>
+        <string>is.workflow.actions.ask</string>
+        <key>WFWorkflowActionParameters</key>
+        <dict>
+          <key>WFInputType</key>
+          <string>Number</string>
+          <key>WFAskActionPrompt</key>
+          <string>Berapa nominal transaksi?</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>WFWorkflowActionIdentifier</key>
+        <string>is.workflow.actions.choosefromlist</string>
+        <key>WFWorkflowActionParameters</key>
+        <dict>
+          <key>WFChooseFromListActionPrompt</key>
+          <string>Pilih Kategori Transaksi</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>WFWorkflowActionIdentifier</key>
+        <string>is.workflow.actions.choosefromlist</string>
+        <key>WFWorkflowActionParameters</key>
+        <dict>
+          <key>WFChooseFromListActionPrompt</key>
+          <string>Pilih Akun / Rekening</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>WFWorkflowActionIdentifier</key>
+        <string>is.workflow.actions.ask</string>
+        <key>WFWorkflowActionParameters</key>
+        <dict>
+          <key>WFInputType</key>
+          <string>Date and Time</string>
+          <key>WFAskActionPrompt</key>
+          <string>Pilih Tanggal dan Waktu Transaksi</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>WFWorkflowActionIdentifier</key>
+        <string>is.workflow.actions.ask</string>
+        <key>WFWorkflowActionParameters</key>
+        <dict>
+          <key>WFInputType</key>
+          <string>Text</string>
+          <key>WFAskActionPrompt</key>
+          <string>Catatan transaksi (opsional)</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>WFWorkflowActionIdentifier</key>
+        <string>is.workflow.actions.openurl</string>
+        <key>WFWorkflowActionParameters</key>
+        <dict>
+          <key>ShowWhenRun</key>
+          <false/>
+        </dict>
+      </dict>
+      <dict>
+        <key>WFWorkflowActionIdentifier</key>
+        <string>is.workflow.actions.notification</string>
+        <key>WFWorkflowActionParameters</key>
+        <dict>
+          <key>WFNotificationActionTitle</key>
+          <string>Accrual</string>
+          <key>WFNotificationActionBody</key>
+          <string>Transaksi berhasil dicatat ke Accrual.</string>
+        </dict>
+      </dict>
+    </array>
+  </dict>
+</plist>

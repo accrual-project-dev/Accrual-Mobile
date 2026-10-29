@@ -2332,7 +2332,7 @@ export function SettingsPage({
                             <Fingerprint size={13.5} strokeWidth={1.8} />
                           )}
                         </div>
-                        <div className="flex flex-col min-w-0">
+                        <div className="flex items-center min-w-0">
                           <span
                             className="text-[12.5px] font-semibold truncate"
                             style={{ color: "var(--text-primary)" }}
@@ -2344,14 +2344,6 @@ export function SettingsPage({
                               : isIndonesian
                                 ? "Buka Kunci Biometrik"
                                 : "Biometric Unlock"}
-                          </span>
-                          <span
-                            className="text-[10px] truncate"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {isIndonesian
-                              ? "Buka brankas instan dengan sensor perangkat"
-                              : "Instantly unlock vault with device sensor"}
                           </span>
                         </div>
                       </div>
@@ -2439,22 +2431,12 @@ export function SettingsPage({
                         >
                           <KeyRound size={13.5} strokeWidth={1.8} />
                         </div>
-                        <div className="flex flex-col min-w-0">
-                          <span
-                            className="text-[12.5px] font-semibold truncate"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {isIndonesian ? "Kata Sandi Akun" : "Account Password"}
-                          </span>
-                          <span
-                            className="text-[10px] truncate"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {isIndonesian
-                              ? "Ubah atau buat kata sandi untuk masuk dengan surel"
-                              : "Change or set password to sign in with email"}
-                          </span>
-                        </div>
+                        <span
+                          className="text-[12.5px] font-semibold truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {isIndonesian ? "Kata Sandi Akun" : "Account Password"}
+                        </span>
                       </div>
                       <ChevronRight
                         size={14}
@@ -2594,21 +2576,12 @@ export function SettingsPage({
                   >
                     <Sparkles size={13.5} strokeWidth={1.8} />
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="text-[12.5px] font-semibold truncate leading-tight"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian ? "Yang Baru" : "What's New"}
-                    </span>
-                    <span
-                      className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5"
-                    >
-                      {isIndonesian
-                        ? "Catatan rilis & periksa pembaruan"
-                        : "Release notes & check for updates"}
-                    </span>
-                  </div>
+                  <span
+                    className="text-[12.5px] font-semibold truncate leading-tight"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isIndonesian ? "Yang Baru" : "What's New"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
@@ -2661,21 +2634,12 @@ export function SettingsPage({
                     >
                       <Star size={13.5} strokeWidth={1.8} />
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span
-                        className="text-[12.5px] font-semibold truncate leading-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian ? "Beri Nilai Accrual" : "Rate Accrual"}
-                      </span>
-                      <span
-                        className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5"
-                      >
-                        {isIndonesian
-                          ? "Dukung kami dengan ulasan di App Store"
-                          : "Support development on the App Store"}
-                      </span>
-                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian ? "Beri Nilai Accrual" : "Rate Accrual"}
+                    </span>
                   </div>
                   <ChevronRight
                     size={14}
@@ -2717,23 +2681,14 @@ export function SettingsPage({
                     >
                       <MessageSquarePlus size={13.5} strokeWidth={1.8} />
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span
-                        className="text-[12.5px] font-semibold truncate leading-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian
-                          ? "Saran & Masukan"
-                          : "Feedback & Requests"}
-                      </span>
-                      <span
-                        className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5"
-                      >
-                        {isIndonesian
-                          ? "Sampaikan ide atau kendala fitur langsung ke tim kami"
-                          : "Share ideas or feature requests with our team"}
-                      </span>
-                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Saran & Masukan"
+                        : "Feedback & Requests"}
+                    </span>
                   </div>
                   <ChevronRight
                     size={14}

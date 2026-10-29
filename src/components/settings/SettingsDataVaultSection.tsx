@@ -483,21 +483,14 @@ export function SettingsDataVaultSection({
                     >
                       <Laptop size={13.5} strokeWidth={1.8} />
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span
-                        className="text-[12.5px] font-semibold block truncate leading-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {isIndonesian
-                          ? "Tautkan Web Dashboard"
-                          : "Link Web Dashboard"}
-                      </span>
-                      <span
-                        className="text-[10px] font-mono text-[var(--text-tertiary)] truncate mt-0.5"
-                      >
-                        accrual-dashboard.accrual-project-app.workers.dev
-                      </span>
-                    </div>
+                    <span
+                      className="text-[12.5px] font-semibold block truncate leading-tight"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {isIndonesian
+                        ? "Tautkan Web Dashboard"
+                        : "Link Web Dashboard"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span

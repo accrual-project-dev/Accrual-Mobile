@@ -13,11 +13,15 @@ import {
   Lock,
   Trash2,
   Play,
+  Download,
+  ListFilter,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCategories } from "../../hooks/useCategories";
+import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
 
 export type TabType =
@@ -113,20 +117,20 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
     icon: ScanLine,
     titleId: "Accrual Screen Scanner",
     titleEn: "Accrual Screen Scanner",
-    categoryBadgeId: "Ketuk Bagian Belakang • Back Tap",
+    categoryBadgeId: "Ketuk Bagian Belakang",
     categoryBadgeEn: "Back Tap Optimized",
     summaryId:
-      "Pindai layar pembayaran atau struk transfer secara instan hanya dengan mengetuk 2x bodi belakang iPhone. Accrual membaca data secara lokal via OCR dan otomatis membersihkan tangkapan layar dari galeri.",
+      "Pindai layar pembayaran atau struk transfer secara instan hanya dengan mengetuk 2x bodi belakang iPhone. Accrual membaca data secara lokal via OCR dan langsung menyimpannya ke Arsip Draft tanpa membuka kamera.",
     summaryEn:
-      "Instantly scan payment confirmation screens or transfer receipts by double-tapping the back of your iPhone. Accrual parses transaction details locally via OCR and auto-deletes the screenshot from your photo library.",
-    icloudUrl: "https://www.icloud.com/shortcuts/accrual-screen-scanner",
-    directScheme: "accrual://scan",
+      "Instantly parse payment confirmation screens or transfer receipts by double-tapping the back of your iPhone. Accrual processes transaction details locally via OCR and queues them directly into Draft Archive without opening the camera.",
+    icloudUrl: "https://www.icloud.com/shortcuts/d2d7e25405124de886a4824e976a5104",
+    directScheme: "accrual://inbox",
     metadata: {
       siriPhraseId: "Katakan 'Siri, Accrual Screen Scanner' untuk menjalankan",
       siriPhraseEn: "Say 'Siri, Accrual Screen Scanner' to run",
       watchSupported: true,
       lockScreenSupported: true,
-      hardwareBindingId: "Ketuk Bagian Belakang (Back Tap) • Ketuk 2x",
+      hardwareBindingId: "Ketuk Bagian Belakang • Ketuk Dua Kali",
       hardwareBindingEn: "Back Tap • Double Tap",
     },
     actions: [
@@ -143,10 +147,10 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         id: "act-2",
         type: "standard",
         icon: ScanLine,
-        titleId: "Scan payment from Screenshot",
+        titleId: "Catat dari Layar",
         titleEn: "Scan payment from Screenshot",
-        subtitleId: "Tindakan Asli Accrual • Vision OCR & Buka Aplikasi Otomatis",
-        subtitleEn: "Accrual Native Intent • Vision OCR & Instant App Launch",
+        subtitleId: "Aksi Bawaan Accrual • Pemindai Teks & Simpan ke Arsip Draft",
+        subtitleEn: "Accrual Native Intent • Vision OCR & Save to Draft Archive",
         isNativeIntent: true,
       },
       {
@@ -160,10 +164,10 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
       },
     ],
     hardwareGuide: {
-      titleId: "Cara Paling Mudah: Tautkan ke Ketuk Bagian Belakang (Back Tap)",
+      titleId: "Cara Paling Mudah: Tautkan ke Ketuk Bagian Belakang",
       titleEn: "Easiest Way: Bind to Back Tap (Double Tap)",
       stepsId: [
-        "Metode 1 (Rekomendasi 0-Setup): Buka Pengaturan iOS › Aksesibilitas › Sentuh › Ketuk Bagian Belakang › Ketuk Dua Kali › langsung pilih tindakan resmi 'Scan Payment Screenshot' dari Accrual.",
+        "Metode 1 (Tanpa Konfigurasi Manual): Buka Pengaturan iOS › Aksesibilitas › Sentuh › Ketuk Bagian Belakang › Ketuk Dua Kali › langsung pilih tindakan resmi 'Scan Payment Screenshot' dari Accrual.",
         "Metode 2 (Pintasan 3-Langkah): Di aplikasi Pintasan, buat pintasan baru dengan 3 tindakan di atas (Ambil Tangkapan Layar › Scan payment with Accrual › Hapus Foto), lalu tautkan ke Ketuk Dua Kali.",
         "Kini cukup ketuk 2x bodi belakang iPhone saat melihat bukti transfer atau struk. Accrual langsung terbuka dan membaca transaksi secara otomatis.",
       ],
@@ -179,7 +183,7 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
     icon: Mic,
     titleId: "Accrual Voice Entry",
     titleEn: "Accrual Voice Entry",
-    categoryBadgeId: "Tombol Tindakan • Action Button",
+    categoryBadgeId: "Tombol Tindakan",
     categoryBadgeEn: "Action Button Ready",
     summaryId:
       "Catat pengeluaran hanya dengan berbicara secara alami. Pintasan merekam ucapan Anda dan Accrual otomatis mengekstrak nominal, kategori, serta dompet tanpa perlu mengetik manual.",
@@ -192,7 +196,7 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
       siriPhraseEn: "Say 'Siri, Voice entry in Accrual'",
       watchSupported: true,
       lockScreenSupported: true,
-      hardwareBindingId: "Tombol Tindakan (Action Button) atau Kunci Layar",
+      hardwareBindingId: "Tombol Tindakan atau Widget Layar Terkunci",
       hardwareBindingEn: "Action Button or Lock Screen Widget",
     },
     actions: [
@@ -209,15 +213,15 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         id: "act-v2",
         type: "standard",
         icon: Sparkles,
-        titleId: "Voice Entry ke Accrual",
+        titleId: "Dikte Suara ke Accrual",
         titleEn: "Voice Entry to Accrual",
-        subtitleId: "Tindakan Asli Accrual • Pemrosesan Bahasa Alami",
+        subtitleId: "Aksi Bawaan Accrual • Pemrosesan Bahasa Alami",
         subtitleEn: "Accrual Native Intent • Natural Language Engine",
         isNativeIntent: true,
       },
     ],
     hardwareGuide: {
-      titleId: "Tautkan ke Tombol Tindakan (Action Button)",
+      titleId: "Tautkan ke Tombol Tindakan",
       titleEn: "Bind to Action Button",
       stepsId: [
         "Buka Pengaturan iOS › Tombol Tindakan › Geser ke opsi 'Pintasan'.",
@@ -236,7 +240,7 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
     icon: Camera,
     titleId: "Accrual Receipt Scanner",
     titleEn: "Accrual Receipt Scanner",
-    categoryBadgeId: "Kamera Resi • 1-Ketukan",
+    categoryBadgeId: "Pemindai Kamera 1-Ketukan",
     categoryBadgeEn: "1-Tap Camera Scanner",
     summaryId:
       "Buka pemindai kamera struk fisik atau faktur kasir Accrual dalam 1 ketukan langsung dari Layar Utama, Pusat Kontrol, atau Widget Kunci Layar.",
@@ -249,8 +253,8 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
       siriPhraseEn: "Say 'Siri, Scan receipt in Accrual'",
       watchSupported: false,
       lockScreenSupported: true,
-      hardwareBindingId: "Pusat Kontrol iOS 18 / Widget Kunci Layar",
-      hardwareBindingEn: "iOS 18 Control Center / Lock Screen Widget",
+      hardwareBindingId: "Pusat Kontrol iOS 18 atau Widget Layar Terkunci",
+      hardwareBindingEn: "iOS 18 Control Center or Lock Screen Widget",
     },
     actions: [
       {
@@ -259,7 +263,7 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         icon: Camera,
         titleId: "Buka Pemindai Resi Accrual",
         titleEn: "Open Accrual Receipt Scanner",
-        subtitleId: "Tindakan Asli Accrual • Deteksi Tepi Resi Otomatis",
+        subtitleId: "Aksi Bawaan Accrual • Deteksi Tepi Resi Otomatis",
         subtitleEn: "Accrual Native Intent • Automatic Receipt Edge Detection",
         isNativeIntent: true,
       },
@@ -290,14 +294,14 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
       "Setiap kali notifikasi transaksi masuk dari m-Banking atau dompet digital (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA), iPhone otomatis membaca teks notifikasi dan langsung menyimpannya ke Accrual di latar belakang tanpa sentuhan manual.",
     summaryEn:
       "Whenever a transaction notification arrives from your bank or e-wallet app (BCA, Livin Mandiri, GoPay, OVO, ShopeePay, DANA), your iPhone automatically parses the text and logs it directly to Accrual in the background without manual interaction.",
-    icloudUrl: "https://www.icloud.com/shortcuts/accrual-notification-reader",
+    icloudUrl: "https://www.icloud.com/shortcuts/b01a608a4e0d4207970945a8f8c45f3f",
     directScheme: "shortcuts://",
     metadata: {
       siriPhraseId: "Berjalan hening di latar belakang tanpa suara",
       siriPhraseEn: "Runs silently in the background without voice trigger",
       watchSupported: false,
       lockScreenSupported: true,
-      hardwareBindingId: "Automasi Pribadi Pintasan iOS (Personal Automations)",
+      hardwareBindingId: "Automasi Pribadi Pintasan iOS",
       hardwareBindingEn: "iOS Shortcuts Personal Automations",
     },
     actions: [
@@ -314,29 +318,119 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         id: "act-n2",
         type: "standard",
         icon: Sparkles,
-        titleId: "Log Notification Transaction ke Accrual",
+        titleId: "Catat Notifikasi Transaksi ke Accrual",
         titleEn: "Log Notification Transaction to Accrual",
-        subtitleId: "Tindakan Asli Accrual • Pemfilter Promo & Spam Otomatis",
+        subtitleId: "Aksi Bawaan Accrual • Pemfilter Promo & Spam Otomatis",
         subtitleEn: "Accrual Native Intent • Smart Promo & Spam Guard",
         isNativeIntent: true,
       },
     ],
     hardwareGuide: {
-      titleId: "Konfigurasi Automasi Pemberitahuan",
-      titleEn: "Configure Notification Automation",
+      titleId: "Panduan 6 Langkah Automasi Pemberitahuan",
+      titleEn: "6-Step Notification Automation Setup",
       stepsId: [
-        "Buka aplikasi Pintasan iOS › Ketuk tab 'Automasi' di bagian bawah › Ketuk (+).",
-        "Pilih 'Pemberitahuan' › Pilih aplikasi bank Anda (BCA, Livin, GoPay, OVO) › Centang 'Jalankan Segera'.",
-        "Tambahkan tindakan 'Log Notification Transaction' dari Accrual dan tautkan Masukan Pintasan.",
+        "1. Buka app Pintasan iOS › ketuk tab 'Automasi' › ketuk Otomasi Baru (+).",
+        "2. Pilih pemicu 'Saat Menerima Pemberitahuan'.",
+        "3. Pilih app sumber bank atau dompet digital (BCA, Livin Mandiri, BRImo, BNI, Wondr, GoPay, OVO, DANA, ShopeePay).",
+        "4. Tambah aksi Accrual: cari 'Log Notification Transaction'.",
+        "5. Petakan variabel: Notification = Notification, Title = Title, Subtitle = Subtitle, App = App, Received At = Received At.",
+        "6. Aktifkan: Di Info › Privasi nyalakan 'Jalankan Saat Terkunci' (Allow Running When Locked).",
       ],
       stepsEn: [
-        "Open iOS Shortcuts app › Tap 'Automation' tab at the bottom › Tap (+).",
-        "Select 'Notification' › Choose your banking apps (BCA, Livin, GoPay, OVO) › Check 'Run Immediately'.",
-        "Add Accrual's 'Log Notification Transaction' action and connect Shortcut Input.",
+        "1. Open Shortcuts app › tap 'Automation' tab › tap New Automation (+).",
+        "2. Select trigger 'When I Receive Notification'.",
+        "3. Choose source banking or e-wallet apps (BCA, Livin, BRImo, BNI, GoPay, OVO, DANA, ShopeePay).",
+        "4. Add Accrual action: search for 'Log Notification Transaction'.",
+        "5. Map variables: Notification = Notification, Title = Title, Subtitle = Subtitle, App = App, Received At = Received At.",
+        "6. Enable: Under Info › Privacy enable 'Allow Running When Locked'.",
       ],
     },
   },
 ];
+
+export const GLASS_DIALOG_ACTIONS: ShortcutActionNode[] = [
+  {
+    id: "act-g1",
+    type: "standard",
+    icon: Smartphone,
+    titleId: "Minta Masukan Nominal",
+    titleEn: "Ask for Input (Amount)",
+    subtitleId: "Tipe: Angka • Pertanyaan: 'Berapa nominal transaksi?'",
+    subtitleEn: "Type: Number • Prompt: 'What is the amount?'",
+  },
+  {
+    id: "act-g2",
+    type: "standard",
+    icon: ListFilter,
+    titleId: "Pilih Kategori Transaksi",
+    titleEn: "Choose Category from List",
+    subtitleId: "Daftar kategori pengeluaran Anda (Makanan, Transportasi, Belanja, dll.)",
+    subtitleEn: "Your expense categories list (Food, Transport, Shopping, etc.)",
+  },
+  {
+    id: "act-g3",
+    type: "standard",
+    icon: Smartphone,
+    titleId: "Pilih Akun atau Rekening",
+    titleEn: "Choose Account or Wallet",
+    subtitleId: "Daftar dompet dan rekening bank Anda (BCA, Mandiri, GoPay, Tunai, dll.)",
+    subtitleEn: "Your bank & wallet accounts list (BCA, Mandiri, GoPay, Cash, etc.)",
+  },
+  {
+    id: "act-g4",
+    type: "standard",
+    icon: Smartphone,
+    titleId: "Minta Tanggal dan Waktu",
+    titleEn: "Ask for Date and Time",
+    subtitleId: "Tipe: Tanggal & Waktu • Standar: Tanggal dan jam saat ini",
+    subtitleEn: "Type: Date & Time • Default: Current date and time",
+  },
+  {
+    id: "act-g5",
+    type: "standard",
+    icon: Smartphone,
+    titleId: "Minta Catatan (Opsional)",
+    titleEn: "Ask for Note (Optional)",
+    subtitleId: "Tipe: Teks • Pertanyaan: 'Keterangan transaksi (opsional)'",
+    subtitleEn: "Type: Text • Prompt: 'Transaction note (optional)'",
+  },
+  {
+    id: "act-g6",
+    type: "standard",
+    icon: Sparkles,
+    titleId: "Buka URL & Catat ke Sistem",
+    titleEn: "Open URL & Save to System",
+    subtitleId: "accrual://add?nominal=[Nominal]&kategori=[Kategori]&rekening=[Akun]&tanggal=[Tanggal]&catatan=[Catatan]&autosave=true",
+    subtitleEn: "accrual://add?amount=[Amount]&category=[Category]&wallet=[Account]&date=[Date]&note=[Note]&autosave=true",
+    isNativeIntent: true,
+  },
+  {
+    id: "act-g7",
+    type: "standard",
+    icon: Bell,
+    titleId: "Tampilkan Pemberitahuan",
+    titleEn: "Show Notification",
+    subtitleId: "Pesan konfirmasi: 'Rp [Nominal] di [Kategori] ([Akun]) berhasil dicatat.'",
+    subtitleEn: "Confirmation alert: '[Amount] in [Category] ([Account]) successfully recorded.'",
+  },
+];
+
+export const GLASS_DIALOG_HARDWARE_GUIDE = {
+  titleId: "Panduan Memasang Dialog Kaca ke Ketuk Bagian Belakang",
+  titleEn: "How to Bind Glass Dialog to Back Tap",
+  stepsId: [
+    "1. Di aplikasi Pintasan iOS, buat pintasan baru dengan 7 tindakan berurutan di atas (atau unduh berkas .shortcut di bawah).",
+    "2. Beri nama pintasan: 'Accrual Glass Dialog'.",
+    "3. Buka Pengaturan iPhone › Aksesibilitas › Sentuh › Ketuk Bagian Belakang › Ketuk Dua Kali › pilih 'Accrual Glass Dialog'.",
+    "4. Ketuk 2x bodi belakang iPhone Anda: dialog kaca interaktif akan langsung muncul di Dynamic Island / layar!",
+  ],
+  stepsEn: [
+    "1. In iOS Shortcuts app, create a new shortcut with the 7 sequential actions above (or download the .shortcut file below).",
+    "2. Name the shortcut: 'Accrual Glass Dialog'.",
+    "3. Open iOS Settings › Accessibility › Touch › Back Tap › Double Tap › select 'Accrual Glass Dialog'.",
+    "4. Double-tap the back of your iPhone: the glass dialog will appear instantly on screen or Dynamic Island to log your transaction!",
+  ],
+};
 
 interface AppleShortcutsGuideModalProps {
   isOpen: boolean;
@@ -357,6 +451,7 @@ export function AppleShortcutsGuideModal({
   const [selectedPresetId, setSelectedPresetId] = useState<PresetId>(() =>
     mapInitialTab(initialTab)
   );
+  const [backTapSubMode, setBackTapSubMode] = useState<"screen_scan" | "glass_dialog">("screen_scan");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [customLinks, setCustomLinks] = useState<Record<string, string>>(() =>
     getSavedICloudLinks()
@@ -364,6 +459,9 @@ export function AppleShortcutsGuideModal({
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [configInputUrl, setConfigInputUrl] = useState("");
   const [configError, setConfigError] = useState<string | null>(null);
+
+  const { data: categories = [] } = useCategories();
+  const { data: wallets = [] } = useWallets();
 
   useEffect(() => {
     if (initialTab) {
@@ -373,6 +471,22 @@ export function AppleShortcutsGuideModal({
 
   const activePreset =
     SHORTCUT_PRESETS.find((p) => p.id === selectedPresetId) || SHORTCUT_PRESETS[0];
+
+  const isGlassDialogActive = selectedPresetId === "screen_scan" && backTapSubMode === "glass_dialog";
+
+  const displayedTitle = isGlassDialogActive
+    ? (isIndonesian ? "Dialog Kaca Accrual" : "Accrual Glass Dialog")
+    : (isIndonesian ? activePreset.titleId : activePreset.titleEn);
+
+  const displayedSummary = isGlassDialogActive
+    ? (isIndonesian
+        ? "Dialog bertingkat interaktif sistem iOS lewat pop-up Dynamic Island atau jendela kaca. Cukup ketuk 2x bodi belakang iPhone: masukkan nominal, pilih kategori & akun dari daftar, tentukan tanggal, lalu transaksi langsung tercatat dengan konfirmasi notifikasi."
+        : "Interactive step-by-step iOS system dialog via Dynamic Island or glass prompt. Double-tap back of iPhone: input amount, pick category & wallet from list, set date, and transaction is instantly recorded with confirmation notification.")
+    : (isIndonesian ? activePreset.summaryId : activePreset.summaryEn);
+
+  const displayedActions = isGlassDialogActive ? GLASS_DIALOG_ACTIONS : activePreset.actions;
+
+  const displayedHardwareGuide = isGlassDialogActive ? GLASS_DIALOG_HARDWARE_GUIDE : activePreset.hardwareGuide;
 
   const effectiveICloudUrl = customLinks[selectedPresetId] || activePreset.icloudUrl;
   const isUrlValid = isValidICloudLink(effectiveICloudUrl);
@@ -412,7 +526,9 @@ export function AppleShortcutsGuideModal({
 
   const handleCopyDirectScheme = () => {
     triggerSuccessHaptic();
-    const scheme = activePreset.directScheme;
+    const scheme = isGlassDialogActive
+      ? "accrual://add?nominal=[Nominal]&kategori=[Kategori]&rekening=[Akun]&tanggal=[Tanggal]&catatan=[Catatan]&autosave=true"
+      : activePreset.directScheme;
     navigator.clipboard.writeText(scheme);
     setCopiedKey(activePreset.id + "-scheme");
     showToast(
@@ -423,6 +539,61 @@ export function AppleShortcutsGuideModal({
       () => {}
     );
     setTimeout(() => setCopiedKey(null), 2200);
+  };
+
+  const copyCategoryList = () => {
+    triggerSuccessHaptic();
+    const list = categories
+      .filter((c) => c.type !== "income")
+      .map((c) => c.name)
+      .join("\n");
+    const fallbackList = "Makanan & Minuman\nTransportasi\nBelanja\nTagihan\nHiburan\nKesehatan\nLainnya";
+    const textToCopy = list || fallbackList;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedKey("categories-list");
+    showToast(
+      isIndonesian ? "Daftar kategori berhasil disalin" : "Category list copied to clipboard",
+      "info",
+      () => {}
+    );
+    setTimeout(() => setCopiedKey(null), 2200);
+  };
+
+  const copyWalletList = () => {
+    triggerSuccessHaptic();
+    const list = wallets.map((w) => w.name).join("\n");
+    const fallbackList = "BCA\nMandiri\nGoPay\nTunai";
+    const textToCopy = list || fallbackList;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedKey("wallets-list");
+    showToast(
+      isIndonesian ? "Daftar akun & dompet berhasil disalin" : "Wallet list copied to clipboard",
+      "info",
+      () => {}
+    );
+    setTimeout(() => setCopiedKey(null), 2200);
+  };
+
+  const copyGlassScheme = () => {
+    triggerSuccessHaptic();
+    const glassScheme =
+      "accrual://add?nominal=[Nominal]&kategori=[Kategori]&rekening=[Akun]&tanggal=[Tanggal]&catatan=[Catatan]&autosave=true";
+    navigator.clipboard.writeText(glassScheme);
+    setCopiedKey("glass-scheme");
+    showToast(
+      isIndonesian ? "Skema URL Dialog Kaca berhasil disalin" : "Glass Dialog URL scheme copied",
+      "info",
+      () => {}
+    );
+    setTimeout(() => setCopiedKey(null), 2200);
+  };
+
+  const handleTestGlassLaunch = () => {
+    triggerHaptic("medium");
+    const firstCat = categories.find((c) => c.type !== "income")?.name || (isIndonesian ? "Makanan & Minuman" : "Food & Beverage");
+    const firstWal = wallets[0]?.name || "BCA";
+    const testUrl = `accrual://add?nominal=50000&kategori=${encodeURIComponent(firstCat)}&rekening=${encodeURIComponent(firstWal)}&autosave=true`;
+    window.location.href = testUrl;
   };
 
 
@@ -526,6 +697,47 @@ export function AppleShortcutsGuideModal({
           })}
         </div>
 
+        {/* 1.5 Sub-mode switcher for Back Tap (Photo / OCR vs Glass Dialog) */}
+        {selectedPresetId === "screen_scan" && (
+          <div
+            className="flex items-center p-1 rounded-2xl border"
+            style={{
+              background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.03)",
+              borderColor: "var(--glass-border)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setBackTapSubMode("screen_scan")}
+              className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                backTapSubMode === "screen_scan"
+                  ? isDark
+                    ? "bg-white/[0.08] text-white border border-white/14 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "bg-black/[0.06] text-black border border-black/10 shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border border-transparent"
+              }`}
+            >
+              <ScanLine size={13} strokeWidth={backTapSubMode === "screen_scan" ? 2 : 1.6} />
+              <span>{isIndonesian ? "Pindai Layar (OCR)" : "Screen Scanner (OCR)"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setBackTapSubMode("glass_dialog")}
+              className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                backTapSubMode === "glass_dialog"
+                  ? isDark
+                    ? "bg-white/[0.08] text-white border border-white/14 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "bg-black/[0.06] text-black border border-black/10 shadow-sm"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border border-transparent"
+              }`}
+            >
+              <Sparkles size={13} strokeWidth={backTapSubMode === "glass_dialog" ? 2 : 1.6} />
+              <span>{isIndonesian ? "Dialog Kaca" : "Glass Dialog"}</span>
+            </button>
+          </div>
+        )}
+
         {/* 2. Apple Native 1-Tap Preset Hero Card (Photo 4 Parity) */}
         <div
           className="rounded-3xl p-5 border relative overflow-hidden flex flex-col items-center text-center shadow-xl transition-all"
@@ -555,11 +767,19 @@ export function AppleShortcutsGuideModal({
                 : "0 10px 25px -5px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
             }}
           >
-            <IconComponent
-              size={28}
-              strokeWidth={1.75}
-              style={{ color: "var(--text-primary)" }}
-            />
+            {isGlassDialogActive ? (
+              <Sparkles
+                size={28}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-primary)" }}
+              />
+            ) : (
+              <IconComponent
+                size={28}
+                strokeWidth={1.75}
+                style={{ color: "var(--text-primary)" }}
+              />
+            )}
           </div>
 
           {/* Preset Title & Release Meta */}
@@ -567,15 +787,15 @@ export function AppleShortcutsGuideModal({
             className="text-[17px] font-semibold tracking-tight leading-snug"
             style={{ color: "var(--text-primary)" }}
           >
-            {isIndonesian ? activePreset.titleId : activePreset.titleEn}
+            {displayedTitle}
           </h2>
           <p
             className="text-[11.5px] font-medium mt-1 mb-3"
             style={{ color: "var(--text-tertiary)" }}
           >
             {isIndonesian
-              ? "Syntheticae Studio • Pintasan Resmi Accrual v1.3.20"
-              : "Syntheticae Studio • Official Accrual Shortcut v1.3.20"}
+              ? "Syntheticae Studio • Pintasan Resmi Accrual v1.3.22"
+              : "Syntheticae Studio • Official Accrual Shortcut v1.3.22"}
           </p>
 
           {/* Description */}
@@ -583,7 +803,7 @@ export function AppleShortcutsGuideModal({
             className="text-[12.5px] font-normal leading-relaxed max-w-sm px-1 mb-4"
             style={{ color: "var(--text-secondary)" }}
           >
-            {isIndonesian ? activePreset.summaryId : activePreset.summaryEn}
+            {displayedSummary}
           </p>
 
           {/* "About This Shortcut" Metadata Grid (Photo 4 Parity) */}
@@ -606,7 +826,11 @@ export function AppleShortcutsGuideModal({
                 <Mic size={13} strokeWidth={1.8} />
               </div>
               <span className="truncate" style={{ color: "var(--text-secondary)" }}>
-                {isIndonesian
+                {isGlassDialogActive
+                  ? isIndonesian
+                    ? "Dapat dijalankan via Siri atau Ketuk 2x Belakang"
+                    : "Runs via Siri or Double-Tap Back"
+                  : isIndonesian
                   ? activePreset.metadata.siriPhraseId
                   : activePreset.metadata.siriPhraseEn}
               </span>
@@ -668,98 +892,241 @@ export function AppleShortcutsGuideModal({
           </div>
 
           {/* Primary Action Button */}
-          <div className="w-full flex flex-col gap-2.5">
-            <button
-              type="button"
-              onClick={handleAddShortcut}
-              className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[13.5px] cursor-pointer shadow-lg active:scale-[0.98] transition-all"
-              style={{
-                background: isDark ? "#ffffff" : "#09090c",
-                color: isDark ? "#09090c" : "#ffffff",
-              }}
-            >
-              <ExternalLink size={16} strokeWidth={2} />
-              <span>
-                {isUrlValid
-                  ? isIndonesian
-                    ? "Buka Tautan iCloud Pintasan"
-                    : "Open iCloud Shortcut"
-                  : isIndonesian
-                  ? "Buka Aplikasi Pintasan iOS"
-                  : "Open iOS Shortcuts App"}
-              </span>
-            </button>
+          {isGlassDialogActive ? (
+            <div className="w-full flex flex-col gap-2.5">
+              <a
+                href="/shortcuts/Accrual-Glass-Dialog.shortcut"
+                download="Accrual-Glass-Dialog.shortcut"
+                className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[13.5px] cursor-pointer shadow-lg active:scale-[0.98] transition-all"
+                style={{
+                  background: isDark ? "#ffffff" : "#09090c",
+                  color: isDark ? "#09090c" : "#ffffff",
+                }}
+              >
+                <Download size={16} strokeWidth={2} />
+                <span>
+                  {isIndonesian
+                    ? "Unduh Berkas Pintasan (.shortcut)"
+                    : "Download Shortcut File (.shortcut)"}
+                </span>
+              </a>
 
-            <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] leading-tight text-center justify-center"
-              style={{
-                background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
-                borderColor: "var(--glass-border)",
-                color: "var(--text-tertiary)",
-              }}
-            >
-              <Sparkles size={12} strokeWidth={1.8} />
-              <span>
-                {isIndonesian
-                  ? "Tindakan Bawaan: Accrual otomatis terdaftar di Pintasan & Ketuk Belakang tanpa unduhan."
-                  : "Native Action: Accrual actions are built into Shortcuts & Back Tap without downloads."}
-              </span>
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] leading-tight text-center justify-center"
+                style={{
+                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
+                  borderColor: "var(--glass-border)",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <Sparkles size={12} strokeWidth={1.8} />
+                <span>
+                  {isIndonesian
+                    ? "Salin daftar kategori atau akun Anda di bawah untuk ditempel langsung ke Pintasan iOS."
+                    : "Copy your categories or accounts below to paste directly into iOS Shortcuts."}
+                </span>
+              </div>
+
+              {/* Fast Copy Tools for building Glass Dialog */}
+              <div className="grid grid-cols-2 gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={copyCategoryList}
+                  className="h-10 px-2 rounded-xl border flex items-center justify-center gap-1.5 text-[11.5px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {copiedKey === "categories-list" ? (
+                    <>
+                      <Check size={13} strokeWidth={2} />
+                      <span>{isIndonesian ? "Kategori Tersalin" : "Categories Copied"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ListFilter size={13} strokeWidth={1.8} />
+                      <span>{isIndonesian ? "Salin Kategori" : "Copy Categories"}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={copyWalletList}
+                  className="h-10 px-2 rounded-xl border flex items-center justify-center gap-1.5 text-[11.5px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {copiedKey === "wallets-list" ? (
+                    <>
+                      <Check size={13} strokeWidth={2} />
+                      <span>{isIndonesian ? "Akun Tersalin" : "Wallets Copied"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} strokeWidth={1.8} />
+                      <span>{isIndonesian ? "Salin Akun / Rekening" : "Copy Accounts"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={copyGlassScheme}
+                  className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[11.5px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {copiedKey === "glass-scheme" ? (
+                    <>
+                      <Check size={13} strokeWidth={2} />
+                      <span>{isIndonesian ? "Skema Tersalin" : "Scheme Copied"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} strokeWidth={1.8} />
+                      <span>{isIndonesian ? "Salin Skema URL" : "Copy URL Scheme"}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestGlassLaunch}
+                  className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[11.5px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <Play size={13} strokeWidth={1.8} />
+                  <span>{isIndonesian ? "Uji Simpan Dialog" : "Test Dialog Save"}</span>
+                </button>
+              </div>
             </div>
-
-            {/* Auxiliary actions row */}
-            <div className="flex items-center gap-2 w-full">
+          ) : (
+            <div className="w-full flex flex-col gap-2.5">
               <button
                 type="button"
-                onClick={handleCopyDirectScheme}
-                className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                onClick={handleAddShortcut}
+                className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-semibold text-[13.5px] cursor-pointer shadow-lg active:scale-[0.98] transition-all"
                 style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-primary)",
+                  background: isDark ? "#ffffff" : "#09090c",
+                  color: isDark ? "#09090c" : "#ffffff",
                 }}
               >
-                {copiedKey === activePreset.id + "-scheme" ? (
-                  <>
-                    <Check size={14} strokeWidth={2} />
-                    <span>{isIndonesian ? "Skema Tersalin" : "Scheme Copied"}</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={14} strokeWidth={1.8} />
-                    <span>{isIndonesian ? "Salin Skema URL" : "Copy URL Scheme"}</span>
-                  </>
-                )}
+                <ExternalLink size={16} strokeWidth={2} />
+                <span>
+                  {isUrlValid
+                    ? isIndonesian
+                      ? "Buka Tautan iCloud Pintasan"
+                      : "Open iCloud Shortcut"
+                    : isIndonesian
+                    ? "Buka Aplikasi Pintasan iOS"
+                    : "Open iOS Shortcuts App"}
+                </span>
               </button>
 
-              <button
-                type="button"
-                onClick={handleDirectLaunch}
-                className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] leading-tight text-center justify-center"
                 style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                  background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
                   borderColor: "var(--glass-border)",
-                  color: "var(--text-primary)",
+                  color: "var(--text-tertiary)",
                 }}
               >
-                <Play size={13} strokeWidth={1.8} />
-                <span>{isIndonesian ? "Uji Langsung" : "Direct Launch"}</span>
-              </button>
+                <Sparkles size={12} strokeWidth={1.8} />
+                <span>
+                  {isIndonesian
+                    ? "Tindakan Bawaan: Accrual otomatis terdaftar di Pintasan & Ketuk Belakang tanpa unduhan."
+                    : "Native Action: Accrual actions are built into Shortcuts & Back Tap without downloads."}
+                </span>
+              </div>
 
-              <button
-                type="button"
-                onClick={handleTestHud}
-                className="h-10 px-3 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
-                style={{
-                  background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                <Play size={13} strokeWidth={1.8} />
-                <span>{isIndonesian ? "Uji HUD" : "Test HUD"}</span>
-              </button>
+              {/* Auxiliary actions row */}
+              <div className="flex items-center gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={handleCopyDirectScheme}
+                  className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {copiedKey === activePreset.id + "-scheme" ? (
+                    <>
+                      <Check size={14} strokeWidth={2} />
+                      <span>{isIndonesian ? "Skema Tersalin" : "Scheme Copied"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} strokeWidth={1.8} />
+                      <span>{isIndonesian ? "Salin Skema URL" : "Copy URL Scheme"}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDirectLaunch}
+                  className="flex-1 h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Play size={13} strokeWidth={1.8} />
+                  <span>{isIndonesian ? "Uji Langsung" : "Direct Launch"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestHud}
+                  className="h-10 px-3 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98]"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <Play size={13} strokeWidth={1.8} />
+                  <span>{isIndonesian ? "Uji HUD" : "Test HUD"}</span>
+                </button>
+              </div>
+
+              {activePreset.id === "screen_scan" && (
+                <a
+                  href="/shortcuts/Accrual-Capture-Transaction.shortcut"
+                  download="Accrual-Capture-Transaction.shortcut"
+                  className="w-full h-10 rounded-xl border flex items-center justify-center gap-1.5 text-[12px] font-semibold transition-all cursor-pointer active:scale-[0.98] select-none text-center"
+                  style={{
+                    background: isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: "var(--glass-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Download size={13} strokeWidth={1.8} />
+                  <span>
+                    {isIndonesian ? "Unduh Berkas Pintasan (.shortcut)" : "Download Shortcut File (.shortcut)"}
+                  </span>
+                </a>
+              )}
             </div>
-          </div>
+          )}
 
           {/* In-App iCloud Link Configurator Card */}
           {isConfigOpen && (
@@ -1005,7 +1372,7 @@ export function AppleShortcutsGuideModal({
                 background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
               }}
             >
-              {activePreset.actions.length} {isIndonesian ? "Tindakan" : "Actions"}
+              {displayedActions.length} {isIndonesian ? "Tindakan" : "Actions"}
             </span>
           </div>
 
@@ -1016,9 +1383,9 @@ export function AppleShortcutsGuideModal({
               borderColor: "var(--glass-border)",
             }}
           >
-            {activePreset.actions.map((act, index) => {
+            {displayedActions.map((act, index) => {
               const ActionIcon = act.icon;
-              const isLast = index === activePreset.actions.length - 1;
+              const isLast = index === displayedActions.length - 1;
               const isNested = act.type === "nested_action";
 
               return (
@@ -1126,8 +1493,8 @@ export function AppleShortcutsGuideModal({
               style={{ color: "var(--text-primary)" }}
             >
               {isIndonesian
-                ? activePreset.hardwareGuide.titleId
-                : activePreset.hardwareGuide.titleEn}
+                ? displayedHardwareGuide.titleId
+                : displayedHardwareGuide.titleEn}
             </span>
             <button
               type="button"
@@ -1142,8 +1509,8 @@ export function AppleShortcutsGuideModal({
 
           <div className="flex flex-col gap-2">
             {(isIndonesian
-              ? activePreset.hardwareGuide.stepsId
-              : activePreset.hardwareGuide.stepsEn
+              ? displayedHardwareGuide.stepsId
+              : displayedHardwareGuide.stepsEn
             ).map((stepText, idx) => (
               <div key={idx} className="flex items-start gap-2.5 text-[11.5px] leading-relaxed">
                 <div

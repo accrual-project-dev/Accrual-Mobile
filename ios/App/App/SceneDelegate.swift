@@ -6,6 +6,7 @@ class MainViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(WidgetBridgePlugin())
         bridge?.registerPluginInstance(OAuthSessionPlugin())
+        bridge?.registerPluginInstance(AccrualInboxPlugin())
     }
 }
 

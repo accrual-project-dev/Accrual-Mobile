@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import {
   SHORTCUT_PRESETS,
+  GLASS_DIALOG_ACTIONS,
+  GLASS_DIALOG_HARDWARE_GUIDE,
   isValidICloudLink,
   getSavedICloudLinks,
   saveICloudLink,
@@ -188,13 +190,12 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       expect(settingsContent).toContain("https://apps.apple.com/app/id6825272166?action=write-review");
 
       // Feedback & Requests
-      expect(settingsContent).toContain(
-        '{isIndonesian\n                          ? "Saran & Masukan"\n                          : "Feedback & Requests"}'
-      );
+      expect(settingsContent).toContain('"Feedback & Requests"');
+      expect(settingsContent).toContain('"Saran & Masukan"');
       expect(settingsContent).toContain("mailto:support@syntheticae.studio");
     });
 
-    it("verifies Web Dashboard modal and settings display the official Cloudflare Workers domain", () => {
+    it("verifies Web Dashboard modal displays official Cloudflare Workers domain and settings has Link Web Dashboard", () => {
       const modalPath = path.resolve(
         __dirname,
         "../src/components/settings/WebDashboardLinkModal.tsx"
@@ -210,7 +211,7 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       );
       const dataVaultContent = fs.readFileSync(dataVaultPath, "utf-8");
       expect(dataVaultContent).toContain(
-        "accrual-dashboard.accrual-project-app.workers.dev"
+        '{isIndonesian\n                        ? "Tautkan Web Dashboard"\n                        : "Link Web Dashboard"}'
       );
     });
 
@@ -222,6 +223,43 @@ describe("Apple Shortcuts & Automations Suite (Photo 4 & 5 Parity)", () => {
       const swiftContent = fs.readFileSync(swiftPath, "utf-8");
       expect(swiftContent).toContain('defaults.set("review", forKey: "pending_intent_navigation")');
       expect(swiftContent).not.toContain('defaults.set("scan", forKey: "pending_intent_navigation")\n            defaults.synchronize()\n            return .result(dialog: IntentDialog("Tangkapan layar');
+    });
+
+    it("verifies Glass Dialog (Dialog Kaca) action pipeline matches the requested 7-step sequence", () => {
+      expect(GLASS_DIALOG_ACTIONS).toHaveLength(7);
+
+      // Step 1: Masukkan nominal transaksi
+      expect(GLASS_DIALOG_ACTIONS[0].titleId).toBe("Minta Masukan Nominal");
+      expect(GLASS_DIALOG_ACTIONS[0].titleEn).toBe("Ask for Input (Amount)");
+
+      // Step 2: Pilih kategori transaksi
+      expect(GLASS_DIALOG_ACTIONS[1].titleId).toBe("Pilih Kategori Transaksi");
+      expect(GLASS_DIALOG_ACTIONS[1].titleEn).toBe("Choose Category from List");
+
+      // Step 3: Pilih akun / rekening
+      expect(GLASS_DIALOG_ACTIONS[2].titleId).toBe("Pilih Akun atau Rekening");
+      expect(GLASS_DIALOG_ACTIONS[2].titleEn).toBe("Choose Account or Wallet");
+
+      // Step 4: Pilih tanggal dan waktu
+      expect(GLASS_DIALOG_ACTIONS[3].titleId).toBe("Minta Tanggal dan Waktu");
+      expect(GLASS_DIALOG_ACTIONS[3].titleEn).toBe("Ask for Date and Time");
+
+      // Step 5: Keterangan / catatan (opsional)
+      expect(GLASS_DIALOG_ACTIONS[4].titleId).toBe("Minta Catatan (Opsional)");
+      expect(GLASS_DIALOG_ACTIONS[4].titleEn).toBe("Ask for Note (Optional)");
+
+      // Step 6: Buka URL Simpan Otomatis
+      expect(GLASS_DIALOG_ACTIONS[5].titleId).toBe("Buka URL & Catat ke Sistem");
+      expect(GLASS_DIALOG_ACTIONS[5].isNativeIntent).toBe(true);
+      expect(GLASS_DIALOG_ACTIONS[5].subtitleId).toContain("autosave=true");
+
+      // Step 7: Notifikasi transaksi tercatat
+      expect(GLASS_DIALOG_ACTIONS[6].titleId).toBe("Tampilkan Pemberitahuan");
+      expect(GLASS_DIALOG_ACTIONS[6].titleEn).toBe("Show Notification");
+
+      // Hardware guide
+      expect(GLASS_DIALOG_HARDWARE_GUIDE.stepsId).toHaveLength(4);
+      expect(GLASS_DIALOG_HARDWARE_GUIDE.titleId).toContain("Ketuk Bagian Belakang");
     });
   });
 });

@@ -1,23 +1,20 @@
 {
-  "version": "1.3.2",
-  "build": 132,
-  "releaseDate": "2026-10-25",
-  "name": "Accrual v1.3.2",
+  "version": "1.3.23",
+  "build": 1323,
+  "releaseDate": "2026-10-29",
+  "name": "Accrual v1.3.23",
   "changelog": [
-    "Integrasi resmi Apple Shortcuts & App Intents langsung di aplikasi Pintasan iOS",
-    "Suite 10 Widget Layar Utama & 5 Widget Kunci Layar WidgetKit dengan sinkronisasi tema adaptif",
-    "Ketahanan Paywall RevenueCat StoreKit 2 dan resolusi harga otomatis",
-    "Pemeriksa pembaruan aplikasi otomatis di dalam Pengaturan"
+    "Audit & remediasi menyeluruh Apple Shortcuts & App Intents",
+    "Pembersihan duplikasi aksi pintasan di Shortcuts library via isDiscoverable guard",
+    "Standardisasi lokalisasi murni 100% tanpa istilah campuran gado-gado",
+    "Perbaikan parameter pencatatan notifikasi bank (BCA, Mandiri, BRImo, BNI, GoPay, OVO)",
+    "Penyempurnaan pemindai layar Back Tap dengan pembersihan token Unicode dan OCR otomatis"
   ],
   "changelog_en": [
-    "Native Apple Shortcuts & App Intents integration in iOS Shortcuts app",
-    "10 Home Screen & 5 Lock Screen WidgetKit suite with adaptive theme sync",
-    "RevenueCat StoreKit 2 paywall resilience and automatic package price resolution",
-    "In-app automatic update checker in Settings"
-  ],
-  "downloads": {
-    "androidApk": "https://iqjcmqkgrfmopznrfikx.supabase.co/storage/v1/object/public/app-releases/Accrual-latest.apk",
-    "iosIpa": "https://github.com/syntheticae/Trouvaille/releases/download/latest/Accrual.ipa",
-    "sideStoreSourceUrl": "https://trouvaille-drab.vercel.app/sidestore.json"
-  }
+    "Comprehensive Apple Shortcuts & App Intents audit and remediation",
+    "Eliminated duplicate actions in Shortcuts library using isDiscoverable guard",
+    "Enforced 100% pure non-mixed localization across all shortcut guides and intents",
+    "Fixed bank notification automation parameters for BCA, Mandiri, BRImo, BNI, GoPay, OVO",
+    "Hardened Back Tap screen scanner with Unicode token strip and fallback Vision OCR"
+  ]
 }

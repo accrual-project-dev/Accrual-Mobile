@@ -1534,6 +1534,7 @@ struct VoiceEntryControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Voice Entry"
     static var description = IntentDescription("Open Accrual voice recording modal")
     static var openAppWhenRun: Bool = true
+    static var isDiscoverable: Bool { false }
 
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {
@@ -1550,6 +1551,7 @@ struct ScanReceiptControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Scan Receipt"
     static var description = IntentDescription("Open Accrual camera scanner for receipts and invoices")
     static var openAppWhenRun: Bool = true
+    static var isDiscoverable: Bool { false }
 
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {
@@ -1566,6 +1568,7 @@ struct QuickAddControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Quick Add"
     static var description = IntentDescription("Open Accrual transaction entry keypad")
     static var openAppWhenRun: Bool = true
+    static var isDiscoverable: Bool { false }
 
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {

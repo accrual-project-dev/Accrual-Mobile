@@ -1,19 +1,17 @@
-import { useState } from "react";
 import {
-  Download,
   Check,
-  Copy,
   Smartphone,
   Sparkles,
   RefreshCw,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
+import { triggerHaptic } from "../../lib/haptics";
 import {
   type AppReleaseInfo,
-  getPlatformType,
+  APP_VERSION,
   openDownloadUrl,
 } from "../../lib/appUpdateService";
 
@@ -33,31 +31,10 @@ export function AppUpdateModal({
   onCheckAgain,
 }: AppUpdateModalProps) {
   const { isIndonesian } = useLanguage();
-  const [copied, setCopied] = useState(false);
-  const platform = getPlatformType();
 
-  const handleCopySource = async () => {
-    if (!releaseInfo?.downloads.sideStoreSourceUrl) return;
-    try {
-      await navigator.clipboard.writeText(releaseInfo.downloads.sideStoreSourceUrl);
-      setCopied(true);
-      triggerSuccessHaptic();
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      triggerHaptic("heavy");
-    }
-  };
-
-  const handleDownloadIpa = () => {
-    if (!releaseInfo?.downloads.iosIpa) return;
+  const handleOpenAppStore = () => {
     triggerHaptic("medium");
-    openDownloadUrl(releaseInfo.downloads.iosIpa);
-  };
-
-  const handleDownloadApk = () => {
-    if (!releaseInfo?.downloads.androidApk) return;
-    triggerHaptic("medium");
-    openDownloadUrl(releaseInfo.downloads.androidApk);
+    openDownloadUrl("https://apps.apple.com/app/id6825272166");
   };
 
   const changelog =
@@ -92,13 +69,13 @@ export function AppUpdateModal({
               style={{ color: "var(--text-tertiary)" }}
             >
               {isIndonesian
-                ? "Informasi versi rilis dan distribusi resmi Accrual"
-                : "Official release versions and installation packages"}
+                ? "Versi rilis resmi App Store & TestFlight"
+                : "Official App Store & TestFlight releases"}
             </p>
           </div>
 
-          {/* Version Pill Status */}
-          <div className="flex items-center justify-center gap-2 pt-1">
+          {/* Version Status Badges */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
             <div
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium backdrop-blur-md shadow-sm"
               style={{
@@ -109,7 +86,7 @@ export function AppUpdateModal({
             >
               <span>{isIndonesian ? "Versi Terpasang:" : "Installed:"}</span>
               <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                v{releaseInfo?.currentVersion || "1.2.0"}
+                v{releaseInfo?.currentVersion || APP_VERSION}
               </span>
             </div>
 
@@ -142,7 +119,7 @@ export function AppUpdateModal({
           </div>
         </div>
 
-        {/* Changelog Highlights */}
+        {/* Release Notes Highlights */}
         {changelog.length > 0 && (
           <div
             className="p-4 rounded-2xl space-y-2.5 backdrop-blur-md shadow-sm"
@@ -182,185 +159,63 @@ export function AppUpdateModal({
           </div>
         )}
 
-        {/* Platform-Specific Download & Installation Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span
-              className="text-[11px] font-semibold uppercase tracking-wider"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {isIndonesian ? "Paket Instalasi" : "Installation Packages"}
-            </span>
-            <span className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              {platform === "ios"
-                ? "Apple iOS (SideStore / AltStore)"
-                : platform === "android"
-                  ? isIndonesian
-                    ? "Android (APK Langsung)"
-                    : "Android (Direct APK)"
-                  : isIndonesian
-                    ? "Peramban Web / Desktop"
-                    : "Web / Desktop Browser"}
-            </span>
-          </div>
-
-          {/* CASE A: iOS (SideStore / AltStore) */}
-          {(platform === "ios" || platform === "web") && (
-            <div
-              className="p-3.5 rounded-2xl space-y-3 backdrop-blur-md shadow-sm"
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "var(--glass-fill)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <Smartphone size={16} strokeWidth={1.75} />
-                  </div>
-                  <div>
-                    <div
-                      className="text-[13px] font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {isIndonesian ? "Berkas iOS (.ipa)" : "iOS Package (.ipa)"}
-                    </div>
-                    <div className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                      SideStore / AltStore / Sideloadly
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleDownloadIpa}
-                  className="px-3 py-1.5 rounded-xl font-semibold text-[11.5px] flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm"
-                  style={{
-                    background: "var(--text-primary)",
-                    color: "var(--bg-primary)",
-                  }}
-                >
-                  <Download size={13} strokeWidth={2} />
-                  <span>{isIndonesian ? "Unduh .IPA" : "Get .IPA"}</span>
-                </button>
-              </div>
-
-              {/* SideStore Community Source Section */}
+        {/* Official App Store & TestFlight Card */}
+        <div
+          className="p-3.5 rounded-2xl backdrop-blur-md shadow-sm space-y-2.5"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className="p-2.5 rounded-xl flex items-center justify-between gap-2"
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                 style={{
                   background: "var(--glass-fill)",
-                  border: "1px dashed var(--glass-border)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
                 }}
               >
-                <div className="min-w-0 pr-2">
-                  <div
-                    className="text-[11px] font-medium truncate"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {isIndonesian ? "Sumber SideStore Resmi:" : "Official SideStore Source:"}
-                  </div>
-                  <div
-                    className="text-[10px]  truncate"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {releaseInfo?.downloads.sideStoreSourceUrl}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCopySource}
-                  className="px-2.5 py-1.5 rounded-lg text-[10.5px] font-semibold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shrink-0"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  {copied ? (
-                    <>
-                      <Check size={12} strokeWidth={2} />
-                      <span>{isIndonesian ? "Tersalin" : "Copied"}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={12} strokeWidth={1.75} />
-                      <span>{isIndonesian ? "Salin" : "Copy"}</span>
-                    </>
-                  )}
-                </button>
+                <Smartphone size={16} strokeWidth={1.75} />
               </div>
-
-              {platform === "ios" && (
-                <p
-                  className="text-[10.5px] leading-relaxed px-0.5"
-                  style={{ color: "var(--text-tertiary)" }}
+              <div className="min-w-0">
+                <div
+                  className="text-[13px] font-semibold truncate"
+                  style={{ color: "var(--text-primary)" }}
                 >
+                  {isIndonesian ? "Apple App Store & TestFlight" : "Apple App Store & TestFlight"}
+                </div>
+                <div className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>
                   {isIndonesian
-                    ? "Tip: Tempelkan tautan sumber di atas ke tab 'Sources' pada aplikasi SideStore Anda untuk mendapatkan pembaruan otomatis di masa mendatang."
-                    : "Tip: Add the source URL above to the 'Sources' tab in your SideStore app for seamless one-tap updates."}
-                </p>
-              )}
+                    ? "Saluran distribusi resmi iOS"
+                    : "Official iOS distribution channel"}
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* CASE B: Android (APK) */}
-          {(platform === "android" || platform === "web") && (
-            <div
-              className="p-3.5 rounded-2xl flex items-center justify-between backdrop-blur-md shadow-sm"
+            <button
+              type="button"
+              onClick={handleOpenAppStore}
+              className="px-3 py-1.5 rounded-xl font-semibold text-[11.5px] flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shrink-0 shadow-sm"
               style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--glass-border)",
+                background: "var(--text-primary)",
+                color: "var(--bg-primary)",
               }}
             >
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <Download size={16} strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <div
-                    className="text-[13px] font-semibold truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {isIndonesian ? "Berkas Android (.apk)" : "Android Package (.apk)"}
-                  </div>
-                  <div className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>
-                    {isIndonesian
-                      ? "Pemasangan langsung via Supabase CDN"
-                      : "Direct installer from Supabase CDN"}
-                  </div>
-                </div>
-              </div>
+              <span>{isIndonesian ? "Buka App Store" : "Open App Store"}</span>
+              <ExternalLink size={12} strokeWidth={2} />
+            </button>
+          </div>
 
-              <button
-                type="button"
-                onClick={handleDownloadApk}
-                className="px-3 py-1.5 rounded-xl font-semibold text-[11.5px] flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer shrink-0 shadow-sm"
-                style={{
-                  background: "var(--text-primary)",
-                  color: "var(--bg-primary)",
-                }}
-              >
-                <Download size={13} strokeWidth={2} />
-                <span>{isIndonesian ? "Unduh .APK" : "Get .APK"}</span>
-              </button>
-            </div>
-          )}
+          <p
+            className="text-[10.5px] leading-relaxed px-0.5"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {isIndonesian
+              ? "Pembaruan versi dapat diunduh secara langsung dan otomatis melalui App Store atau aplikasi TestFlight di perangkat Anda."
+              : "Updates are delivered directly and automatically through the App Store or TestFlight app on your device."}
+          </p>
         </div>
 
         {/* Bottom Actions: Check Again & Close */}

@@ -23,7 +23,8 @@ import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
 import { SyncStatusPill } from "./components/ui/SyncStatusPill";
 import { ClipboardTransactionBanner } from "./components/common/ClipboardTransactionBanner";
-import { saveDraftBatch } from "./lib/draftTransactionService";
+import { saveDraftBatch, getAllDraftItems } from "./lib/draftTransactionService";
+import { useInboxDrain } from "./features/inbox/useInboxDrain";
 import type { ParsedStatementItem } from "./lib/statementParser";
 import { App as CapApp } from "@capacitor/app";
 import { parseDeepLink } from "./lib/deepLinkHandler";
@@ -163,6 +164,7 @@ function AppShell() {
   const navigate = useNavigate();
 
   useWidgetSync();
+  useInboxDrain();
   useRealtimeSync(user?.id, {
     onPartnerTransaction: (data) => {
       setRecordedShortcutTx(data);
@@ -493,7 +495,7 @@ function AppShell() {
           const toWalName =
             toWalObj?.name || res.matchedToWalletName || "";
 
-          // All automated transactions via Shortcuts/deep links route to the Review sheet first
+          // All automated transactions via Shortcuts/deep links route to the Review sheet first unless autosave requested
           const reviewItem: ParsedStatementItem = {
             id: `shortcut-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             date: occurred_on,
@@ -515,6 +517,61 @@ function AppShell() {
             confidence: 0.9,
             needsReview: !res.prefilledValues.category_id && targetType !== "transfer",
           };
+
+          // If explicitly marked for auto-save (e.g. Glass Dialog or structured auto-saving shortcut),
+          // commit transaction directly and trigger Dynamic Island HUD confirmation
+          if (res.autoSave) {
+            const timeStr = res.prefilledValues.time || format(txDate, "HH:mm:ss");
+            const [h, m, s] = timeStr.split(":");
+            const fullDate = new Date(txDate);
+            if (h !== undefined) fullDate.setHours(parseInt(h, 10));
+            if (m !== undefined) fullDate.setMinutes(parseInt(m, 10));
+            if (s !== undefined) fullDate.setSeconds(parseInt(s, 10));
+            const fullOccurredOn = format(fullDate, "yyyy-MM-dd'T'HH:mm:ss");
+            const targetSpaceId = activeSpaceId && activeSpaceId !== "all" ? activeSpaceId : "personal";
+
+            addTxMutation.mutate(
+              {
+                amount: targetAmount,
+                type: targetType,
+                category_id: targetType === "transfer" ? null : targetCatId,
+                wallet_id: targetWalletId,
+                to_wallet_id: targetToWalletId,
+                occurred_on: fullOccurredOn,
+                created_at: fullDate.toISOString(),
+                note: note || undefined,
+                ledger_id: targetSpaceId,
+                space_id: targetSpaceId,
+              } as any,
+              {
+                onSuccess: () => {
+                  triggerSuccessHaptic();
+                  queryClient.invalidateQueries({ queryKey: ["transactions"] });
+                  queryClient.invalidateQueries({ queryKey: ["wallets"] });
+                  queryClient.invalidateQueries({ queryKey: ["monthSummary"] });
+                  setRecordedShortcutTx({
+                    amount: targetAmount,
+                    type: targetType,
+                    categoryName: targetType === "transfer" ? (isIndonesian ? "Transfer" : "Transfer") : catName,
+                    walletName:
+                      targetType === "transfer"
+                        ? `${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
+                        : walName,
+                    date: format(fullDate, "d MMM yyyy, HH:mm"),
+                    note: note,
+                    source: "shortcut",
+                  });
+                },
+                onError: (err) => {
+                  console.error("Auto-save failed, fallback to review:", err);
+                  setBatchReviewItems([reviewItem]);
+                  setBatchSourceTitle(isIndonesian ? "Pintasan & Otomasi" : "Shortcuts & Automations");
+                  setBatchReviewOpen(true);
+                },
+              }
+            );
+            return;
+          }
 
           triggerHaptic("medium");
           setBatchReviewItems([reviewItem]);
@@ -573,6 +630,18 @@ function AppShell() {
         setReceiptScanOpen(true);
       } else if (res.action === "import") {
         setStatementImportOpen(true);
+      } else if (res.action === "batch_review") {
+        const items = res.batchItems || getAllDraftItems();
+        if (items.length > 0) {
+          setBatchReviewItems(items);
+          setBatchSourceTitle(isIndonesian ? "Arsip Draft" : "Draft Archive");
+          setBatchReviewOpen(true);
+        } else {
+          showToast(
+            isIndonesian ? "Tidak ada draft yang perlu persetujuan" : "No pending drafts to review",
+            "info"
+          );
+        }
       }
     };
   }, [

@@ -1,8 +1,8 @@
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 
-export const APP_VERSION = "1.3.9";
-export const APP_BUILD_NUMBER = "139";
+export const APP_VERSION = "1.3.22";
+export const APP_BUILD_NUMBER = "1322";
 
 export interface AppReleaseInfo {
   currentVersion: string;
@@ -74,18 +74,18 @@ export async function checkForAppUpdate(): Promise<AppReleaseInfo> {
     latestVersion: APP_VERSION,
     latestBuild: APP_BUILD_NUMBER,
     hasUpdate: false,
-    releaseDate: "2026-10-25",
+    releaseDate: "2026-10-29",
     changelogId: [
-      "Integrasi resmi Apple Shortcuts & App Intents langsung di aplikasi Pintasan iOS",
-      "Suite 10 Widget Layar Utama & 5 Widget Kunci Layar WidgetKit dengan sinkronisasi tema adaptif",
-      "Ketahanan Paywall RevenueCat StoreKit 2 dan resolusi harga otomatis",
-      "Pemeriksa pembaruan aplikasi otomatis di dalam Pengaturan",
+      "Distribusi rilis resmi Apple App Store & TestFlight",
+      "Peningkatan ketahanan sinkronisasi langganan StoreKit 2 & RevenueCat",
+      "Antarmuka Pengaturan yang lebih bersih dan minimalis tanpa deskripsi berulang",
+      "Integrasi tangkapan layar otomatis untuk alur persetujuan transaksi di Arsip Draft",
     ],
     changelogEn: [
-      "Native Apple Shortcuts & App Intents integration in iOS Shortcuts app",
-      "10 Home Screen & 5 Lock Screen WidgetKit suite with adaptive theme sync",
-      "RevenueCat StoreKit 2 paywall resilience and automatic package price resolution",
-      "In-app automatic update checker in Settings",
+      "Official Apple App Store & TestFlight distribution channel",
+      "StoreKit 2 & RevenueCat subscription synchronization hardening",
+      "Refined minimalist Settings interface with streamlined row typography",
+      "Automated screenshot capture flow for Draft Archive transaction approvals",
     ],
     downloads: {
       androidApk:

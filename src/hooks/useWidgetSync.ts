@@ -27,7 +27,7 @@ import {
   isMultiTransactionHistoryText,
   parseScreenshotHistory,
 } from "../lib/screenshotHistoryParser";
-import { saveDraftBatch } from "../lib/draftTransactionService";
+import { saveDraftBatch, getAllDraftItems } from "../lib/draftTransactionService";
 import type { ParsedStatementItem } from "../lib/statementParser";
 import { format } from "date-fns";
 import {
@@ -308,6 +308,18 @@ export function useWidgetSync() {
         window.dispatchEvent(new CustomEvent("trouvaille:open-scanner"));
       } else if (navigation === "voice") {
         window.dispatchEvent(new CustomEvent("trouvaille:open-voice"));
+      } else if (navigation === "review" || navigation === "inbox") {
+        const drafts = getAllDraftItems();
+        if (drafts.length > 0) {
+          window.dispatchEvent(
+            new CustomEvent("trouvaille:open-draft-review", {
+              detail: {
+                items: drafts,
+                title: isIndonesian ? "Arsip Draft" : "Draft Archive",
+              },
+            })
+          );
+        }
       }
 
       // Process structured quick-log transactions

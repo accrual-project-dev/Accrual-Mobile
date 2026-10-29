@@ -464,6 +464,17 @@ export function parseDeepLink(
     if (actionPath === "voice" || params.get("mode") === "voice" || params.get("action") === "voice") {
       return { action: "voice" };
     }
+    if (
+      actionPath === "inbox" ||
+      actionPath === "draft" ||
+      actionPath === "drafts" ||
+      actionPath === "review" ||
+      params.get("action") === "inbox" ||
+      params.get("mode") === "inbox" ||
+      params.get("action") === "review"
+    ) {
+      return { action: "batch_review" };
+    }
     if (actionPath === "scan" || params.get("mode") === "scan" || params.get("action") === "scan") {
       return { action: "scan" };
     }
