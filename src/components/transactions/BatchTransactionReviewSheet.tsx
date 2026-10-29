@@ -5,9 +5,6 @@ import {
   AlertCircle,
   Calendar,
   Clock,
-  ArrowUpRight,
-  ArrowDownLeft,
-  ArrowLeftRight,
   ArrowRight,
   CheckSquare,
   Square,
@@ -29,6 +26,23 @@ import { useBills, useMarkBillPaid } from "../../hooks/useBills";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { saveMerchantMemory } from "../../lib/merchantCategoryMemory";
 import { findBestMatchingBill } from "../../lib/billMatchingEngine";
+import { isReviewItemValid } from "../../lib/shortcutReviewValidation";
+import { useToast } from "../../contexts/ToastContext";
+import { useSpace } from "../../contexts/SpaceContext";
+import { parseCleanNumber } from "../assets/AddAssetModal";
+
+const CAPTURE_REASONS: Record<string, { id: string; en: string }> = {
+  mapping: { id: "Pilih akun dan kategori tujuan secara manual.", en: "Select the destination account and category manually." },
+  timestamp: { id: "Tanggal dan waktu bukti belum pasti. Periksa waktu transaksi sebelum menyimpan.", en: "The receipt date and time are uncertain. Verify the occurrence time before saving." },
+  unparsed: { id: "Rincian transaksi belum terbaca. Isi nominal dan jenis transaksi dari teks asli.", en: "Transaction details could not be read. Enter the amount and type from the original text." },
+  currency: { id: "Mata uang belum didukung. Masukkan nominal yang telah Anda hitung dalam IDR; tidak ada konversi otomatis.", en: "Unsupported currency. Enter the amount you have calculated in IDR; no automatic conversion is applied." },
+  multiple_amounts: { id: "Ada beberapa nominal. Pilih nominal transaksi yang benar dari teks asli.", en: "Several amounts were found. Enter the correct transaction amount from the original text." },
+  multiple_transactions: { id: "Ada beberapa transaksi. Catat satu transaksi per entri dan tambahkan sisanya secara terpisah.", en: "Several transactions were found. Record one transaction per entry and add the others separately." },
+  unconfirmed: { id: "Pembayaran belum terkonfirmasi. Pastikan transaksi telah selesai sebelum mencatat.", en: "Payment is unconfirmed. Verify that the transaction completed before recording it." },
+  transfer: { id: "Periksa transfer dan pilih akun sumber serta tujuan yang berbeda.", en: "Review the transfer and select different source and destination accounts." },
+  possible_duplicate: { id: "Kemungkinan duplikat. Periksa buku transaksi sebelum mencatat kembali.", en: "Possible duplicate. Check the ledger before recording again." },
+  legacy: { id: "Tangkapan lama perlu diperiksa dan dilengkapi secara manual.", en: "This older capture needs manual review and completion." },
+};
 
 interface BatchTransactionReviewSheetProps {
   isOpen: boolean;
@@ -55,6 +69,8 @@ export function BatchTransactionReviewSheet({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { formatWithPreferred } = useCurrency();
+  const { showToast } = useToast();
+  const { spaces } = useSpace();
 
   const { data: bills = [] } = useBills();
   const markBillPaid = useMarkBillPaid();
@@ -63,6 +79,7 @@ export function BatchTransactionReviewSheet({
   const [items, setItems] = useState<ParsedStatementItem[]>(initialItems);
   const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [amountInputs, setAmountInputs] = useState<Record<string, string>>({});
 
   // Category picker sheet state
   const [activeItemForCategory, setActiveItemForCategory] = useState<
@@ -80,7 +97,8 @@ export function BatchTransactionReviewSheet({
   // Sync state when initialItems change or sheet opens
   useEffect(() => {
     if (isOpen && initialItems.length > 0) {
-      setItems(initialItems);
+      setItems(initialItems.map(item => item.captureReason === "currency" ? { ...item, amount: 0 } : item));
+      setAmountInputs({});
       const selMap: Record<string, boolean> = {};
       initialItems.forEach((it) => {
         selMap[it.id] = it.selected;
@@ -148,16 +166,12 @@ export function BatchTransactionReviewSheet({
     }));
   };
 
-  const handleToggleType = (id: string) => {
+  const handleSelectType = (id: string, type: TransactionType) => {
     triggerHaptic("light");
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it;
-        let nextType: TransactionType = "expense";
-        if (it.type === "expense") nextType = "income";
-        else if (it.type === "income") nextType = "transfer";
-        else nextType = "expense";
-        return { ...it, type: nextType };
+        return { ...it, type, suggestedCategoryId: null, suggestedCategoryName: null, suggestedCategoryEmoji: null, destinationWalletId: null, destinationWalletName: null };
       }),
     );
   };
@@ -214,6 +228,8 @@ export function BatchTransactionReviewSheet({
             ...it,
             walletId: selectedWallet.id,
             walletName: selectedWallet.name,
+            destinationWalletId: selectedWallet.id === it.destinationWalletId ? null : it.destinationWalletId,
+            destinationWalletName: selectedWallet.id === it.destinationWalletId ? null : it.destinationWalletName,
           };
         } else {
           return {
@@ -249,19 +265,27 @@ export function BatchTransactionReviewSheet({
   }, [items, activeItemForWallet]);
 
   const filteredWallets = useMemo(() => {
-    if (!searchWalletQuery.trim()) return wallets;
+    const availableWallets = activeItemForWallet?.field === "destinationWalletId"
+      ? wallets.filter(w => w.id !== activeWalletItem?.walletId)
+      : wallets;
+    if (!searchWalletQuery.trim()) return availableWallets;
     const q = searchWalletQuery.trim().toLowerCase();
-    return wallets.filter((w) => w.name.toLowerCase().includes(q));
-  }, [wallets, searchWalletQuery]);
+    return availableWallets.filter((w) => w.name.toLowerCase().includes(q));
+  }, [wallets, searchWalletQuery, activeItemForWallet, activeWalletItem]);
 
   const handleApprove = async () => {
     const selectedItems = items.filter((it) => selectedMap[it.id]);
     if (selectedItems.length === 0) return;
+    if (selectedItems.some(item => !isReviewItemValid(item))) {
+      showToast(isIndonesian ? "Periksa nominal, tanggal, waktu, buku kas, akun, serta kategori atau tujuan transfer." : "Enter a positive amount, account, and valid category or transfer destination.", "info");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       triggerSuccessHaptic();
 
+      await onConfirmBatch(selectedItems);
       for (const item of selectedItems) {
         if (item.matchedBill?.confirmedPaid && bills.length > 0) {
           const targetBill = bills.find((b) => b.id === item.matchedBill?.id);
@@ -282,7 +306,6 @@ export function BatchTransactionReviewSheet({
         }
       }
 
-      await onConfirmBatch(selectedItems);
       onClose();
     } catch (err) {
       console.error("[BatchReview] Confirm batch failed:", err);
@@ -489,42 +512,66 @@ export function BatchTransactionReviewSheet({
                       </span>
                     </div>
 
+                    <div className="mt-2 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+                      <label className="text-[11px] font-medium">
+                        {isIndonesian ? "Nominal dalam IDR" : "Amount in IDR"}
+                        <input
+                          inputMode="decimal"
+                          aria-label={isIndonesian ? "Nominal dalam IDR" : "Amount in IDR"}
+                          value={amountInputs[it.id] ?? (it.amount > 0 ? it.amount.toLocaleString("id-ID", { useGrouping: false, maximumFractionDigits: 20 }) : "")}
+                          placeholder="0"
+                          className="mt-1 w-full rounded-xl border px-3 py-2 bg-transparent text-[13px] select-text outline-none"
+                          style={{ borderColor: hairlineDivider }}
+                          onChange={e => {
+                            const value = e.target.value;
+                            const amount = parseCleanNumber(value, false);
+                            setAmountInputs(prev => ({ ...prev, [it.id]: value }));
+                            setItems(prev => prev.map(item => item.id === it.id ? {
+                              ...item,
+                              amount,
+                              captureReason: item.captureReason === "currency" && Number.isFinite(amount) && amount > 0 ? undefined : item.captureReason,
+                            } : item));
+                          }}
+                        />
+                      </label>
+                      {"captureLedgerId" in it && <div className="flex flex-col gap-2 text-[11px]">
+                        <label>{isIndonesian ? "Tanggal transaksi" : "Transaction date"}<input aria-label={isIndonesian ? "Tanggal transaksi" : "Transaction date"} type="date" value={it.date} onChange={event=>setItems(prev=>prev.map(item=>item.id===it.id?{...item,date:event.target.value,captureTimestampConfirmed:false}:item))} className="block w-full rounded-xl border p-2" style={{background:"var(--bg-primary)",borderColor:"var(--glass-border)",color:"var(--text-primary)"}} /></label>
+                        <label>{isIndonesian ? "Waktu transaksi" : "Transaction time"}<input aria-label={isIndonesian ? "Waktu transaksi" : "Transaction time"} type="time" value={it.time?.slice(0,5)||""} onChange={event=>setItems(prev=>prev.map(item=>item.id===it.id?{...item,time:event.target.value,captureTimestampConfirmed:false}:item))} className="block w-full rounded-xl border p-2" style={{background:"var(--bg-primary)",borderColor:"var(--glass-border)",color:"var(--text-primary)"}} /></label>
+                        <label className="flex items-center gap-2"><input type="checkbox" checked={it.captureTimestampConfirmed !== false} onChange={event=>setItems(prev=>prev.map(item=>item.id===it.id?{...item,captureTimestampConfirmed:event.target.checked}:item))} />{isIndonesian ? "Tanggal dan waktu sudah saya periksa" : "I have verified the date and time"}</label>
+                      </div>}
+                      {"captureLedgerId" in it && <label className="block text-[11px]" style={{color:"var(--text-secondary)"}}>
+                        {isIndonesian ? "Buku kas tujuan" : "Destination ledger"}
+                        <select aria-label={isIndonesian ? "Buku kas tujuan" : "Destination ledger"} className="block w-full rounded-xl border px-2 py-2 mt-1" style={{background:"var(--bg-primary)",borderColor:"var(--glass-border)",color:"var(--text-primary)"}} value={it.captureLedgerId || ""} onChange={event=>setItems(prev=>prev.map(item=>item.id===it.id?{...item,captureLedgerId:event.target.value || null}:item))}>
+                          <option value="">{isIndonesian ? "Pilih buku kas" : "Select ledger"}</option>
+                          {spaces.filter(space=>space.role!=="viewer").map(space=><option key={space.id} value={space.id}>{space.name}</option>)}
+                        </select>
+                      </label>}
+                      {it.captureReason && <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                        {isIndonesian
+                          ? (CAPTURE_REASONS[it.captureReason]?.id || "Periksa dan lengkapi rincian dari teks asli.")
+                          : (CAPTURE_REASONS[it.captureReason]?.en || "Review and complete the details from the original text.")}
+                      </p>}
+                      {it.raw && <details className="text-[11px] select-text">
+                        <summary className="cursor-pointer font-medium">{isIndonesian ? "Lihat teks asli" : "View original text"}</summary>
+                        <p className="mt-2 whitespace-pre-wrap break-words leading-relaxed" style={{ color: "var(--text-secondary)" }}>{it.raw}</p>
+                      </details>}
+                    </div>
+
                     {/* Metadata & Quick Micro-Pills */}
                     <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                      {/* Type Toggle Pill */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleType(it.id);
-                        }}
-                        className="h-5 px-2 rounded-full text-[9.5px] font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
-                        style={{
-                          background: buttonGlassBg,
-                          border: buttonGlassBorder,
-                          color: "var(--text-secondary)",
-                        }}
+                      {/* Transaction type selector */}
+                      <select
+                        aria-label={isIndonesian ? "Jenis transaksi" : "Transaction type"}
+                        value={it.type}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => handleSelectType(it.id, e.target.value as TransactionType)}
+                        className="rounded-full px-2 py-1 text-[10px] font-semibold bg-transparent"
+                        style={{ border: buttonGlassBorder, color: "var(--text-secondary)" }}
                       >
-                        {isTransfer ? (
-                          <ArrowLeftRight size={9.5} strokeWidth={2} />
-                        ) : isOutflow ? (
-                          <ArrowUpRight size={9.5} strokeWidth={2} />
-                        ) : (
-                          <ArrowDownLeft size={9.5} strokeWidth={2} />
-                        )}
-                        <span>
-                          {isTransfer
-                            ? "Transfer"
-                            : isOutflow
-                              ? isIndonesian
-                                ? "Keluar"
-                                : "Outflow"
-                              : isIndonesian
-                                ? "Masuk"
-                                : "Inflow"}
-                        </span>
-                      </button>
-
+                        <option value="expense">{isIndonesian ? "Pengeluaran" : "Expense"}</option>
+                        <option value="income">{isIndonesian ? "Pemasukan" : "Income"}</option>
+                        <option value="transfer">{isIndonesian ? "Pemindahan dana" : "Transfer"}</option>
+                      </select>
                       {/* Category Pill (Hidden for transfers) */}
                       {!isTransfer && (
                         <button
@@ -577,7 +624,7 @@ export function BatchTransactionReviewSheet({
                             <span className="truncate max-w-[80px]">
                               {wallets.find((w) => w.id === it.walletId)?.name ||
                                 it.walletName ||
-                                wallets[0].name}
+                                (isIndonesian ? "Pilih akun" : "Select account")}
                             </span>
                           </button>
 
@@ -615,8 +662,6 @@ export function BatchTransactionReviewSheet({
                                     (w) => w.id === it.destinationWalletId,
                                   )?.name ||
                                     it.destinationWalletName ||
-                                    wallets.find((w) => w.id !== it.walletId)
-                                      ?.name ||
                                     (isIndonesian ? "Tujuan" : "Destination")}
                                 </span>
                               </button>
@@ -1034,7 +1079,7 @@ export function BatchTransactionReviewSheet({
                     const currentId =
                       activeItemForWallet.field === "destinationWalletId"
                         ? activeWalletItem?.destinationWalletId
-                        : (activeWalletItem?.walletId || wallets[0]?.id);
+                        : activeWalletItem?.walletId;
                     const isSelected = currentId === w.id;
                     return (
                       <button

@@ -84,6 +84,12 @@ export interface PendingBackTapVoice {
   createdAt: number;
 }
 
+export interface PendingIngestionAcknowledgement {
+  transactionIds?: string[];
+  voiceLogIds?: string[];
+  navigation?: string;
+}
+
 export interface WidgetBridgePlugin {
   updateSnapshot(options: { snapshot: WidgetSnapshotPayload }): Promise<{ success: boolean }>;
   getPendingIngestion(): Promise<{
@@ -91,7 +97,7 @@ export interface WidgetBridgePlugin {
     voiceLogs: PendingBackTapVoice[];
     navigation?: string | null;
   }>;
-  clearPendingIngestion(): Promise<{ success: boolean }>;
+  clearPendingIngestion(options: PendingIngestionAcknowledgement): Promise<{ success: boolean }>;
   reloadWidgets(): Promise<{ success: boolean }>;
 }
 
@@ -167,16 +173,16 @@ class WidgetSyncService {
   }
 
   /**
-   * Clears pending transactions from the native App Group queue once successfully processed.
+   * Acknowledges only the supplied native queue records or matching navigation value.
    */
-  public async clearPendingIngestion(): Promise<boolean> {
+  public async clearPendingIngestion(options: PendingIngestionAcknowledgement): Promise<boolean> {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") {
       return true;
     }
 
     try {
-      await WidgetBridge.clearPendingIngestion();
-      return true;
+      const result = await WidgetBridge.clearPendingIngestion(options);
+      return result.success;
     } catch (err) {
       console.warn("[WidgetSyncService] clearPendingIngestion failed:", err);
       return false;

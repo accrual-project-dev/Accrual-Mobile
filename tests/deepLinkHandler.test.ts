@@ -127,9 +127,9 @@ describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
     const result = parseDeepLink(rawUrl, mockCategories, mockWallets);
 
     expect(result.action).toBe("transaction");
-    expect(result.autoSave).toBe(true);
+    expect(result.autoSave).toBe(false);
     expect(result.prefilledValues?.amount).toBe(50000);
-    expect(result.prefilledValues?.categoryId).toBe("c-food");
+    expect(result.prefilledValues?.categoryId).toBeUndefined();
     expect(result.prefilledValues?.walletId).toBe("w-bca");
   });
 

@@ -106,6 +106,46 @@ describe("Offline Sync Engine & Mutation Queue Resilience Suite", () => {
   });
 
   describe("enqueuePendingMutation & merge mechanics", () => {
+    it("does not overwrite the pending queue when storage cannot be read", () => {
+      enqueuePendingMutation("insert", { id: "tx-existing", amount: 10 });
+      const persisted = store["TROUVAILLE_PENDING_MUTATIONS_V2"];
+      const writeSpy = vi.spyOn(mockLocalStorage, "setItem");
+      const readError = new Error("Storage unavailable");
+      vi.spyOn(mockLocalStorage, "getItem").mockImplementation(() => { throw readError; });
+
+      expect(() => enqueuePendingMutation("insert", { id: "tx-new" })).toThrow(readError);
+      expect(writeSpy).not.toHaveBeenCalled();
+      expect(store["TROUVAILLE_PENDING_MUTATIONS_V2"]).toBe(persisted);
+    });
+
+    it.each(["{broken", "{}", "null", ""])("does not overwrite an invalid persisted queue: %s", (raw) => {
+      store["TROUVAILLE_PENDING_MUTATIONS_V2"] = raw;
+      const writeSpy = vi.spyOn(mockLocalStorage, "setItem");
+      expect(() => enqueuePendingMutation("insert", { id: "tx-new" })).toThrow();
+      expect(writeSpy).not.toHaveBeenCalled();
+      expect(store["TROUVAILLE_PENDING_MUTATIONS_V2"]).toBe(raw);
+    });
+
+    it.each(["insert", "update", "delete"] as const)("throws when persisting an offline %s fails", (type) => {
+      enqueuePendingMutation("insert", { id: "tx-existing", amount: 10 });
+      const persisted = store["TROUVAILLE_PENDING_MUTATIONS_V2"];
+      const writeError = new Error("Quota exceeded");
+      vi.spyOn(mockLocalStorage, "setItem").mockImplementation(() => { throw writeError; });
+      expect(() => enqueuePendingMutation(type, { id: "tx-existing", amount: 20 })).toThrow(writeError);
+      expect(store["TROUVAILLE_PENDING_MUTATIONS_V2"]).toBe(persisted);
+    });
+
+    it("keeps only the latest pending insert when the same transaction is retried", () => {
+      enqueuePendingMutation("insert", { id: "tx-retried", amount: 10 });
+      enqueuePendingMutation("insert", { id: "tx-other", amount: 30 });
+      const retried = enqueuePendingMutation("insert", { id: "tx-retried", amount: 20 });
+      const stored = getPendingMutations();
+      expect(stored).toHaveLength(2);
+      expect(stored.filter((mutation) => mutation.payload.id === "tx-retried")).toEqual([retried]);
+      expect(retried.payload.amount).toBe(20);
+      expect(stored.find((mutation) => mutation.payload.id === "tx-other")?.payload.amount).toBe(30);
+    });
+
     it("Enqueues an insert mutation and persists in localStorage", () => {
       const mut = enqueuePendingMutation("insert", {
         id: "tx-123",
@@ -154,7 +194,7 @@ describe("Offline Sync Engine & Mutation Queue Resilience Suite", () => {
         upsert: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
       } as any);
 
-      const mut = enqueuePendingMutation("insert", {
+      const mut = enqueuePendingMutation("insert", { user_id: "test-user-uuid",
         id: "tx-test-resilient",
         amount: 25000,
         type: "expense",
@@ -188,9 +228,9 @@ describe("Offline Sync Engine & Mutation Queue Resilience Suite", () => {
         upsert: upsertMock,
       } as any);
 
-      enqueuePendingMutation("insert", { id: "tx-1", amount: 10000 });
-      enqueuePendingMutation("insert", { id: "tx-2", amount: 20000 });
-      enqueuePendingMutation("insert", { id: "tx-3", amount: 30000 });
+      enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "tx-1", amount: 10000 });
+      enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "tx-2", amount: 20000 });
+      enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "tx-3", amount: 30000 });
 
       const res = await flushPendingMutations({ force: true });
       expect(res.flushedCount).toBe(0);
@@ -224,7 +264,7 @@ describe("Offline Sync Engine & Mutation Queue Resilience Suite", () => {
         }),
       } as any);
 
-      enqueuePendingMutation("insert", { id: "bad-id", amount: 15000 });
+      enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "bad-id", amount: 15000 });
 
       // Run flush 5 times
       for (let i = 0; i < 5; i++) {
@@ -252,12 +292,12 @@ describe("Offline Sync Engine & Mutation Queue Resilience Suite", () => {
       vi.spyOn(supabase, "from").mockReturnValue({
         upsert: vi.fn().mockImplementation(async () => {
           // Concurrently add a new mutation while this upsert is awaiting
-          enqueuePendingMutation("insert", { id: "tx-concurrent-new", amount: 99000 });
+          enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "tx-concurrent-new", amount: 99000 });
           return { data: [{ id: "tx-initial" }], error: null };
         }),
       } as any);
 
-      enqueuePendingMutation("insert", { id: "tx-initial", amount: 10000 });
+      enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "tx-initial", amount: 10000 });
 
       const res = await flushPendingMutations({ force: true });
       expect(res.flushedCount).toBe(1);
@@ -279,7 +319,7 @@ describe("Offline Sync Engine & Mutation Queue Resilience Suite", () => {
 
         const getSessionMock = vi.spyOn(supabase.auth, "getSession");
 
-        enqueuePendingMutation("insert", { id: "tx-offline", amount: 50000 });
+        enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "tx-offline", amount: 50000 });
 
         const res = await flushPendingMutations({ force: true });
         expect(res.flushedCount).toBe(0);
@@ -306,7 +346,7 @@ describe("Offline Sync Engine & Mutation Queue Resilience Suite", () => {
         upsert: vi.fn().mockResolvedValue({ data: [{ id: "tx-healthy" }], error: null }),
       } as any);
 
-      enqueuePendingMutation("insert", { id: "tx-healthy", amount: 80000 });
+      enqueuePendingMutation("insert", { user_id: "test-user-uuid", id: "tx-healthy", amount: 80000 });
 
       const res = await flushPendingMutations({ force: true });
       expect(res.flushedCount).toBe(1);

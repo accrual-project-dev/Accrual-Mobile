@@ -1,18 +1,18 @@
 {
-  "version": "1.3.26",
-  "build": 1326,
+  "version": "1.3.27",
+  "build": 1327,
   "releaseDate": "2026-10-29",
-  "name": "Accrual v1.3.26",
+  "name": "Accrual v1.3.27",
   "changelog": [
-    "Restorasi arsitektur URL Scheme terbukti (accrual://add) dengan komit instan ke Supabase dan Dynamic Island HUD",
-    "Pemisahan 5 preset mandiri: Pemindai Layar, Dialog Pintasan, Notifikasi Bank, Dikte Suara, dan Pemindai Struk",
-    "Pembersihan tombol unduh berkas .shortcut lokal yang rusak, digantikan dengan Tautan Resmi iCloud dan tombol salin skema URL 1-ketuk",
-    "Pembaruan ScanPaymentScreenshotIntent dengan openAppWhenRun = true untuk responsivitas instan"
+    "Tangkapan layar dan notifikasi diantrekan di perangkat sebelum diproses saat aplikasi aktif dan terbuka kuncinya",
+    "Pembukuan otomatis memerlukan bukti pembayaran berhasil, buku kas, serta pemetaan akun dan kategori yang pasti",
+    "Tangkapan ambigu dan kemungkinan duplikat dapat dikoreksi di kotak tinjauan tanpa kedaluwarsa otomatis",
+    "Panduan pemasangan manual, perlindungan pergantian akun, dan persetujuan pemindahan tangkapan tamu"
   ],
   "changelog_en": [
-    "Restored proven URL Scheme architecture (accrual://add) with instant Supabase commits and Dynamic Island HUD capsule",
-    "Split shortcuts hub into 5 standalone presets: Screen Scanner, Glass Dialog, Bank Notifications, Voice Entry, and Receipt Scanner",
-    "Eliminated broken raw .shortcut file download buttons, replaced with verified official iCloud links and 1-tap URL scheme copiers",
-    "Updated ScanPaymentScreenshotIntent with openAppWhenRun = true for instant foreground responsiveness"
+    "Screen and notification captures queue on device before processing while the app is active and unlocked",
+    "Automatic booking requires successful payment evidence, an explicit ledger, and exact wallet and category mapping",
+    "Ambiguous captures and possible duplicates can be corrected in the review inbox without automatic expiration",
+    "Manual setup guidance, account isolation, and explicit consent for guest capture migration"
   ]
 }

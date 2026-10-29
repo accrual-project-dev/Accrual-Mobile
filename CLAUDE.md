@@ -70,8 +70,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 For the complete, non-negotiable architectural and operational rulebook, always adhere strictly to:
 - **[GEMINI.md](file:///d:/Project/Trouvaille/GEMINI.md)**
-- **[TROUVAILLE_RULES.md](file:///d:/Project/Trouvaille/TROUVAILLE_RULES.md)**
-- **[TROUVAILLE_WHITEPAPER.md](file:///d:/Project/Trouvaille/TROUVAILLE_WHITEPAPER.md)**
+- **[ACCRUAL_RULES.md](file:///d:/Project/Trouvaille/ACCRUAL_RULES.md)**
+- **[ACCRUAL_WHITEPAPER.md](file:///d:/Project/Trouvaille/ACCRUAL_WHITEPAPER.md)**
 
 ### Non-Negotiable Core Principles:
 1. **Rule 1**: Zero native colored system emojis in UI controls (`lucide-react` vector icons only).

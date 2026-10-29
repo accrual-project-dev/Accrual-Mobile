@@ -1,28 +1,11 @@
-import { registerPlugin } from "@capacitor/core";
-
-export interface InboxDraft {
-  schema_version: number;
-  id: string;
-  source: "shortcut_screenshot" | "shortcut_notification" | "card_transaction" | "share_extension";
-  captured_at: string;
-  amount: number;
-  currency: "IDR" | string;
-  merchant: string | null;
-  transaction_date: string;
-  wallet_hint: string | null;
-  direction: "expense" | "income" | "unknown";
-  confidence: number;
-  raw_text: string;
-}
-
+import { registerPlugin } from '@capacitor/core';
+import type { RawCapture } from '../features/inbox/captureEngine';
+export type InboxDraft = RawCapture;
 export interface AccrualInboxPlugin {
-  drain(): Promise<{ items: InboxDraft[] }>;
-  ack(options: { ids: string[] }): Promise<{ success: boolean; acknowledged: number }>;
+ discardGuestOwner(options:{ownerId:string}):Promise<{success:boolean;discarded:number}>;
+ setOwner(options:{ownerId:string|null}):Promise<{success:boolean}>;
+ adoptOwner(options:{fromOwnerId:string;toOwnerId:string}):Promise<{success:boolean}>;
+ drain(options:{ownerId:string}):Promise<{items:InboxDraft[]}>;
+ ack(options:{ids:string[];ownerId:string}):Promise<{success:boolean;acknowledged:number;ids:string[]}>;
 }
-
-export const AccrualInbox = registerPlugin<AccrualInboxPlugin>("AccrualInbox", {
-  web: {
-    drain: async () => ({ items: [] }),
-    ack: async () => ({ success: true, acknowledged: 0 }),
-  },
-});
+export const AccrualInbox = registerPlugin<AccrualInboxPlugin>('AccrualInbox');

@@ -87,7 +87,7 @@ describe("Phase 4: Glass Confirmation Modal & Strict Non-Mixed Localization Suit
       expect(content).not.toContain("Tindakan (Action)");
     });
 
-    it("verifies Search Actions text is conditionally localized in Shortcuts mock UI", () => {
+    it("keeps shortcut instructions localized without the removed mock search interface", () => {
       const modalPath = path.resolve(
         __dirname,
         "../src/components/settings/AppleShortcutsGuideModal.tsx",
@@ -96,9 +96,9 @@ describe("Phase 4: Glass Confirmation Modal & Strict Non-Mixed Localization Suit
 
       // No unlocalized raw 'Search Actions' string spans should remain
       expect(content).not.toContain(">Search Actions</span>");
-      expect(content).toContain(
-        '{isIndonesian ? "Cari Tindakan" : "Search Actions"}',
-      );
+      const registry = fs.readFileSync(path.resolve(__dirname, "../src/lib/shortcutsConfig.ts"), "utf-8");
+      expect(registry).toContain("titleId");
+      expect(registry).toContain("titleEn");
     });
   });
 

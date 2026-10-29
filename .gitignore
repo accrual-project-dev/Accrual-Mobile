@@ -30,6 +30,8 @@ scripts/*
 !scripts/generate-all-app-icons.cjs
 !scripts/make-1024-icon.cjs
 !scripts/optimize-pwa.cjs
+!scripts/test-native-capture.mjs
+!scripts/native-capture-tests.swift
 trouvaille-web/
 conteks/
 *.traineddata

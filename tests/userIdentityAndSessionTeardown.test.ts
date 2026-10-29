@@ -95,12 +95,12 @@ describe("Audit #36: User Identity, Profile Capsule, Password Recovery & Multi-T
     "../src/lib/sessionCleanup.ts"
   );
 
-  const topIdentityContent = fs.readFileSync(topIdentityCapsulePath, "utf-8");
-  const profileMenuContent = fs.readFileSync(profileMenuModalPath, "utf-8");
-  const profileSheetContent = fs.readFileSync(profileSheetPath, "utf-8");
-  const deleteAccountContent = fs.readFileSync(deleteAccountModalPath, "utf-8");
-  const resetPasswordContent = fs.readFileSync(resetPasswordModalPath, "utf-8");
-  const sessionCleanupContent = fs.readFileSync(sessionCleanupPath, "utf-8");
+  const topIdentityContent = fs.readFileSync(topIdentityCapsulePath, "utf-8").replace(/\r\n/g, "\n");
+  const profileMenuContent = fs.readFileSync(profileMenuModalPath, "utf-8").replace(/\r\n/g, "\n");
+  const profileSheetContent = fs.readFileSync(profileSheetPath, "utf-8").replace(/\r\n/g, "\n");
+  const deleteAccountContent = fs.readFileSync(deleteAccountModalPath, "utf-8").replace(/\r\n/g, "\n");
+  const resetPasswordContent = fs.readFileSync(resetPasswordModalPath, "utf-8").replace(/\r\n/g, "\n");
+  const sessionCleanupContent = fs.readFileSync(sessionCleanupPath, "utf-8").replace(/\r\n/g, "\n");
 
   beforeEach(() => {
     store = {};

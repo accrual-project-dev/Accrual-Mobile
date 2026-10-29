@@ -35,6 +35,10 @@ export interface ParsedStatementItem {
   raw: string;
   confidence?: number;
   needsReview?: boolean;
+  captureReason?: string;
+  captureLedgerId?: string | null;
+  captureOwnerId?: string;
+  captureTimestampConfirmed?: boolean;
   matchedBill?: {
     id: string;
     title: string;

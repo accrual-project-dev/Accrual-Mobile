@@ -134,7 +134,7 @@ describe("Indonesian Contactless E-Money NFC Reader Suite", () => {
     });
   });
 
-  describe("Architectural & Invariant Integrity (TROUVAILLE_RULES.md)", () => {
+  describe("Architectural & Invariant Integrity (ACCRUAL_RULES.md)", () => {
     it("verifies full ISO 8601 timestamp compliance for sync and transit transactions", () => {
       const timestamp = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
       expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);

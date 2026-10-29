@@ -3,13 +3,6 @@ import Capacitor
 import WidgetKit
 import AuthenticationServices
 
-/**
- * WidgetBridgePlugin
- * Capacitor native bridge between the web application (React) and the native iOS
- * ecosystem: App Group UserDefaults, WidgetKit timelines, and offline Siri/Back Tap AppIntents.
- *
- * App Group: group.com.syntheticae.accrual
- */
 @objc(WidgetBridgePlugin)
 public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "WidgetBridgePlugin"
@@ -21,76 +14,68 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "reloadWidgets", returnType: CAPPluginReturnPromise)
     ]
 
-    private let appGroupIdentifier = "group.com.syntheticae.accrual"
-
-    private var sharedDefaults: UserDefaults {
-        return UserDefaults(suiteName: appGroupIdentifier) ?? UserDefaults.standard
-    }
-
-    /**
-     * Updates the financial snapshot stored in App Group UserDefaults.
-     * This snapshot is directly read by SwiftUI WidgetKit widgets on the Home Screen & Lock Screen.
-     */
     @objc public func updateSnapshot(_ call: CAPPluginCall) {
         guard let snapshot = call.getObject("snapshot") else {
-            call.reject("Data snapshot tidak valid")
+            call.reject("Invalid snapshot.")
             return
         }
-
-        sharedDefaults.set(snapshot, forKey: "accrual_widget_snapshot")
-        if let jsonData = try? JSONSerialization.data(withJSONObject: snapshot, options: []) {
-            sharedDefaults.set(jsonData, forKey: "accrual_widget_snapshot_data")
-        }
-        sharedDefaults.set(Date().timeIntervalSince1970, forKey: "accrual_widget_last_synced")
-        sharedDefaults.synchronize()
-
-        // Request WidgetKit to refresh all widget timelines immediately
-        if #available(iOS 14.0, *) {
+        do {
+            let defaults = try DraftInbox.defaults()
+            let data = try JSONSerialization.data(withJSONObject: snapshot)
+            defaults.set(snapshot, forKey: "accrual_widget_snapshot")
+            defaults.set(data, forKey: "accrual_widget_snapshot_data")
+            defaults.set(Date().timeIntervalSince1970, forKey: "accrual_widget_last_synced")
+            defaults.synchronize()
             WidgetCenter.shared.reloadAllTimelines()
-        }
-
-        call.resolve(["success": true])
+            call.resolve(["success": true])
+        } catch { call.reject(error.localizedDescription) }
     }
 
-    /**
-     * Retrieves any quick log or voice transactions queued by Siri or iPhone Back Tap (AppIntents)
-     * while the app was closed or backgrounded.
-     */
     @objc public func getPendingIngestion(_ call: CAPPluginCall) {
-        let transactions = sharedDefaults.array(forKey: "pending_backtap_transactions") as? [[String: Any]] ?? []
-        let voiceLogs = sharedDefaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
-        let navAction = sharedDefaults.string(forKey: "pending_intent_navigation")
-
-        call.resolve([
-            "transactions": transactions,
-            "voiceLogs": voiceLogs,
-            "navigation": navAction as Any
-        ])
+        do {
+            let defaults = try DraftInbox.defaults()
+            let transactions = defaults.array(forKey: "pending_backtap_transactions") as? [[String: Any]] ?? []
+            let voiceLogs = defaults.array(forKey: "pending_backtap_voice") as? [[String: Any]] ?? []
+            let navigation = defaults.string(forKey: "pending_intent_navigation")
+            call.resolve([
+                "transactions": transactions,
+                "voiceLogs": voiceLogs,
+                "navigation": navigation as Any
+            ])
+        } catch { call.reject(error.localizedDescription) }
     }
 
-    /**
-     * Clears processed Siri / Back Tap transactions from the queue.
-     */
+    /// Acknowledge only records returned by an earlier read; preserve later captures.
     @objc public func clearPendingIngestion(_ call: CAPPluginCall) {
-        sharedDefaults.removeObject(forKey: "pending_backtap_transactions")
-        sharedDefaults.removeObject(forKey: "pending_backtap_voice")
-        sharedDefaults.removeObject(forKey: "pending_intent_navigation")
-        sharedDefaults.synchronize()
-
-        call.resolve(["success": true])
+        do {
+            try DraftInbox.withLock {
+                let defaults = try DraftInbox.defaults()
+                let transactionIds = Set(call.getArray("transactionIds", String.self) ?? [])
+                let voiceLogIds = Set(call.getArray("voiceLogIds", String.self) ?? [])
+                for (key, ids) in [("pending_backtap_transactions", transactionIds), ("pending_backtap_voice", voiceLogIds)] {
+                    guard !ids.isEmpty else { continue }
+                    let current = defaults.array(forKey: key) as? [[String: Any]] ?? []
+                    let remaining = current.filter { record in
+                        guard let id = record["id"] as? String else { return true }
+                        return !ids.contains(id)
+                    }
+                    defaults.set(remaining, forKey: key)
+                }
+                if let navigation = call.getString("navigation"),
+                   defaults.string(forKey: "pending_intent_navigation") == navigation {
+                    defaults.removeObject(forKey: "pending_intent_navigation")
+                }
+                defaults.synchronize()
+                call.resolve(["success": true])
+            }
+        } catch { call.reject(error.localizedDescription) }
     }
 
-    /**
-     * Forces WidgetKit to reload all timelines.
-     */
     @objc public func reloadWidgets(_ call: CAPPluginCall) {
-        if #available(iOS 14.0, *) {
-            WidgetCenter.shared.reloadAllTimelines()
-        }
+        WidgetCenter.shared.reloadAllTimelines()
         call.resolve(["success": true])
     }
 }
-
 /**
  * OAuthSessionPlugin
  * Native iOS system-level OAuth session using ASWebAuthenticationSession.

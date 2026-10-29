@@ -8,7 +8,6 @@ import { useState, useEffect } from "react";
 import type { ParsedStatementItem } from "./statementParser";
 
 const STORAGE_KEY = "trouvaille_draft_transactions";
-const EXPIRATION_DAYS = 7;
 
 export interface DraftBatch {
   id: string;
@@ -29,36 +28,22 @@ function notifyDraftsUpdated() {
 }
 
 /**
- * Loads all draft batches from localStorage, automatically purging expired ones (> 7 days).
+ * Loads pending draft batches from localStorage until the user resolves them.
  */
-export function getDraftBatches(): DraftBatch[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: DraftBatch[] = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    const now = Date.now();
-    const maxAgeMs = EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
-
-    // Filter out batches older than EXPIRATION_DAYS
-    const valid = parsed.filter((b) => {
-      const createdTime = new Date(b.createdAt).getTime();
-      return !isNaN(createdTime) && now - createdTime < maxAgeMs && b.items && b.items.length > 0;
-    });
-
-    if (valid.length !== parsed.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
-    }
-
-    return valid;
-  } catch (err) {
-    console.warn("[DraftService] Failed to read drafts from storage:", err);
-    return [];
-  }
+let captureDraftOwner: string | null = null;
+function readAllDraftBatches(): DraftBatch[] {
+  const raw=localStorage.getItem(STORAGE_KEY);
+  const batches:DraftBatch[]=raw===null?[]:JSON.parse(raw);
+  if(!Array.isArray(batches)||batches.some(batch=>!batch||!Array.isArray(batch.items))) throw new Error("Invalid draft storage");
+  return batches;
 }
-
+function visibleDraftBatches(batches:DraftBatch[]):DraftBatch[]{
+ return batches.map(batch=>({...batch,items:batch.items.filter(item=>!item.captureOwnerId || item.captureOwnerId===captureDraftOwner)})).filter(batch=>batch.items.length>0);
+}
+export function getDraftBatches(): DraftBatch[] {
+ if(typeof window==='undefined') return [];
+ try{return visibleDraftBatches(readAllDraftBatches());}catch(error){console.error('[DraftService]',error);return [];}
+}
 /**
  * Returns a flat array of all pending draft items across all batches.
  */
@@ -85,7 +70,7 @@ export function saveDraftBatch(
 ): string {
   if (!items || items.length === 0) return "";
   try {
-    const existing = getDraftBatches();
+    const existing = readAllDraftBatches();
     const batchId = `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
     const newBatch: DraftBatch = {
@@ -111,8 +96,8 @@ export function saveDraftBatch(
  */
 export function deleteDraftBatch(batchId: string): void {
   try {
-    const existing = getDraftBatches();
-    const updated = existing.filter((b) => b.id !== batchId);
+    const existing = readAllDraftBatches();
+    const updated = existing.map(batch=>batch.id!==batchId?batch:{...batch,items:batch.items.filter(item=>item.captureOwnerId && item.captureOwnerId!==captureDraftOwner)}).filter(batch=>batch.items.length>0);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     notifyDraftsUpdated();
   } catch (err) {
@@ -125,11 +110,11 @@ export function deleteDraftBatch(batchId: string): void {
  */
 export function removeDraftItem(itemId: string): void {
   try {
-    const existing = getDraftBatches();
+    const existing = readAllDraftBatches();
     const updated = existing
       .map((b) => ({
         ...b,
-        items: b.items.filter((it) => it.id !== itemId),
+        items: b.items.filter((it) => it.id !== itemId || (!!it.captureOwnerId && it.captureOwnerId!==captureDraftOwner)),
       }))
       .filter((b) => b.items.length > 0);
 
@@ -172,10 +157,11 @@ export function useDraftTransactions() {
     };
   }, []);
 
-  const totalItems = batches.flatMap((b) => b.items);
+  const visible = visibleDraftBatches(batches);
+  const totalItems = visible.flatMap((b) => b.items);
 
   return {
-    batches,
+    batches: visible,
     items: totalItems,
     count: totalItems.length,
     saveBatch: saveDraftBatch,
@@ -184,4 +170,14 @@ export function useDraftTransactions() {
     clearAll: clearAllDrafts,
     refresh: () => setBatches(getDraftBatches()),
   };
+}
+export function setCaptureDraftOwner(owner:string|null):void {captureDraftOwner=owner;}
+export function adoptCaptureDrafts(from:string,to:string):void {
+ if(!from.startsWith("guest:") || !to) throw new Error("Explicit guest adoption required");
+ const batches=readAllDraftBatches().map(batch=>({...batch,items:batch.items.map(item=>item.captureOwnerId===from?{...item,captureOwnerId:to}:item)}));
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(batches));notifyDraftsUpdated();
+}
+export function discardCaptureDrafts(owner:string):void {
+ const batches=readAllDraftBatches().map(batch=>({...batch,items:batch.items.filter(item=>item.captureOwnerId!==owner)})).filter(batch=>batch.items.length>0);
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(batches));notifyDraftsUpdated();
 }

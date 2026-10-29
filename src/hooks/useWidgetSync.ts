@@ -10,8 +10,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { App as CapApp } from "@capacitor/app";
 import { useWalletBalances } from "./useWalletBalances";
-import { useAllTransactions, useAddTransaction } from "./useTransactions";
-import { useCategories } from "./useCategories";
+import { useAllTransactions } from "./useTransactions";
 import { useWallets } from "./useWallets";
 import { useBudgetTarget } from "./useBudgetTarget";
 import { usePrivacy } from "../contexts/PrivacyContext";
@@ -19,17 +18,9 @@ import { useCurrency } from "../contexts/CurrencyContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { triggerSuccessHaptic } from "../lib/haptics";
-import { parseNaturalTransaction } from "../lib/nlpParser";
-import { parseBankNotification } from "../lib/bankNotificationParser";
-import { parseSlipText } from "../lib/slipParser";
-import {
-  isMultiTransactionHistoryText,
-  parseScreenshotHistory,
-} from "../lib/screenshotHistoryParser";
-import { saveDraftBatch, getAllDraftItems } from "../lib/draftTransactionService";
-import type { ParsedStatementItem } from "../lib/statementParser";
-import { format } from "date-fns";
+import { getAllDraftItems } from "../lib/draftTransactionService";
+import { useAuth } from "../contexts/AuthContext";
+import { useSecurityLock } from "../contexts/SecurityLockContext";
 import {
   widgetSyncService,
   type WidgetSnapshotPayload,
@@ -45,7 +36,6 @@ export function useWidgetSync() {
     totalAssets = 0,
   } = useWalletBalances();
   const { data: allTxs = [], isLoading: isTxsLoading } = useAllTransactions();
-  const { data: categories = [] } = useCategories();
   const { data: wallets = [], isLoading: isWalletsLoading } = useWallets();
   const { isStealthMode } = usePrivacy();
   const { formatWithPreferred, currencyMeta } = useCurrency();
@@ -53,9 +43,14 @@ export function useWidgetSync() {
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const { showToast } = useToast();
-  const addTransactionMutation = useAddTransaction();
+  const { user } = useAuth();
+  const { isLocked } = useSecurityLock();
 
-  const isIngestingRef = useRef(false);
+  const isNavigatingRef = useRef(false);
+  const inboxReadyRef = useRef(false);
+  const warnedLegacyOwnerRef = useRef<string | null>(null);
+  const sessionRef = useRef({ userId: user?.id, isLocked });
+  sessionRef.current = { userId: user?.id, isLocked };
 
   // 1. Synchronize real-time snapshot to iOS App Group (WidgetKit)
   useEffect(() => {
@@ -291,17 +286,28 @@ export function useWidgetSync() {
     currencyMeta,
   ]);
 
-  // 2. Ingest offline Siri / Back Tap transactions from App Group queue
-  const processPendingAppIntents = useCallback(async () => {
-    if (isIngestingRef.current) return;
-    isIngestingRef.current = true;
-
+  // Monetary captures use the owner-scoped inbox. This bridge handles navigation only.
+  const processPendingNavigation = useCallback(async () => {
+    if (!user?.id || isLocked || document.hidden || isNavigatingRef.current) return;
+    const userId = user.id;
+    const sessionIsCurrent = () => sessionRef.current.userId === userId && !sessionRef.current.isLocked;
+    isNavigatingRef.current = true;
     try {
       const { transactions, voiceLogs, navigation } = await widgetSyncService.retrievePendingIngestion();
-
-      let ingestedCount = 0;
-
-      // Handle foreground navigation intent from iOS App Shortcuts & Controls
+      if (!sessionIsCurrent()) return;
+      if ((transactions.length || voiceLogs.length) && warnedLegacyOwnerRef.current !== userId) {
+        warnedLegacyOwnerRef.current = userId;
+        showToast(
+          isIndonesian
+            ? "Tangkapan lama ditahan karena sesi asal tidak diketahui."
+            : "Older captures are held because their original session is unknown.",
+          "info",
+        );
+      }
+      if (!navigation) return;
+      if ((navigation === "review" || navigation === "inbox") && !inboxReadyRef.current) return;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (!sessionIsCurrent() || document.hidden) return;
       if (navigation === "add") {
         window.dispatchEvent(new CustomEvent("trouvaille:open-quick-add"));
       } else if (navigation === "scan") {
@@ -309,236 +315,48 @@ export function useWidgetSync() {
       } else if (navigation === "voice") {
         window.dispatchEvent(new CustomEvent("trouvaille:open-voice"));
       } else if (navigation === "review" || navigation === "inbox") {
-        const drafts = getAllDraftItems();
-        if (drafts.length > 0) {
-          window.dispatchEvent(
-            new CustomEvent("trouvaille:open-draft-review", {
-              detail: {
-                items: drafts,
-                title: isIndonesian ? "Arsip Draft" : "Draft Archive",
-              },
-            })
-          );
-        }
-      }
-
-      // Process structured quick-log transactions
-      if (transactions.length > 0) {
-        for (const tx of transactions) {
-          try {
-            // Match category name or fallback to first available
-            const matchedCat = categories.find(
-              (c) => c.name.toLowerCase() === tx.category.toLowerCase()
-            );
-            const categoryId = matchedCat?.id || categories[0]?.id || null;
-
-            // Match wallet name or fallback to first available
-            const matchedWallet = wallets.find(
-              (w) => w.name.toLowerCase() === tx.wallet.toLowerCase()
-            );
-            const walletId = matchedWallet?.id || wallets[0]?.id || null;
-
-            await addTransactionMutation.mutateAsync({
-              amount: tx.amount,
-              category_id: categoryId,
-              wallet_id: walletId,
-              occurred_on: tx.date || new Date().toISOString(),
-              note:
-                tx.note ||
-                (isIndonesian
-                  ? "Pencatatan Siri / Ketukan Belakang"
-                  : "Siri / Back Tap Quick Log"),
-              type: (tx as any).type || "expense",
-            });
-            ingestedCount++;
-          } catch (e) {
-            console.warn("[useWidgetSync] Failed to insert pending tx:", e);
-          }
-        }
-      }
-
-      // Process voice logs or bank notifications from Siri, Back Tap, or iOS Automations
-      let draftIngestedCount = 0;
-      if (voiceLogs && voiceLogs.length > 0) {
-        for (const vLog of voiceLogs) {
-          if (vLog.text && vLog.text.trim()) {
-            try {
-              const rawText = vLog.text.trim();
-              const isScreenshotOcr =
-                (vLog as any).source === "screenshot_ocr" ||
-                isMultiTransactionHistoryText(rawText) ||
-                rawText.includes("\n") ||
-                /(?:struk|nota|total|subtotal|biaya admin|rekening|pengirim|penerima|bi-fast|bukti transfer|transaksi berhasil|transfer berhasil|qris|m-transfer|bca mobile|livin|gopay|ovo|shopeepay|dana|seabank)/i.test(
-                  rawText
-                );
-
-              if (isScreenshotOcr) {
-                // Route directly to Draft Archive for user approval without opening camera
-                let parsedItems: ParsedStatementItem[] = [];
-
-                if (isMultiTransactionHistoryText(rawText)) {
-                  parsedItems =
-                    parseScreenshotHistory(
-                      rawText,
-                      allTxs,
-                      categories,
-                      wallets
-                    ) || [];
-                }
-
-                if (parsedItems.length === 0) {
-                  const slipResult = parseSlipText(rawText, wallets, categories);
-                  if (slipResult && slipResult.amount && slipResult.amount > 0) {
-                    const catObj = categories.find((c) => c.id === slipResult.categoryId);
-                    const walObj = wallets.find((w) => w.id === slipResult.sourceWalletId);
-                    const toWalObj = wallets.find((w) => w.id === slipResult.destinationWalletId);
-
-                    const singleItem: ParsedStatementItem = {
-                      id: `ocr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                      date:
-                        slipResult.dateFormatted ||
-                        format(slipResult.date || new Date(), "yyyy-MM-dd"),
-                      time:
-                        (slipResult as any).time ||
-                        format(slipResult.date || new Date(), "HH:mm"),
-                      description:
-                        slipResult.merchantOrRecipient ||
-                        (isIndonesian ? "Tangkapan Layar Transaksi" : "Screenshot Transaction"),
-                      cleanDescription:
-                        slipResult.merchantOrRecipient ||
-                        (isIndonesian ? "Tangkapan Layar Transaksi" : "Screenshot Transaction"),
-                      amount: slipResult.amount,
-                      type: slipResult.type,
-                      walletId: slipResult.sourceWalletId || wallets[0]?.id || null,
-                      walletName:
-                        slipResult.sourceWalletName ||
-                        walObj?.name ||
-                        (isIndonesian ? "Dompet Utama" : "Primary Wallet"),
-                      destinationWalletId: slipResult.destinationWalletId,
-                      destinationWalletName: slipResult.destinationWalletName || toWalObj?.name,
-                      suggestedCategoryId:
-                        slipResult.type === "transfer" ? null : slipResult.categoryId,
-                      suggestedCategoryName:
-                        slipResult.type === "transfer" ? null : slipResult.categoryName,
-                      suggestedCategoryEmoji: catObj?.emoji || null,
-                      isDuplicate: false,
-                      selected: true,
-                      raw: rawText,
-                      confidence: slipResult.confidence || 0.9,
-                      needsReview: true,
-                    };
-                    parsedItems = [singleItem];
-                  }
-                }
-
-                if (parsedItems.length > 0) {
-                  saveDraftBatch(
-                    parsedItems,
-                    isIndonesian ? "Tangkapan Layar" : "Screenshot",
-                    "back_tap"
-                  );
-                  draftIngestedCount += parsedItems.length;
-
-                  // Dispatch event to open review sheet directly for user approval
-                  window.dispatchEvent(
-                    new CustomEvent("trouvaille:open-draft-review", {
-                      detail: {
-                        items: parsedItems,
-                        title: isIndonesian ? "Tangkapan Layar" : "Screenshot",
-                      },
-                    })
-                  );
-                }
-              } else {
-                // 1. Try bank notification parser first if text has bank signals
-                const bankResult = parseBankNotification(rawText, categories, wallets);
-                if (bankResult && bankResult.amount > 0) {
-                  await addTransactionMutation.mutateAsync({
-                    amount: bankResult.amount,
-                    category_id: bankResult.suggestedCategoryId || categories[0]?.id || null,
-                    wallet_id: bankResult.suggestedWalletId || wallets[0]?.id || null,
-                    occurred_on: new Date().toISOString(),
-                    note: bankResult.merchantOrNote || rawText,
-                    type: bankResult.type || "expense",
-                  });
-                  ingestedCount++;
-                } else {
-                  const parsed = parseNaturalTransaction(rawText, categories, wallets);
-                  if (parsed.amount && parsed.amount > 0) {
-                    await addTransactionMutation.mutateAsync({
-                      amount: parsed.amount,
-                      category_id: parsed.categoryId || categories[0]?.id || null,
-                      wallet_id: parsed.walletId || wallets[0]?.id || null,
-                      occurred_on: parsed.date ? parsed.date.toISOString() : new Date().toISOString(),
-                      note: parsed.note || rawText,
-                      type: parsed.type || "expense",
-                    });
-                    ingestedCount++;
-                  }
-                }
-              }
-            } catch (err) {
-              console.warn("[useWidgetSync] Failed to process voice/notification log:", err);
-            }
-          }
-        }
-      }
-
-      if (ingestedCount > 0 || draftIngestedCount > 0 || navigation) {
-        await widgetSyncService.clearPendingIngestion();
-      }
-
-      if (draftIngestedCount > 0) {
-        triggerSuccessHaptic();
-        showToast(
-          isIndonesian
-            ? `${draftIngestedCount} transaksi dari tangkapan layar siap ditinjau`
-            : `${draftIngestedCount} transactions from screenshot ready to review`,
-          "info",
-          null,
-          4000
-        );
-      } else if (ingestedCount > 0) {
-        triggerSuccessHaptic();
-        showToast(
-          isIndonesian
-            ? `${ingestedCount} transaksi dari Pintasan/Siri berhasil dicatat`
-            : `${ingestedCount} shortcut/Siri transactions synced successfully`,
-          "add"
-        );
-      }
-    } catch (err) {
-      console.warn("[useWidgetSync] processPendingAppIntents error:", err);
+        window.dispatchEvent(new CustomEvent("trouvaille:open-draft-review", {
+          detail: { items: getAllDraftItems(), title: isIndonesian ? "Tangkapan" : "Captures" },
+        }));
+      } else return;
+      // Legacy ownerless money queues remain untouched, including when navigation succeeds.
+      await widgetSyncService.clearPendingIngestion({ navigation });
+    } catch (error) {
+      console.warn("[useWidgetSync] Pending navigation failed:", error);
     } finally {
-      isIngestingRef.current = false;
+      isNavigatingRef.current = false;
     }
-  }, [
-    addTransactionMutation,
-    categories,
-    wallets,
-    isIndonesian,
-    showToast,
-  ]);
+  }, [user?.id, isLocked, isIndonesian, showToast]);
 
-  // 3. Trigger ingestion on initial mount and whenever app resumes to foreground
   useEffect(() => {
-    processPendingAppIntents();
+    inboxReadyRef.current = false;
+    if (!user?.id) warnedLegacyOwnerRef.current = null;
+  }, [user?.id, isLocked]);
 
-    let listenerHandle: { remove: () => void } | null = null;
-    CapApp.addListener("appStateChange", ({ isActive }) => {
-      if (isActive) {
-        processPendingAppIntents();
-      }
-    })
-      .then((handle) => {
-        listenerHandle = handle;
-      })
-      .catch(() => {});
-
-    return () => {
-      if (listenerHandle) {
-        listenerHandle.remove();
-      }
+  useEffect(() => {
+    const onInboxDrained = (event: Event) => {
+      const { userId } = (event as CustomEvent<{ userId?: string }>).detail || {};
+      if (!userId || sessionRef.current.userId !== userId || sessionRef.current.isLocked) return;
+      inboxReadyRef.current = true;
+      void processPendingNavigation();
     };
-  }, [processPendingAppIntents]);
+    window.addEventListener("accrual:inbox-drained", onInboxDrained);
+    void processPendingNavigation();
+    let disposed = false;
+    let listenerHandle: { remove: () => Promise<void> } | undefined;
+    void CapApp.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) {
+        inboxReadyRef.current = false;
+        void processPendingNavigation();
+      }
+    }).then((handle) => {
+      if (disposed) void handle.remove();
+      else listenerHandle = handle;
+    }).catch(() => {});
+    return () => {
+      disposed = true;
+      window.removeEventListener("accrual:inbox-drained", onInboxDrained);
+      void listenerHandle?.remove();
+    };
+  }, [processPendingNavigation]);
 }

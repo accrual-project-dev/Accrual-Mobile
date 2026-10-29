@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   calculateHoldingValuation,
   calculatePortfolioSummary,
@@ -659,43 +659,24 @@ describe("Holding Notes Metadata, Undo Activity, and Custom Price", () => {
     expect(indexPresets.some((p) => p.symbol === "^GSPC")).toBe(true);
   });
 
-  it("fetchStockQuote resolves live quotes for NVDA, BBCA, IHSG, and S&P 500", async () => {
+  it("resolves stock and index aliases from deterministic provider responses", async () => {
     const { fetchStockQuote } = await import("../src/lib/marketPriceService");
-
-    // Test US Stock: NVDA
-    const nvda = await fetchStockQuote("NVDA");
-    if (nvda) {
-      expect(nvda.regularMarketPrice).toBeGreaterThan(0);
-      expect(nvda.isUS).toBe(true);
-      expect(nvda.usd).toBeGreaterThan(0);
-      expect(nvda.idr).toBeGreaterThan(100_000);
-    }
-
-    // Test IDX Stock: BBCA
-    const bbca = await fetchStockQuote("BBCA");
-    if (bbca) {
-      expect(bbca.regularMarketPrice).toBeGreaterThan(1000);
-      expect(bbca.isUS).toBe(false);
-      expect(bbca.idr).toBeGreaterThan(1000);
-    }
-
-    // Test Index Alias: IHSG -> ^JKSE
-    const ihsg = await fetchStockQuote("IHSG");
-    if (ihsg) {
-      expect(ihsg.regularMarketPrice).toBeGreaterThan(1000);
-      expect(ihsg.isUS).toBe(false);
-      expect(ihsg.idr).toBeGreaterThan(1000);
-    }
-
-    // Test Index Alias: S&P 500 -> ^GSPC
-    const spx = await fetchStockQuote("S&P 500");
-    if (spx) {
-      expect(spx.regularMarketPrice).toBeGreaterThan(1000);
-      expect(spx.isUS).toBe(true);
-      expect(spx.usd).toBeGreaterThan(1000);
-    }
+    const { supabase } = await import("../src/lib/supabase");
+    const invoke=vi.fn(async(_name:string,options:any)=>({data:{chart:{result:[{meta:{regularMarketPrice:10000,currency:options?.body?.ticker?.includes(".JK")||options?.body?.ticker==="^JKSE"?"IDR":"USD"}}]}},error:null}));
+    const functions=vi.spyOn(supabase,"functions","get").mockReturnValue({invoke} as any);
+    vi.stubGlobal("fetch", vi.fn(async (url: any) => {
+      const data = String(url).includes("coingecko")
+        ? { tether: { idr: 16000 } }
+        : { chart: { result: [{ meta: { regularMarketPrice: 10000, currency: String(url).includes(".JK") || String(url).includes("JKSE") ? "IDR" : "USD" } }] } };
+      return { ok: true, json: async () => data };
+    }));
+    try {
+      const nvda=await fetchStockQuote("NVDA",true);expect(nvda?.isUS).toBe(true);expect(nvda?.idr).toBe(160000000);
+      const bbca=await fetchStockQuote("BBCA",true);expect(bbca?.isUS).toBe(false);expect(bbca?.idr).toBe(10000);
+      const ihsg=await fetchStockQuote("IHSG",true);expect(ihsg?.isUS).toBe(false);expect(ihsg?.idr).toBe(10000);
+      const spx=await fetchStockQuote("S&P 500",true);expect(spx?.isUS).toBe(true);expect(spx?.usd).toBe(10000);
+    } finally { functions.mockRestore();vi.unstubAllGlobals(); }
   });
-
   it("resolves bilingual asset presets cleanly without mixed language", async () => {
     const { PRESET_ASSETS, getPresetSymbol, getPresetName } = await import(
       "../src/lib/assetPresets"
@@ -751,6 +732,3 @@ describe("Holding Notes Metadata, Undo Activity, and Custom Price", () => {
     expect(PRESET_ASSETS.some((p) => p.symbol === "^HSI" && p.category === "index")).toBe(true);
   });
 });
-
-
-

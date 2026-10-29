@@ -11,12 +11,12 @@ describe("Audit #34: Granular Forensic Financial Drill-Down & Horizon Forecast W
   const cashAccountPath = path.resolve(__dirname, "../src/components/assets/CashAccountDetailSheet.tsx");
   const personalModelPath = path.resolve(__dirname, "../src/components/home/PersonalFinancialModelSheet.tsx");
 
-  const monthForecastContent = fs.readFileSync(monthForecastPath, "utf-8");
-  const metricDrillDownContent = fs.readFileSync(metricDrillDownPath, "utf-8");
-  const categoryDrillDownContent = fs.readFileSync(categoryDrillDownPath, "utf-8");
-  const assetMetricContent = fs.readFileSync(assetMetricPath, "utf-8");
-  const cashAccountContent = fs.readFileSync(cashAccountPath, "utf-8");
-  const personalModelContent = fs.readFileSync(personalModelPath, "utf-8");
+  const monthForecastContent = fs.readFileSync(monthForecastPath, "utf-8").replace(/\r\n/g, "\n");
+  const metricDrillDownContent = fs.readFileSync(metricDrillDownPath, "utf-8").replace(/\r\n/g, "\n");
+  const categoryDrillDownContent = fs.readFileSync(categoryDrillDownPath, "utf-8").replace(/\r\n/g, "\n");
+  const assetMetricContent = fs.readFileSync(assetMetricPath, "utf-8").replace(/\r\n/g, "\n");
+  const cashAccountContent = fs.readFileSync(cashAccountPath, "utf-8").replace(/\r\n/g, "\n");
+  const personalModelContent = fs.readFileSync(personalModelPath, "utf-8").replace(/\r\n/g, "\n");
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 1. Safe-Area Inset & BottomSheet Architecture Verification (Rule 5)

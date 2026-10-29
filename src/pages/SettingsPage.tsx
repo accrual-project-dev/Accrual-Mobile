@@ -1864,8 +1864,8 @@ export function SettingsPage({
                 >
                   {isAndroid
                     ? isIndonesian
-                      ? "Pintasan URL & Otomatisasi"
-                      : "URL Shortcuts & Automations"
+                      ? "Tangkapan & Pintasan"
+                      : "Capture & Shortcuts"
                     : isIndonesian
                       ? "Pintasan & Otomatisasi"
                       : "Shortcuts & Automations"}
@@ -1880,7 +1880,7 @@ export function SettingsPage({
                     background: iconBg,
                   }}
                 >
-                  {isIndonesian ? "5 Preset Siap Pakai" : "5 Ready Presets"}
+                  {isIndonesian ? "Layar & Notifikasi" : "Screen & Notifications"}
                 </span>
                 <ChevronRight
                   size={14}

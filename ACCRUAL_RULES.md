@@ -1,7 +1,7 @@
-# TROUVAILLE CANONICAL ARCHITECTURAL & OPERATIONAL RULES
+# ACCRUAL CANONICAL ARCHITECTURAL & OPERATIONAL RULES
 ### The Supreme Engineering, Design & Data Invariant Specification
-**Version:** 2.0.0 · **Target Scope:** Mobile (`Trouvaille`) & Web Command Center (`trouvaille-web`)  
-**Authority:** DeepMind Agentic Systems & Trouvaille Core Engineering
+**Version:** 3.0.0 (Release v1.3.26) · **Target Scope:** Mobile (`Accrual`) & Apple Ecosystem Integration
+**Authority:** Syntheticae / Accrual Core Engineering
 
 ---
 
@@ -274,3 +274,17 @@
 - **Entitlement Precedence**: `extractEntitlementStatus` prioritizes `accrual_pro` before generic entitlement fallbacks.
 - **Lifetime Package Invariant**: `accrual_lifetime_499k` / `is_lifetime === true` must have `currentPeriodEnd: null` and `isLifetime: true` with zero artificial expiration dates.
 - **Teardown Subscription Reset**: When `trouvaille:session-cleared` fires on logout, reset local subscription state to default free tier (`isPro: false`).
+
+---
+
+## 15. Native Shortcuts Capture Invariants
+
+The shared registry `src/lib/shortcutsConfig.ts` defines two primary routes. Screenshot capture passes Take Screenshot output to the native background `ScanPaymentScreenshotIntent`; iOS 16+ Back Tap and supported Action Button binding remain available. iOS 27 screenshot automation is optional. Screenshots are never automatically deleted.
+
+Bank notification automation requires iOS 27 and an available app notification trigger. Map actual text, title, subtitle, source app, and received time to `LogNotificationTransactionIntent`. This trigger is unavailable on iOS 16–26.
+
+Native actions transport raw owner-scoped captures through the inbox. Automatic persistence requires complete, unambiguous data, an explicit ledger, and a matching source-to-wallet/category rule. Unresolved captures remain in review; wallet balance never selects the destination. Capture acceptance is distinct from ledger persistence and cloud synchronization.
+
+Quick Add replaces the sequential Glass Dialog wizard and opens `accrual://add`. Voice, receipt scanning, and review use `accrual://voice`, `accrual://scan`, and `accrual://inbox`. URL schemes are not a universal automatic-save pipeline.
+
+Setup follows install or manual assembly → bind trigger → test a real capture and inspect its result. No built-in iCloud links are currently verified. URL syntax does not establish publication, contents, installation, or successful execution. Personal links remain labeled unverified. Never offer raw `.shortcut` downloads, fabricated installed/tested detection, screenshot deletion, or unverified Watch/locked-device claims. Internal Control Widget intents remain undiscoverable to avoid duplicate library entries.

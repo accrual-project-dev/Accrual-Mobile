@@ -23,6 +23,7 @@ export interface DeepLinkResult {
   action: "transaction" | "voice" | "scan" | "import" | "navigate" | "restore_balance" | "batch_review" | "none";
   path?: string;
   autoSave?: boolean;
+  requiresReview?: boolean;
   matchedCategoryName?: string;
   matchedWalletName?: string;
   matchedToWalletName?: string;
@@ -594,41 +595,14 @@ export function parseDeepLink(
     // Case A: Direct structured parameters (e.g. from Siri Shortcuts with ask for input / Dialog)
     if (directAmount) {
       const cleanNum = parseCurrencyAmount(directAmount);
-      let matchedCat = categories.find(
-        (c) =>
-          (directCategory && c.id.toLowerCase() === directCategory.toLowerCase()) ||
-          (directCategory && c.name.toLowerCase() === directCategory.toLowerCase()) ||
-          (directCategory && c.name.toLowerCase().includes(directCategory.toLowerCase())) ||
-          (directCategory && directCategory.toLowerCase().includes(c.name.toLowerCase()))
-      );
-      if (!matchedCat && categories.length > 0) {
-        matchedCat = categories.find((c) => c.type !== "income") || categories[0];
-      }
-
-      let matchedWal = wallets.find(
-        (w) =>
-          (directWallet && w.id.toLowerCase() === directWallet.toLowerCase()) ||
-          (directWallet && w.name.toLowerCase() === directWallet.toLowerCase()) ||
-          (directWallet && w.name.toLowerCase().includes(directWallet.toLowerCase())) ||
-          (directWallet && directWallet.toLowerCase().includes(w.name.toLowerCase()))
-      );
-      if (!matchedWal && wallets.length > 0) {
-        matchedWal = wallets[0];
-      }
-
-      let matchedToWal: Wallet | undefined;
-      if (directToWallet) {
-        matchedToWal = wallets.find(
-          (w) =>
-            w.id.toLowerCase() === directToWallet.toLowerCase() ||
-            w.name.toLowerCase() === directToWallet.toLowerCase() ||
-            w.name.toLowerCase().includes(directToWallet.toLowerCase()) ||
-            directToWallet.toLowerCase().includes(w.name.toLowerCase())
-        );
-        if (matchedToWal && matchedWal && matchedToWal.id === matchedWal.id) {
-          matchedToWal = wallets.find((w) => w.id !== matchedWal?.id);
-        }
-      }
+      const uniqueMatch = <T extends { id: string; name: string }>(items: T[], query: string | null): T | undefined => {
+        if (!query) return undefined;
+        const matches = items.filter(item => item.id.toLowerCase() === query.toLowerCase() || item.name.toLowerCase() === query.toLowerCase());
+        return matches.length === 1 ? matches[0] : undefined;
+      };
+      const matchedWal = uniqueMatch(wallets, directWallet);
+      const matchedCat = uniqueMatch(categories, directCategory);
+      const matchedToWal = uniqueMatch(wallets, directToWallet);
 
       let combinedDateStr = directDate;
       if (directDate && directTime && !directDate.includes(directTime)) {
@@ -645,18 +619,21 @@ export function parseDeepLink(
 
       const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
       // Auto-save only if explicitly requested (opt-in) to prevent unintended auto-inserts
-      const shouldAutoSave = (autoParam === "true" || autoParam === "1" || autoParam === "ya") && !isNaN(cleanNum) && cleanNum > 0;
+      const validType = !directType || ["income", "expense", "transfer"].includes(directType);
+      const validMapping = validType && !!matchedWal && (directType === "transfer" || directToWallet ? !!matchedToWal && matchedToWal.id !== matchedWal.id : !!matchedCat && matchedCat.type === (directType === "income" ? "income" : "expense"));
+      const shouldAutoSave = (autoParam === "true" || autoParam === "1" || autoParam === "ya") && Number.isFinite(cleanNum) && cleanNum > 0 && validMapping;
 
       const effectiveType: TransactionType =
         directType === "income"
           ? "income"
-          : directType === "transfer" || matchedToWal
+          : directType === "transfer" || directToWallet
           ? "transfer"
           : "expense";
 
       return {
         action: "transaction",
         autoSave: shouldAutoSave,
+        requiresReview: !validMapping,
         matchedCategoryName: matchedCat?.name,
         matchedWalletName: matchedWal?.name,
         matchedToWalletName: matchedToWal?.name,
