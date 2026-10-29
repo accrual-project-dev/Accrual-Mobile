@@ -167,7 +167,7 @@ This master physical folder houses the entire developer suite, certificates, and
 
 #### Automation & Inspection Scripts in `D:\Project\Apple Dev`:
 - `check_asc.mjs`: Tests App Store Connect API token generation and connectivity.
-- `check_latest_builds.mjs`: Queries build processing status and version details for Accrual (`APP_ID = 6825594780`).
+- `check_latest_builds.mjs`: Legacy build-status helper with a stale hardcoded app ID. Resolve Accrual by bundle ID `com.syntheticae.accrual` before querying; its verified App Store Connect app ID is `6825272166`. Override the helper query rather than checking its old app.
 - `upload_all_assets.mjs` / `upload_previews_fixed.mjs`: Uploads marketing screenshots, previews, and icons to App Store Connect.
 - `inspect_full_app_details.mjs`: Dumps age ratings, primary categories, and pricing tier configurations.
 
