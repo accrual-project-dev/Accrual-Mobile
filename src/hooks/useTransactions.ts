@@ -1,5 +1,4 @@
-import { useMemo, useRef } from "react";
-import { assertCaptureSession, getCaptureOwner } from "../features/inbox/captureOwner";
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionType, Category } from "../lib/types";
@@ -30,8 +29,7 @@ function isUUID(val?: string | null): boolean {
   return Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
 }
 
-export interface TransactionInput {
-  expectedUserId?: string;
+interface TransactionInput {
   type: TransactionType;
   amount: number;
   category_id: string | null;
@@ -572,7 +570,6 @@ export async function fetchAllTransactionsFromSupabase(
     const pendingDeletes = new Set<string>();
     const pendingUpserts = new Map<string, Transaction>();
     for (const m of pendingMutations) {
-      if (m.captureOwnerId && m.captureOwnerId !== getCaptureOwner(effectiveUserId)) continue;
       if (m.type === "delete") {
         const id = m.payload?.id || m.payload;
         if (id) pendingDeletes.add(id);
@@ -731,7 +728,6 @@ export async function fetchAllTransactionsFromSupabase(
           const pendingDeletes = new Set<string>();
           const pendingUpserts = new Map<string, Transaction>();
           for (const m of pendingMutations) {
-            if (m.captureOwnerId && m.captureOwnerId !== getCaptureOwner(effectiveUserId)) continue;
             if (m.type === "delete") {
               const id = m.payload?.id || m.payload;
               if (id) pendingDeletes.add(id);
@@ -829,7 +825,6 @@ export async function fetchAllTransactionsFromSupabase(
     const pendingUpserts = new Map<string, Transaction>();
 
     for (const m of pendingMutations) {
-      if (m.captureOwnerId && m.captureOwnerId !== getCaptureOwner(effectiveUserId)) continue;
       if (m.type === "delete") {
         const id = m.payload?.id || m.payload;
         if (id) pendingDeletes.add(id);
@@ -1100,21 +1095,12 @@ export function useAddTransaction() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const userId = user?.id;
-  const currentUserId = useRef(userId);
-  currentUserId.current = userId;
-  const captureSessionIsCurrent = async (expectedUserId?: string) => {
-    if (!expectedUserId) return true;
-    const { data: { session } } = await supabase.auth.getSession();
-    const actualUserId = session?.user?.id || (currentUserId.current === "guest_local_user" ? currentUserId.current : undefined);
-    return currentUserId.current === expectedUserId && actualUserId === expectedUserId;
-  };
 
   return useMutation({
     mutationFn: async (input: TransactionInput & { id?: string }) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      assertCaptureSession(input.expectedUserId, session?.user?.id || (userId === "guest_local_user" ? userId : undefined));
       const currentUser = session?.user || (userId ? { id: userId } : null);
 
       const effectiveId = input.id || generateUUID();
@@ -1173,7 +1159,7 @@ export function useAddTransaction() {
       };
 
       // Always save to persistent pending mutations queue first
-      const mutation = enqueuePendingMutation("insert", fullTx, input.expectedUserId ? getCaptureOwner(input.expectedUserId) || undefined : undefined);
+      const mutation = enqueuePendingMutation("insert", fullTx);
 
       if (!currentUser?.id) {
         return fullTx;
@@ -1233,10 +1219,6 @@ export function useAddTransaction() {
       return fullTx;
     },
     onMutate: async (newTx: any) => {
-      if (newTx.expectedUserId) {
-        const { data: { session } } = await supabase.auth.getSession();
-        assertCaptureSession(newTx.expectedUserId, session?.user?.id || (userId === "guest_local_user" ? userId : undefined));
-      }
       await qc.cancelQueries({ queryKey: ["transactions"] });
       const snapshots = snapshotTransactionQueries(qc);
 
@@ -1286,13 +1268,10 @@ export function useAddTransaction() {
         space_id: assignedLedger,
       };
 
-      // Captures become visible only after their durable queue write succeeds.
-      // A failed enqueue must not look processed to the next inbox drain.
-      if (!newTx.expectedUserId) upsertTransactionAcrossCaches(qc, optimisticItem);
+      upsertTransactionAcrossCaches(qc, optimisticItem);
       return { snapshots, optimisticItem };
     },
-    onSuccess: async (savedTx, vars, context) => {
-      if (!(await captureSessionIsCurrent(vars.expectedUserId))) return;
+    onSuccess: (savedTx, _vars, context) => {
       // Orphan cleanup: if optimistic item ID differed from savedTx ID, remove the old one
       if (context?.optimisticItem && context.optimisticItem.id !== savedTx.id) {
         removeTransactionFromCaches(qc, context.optimisticItem.id);
@@ -1303,16 +1282,13 @@ export function useAddTransaction() {
       };
       upsertTransactionAcrossCaches(qc, enriched);
     },
-    onError: (_err, newTx, context) => {
-      // Capture failures have no optimistic entry: retain their raw inbox record.
-      if (newTx.expectedUserId) return;
+    onError: (_err, _newTx, context) => {
       // Do NOT rollback if transaction was enqueued
       if (context?.optimisticItem) {
         upsertTransactionAcrossCaches(qc, context.optimisticItem);
       }
     },
-    onSettled: async (_data, _error, vars) => {
-      if (!(await captureSessionIsCurrent(vars.expectedUserId))) return;
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
       flushPendingMutations().catch(() => {});
@@ -1332,7 +1308,6 @@ export function useBatchAddTransactions() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      inputs.forEach(input => assertCaptureSession(input.expectedUserId, session?.user?.id || (userId === "guest_local_user" ? userId : undefined)));
       const currentUser = session?.user || (userId ? { id: userId } : null);
 
       const allCategories = qc.getQueryData<Category[]>(

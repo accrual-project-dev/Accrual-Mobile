@@ -13,7 +13,6 @@ import type { TransactionType } from "../../types";
 import { triggerHaptic } from "../../lib/haptics";
 
 export interface DynamicIslandHUDData {
-  transactionId?: string;
   amount: number;
   type?: TransactionType;
   categoryName?: string;

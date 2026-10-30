@@ -78,27 +78,6 @@ const PRESERVED_SETTINGS_KEYS = new Set([
   "trouvaille_haptics_enabled",
 ]);
 
-// These records are explicitly owner-scoped and must survive logout for later recovery.
-function isCaptureStorageKey(key: string): boolean {
-  return ["accrual_local_captures:", "accrual_capture_receipts:", "accrual_capture_review_ids:", "accrual_capture_preferences:"].some(prefix => key.startsWith(prefix));
-}
-
-function retainOwnedCaptures(storage: Storage, key: string): boolean {
-  if (key !== "trouvaille_draft_transactions" && key !== "TROUVAILLE_PENDING_MUTATIONS_V2") return false;
-  const raw = storage.getItem(key);
-  if (raw === null) return false;
-  try {
-    const records = JSON.parse(raw);
-    if (!Array.isArray(records)) return true; // Preserve unreadable financial data for recovery.
-    const retained = key === "trouvaille_draft_transactions"
-      ? records.map(batch => ({...batch, items: batch.items.filter((item: any) => !!item.captureOwnerId)})).filter(batch => batch.items.length)
-      : records.filter(mutation => !!mutation.captureOwnerId);
-    if (!retained.length) return false;
-    storage.setItem(key, JSON.stringify(retained));
-    return true;
-  } catch { return true; }
-}
-
 /**
  * Completely purges all local state, offline caches, IndexedDB snapshots,
  * and memory representations to guarantee 100% data isolation between sessions.
@@ -128,7 +107,6 @@ export async function clearAllLocalUserSessionData(
   if (storage) {
     for (const key of USER_SESSION_STORAGE_KEYS) {
       try {
-        if (retainOwnedCaptures(storage, key)) continue;
         storage.removeItem(key);
       } catch {}
     }
@@ -148,7 +126,6 @@ export async function clearAllLocalUserSessionData(
         if (!k) continue;
         if (options?.preserveGuestFlag && k === "trouvaille_guest_mode") continue;
         if (PRESERVED_SETTINGS_KEYS.has(k)) continue;
-        if (isCaptureStorageKey(k) || k === "trouvaille_draft_transactions") continue;
 
         if (
           k.startsWith("trouvaille_migrated_guest_") ||

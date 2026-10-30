@@ -2,9 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { App as CapApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
-import { Capacitor } from "@capacitor/core";
-import { AccrualInbox } from "../plugins/accrualInbox";
-import { GUEST_CAPTURE_OWNER_KEY } from "../features/inbox/captureOwner";
 import { supabase } from "../lib/supabase";
 import {
   savePersistentSession,
@@ -124,7 +121,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const exitGuestMode = (options?: { wipeGuestData?: boolean }) => {
     if (options?.wipeGuestData) {
-      localStorage.removeItem(GUEST_CAPTURE_OWNER_KEY);
       clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: false }).catch(() => {});
       localStorage.removeItem("trouvaille_pending_guest_migration");
     } else {
@@ -432,9 +428,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    if (Capacitor.getPlatform() === "ios") {
-      try { await AccrualInbox.setOwner({ ownerId: null }); } catch (error) { console.error(error); }
-    }
     try {
       await clearAllLocalUserSessionData(queryClient, { preserveGuestFlag: false });
     } catch (cleanErr) {
