@@ -1,10 +1,22 @@
 import { BottomSheet } from "./BottomSheet";
-import { Bell, CheckCircle2, Calendar, Sparkles, TrendingUp, ShieldAlert } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  Calendar,
+  Sparkles,
+  TrendingUp,
+  ShieldAlert,
+  FileText,
+  ChevronRight,
+} from "lucide-react";
 import { useUpcomingBills, getBillDueStatusLabel } from "../../hooks/useBills";
 import { format } from "date-fns";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { usePrivacy } from "../../contexts/PrivacyContext";
+import { useSpace } from "../../contexts/SpaceContext";
+import { useDraftTransactions } from "../../lib/draftTransactionService";
+import { triggerHaptic } from "../../lib/haptics";
 import {
   WEEKLY_DIGEST_ENABLED_KEY,
   MONTH_END_REVIEW_ENABLED_KEY,
@@ -23,30 +35,69 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
   const { isIndonesian } = useLanguage();
   const { formatWithPreferred } = useCurrency();
   const { maskAmount } = usePrivacy();
+  const { activeSpaceId, activeSpace, defaultSpaceId } = useSpace();
+  const effectiveSpaceId =
+    activeSpaceId && activeSpaceId !== "all"
+      ? activeSpaceId
+      : defaultSpaceId || "personal";
+  const { items: draftItems } = useDraftTransactions(effectiveSpaceId);
   const upcomingBills = useUpcomingBills();
+
   const lastSyncedAt = localStorage.getItem("trouvaille_last_synced");
   const syncLabel = lastSyncedAt
-    ? format(new Date(lastSyncedAt), isIndonesian ? "dd MMM yyyy, HH:mm" : "MMM dd, yyyy, HH:mm")
+    ? format(
+        new Date(lastSyncedAt),
+        isIndonesian ? "dd MMM yyyy, HH:mm" : "MMM dd, yyyy, HH:mm",
+      )
     : null;
 
-  const weeklyDigestEnabled = localStorage.getItem(WEEKLY_DIGEST_ENABLED_KEY) !== "false";
-  const monthEndEnabled = localStorage.getItem(MONTH_END_REVIEW_ENABLED_KEY) !== "false";
-  const budgetAlertsEnabled = localStorage.getItem(BUDGET_ALERTS_ENABLED_KEY) !== "false";
+  const weeklyDigestEnabled =
+    localStorage.getItem(WEEKLY_DIGEST_ENABLED_KEY) !== "false";
+  const monthEndEnabled =
+    localStorage.getItem(MONTH_END_REVIEW_ENABLED_KEY) !== "false";
+  const budgetAlertsEnabled =
+    localStorage.getItem(BUDGET_ALERTS_ENABLED_KEY) !== "false";
 
   const weeklyDay = getWeeklyDigestDay();
   const weeklyTime = getWeeklyDigestTime();
   const monthEndTime = getMonthEndReviewTime();
 
   const weeklyDayLabel = isIndonesian
-    ? weeklyDay === "friday" ? "Jumat" : weeklyDay === "monday" ? "Senin" : "Minggu"
-    : weeklyDay === "friday" ? "Fri" : weeklyDay === "monday" ? "Mon" : "Sun";
+    ? weeklyDay === "friday"
+      ? "Jumat"
+      : weeklyDay === "monday"
+      ? "Senin"
+      : "Minggu"
+    : weeklyDay === "friday"
+    ? "Fri"
+    : weeklyDay === "monday"
+    ? "Mon"
+    : "Sun";
 
   const weeklyBadgeText = `${weeklyDayLabel} ${weeklyTime}`;
   const monthEndBadgeText = isIndonesian
     ? `Akhir Bulan ${monthEndTime}`
     : `Month-End ${monthEndTime}`;
 
-  const activeCount = upcomingBills.length + (weeklyDigestEnabled ? 1 : 0) + (monthEndEnabled ? 1 : 0);
+  const actionableCount = draftItems.length + upcomingBills.length;
+
+  const handleOpenDraftReview = () => {
+    if (draftItems.length === 0) return;
+    triggerHaptic("light");
+    onClose();
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("trouvaille:open-draft-review", {
+          detail: {
+            items: draftItems,
+            title: isIndonesian
+              ? `Draft Transaksi · ${activeSpace?.name || "Space Aktif"}`
+              : `Transaction Drafts · ${activeSpace?.name || "Active Space"}`,
+          },
+        }),
+      );
+    }, 120);
+  };
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
@@ -70,13 +121,17 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                 className="font-semibold text-[16px]"
                 style={{ color: "var(--text-primary)" }}
               >
-                {isIndonesian ? "Notifikasi & Pengingat" : "Notifications & Alerts"}
+                {isIndonesian
+                  ? "Notifikasi & Pengingat"
+                  : "Notifications & Alerts"}
               </h3>
               <p
                 className="text-[11px]"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                {isIndonesian ? "Pantau arus kas dan jadwal keuangan Anda" : "Stay on top of your cashflow and schedules"}
+                {isIndonesian
+                  ? "Pantau draft pintasan, tagihan, dan jadwal keuangan Anda"
+                  : "Stay on top of shortcut drafts, bills, and schedules"}
               </p>
             </div>
           </div>
@@ -88,9 +143,73 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
               border: "1px solid var(--glass-border)",
             }}
           >
-            {isIndonesian ? `${activeCount} Aktif` : `${activeCount} Active`}
+            {actionableCount > 0
+              ? isIndonesian
+                ? `${actionableCount} Perlu Tindakan`
+                : `${actionableCount} Actionable`
+              : isIndonesian
+              ? "Semua Terkendali"
+              : "All Clear"}
           </span>
         </div>
+
+        {/* Pending Shortcut Drafts */}
+        {draftItems.length > 0 && (
+          <div className="space-y-2.5">
+            <span
+              className="text-[12px] font-semibold"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {isIndonesian
+                ? "Draft Pintasan Menunggu Tinjauan"
+                : "Shortcut Drafts Pending Review"}
+            </span>
+            <button
+              type="button"
+              onClick={handleOpenDraftReview}
+              className="w-full p-3.5 rounded-2xl flex items-center justify-between gap-3 text-left cursor-pointer active:scale-[0.98] transition-all"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: "var(--glass-fill-strong)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <FileText size={15} strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0">
+                  <p
+                    className="text-[13px] font-semibold truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {isIndonesian
+                      ? `${draftItems.length} Transaksi Siap Ditinjau`
+                      : `${draftItems.length} Transactions Ready for Review`}
+                  </p>
+                  <p
+                    className="text-[11px] truncate"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {isIndonesian
+                      ? "Ketuk untuk mengedit dan mencatat ke transaksi"
+                      : "Tap to edit and record into your transactions"}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight
+                size={15}
+                strokeWidth={2}
+                style={{ color: "var(--text-tertiary)" }}
+              />
+            </button>
+          </div>
+        )}
 
         {/* Bill Reminders */}
         {upcomingBills.length > 0 && (
@@ -132,7 +251,8 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                       className="text-[11px]"
                       style={{ color: "var(--text-tertiary)" }}
                     >
-                      {dueStatusLabel} · {maskAmount(formatWithPreferred(Number(bill.amount)))}
+                      {dueStatusLabel} ·{" "}
+                      {maskAmount(formatWithPreferred(Number(bill.amount)))}
                     </p>
                   </div>
                 </div>
@@ -172,19 +292,25 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                   className="text-[13px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {isIndonesian ? "Ringkasan Finansial Mingguan" : "Weekly Financial Digest"}
+                  {isIndonesian
+                    ? "Ringkasan Finansial Mingguan"
+                    : "Weekly Financial Digest"}
                 </p>
                 <span
                   className="text-[10px] px-2 py-0.5 rounded-full"
                   style={{
                     background: "var(--glass-fill)",
-                    color: weeklyDigestEnabled ? "var(--text-primary)" : "var(--text-tertiary)",
+                    color: weeklyDigestEnabled
+                      ? "var(--text-primary)"
+                      : "var(--text-tertiary)",
                     border: "1px solid var(--glass-border)",
                   }}
                 >
                   {weeklyDigestEnabled
                     ? weeklyBadgeText
-                    : (isIndonesian ? "Nonaktif" : "Disabled")}
+                    : isIndonesian
+                    ? "Nonaktif"
+                    : "Disabled"}
                 </span>
               </div>
               <p
@@ -220,19 +346,25 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                   className="text-[13px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {isIndonesian ? "Evaluasi Kekayaan Akhir Bulan" : "Month-End Wealth Review"}
+                  {isIndonesian
+                    ? "Evaluasi Kekayaan Akhir Bulan"
+                    : "Month-End Wealth Review"}
                 </p>
                 <span
                   className="text-[10px] px-2 py-0.5 rounded-full"
                   style={{
                     background: "var(--glass-fill)",
-                    color: monthEndEnabled ? "var(--text-primary)" : "var(--text-tertiary)",
+                    color: monthEndEnabled
+                      ? "var(--text-primary)"
+                      : "var(--text-tertiary)",
                     border: "1px solid var(--glass-border)",
                   }}
                 >
                   {monthEndEnabled
                     ? monthEndBadgeText
-                    : (isIndonesian ? "Nonaktif" : "Disabled")}
+                    : isIndonesian
+                    ? "Nonaktif"
+                    : "Disabled"}
                 </span>
               </div>
               <p
@@ -268,19 +400,25 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                   className="text-[13px] font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {isIndonesian ? "Peringatan Ambang Anggaran" : "Budget Threshold Alerts"}
+                  {isIndonesian
+                    ? "Peringatan Ambang Anggaran"
+                    : "Budget Threshold Alerts"}
                 </p>
                 <span
                   className="text-[10px] px-2 py-0.5 rounded-full"
                   style={{
                     background: "var(--glass-fill)",
-                    color: budgetAlertsEnabled ? "var(--text-primary)" : "var(--text-tertiary)",
+                    color: budgetAlertsEnabled
+                      ? "var(--text-primary)"
+                      : "var(--text-tertiary)",
                     border: "1px solid var(--glass-border)",
                   }}
                 >
                   {budgetAlertsEnabled
-                    ? (isIndonesian ? "80% & 100%" : "80% & 100%")
-                    : (isIndonesian ? "Nonaktif" : "Disabled")}
+                    ? "80% & 100%"
+                    : isIndonesian
+                    ? "Nonaktif"
+                    : "Disabled"}
                 </span>
               </div>
               <p
@@ -332,12 +470,12 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {syncLabel
-                  ? (isIndonesian
-                      ? `Terakhir disinkronkan pada ${syncLabel}.`
-                      : `Last synchronized on ${syncLabel}.`)
-                  : (isIndonesian
-                      ? "Belum ada catatan waktu sinkronisasi."
-                      : "No recorded sync timestamp yet.")}
+                  ? isIndonesian
+                    ? `Terakhir disinkronkan pada ${syncLabel}.`
+                    : `Last synchronized on ${syncLabel}.`
+                  : isIndonesian
+                  ? "Belum ada catatan waktu sinkronisasi."
+                  : "No recorded sync timestamp yet."}
               </p>
             </div>
           </div>

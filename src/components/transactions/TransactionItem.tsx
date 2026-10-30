@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { formatCurrency } from "../../lib/utils";
+import { normalizeLocalOccurredOn } from "../../hooks/useTransactions";
 import { IconRenderer } from "../ui/IconRenderer";
 import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { triggerHaptic } from "../../lib/haptics";
@@ -64,7 +65,7 @@ const TransactionItemComponent: React.FC<TransactionItemProps> = ({
   const timeLabel = useMemo(() => {
     if (tx.occurred_on && /[T ]\d{2}:\d{2}/.test(tx.occurred_on)) {
       try {
-        return format(parseISO(tx.occurred_on.replace(" ", "T")), "HH:mm");
+        return format(parseISO(normalizeLocalOccurredOn(tx.occurred_on)), "HH:mm");
       } catch {
         // fallback to created_at
       }

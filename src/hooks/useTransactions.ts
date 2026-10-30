@@ -71,8 +71,22 @@ export const transactionKeys = {
     ["transactions", "recent", userId ?? null, limit] as const,
 };
 
+export function normalizeLocalOccurredOn(raw?: string | null): string {
+  if (!raw || typeof raw !== "string") return "";
+  return raw
+    .trim()
+    .replace(" ", "T")
+    .replace(/(?:\.\d+)?(?:Z|[+-]\d{2}(?::?\d{2})?)$/i, "");
+}
+
 function sortTransactionsDesc(transactions: Transaction[]) {
-  return [...transactions].sort((a, b) => {
+  return transactions
+    .map((t) =>
+      t && t.occurred_on
+        ? { ...t, occurred_on: normalizeLocalOccurredOn(t.occurred_on) }
+        : t,
+    )
+    .sort((a, b) => {
     const occurred = (b.occurred_on || "").localeCompare(a.occurred_on || "");
     if (occurred !== 0) return occurred;
     const created = (b.created_at || "").localeCompare(a.created_at || "");
@@ -1205,6 +1219,7 @@ export function useAddTransaction() {
           const serverTx = res.data[0] as Transaction;
           return {
             ...serverTx,
+            occurred_on: normalizeLocalOccurredOn(serverTx.occurred_on),
             categories: serverTx.categories || categoryObj,
           };
         }
@@ -1481,6 +1496,7 @@ export function useBatchAddTransactions() {
         );
         return {
           ...savedTx,
+          occurred_on: normalizeLocalOccurredOn(savedTx.occurred_on),
           categories: savedTx.categories || matchedOptimistic?.categories || null,
         };
       });
@@ -1560,7 +1576,8 @@ export function useUpdateTransaction() {
 
         if (!res.error && res.data && res.data[0]) {
           removePendingMutation(mutation.id);
-          return res.data[0] as Transaction;
+          const updatedServerTx = res.data[0] as Transaction;
+          return { ...updatedServerTx, occurred_on: normalizeLocalOccurredOn(updatedServerTx.occurred_on) };
         }
       } catch (err) {
         console.warn("[useUpdateTransaction] Update queued locally:", err);

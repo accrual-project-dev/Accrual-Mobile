@@ -37,6 +37,7 @@ import {
   useUpdateTransaction,
   useDeleteTransaction,
   useAllTransactions,
+  normalizeLocalOccurredOn,
 } from "../../hooks/useTransactions";
 import { useCategorySuggestions } from "../../hooks/useCategorySuggestions";
 import { useWalletSuggestions } from "../../hooks/useWalletSuggestions";
@@ -161,11 +162,11 @@ export function TransactionSheet({
 
   const [note, setNote] = useState(transaction?.note || "");
   const [date, setDate] = useState<Date>(
-    transaction?.occurred_on ? parseISO(transaction.occurred_on) : new Date(),
+    transaction?.occurred_on ? parseISO(normalizeLocalOccurredOn(transaction.occurred_on)) : new Date(),
   );
   const [time, setTime] = useState<string>(
     transaction?.occurred_on && transaction.occurred_on.includes("T")
-      ? format(parseISO(transaction.occurred_on), "HH:mm")
+      ? format(parseISO(normalizeLocalOccurredOn(transaction.occurred_on)), "HH:mm")
       : transaction?.created_at
         ? format(new Date(transaction.created_at), "HH:mm")
         : format(new Date(), "HH:mm"),
@@ -664,14 +665,14 @@ export function TransactionSheet({
         setNote(transaction.note || "");
         setDate(
           transaction.occurred_on
-            ? parseISO(transaction.occurred_on.replace(" ", "T"))
+            ? parseISO(normalizeLocalOccurredOn(transaction.occurred_on))
             : new Date(),
         );
         setTime(
           transaction.occurred_on &&
             /[T ]\d{2}:\d{2}/.test(transaction.occurred_on)
             ? format(
-                parseISO(transaction.occurred_on.replace(" ", "T")),
+                parseISO(normalizeLocalOccurredOn(transaction.occurred_on)),
                 "HH:mm",
               )
             : transaction.created_at

@@ -261,6 +261,7 @@ export async function showNativeLocalNotification({
           id: notifId,
           title,
           body,
+          schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true },
           sound: "default",
         },
       ],

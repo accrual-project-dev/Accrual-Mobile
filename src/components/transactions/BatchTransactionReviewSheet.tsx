@@ -16,6 +16,8 @@ import {
   X,
   Search,
   CreditCard,
+  PenLine,
+  Trash2,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -29,6 +31,7 @@ import { useBills, useMarkBillPaid } from "../../hooks/useBills";
 import { useWalletBalances } from "../../hooks/useWalletBalances";
 import { saveMerchantMemory } from "../../lib/merchantCategoryMemory";
 import { findBestMatchingBill } from "../../lib/billMatchingEngine";
+import { formatLiveAmountInput } from "../../lib/utils";
 
 interface BatchTransactionReviewSheetProps {
   isOpen: boolean;
@@ -54,7 +57,7 @@ export function BatchTransactionReviewSheet({
   const { isIndonesian } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
-  const { formatWithPreferred } = useCurrency();
+  const { formatWithPreferred, currencyMeta } = useCurrency();
 
   const { data: bills = [] } = useBills();
   const markBillPaid = useMarkBillPaid();
@@ -63,6 +66,14 @@ export function BatchTransactionReviewSheet({
   const [items, setItems] = useState<ParsedStatementItem[]>(initialItems);
   const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Full Edit Modal State
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editAmountDisplay, setEditAmountDisplay] = useState("");
+  const [editAmountRaw, setEditAmountRaw] = useState<number>(0);
+  const [editNote, setEditNote] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
 
   // Category picker sheet state
   const [activeItemForCategory, setActiveItemForCategory] = useState<
@@ -86,6 +97,7 @@ export function BatchTransactionReviewSheet({
         selMap[it.id] = it.selected;
       });
       setSelectedMap(selMap);
+      setEditingItemId(null);
     }
   }, [isOpen, initialItems]);
 
@@ -118,6 +130,77 @@ export function BatchTransactionReviewSheet({
     }
   }, [bills]);
 
+  const editingItem = useMemo(
+    () => items.find((it) => it.id === editingItemId) || null,
+    [items, editingItemId],
+  );
+
+  const openEditModal = (it: ParsedStatementItem) => {
+    triggerHaptic("light");
+    setEditingItemId(it.id);
+    const parsedAmt = formatLiveAmountInput(
+      String(Math.round(it.amount || 0)),
+      isIndonesian,
+      false,
+      0,
+    );
+    setEditAmountDisplay(parsedAmt.display);
+    setEditAmountRaw(parsedAmt.rawNumber);
+
+    // If cleanDescription is just a generic fallback, show empty note in the editor
+    const rawDesc = (it.cleanDescription ?? it.description ?? "").trim();
+    const catLower = (it.suggestedCategoryName || "").trim().toLowerCase();
+    const walLower = (it.walletName || "").trim().toLowerCase();
+    const isFallbackDesc =
+      !rawDesc ||
+      rawDesc.toLowerCase() === "pengeluaran" ||
+      rawDesc.toLowerCase() === "expense" ||
+      rawDesc.toLowerCase() === "dana masuk" ||
+      rawDesc.toLowerCase() === "income" ||
+      rawDesc.toLowerCase() === catLower ||
+      rawDesc.toLowerCase() === `${catLower}${walLower}`;
+
+    setEditNote(isFallbackDesc ? "" : rawDesc);
+    setEditDate(it.date || new Date().toISOString().slice(0, 10));
+    setEditTime((it.time || "12:00").slice(0, 5));
+  };
+
+  const handleSaveEditModal = () => {
+    if (!editingItemId) return;
+    triggerSuccessHaptic();
+    const cleanNote = editNote.trim();
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== editingItemId) return it;
+        return {
+          ...it,
+          amount: editAmountRaw > 0 ? editAmountRaw : it.amount,
+          description: cleanNote,
+          cleanDescription: cleanNote,
+          date: editDate || it.date,
+          time: editTime || it.time,
+          needsReview: false,
+          captureTimestampConfirmed: true,
+        };
+      }),
+    );
+    setSelectedMap((prev) => ({ ...prev, [editingItemId]: true }));
+    setEditingItemId(null);
+  };
+
+  const handleDeleteReviewItem = (id: string) => {
+    triggerHaptic("medium");
+    setItems((prev) => prev.filter((it) => it.id !== id));
+    setSelectedMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (editingItemId === id) {
+      setEditingItemId(null);
+    }
+  };
+
   const selectedCount = useMemo(() => {
     return items.filter((it) => selectedMap[it.id]).length;
   }, [items, selectedMap]);
@@ -148,11 +231,12 @@ export function BatchTransactionReviewSheet({
     }));
   };
 
-  const handleToggleType = (id: string) => {
+  const handleToggleType = (id: string, targetType?: TransactionType) => {
     triggerHaptic("light");
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it;
+        if (targetType) return { ...it, type: targetType };
         let nextType: TransactionType = "expense";
         if (it.type === "expense") nextType = "income";
         else if (it.type === "income") nextType = "transfer";
@@ -182,7 +266,7 @@ export function BatchTransactionReviewSheet({
     if (!activeItemForCategory) return;
     triggerHaptic("light");
     const targetItem = items.find((it) => it.id === activeItemForCategory);
-    if (targetItem) {
+    if (targetItem && targetItem.cleanDescription) {
       saveMerchantMemory(targetItem.cleanDescription, cat.id, cat.name);
     }
     setItems((prev) =>
@@ -299,7 +383,7 @@ export function BatchTransactionReviewSheet({
     onClose();
   };
 
-  // ── Clean Apple Liquid Glass Tokens (Zero Glow) ──
+  // ── Clean Apple Liquid Glass Tokens ──
   const buttonGlassBg = isDark
     ? "rgba(255, 255, 255, 0.05)"
     : "rgba(0, 0, 0, 0.035)";
@@ -314,790 +398,1089 @@ export function BatchTransactionReviewSheet({
 
   return (
     <>
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div
-        className="px-4 pt-2.5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] max-w-lg mx-auto select-none font-sans"
-        style={{ color: "var(--text-primary)" }}
-      >
-        {/* ── 1. Header Bar ── */}
+      <BottomSheet isOpen={isOpen} onClose={onClose}>
         <div
-          className="flex items-center justify-between pb-3 mb-3 border-b"
-          style={{ borderColor: hairlineDivider }}
+          className="px-4 pt-2.5 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] max-w-lg mx-auto select-none font-sans"
+          style={{ color: "var(--text-primary)" }}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+          {/* ── 1. Header Bar ── */}
+          <div
+            className="flex items-center justify-between pb-3 mb-3 border-b"
+            style={{ borderColor: hairlineDivider }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                  background: buttonGlassBg,
+                  border: buttonGlassBorder,
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Sparkles size={14} strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-[14.5px] font-bold tracking-tight text-[var(--text-primary)] truncate leading-tight">
+                  {isIndonesian ? "Tinjau & Edit Transaksi" : "Review & Edit Transactions"}
+                </h3>
+                <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
+                  {sourceTitle ||
+                    (isIndonesian ? "Tangkapan Pintasan" : "Shortcut Captures")}
+                  {" · "}
+                  {items.length} {isIndonesian ? "item" : "items"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors active:scale-90"
               style={{
                 background: buttonGlassBg,
                 border: buttonGlassBorder,
-                color: "var(--text-primary)",
+                color: "var(--text-tertiary)",
               }}
             >
-              <Sparkles size={14} strokeWidth={2} />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[14.5px] font-bold tracking-tight text-[var(--text-primary)] truncate leading-tight">
-                {isIndonesian
-                  ? "Tinjau Transaksi Massal"
-                  : "Review Batch Transactions"}
-              </h3>
-              <p className="text-[10.5px] text-[var(--text-tertiary)] truncate mt-0.5">
-                {sourceTitle ||
-                  (isIndonesian
-                    ? "Tangkapan Layar Riwayat"
-                    : "Statement History")}
-                {" · "}
-                {items.length} {isIndonesian ? "terdeteksi" : "detected"}
-              </p>
-            </div>
+              <X size={13} strokeWidth={2} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors active:scale-90"
-            style={{
-              background: buttonGlassBg,
-              border: buttonGlassBorder,
-              color: "var(--text-tertiary)",
-            }}
-          >
-            <X size={13} strokeWidth={2} />
-          </button>
-        </div>
-
-        {/* ── 2. Multi-Select Control Bar ── */}
-        <div className="flex items-center justify-between mb-2.5 px-1">
-          <button
-            type="button"
-            onClick={handleToggleAll}
-            className="flex items-center gap-1.5 text-[11.5px] font-semibold transition-opacity cursor-pointer hover:opacity-80 active:scale-95"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            {allSelected ? (
-              <CheckSquare
-                size={14}
-                strokeWidth={2}
-                className="text-[var(--text-primary)]"
-              />
-            ) : (
-              <Square
-                size={14}
-                strokeWidth={2}
-                className="text-[var(--text-tertiary)]"
-              />
-            )}
-            <span>
-              {allSelected
-                ? isIndonesian
-                  ? "Batal Pilih Semua"
-                  : "Deselect All"
-                : isIndonesian
+          {/* ── 2. Multi-Select Control Bar ── */}
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <button
+              type="button"
+              onClick={handleToggleAll}
+              className="flex items-center gap-1.5 text-[11.5px] font-semibold transition-opacity cursor-pointer hover:opacity-80 active:scale-95"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {allSelected ? (
+                <CheckSquare
+                  size={14}
+                  strokeWidth={2}
+                  className="text-[var(--text-primary)]"
+                />
+              ) : (
+                <Square
+                  size={14}
+                  strokeWidth={2}
+                  className="text-[var(--text-tertiary)]"
+                />
+              )}
+              <span>
+                {allSelected
+                  ? isIndonesian
+                    ? "Batal Pilih Semua"
+                    : "Deselect All"
+                  : isIndonesian
                   ? "Pilih Semua"
                   : "Select All"}
+              </span>
+            </button>
+
+            <span className="text-[10.5px] font-medium text-[var(--text-tertiary)] tabular-nums">
+              {selectedCount}/{items.length}{" "}
+              {isIndonesian ? "dipilih" : "selected"}
+              {totalSelectedAmount > 0
+                ? ` · ${formatWithPreferred(totalSelectedAmount)}`
+                : ""}
             </span>
-          </button>
+          </div>
 
-          <span className="text-[10.5px] font-medium text-[var(--text-tertiary)] tabular-nums">
-            {selectedCount} {isIndonesian ? "dari" : "of"} {items.length}{" "}
-            {isIndonesian ? "dipilih" : "selected"}
-            {totalSelectedAmount > 0
-              ? ` · ${formatWithPreferred(totalSelectedAmount)}`
-              : ""}
-          </span>
-        </div>
+          {/* ── 3. Transaction List Cards ── */}
+          <div className="space-y-2 mb-3.5 flex-1 min-h-0 pb-3">
+            {items.map((it) => {
+              const isSelected = Boolean(selectedMap[it.id]);
+              const isOutflow = it.type === "expense";
+              const isTransfer = it.type === "transfer";
 
-        {/* ── 3. Transaction List Cards (Clean Studio Glass, Zero Glow) ── */}
-        <div className="space-y-2 mb-3.5 flex-1 min-h-0 pb-3">
-          {items.map((it) => {
-            const isSelected = Boolean(selectedMap[it.id]);
-            const isOutflow = it.type === "expense";
-            const isTransfer = it.type === "transfer";
+              const rawNote = (it.cleanDescription ?? it.description ?? "").trim();
+              const catNameLower = (it.suggestedCategoryName || "").trim().toLowerCase();
+              const walNameLower = (it.walletName || "").trim().toLowerCase();
+              const hasRealNote =
+                Boolean(rawNote) &&
+                rawNote.toLowerCase() !== "pengeluaran" &&
+                rawNote.toLowerCase() !== "expense" &&
+                rawNote.toLowerCase() !== "dana masuk" &&
+                rawNote.toLowerCase() !== "income" &&
+                rawNote.toLowerCase() !== catNameLower &&
+                rawNote.toLowerCase() !== `${catNameLower}${walNameLower}`;
 
-            return (
-              <div
-                key={it.id}
-                onClick={() => handleToggleItem(it.id)}
-                className="p-3 rounded-2xl transition-all cursor-pointer select-none active:scale-[0.99]"
-                style={{
-                  background: isSelected
-                    ? isDark
-                      ? "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)"
-                      : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)"
-                    : isDark
+              const displayTitle = hasRealNote
+                ? rawNote
+                : it.suggestedCategoryName ||
+                  (isTransfer
+                    ? "Transfer"
+                    : isOutflow
+                    ? isIndonesian
+                      ? "Pengeluaran"
+                      : "Expense"
+                    : isIndonesian
+                    ? "Pemasukan"
+                    : "Income");
+
+              return (
+                <div
+                  key={it.id}
+                  onClick={() => handleToggleItem(it.id)}
+                  className="p-3 rounded-2xl transition-all cursor-pointer select-none"
+                  style={{
+                    background: isSelected
+                      ? isDark
+                        ? "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)"
+                        : "linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 247, 250, 0.90) 100%)"
+                      : isDark
                       ? "rgba(255, 255, 255, 0.02)"
                       : "rgba(0, 0, 0, 0.015)",
-                  border: isSelected
-                    ? isDark
-                      ? "1px solid rgba(255, 255, 255, 0.12)"
-                      : "1px solid rgba(0, 0, 0, 0.09)"
-                    : isDark
+                    border: isSelected
+                      ? isDark
+                        ? "1px solid rgba(255, 255, 255, 0.12)"
+                        : "1px solid rgba(0, 0, 0, 0.09)"
+                      : isDark
                       ? "1px solid rgba(255, 255, 255, 0.05)"
                       : "1px solid rgba(0, 0, 0, 0.04)",
-                  boxShadow: isSelected
-                    ? isDark
-                      ? "0 4px 16px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08)"
-                      : "0 2px 8px -2px rgba(31, 36, 48, 0.04), inset 0 1px 0 #ffffff"
-                    : "none",
-                  opacity: isSelected ? 1 : 0.5,
-                }}
-              >
-                <div className="flex items-start gap-2.5">
-                  {/* Apple Tactile Checkbox */}
-                  <div
-                    className="mt-0.5 w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 transition-colors"
-                    style={{
-                      background: isSelected
-                        ? isDark
-                          ? "#ffffff"
-                          : "#18181b"
-                        : "transparent",
-                      border: isSelected
-                        ? "none"
-                        : isDark
+                    opacity: isSelected ? 1 : 0.55,
+                  }}
+                >
+                  <div className="flex items-start gap-2.5">
+                    {/* Checkbox */}
+                    <div
+                      className="mt-0.5 w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 transition-colors"
+                      style={{
+                        background: isSelected
+                          ? isDark
+                            ? "#ffffff"
+                            : "#18181b"
+                          : "transparent",
+                        border: isSelected
+                          ? "none"
+                          : isDark
                           ? "1.5px solid rgba(255, 255, 255, 0.25)"
                           : "1.5px solid rgba(0, 0, 0, 0.2)",
-                      color: isSelected
-                        ? isDark
-                          ? "#000000"
-                          : "#ffffff"
-                        : "transparent",
-                    }}
-                  >
-                    {isSelected && <Check size={11} strokeWidth={3} />}
-                  </div>
-
-                  {/* Transaction Content */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p
-                        className="text-[12.5px] font-bold truncate leading-tight tracking-tight"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {it.cleanDescription || it.description}
-                      </p>
-                      <span
-                        className="text-[13px] font-bold shrink-0 tracking-tight tabular-nums"
-                        style={{
-                          color: isOutflow
-                            ? "var(--text-primary)"
-                            : "var(--text-secondary)",
-                        }}
-                      >
-                        {isOutflow ? "−" : "+"}
-                        {formatWithPreferred(it.amount)}
-                      </span>
+                        color: isSelected
+                          ? isDark
+                            ? "#000000"
+                            : "#ffffff"
+                          : "transparent",
+                      }}
+                    >
+                      {isSelected && <Check size={11} strokeWidth={3} />}
                     </div>
 
-                    {/* Metadata & Quick Micro-Pills */}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                      {/* Type Toggle Pill */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleType(it.id);
-                        }}
-                        className="h-5 px-2 rounded-full text-[9.5px] font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
-                        style={{
-                          background: buttonGlassBg,
-                          border: buttonGlassBorder,
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {isTransfer ? (
-                          <ArrowLeftRight size={9.5} strokeWidth={2} />
-                        ) : isOutflow ? (
-                          <ArrowUpRight size={9.5} strokeWidth={2} />
-                        ) : (
-                          <ArrowDownLeft size={9.5} strokeWidth={2} />
-                        )}
-                        <span>
-                          {isTransfer
-                            ? "Transfer"
-                            : isOutflow
-                              ? isIndonesian
-                                ? "Keluar"
-                                : "Outflow"
-                              : isIndonesian
-                                ? "Masuk"
-                                : "Inflow"}
-                        </span>
-                      </button>
+                    {/* Transaction Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(it);
+                          }}
+                          className="min-w-0 flex-1 flex items-center gap-1.5"
+                        >
+                          <p
+                            className="text-[12.5px] font-bold truncate leading-tight tracking-tight"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {displayTitle}
+                          </p>
+                          {!hasRealNote && (
+                            <span
+                              className="text-[9.5px] font-normal shrink-0"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
+                              ({isIndonesian ? "Tanpa catatan" : "No note"})
+                            </span>
+                          )}
+                        </div>
 
-                      {/* Category Pill (Hidden for transfers) */}
-                      {!isTransfer && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(it);
+                            }}
+                            className="text-[13px] font-bold tracking-tight tabular-nums cursor-pointer hover:underline"
+                            style={{
+                              color: isOutflow
+                                ? "var(--text-primary)"
+                                : "var(--text-secondary)",
+                            }}
+                          >
+                            {isOutflow ? "−" : "+"}
+                            {formatWithPreferred(it.amount)}
+                          </button>
+
+                          {/* Explicit Edit Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(it);
+                            }}
+                            className="h-6 px-2 rounded-lg text-[10px] font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                            style={{
+                              background: buttonGlassBg,
+                              border: buttonGlassBorder,
+                              color: "var(--text-primary)",
+                            }}
+                            title={isIndonesian ? "Edit Transaksi" : "Edit Transaction"}
+                          >
+                            <PenLine size={10} strokeWidth={2} />
+                            <span>{isIndonesian ? "Edit" : "Edit"}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Metadata & Quick Micro-Pills */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {/* Type Toggle Pill */}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveItemForCategory(it.id);
+                            handleToggleType(it.id);
                           }}
-                          className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                          className="h-5.5 px-2 rounded-full text-[9.5px] font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
                           style={{
                             background: buttonGlassBg,
                             border: buttonGlassBorder,
                             color: "var(--text-secondary)",
                           }}
                         >
-                          {it.suggestedCategoryEmoji && (
-                            <IconRenderer
-                              icon={it.suggestedCategoryEmoji}
-                              size="w-3 h-3"
-                            />
+                          {isTransfer ? (
+                            <ArrowLeftRight size={9.5} strokeWidth={2} />
+                          ) : isOutflow ? (
+                            <ArrowUpRight size={9.5} strokeWidth={2} />
+                          ) : (
+                            <ArrowDownLeft size={9.5} strokeWidth={2} />
                           )}
-                          <span className="truncate max-w-[85px]">
-                            {it.suggestedCategoryName ||
-                              (isIndonesian ? "Kategori" : "Category")}
+                          <span>
+                            {isTransfer
+                              ? "Transfer"
+                              : isOutflow
+                              ? isIndonesian
+                                ? "Keluar"
+                                : "Expense"
+                              : isIndonesian
+                              ? "Masuk"
+                              : "Income"}
                           </span>
                         </button>
-                      )}
 
-                      {/* Wallet Pill(s) */}
-                      {wallets.length > 0 && (
-                        <div className="flex items-center gap-1">
+                        {/* Category Pill */}
+                        {!isTransfer && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveItemForWallet({
-                                itemId: it.id,
-                                field: "walletId",
-                              });
+                              setActiveItemForCategory(it.id);
                             }}
-                            className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                            className="h-5.5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
                             style={{
                               background: buttonGlassBg,
                               border: buttonGlassBorder,
                               color: "var(--text-secondary)",
                             }}
-                            title={isIndonesian ? "Pilih Akun" : "Select Account"}
                           >
-                            <CreditCard size={9.5} strokeWidth={2} />
-                            <span className="truncate max-w-[80px]">
-                              {wallets.find((w) => w.id === it.walletId)?.name ||
-                                it.walletName ||
-                                wallets[0].name}
+                            {it.suggestedCategoryEmoji && (
+                              <IconRenderer
+                                icon={it.suggestedCategoryEmoji}
+                                size="w-3 h-3"
+                              />
+                            )}
+                            <span className="truncate max-w-[95px]">
+                              {it.suggestedCategoryName ||
+                                (isIndonesian ? "Pilih Kategori" : "Select Category")}
                             </span>
                           </button>
+                        )}
 
-                          {isTransfer && (
+                        {/* Wallet Pill(s) */}
+                        {wallets.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveItemForWallet({
+                                  itemId: it.id,
+                                  field: "walletId",
+                                });
+                              }}
+                              className="h-5.5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                              style={{
+                                background: buttonGlassBg,
+                                border: buttonGlassBorder,
+                                color: "var(--text-secondary)",
+                              }}
+                            >
+                              <CreditCard size={9.5} strokeWidth={2} />
+                              <span className="truncate max-w-[85px]">
+                                {wallets.find((w) => w.id === it.walletId)?.name ||
+                                  it.walletName ||
+                                  wallets[0].name}
+                              </span>
+                            </button>
+
+                            {isTransfer && (
+                              <>
+                                <ArrowRight
+                                  size={9}
+                                  strokeWidth={2}
+                                  className="text-[var(--text-tertiary)]"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveItemForWallet({
+                                      itemId: it.id,
+                                      field: "destinationWalletId",
+                                    });
+                                  }}
+                                  className="h-5.5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
+                                  style={{
+                                    background: buttonGlassBg,
+                                    border: buttonGlassBorder,
+                                    color: "var(--text-secondary)",
+                                  }}
+                                >
+                                  <CreditCard size={9.5} strokeWidth={2} />
+                                  <span className="truncate max-w-[85px]">
+                                    {wallets.find(
+                                      (w) => w.id === it.destinationWalletId,
+                                    )?.name ||
+                                      it.destinationWalletName ||
+                                      wallets.find((w) => w.id !== it.walletId)
+                                        ?.name ||
+                                      (isIndonesian ? "Tujuan" : "Destination")}
+                                  </span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Date & Time Pill (Tap to Edit) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(it);
+                          }}
+                          className="h-5.5 px-2 rounded-full text-[9.5px] font-mono flex items-center gap-1 cursor-pointer active:scale-95"
+                          style={{
+                            background: buttonGlassBg,
+                            border: buttonGlassBorder,
+                            color: "var(--text-tertiary)",
+                          }}
+                        >
+                          <Calendar size={9.5} />
+                          <span>{it.date}</span>
+                          {it.time && (
                             <>
-                              <ArrowRight
-                                size={9}
-                                strokeWidth={2}
-                                className="text-[var(--text-tertiary)]"
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveItemForWallet({
-                                    itemId: it.id,
-                                    field: "destinationWalletId",
-                                  });
-                                }}
-                                className="h-5 px-2 rounded-full text-[9.5px] font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-transform"
-                                style={{
-                                  background: buttonGlassBg,
-                                  border: buttonGlassBorder,
-                                  color: "var(--text-secondary)",
-                                }}
-                                title={
-                                  isIndonesian
-                                    ? "Pilih Akun Tujuan"
-                                    : "Select Destination Account"
-                                }
-                              >
-                                <CreditCard size={9.5} strokeWidth={2} />
-                                <span className="truncate max-w-[80px]">
-                                  {wallets.find(
-                                    (w) => w.id === it.destinationWalletId,
-                                  )?.name ||
-                                    it.destinationWalletName ||
-                                    wallets.find((w) => w.id !== it.walletId)
-                                      ?.name ||
-                                    (isIndonesian ? "Tujuan" : "Destination")}
-                                </span>
-                              </button>
+                              <span>·</span>
+                              <Clock size={9.5} />
+                              <span>{it.time.slice(0, 5)}</span>
                             </>
                           )}
+                        </button>
+                      </div>
+
+                      {/* Bill Auto-Matching Inset Sub-Row */}
+                      {it.matchedBill && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleBillPaid(it.id);
+                          }}
+                          className="mt-2 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-xl text-[10.5px] font-medium border cursor-pointer active:scale-[0.985] transition-all select-none"
+                          style={{
+                            background: it.matchedBill.confirmedPaid
+                              ? isDark
+                                ? "rgba(255, 255, 255, 0.05)"
+                                : "rgba(0, 0, 0, 0.03)"
+                              : "transparent",
+                            borderColor: buttonGlassBorder,
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Bookmark
+                              size={11}
+                              strokeWidth={2}
+                              className="shrink-0 text-[var(--text-secondary)]"
+                            />
+                            <span className="truncate">
+                              {isIndonesian
+                                ? `Tagihan: ${it.matchedBill.title}`
+                                : `Bill: ${it.matchedBill.title}`}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 text-[9.5px] text-[var(--text-secondary)] font-semibold">
+                            <span>
+                              {it.matchedBill.confirmedPaid
+                                ? isIndonesian
+                                  ? "Tandai Lunas"
+                                  : "Mark Paid"
+                                : isIndonesian
+                                ? "Lewati"
+                                : "Skip"}
+                            </span>
+                            <div
+                              className="w-3.5 h-3.5 rounded flex items-center justify-center border transition-all"
+                              style={{
+                                background: it.matchedBill.confirmedPaid
+                                  ? isDark
+                                    ? "#ffffff"
+                                    : "#18181b"
+                                  : "transparent",
+                                borderColor: it.matchedBill.confirmedPaid
+                                  ? "transparent"
+                                  : isDark
+                                  ? "rgba(255, 255, 255, 0.2)"
+                                  : "rgba(0, 0, 0, 0.2)",
+                                color: it.matchedBill.confirmedPaid
+                                  ? isDark
+                                    ? "#000000"
+                                    : "#ffffff"
+                                  : "transparent",
+                              }}
+                            >
+                              {it.matchedBill.confirmedPaid && (
+                                <Check size={9} strokeWidth={3} />
+                              )}
+                            </div>
+                          </div>
                         </div>
                       )}
 
-                      {/* Date & Time */}
-                      <div className="h-5 px-1.5 rounded-md text-[9.5px] font-mono flex items-center gap-1 text-[var(--text-tertiary)]">
-                        <Calendar size={9.5} />
-                        <span>{it.date}</span>
-                        {it.time && (
-                          <>
-                            <span>·</span>
-                            <Clock size={9.5} />
-                            <span>{it.time}</span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Needs Review Badge */}
-                      {(it.needsReview ||
-                        (it.confidence !== undefined &&
-                          it.confidence < 0.65)) && (
+                      {/* Duplicate Warning Badge */}
+                      {it.isDuplicate && (
                         <div
-                          className="h-5 px-2 rounded-full text-[9px] font-medium flex items-center gap-1 border border-dashed"
+                          className="mt-1.5 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9.5px] font-medium"
                           style={{
-                            borderColor: isDark
-                              ? "rgba(255, 255, 255, 0.12)"
-                              : "rgba(0, 0, 0, 0.12)",
+                            background: isDark
+                              ? "rgba(255, 255, 255, 0.04)"
+                              : "rgba(0, 0, 0, 0.03)",
                             color: "var(--text-tertiary)",
-                            background: buttonGlassBg,
+                            border: buttonGlassBorder,
                           }}
                         >
-                          <AlertCircle size={9} className="shrink-0" />
-                          <span>
-                            {isIndonesian ? "Perlu Ditinjau" : "Review"}
+                          <AlertCircle size={10} className="shrink-0" />
+                          <span className="truncate">
+                            {isIndonesian
+                              ? "Kemungkinan duplikat"
+                              : "Possible duplicate"}
                           </span>
                         </div>
                       )}
                     </div>
-
-                    {/* Bill Auto-Matching Inset Sub-Row */}
-                    {it.matchedBill && (
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleBillPaid(it.id);
-                        }}
-                        className="mt-2 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-xl text-[10.5px] font-medium border cursor-pointer active:scale-[0.985] transition-all select-none"
-                        style={{
-                          background: it.matchedBill.confirmedPaid
-                            ? isDark
-                              ? "rgba(255, 255, 255, 0.05)"
-                              : "rgba(0, 0, 0, 0.03)"
-                            : "transparent",
-                          borderColor: buttonGlassBorder,
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Bookmark
-                            size={11}
-                            strokeWidth={2}
-                            className="shrink-0 text-[var(--text-secondary)]"
-                          />
-                          <span className="truncate">
-                            {isIndonesian
-                              ? `Tagihan: ${it.matchedBill.title}`
-                              : `Bill: ${it.matchedBill.title}`}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0 text-[9.5px] text-[var(--text-secondary)] font-semibold">
-                          <span>
-                            {it.matchedBill.confirmedPaid
-                              ? isIndonesian
-                                ? "Tandai Lunas"
-                                : "Mark Paid"
-                              : isIndonesian
-                                ? "Lewati"
-                                : "Skip"}
-                          </span>
-                          <div
-                            className="w-3.5 h-3.5 rounded flex items-center justify-center border transition-all"
-                            style={{
-                              background: it.matchedBill.confirmedPaid
-                                ? isDark
-                                  ? "#ffffff"
-                                  : "#18181b"
-                                : "transparent",
-                              borderColor: it.matchedBill.confirmedPaid
-                                ? "transparent"
-                                : isDark
-                                  ? "rgba(255, 255, 255, 0.2)"
-                                  : "rgba(0, 0, 0, 0.2)",
-                              color: it.matchedBill.confirmedPaid
-                                ? isDark
-                                  ? "#000000"
-                                  : "#ffffff"
-                                : "transparent",
-                            }}
-                          >
-                            {it.matchedBill.confirmedPaid && (
-                              <Check size={9} strokeWidth={3} />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Duplicate Warning Badge */}
-                    {it.isDuplicate && (
-                      <div
-                        className="mt-1.5 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9.5px] font-medium"
-                        style={{
-                          background: isDark
-                            ? "rgba(255, 255, 255, 0.04)"
-                            : "rgba(0, 0, 0, 0.03)",
-                          color: "var(--text-tertiary)",
-                          border: buttonGlassBorder,
-                        }}
-                      >
-                        <AlertCircle size={10} className="shrink-0" />
-                        <span className="truncate">
-                          {isIndonesian
-                            ? "Kemungkinan duplikat (tidak dicentang otomatis)"
-                            : "Possible duplicate (unchecked by default)"}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* ── 4. Action Controls Bar ── */}
-        <div
-          className="pt-2 border-t flex items-center gap-2"
-          style={{ borderColor: hairlineDivider }}
-        >
-          {/* Save to Draft Button */}
-          <button
-            type="button"
-            onClick={handleSaveToDraft}
-            className="flex-1 h-10 px-3 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 select-none"
-            style={{
-              background: buttonGlassBg,
-              border: buttonGlassBorder,
-              color: "var(--text-primary)",
-            }}
-          >
-            <Bookmark size={13} strokeWidth={2} />
-            <span>{isIndonesian ? "Simpan Draf" : "Save Draft"}</span>
-          </button>
-
-          {/* Confirm & Record Button */}
-          <button
-            type="button"
-            disabled={selectedCount === 0 || isSubmitting}
-            onClick={handleApprove}
-            className="flex-1 h-10 px-3 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed select-none shadow-xs"
-            style={{
-              background: isDark ? "#ffffff" : "#18181b",
-              color: isDark ? "#000000" : "#ffffff",
-            }}
-          >
-            {isSubmitting ? (
-              <span className="animate-pulse">
-                {isIndonesian ? "Mencatat..." : "Saving..."}
-              </span>
-            ) : (
-              <>
-                <span>
-                  {isIndonesian
-                    ? `Catat ${selectedCount} Transaksi`
-                    : `Record ${selectedCount} Items`}
-                </span>
-                <Check size={13} strokeWidth={2.5} />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </BottomSheet>
-
-    {/* ── 5. Category Picker Popover Sheet (Rendered outside transformed BottomSheet) ── */}
-        {activeItemForCategory && (
+          {/* ── 4. Action Controls Bar ── */}
           <div
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
-            style={{ background: "rgba(0, 0, 0, 0.45)" }}
-            onClick={() => {
-              setActiveItemForCategory(null);
-              setSearchCategoryQuery("");
-            }}
+            className="pt-2 border-t flex items-center gap-2"
+            style={{ borderColor: hairlineDivider }}
           >
-            <div
-              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[88dvh] sm:max-h-[80vh] flex flex-col"
+            <button
+              type="button"
+              onClick={handleSaveToDraft}
+              className="flex-1 h-10 px-3 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 select-none"
               style={{
-                background: isDark
-                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
-                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
-                borderColor: buttonGlassBorder,
+                background: buttonGlassBg,
+                border: buttonGlassBorder,
                 color: "var(--text-primary)",
-                boxShadow: isDark
-                  ? "0 18px 48px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
-                  : "0 14px 36px rgba(0, 0, 0, 0.1), inset 0 1px 0 #ffffff",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
               }}
-              onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className="flex items-center justify-between pb-2.5 mb-2.5 border-b"
-                style={{ borderColor: hairlineDivider }}
-              >
-                <div>
-                  <h4 className="text-[13.5px] font-bold">
-                    {isIndonesian ? "Pilih Kategori" : "Select Category"}
-                  </h4>
-                  {activeCategoryItem && (
-                    <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                      {activeCategoryItem.cleanDescription || activeCategoryItem.description}
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveItemForCategory(null);
-                    setSearchCategoryQuery("");
-                  }}
-                  className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                >
-                  <X size={13} strokeWidth={2} />
-                </button>
-              </div>
+              <Bookmark size={13} strokeWidth={2} />
+              <span>{isIndonesian ? "Simpan Draf" : "Save Draft"}</span>
+            </button>
 
-              {/* Search Bar */}
+            <button
+              type="button"
+              disabled={selectedCount === 0 || isSubmitting}
+              onClick={handleApprove}
+              className="flex-1 h-10 px-3 rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed select-none shadow-xs"
+              style={{
+                background: isDark ? "#ffffff" : "#18181b",
+                color: isDark ? "#000000" : "#ffffff",
+              }}
+            >
+              {isSubmitting ? (
+                <span className="animate-pulse">
+                  {isIndonesian ? "Mencatat..." : "Saving..."}
+                </span>
+              ) : (
+                <>
+                  <span>
+                    {isIndonesian
+                      ? `Catat ${selectedCount} Transaksi`
+                      : `Record ${selectedCount} Items`}
+                  </span>
+                  <Check size={13} strokeWidth={2.5} />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
+
+      {/* ── 5. Full Edit Review Item Modal (Nominal, Kategori, Akun, Tanggal/Jam, Catatan) ── */}
+      {editingItem && (
+        <div
+          className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
+          style={{ background: "rgba(0, 0, 0, 0.5)" }}
+          onClick={() => setEditingItemId(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-[26px] p-4 border select-none space-y-3.5"
+            style={{
+              background: isDark
+                ? "linear-gradient(160deg, rgba(24, 24, 30, 0.98) 0%, rgba(12, 12, 16, 0.99) 100%)"
+                : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
+              borderColor: buttonGlassBorder,
+              color: "var(--text-primary)",
+              boxShadow: isDark
+                ? "0 20px 50px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
+                : "0 14px 36px rgba(0, 0, 0, 0.12), inset 0 1px 0 #ffffff",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              className="flex items-center justify-between pb-2.5 border-b"
+              style={{ borderColor: hairlineDivider }}
+            >
+              <div className="flex items-center gap-2">
+                <PenLine size={14} strokeWidth={2} />
+                <h4 className="text-[14px] font-bold">
+                  {isIndonesian ? "Edit Item Tinjauan" : "Edit Review Item"}
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingItemId(null)}
+                className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              >
+                <X size={13} strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Transaction Type Segmented Switcher */}
+            <div
+              className="grid grid-cols-3 gap-1 p-1 rounded-xl border"
+              style={{
+                background: buttonGlassBg,
+                borderColor: hairlineDivider,
+              }}
+            >
+              {(["expense", "income", "transfer"] as TransactionType[]).map(
+                (tType) => {
+                  const active = editingItem.type === tType;
+                  return (
+                    <button
+                      key={tType}
+                      type="button"
+                      onClick={() => handleToggleType(editingItem.id, tType)}
+                      className="h-8 rounded-lg text-[11.5px] font-semibold transition-all cursor-pointer"
+                      style={{
+                        background: active
+                          ? isDark
+                            ? "#ffffff"
+                            : "#18181b"
+                          : "transparent",
+                        color: active
+                          ? isDark
+                            ? "#000000"
+                            : "#ffffff"
+                          : "var(--text-secondary)",
+                      }}
+                    >
+                      {tType === "expense"
+                        ? isIndonesian
+                          ? "Pengeluaran"
+                          : "Expense"
+                        : tType === "income"
+                        ? isIndonesian
+                          ? "Pemasukan"
+                          : "Income"
+                        : "Transfer"}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+
+            {/* Nominal Input */}
+            <div className="space-y-1.5">
+              <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                {isIndonesian ? "Nominal Transaksi" : "Transaction Amount"}
+              </label>
               <div
-                className="flex items-center gap-2 px-3 py-2 rounded-xl mb-2.5 border"
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border"
                 style={{
                   background: buttonGlassBg,
-                  borderColor: buttonGlassBorder,
+                  borderColor: hairlineDivider,
                 }}
               >
-                <Search size={13} strokeWidth={2} className="text-[var(--text-tertiary)] shrink-0" />
+                <span className="text-[14px] font-bold text-[var(--text-tertiary)]">
+                  {currencyMeta.symbol}
+                </span>
                 <input
                   type="text"
-                  value={searchCategoryQuery}
-                  onChange={(e) => setSearchCategoryQuery(e.target.value)}
-                  placeholder={isIndonesian ? "Cari kategori..." : "Search categories..."}
-                  className="bg-transparent text-[12.5px] font-medium text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none w-full"
-                  autoFocus
+                  inputMode="numeric"
+                  value={editAmountDisplay}
+                  onChange={(e) => {
+                    const parsed = formatLiveAmountInput(
+                      e.target.value,
+                      isIndonesian,
+                      false,
+                      0,
+                    );
+                    setEditAmountDisplay(parsed.display);
+                    setEditAmountRaw(parsed.rawNumber);
+                  }}
+                  placeholder="0"
+                  className="w-full bg-transparent text-[17px] font-bold outline-none tabular-nums"
+                  style={{ color: "var(--text-primary)" }}
                 />
-                {searchCategoryQuery && (
+              </div>
+              <div className="flex items-center gap-1.5">
+                {[10000, 50000, 100000].map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      const next = (editAmountRaw || 0) + step;
+                      const parsed = formatLiveAmountInput(
+                        String(next),
+                        isIndonesian,
+                        false,
+                        0,
+                      );
+                      setEditAmountDisplay(parsed.display);
+                      setEditAmountRaw(parsed.rawNumber);
+                    }}
+                    className="h-6 px-2.5 rounded-full text-[10px] font-semibold border cursor-pointer active:scale-95"
+                    style={{
+                      background: buttonGlassBg,
+                      borderColor: hairlineDivider,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    +{step / 1000}K
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Category & Account Selectors */}
+            <div className="grid grid-cols-2 gap-2">
+              {editingItem.type !== "transfer" && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                    {isIndonesian ? "Kategori" : "Category"}
+                  </label>
                   <button
                     type="button"
-                    onClick={() => setSearchCategoryQuery("")}
-                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    onClick={() => setActiveItemForCategory(editingItem.id)}
+                    className="w-full h-9.5 px-3 rounded-xl border flex items-center justify-between gap-1.5 text-[12px] font-medium cursor-pointer"
+                    style={{
+                      background: buttonGlassBg,
+                      borderColor: hairlineDivider,
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {editingItem.suggestedCategoryEmoji && (
+                        <IconRenderer
+                          icon={editingItem.suggestedCategoryEmoji}
+                          size="w-3.5 h-3.5"
+                        />
+                      )}
+                      <span className="truncate">
+                        {editingItem.suggestedCategoryName ||
+                          (isIndonesian ? "Pilih" : "Select")}
+                      </span>
+                    </div>
+                    <ChevronRight size={12} className="shrink-0 text-[var(--text-tertiary)]" />
+                  </button>
+                </div>
+              )}
+
+              <div
+                className={
+                  editingItem.type === "transfer"
+                    ? "col-span-2 grid grid-cols-2 gap-2"
+                    : "space-y-1"
+                }
+              >
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                    {editingItem.type === "transfer"
+                      ? isIndonesian
+                        ? "Dari Akun"
+                        : "From Account"
+                      : isIndonesian
+                      ? "Akun / Wallet"
+                      : "Account / Wallet"}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveItemForWallet({
+                        itemId: editingItem.id,
+                        field: "walletId",
+                      })
+                    }
+                    className="w-full h-9.5 px-3 rounded-xl border flex items-center justify-between gap-1.5 text-[12px] font-medium cursor-pointer"
+                    style={{
+                      background: buttonGlassBg,
+                      borderColor: hairlineDivider,
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <span className="truncate">
+                      {wallets.find((w) => w.id === editingItem.walletId)?.name ||
+                        editingItem.walletName ||
+                        wallets[0]?.name ||
+                        (isIndonesian ? "Pilih" : "Select")}
+                    </span>
+                    <ChevronRight size={12} className="shrink-0 text-[var(--text-tertiary)]" />
+                  </button>
+                </div>
+
+                {editingItem.type === "transfer" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                      {isIndonesian ? "Ke Akun" : "To Account"}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveItemForWallet({
+                          itemId: editingItem.id,
+                          field: "destinationWalletId",
+                        })
+                      }
+                      className="w-full h-9.5 px-3 rounded-xl border flex items-center justify-between gap-1.5 text-[12px] font-medium cursor-pointer"
+                      style={{
+                        background: buttonGlassBg,
+                        borderColor: hairlineDivider,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <span className="truncate">
+                        {wallets.find(
+                          (w) => w.id === editingItem.destinationWalletId,
+                        )?.name ||
+                          editingItem.destinationWalletName ||
+                          (isIndonesian ? "Pilih" : "Select")}
+                      </span>
+                      <ChevronRight size={12} className="shrink-0 text-[var(--text-tertiary)]" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Date & Time Inputs */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                  {isIndonesian ? "Tanggal" : "Date"}
+                </label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full h-9.5 px-3 rounded-xl border text-[12px] font-medium bg-transparent outline-none"
+                  style={{
+                    background: buttonGlassBg,
+                    borderColor: hairlineDivider,
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                  {isIndonesian ? "Jam" : "Time"}
+                </label>
+                <input
+                  type="time"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  className="w-full h-9.5 px-3 rounded-xl border text-[12px] font-medium bg-transparent outline-none"
+                  style={{
+                    background: buttonGlassBg,
+                    borderColor: hairlineDivider,
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Optional Note Input */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                {isIndonesian ? "Catatan (Opsional)" : "Note (Optional)"}
+              </label>
+              <div
+                className="flex items-center gap-2 px-3 h-9.5 rounded-xl border"
+                style={{
+                  background: buttonGlassBg,
+                  borderColor: hairlineDivider,
+                }}
+              >
+                <input
+                  type="text"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder={
+                    isIndonesian
+                      ? "Kosongkan jika tanpa catatan..."
+                      : "Leave blank if no note..."
+                  }
+                  className="w-full bg-transparent text-[12.5px] font-medium outline-none"
+                  style={{ color: "var(--text-primary)" }}
+                />
+                {editNote && (
+                  <button
+                    type="button"
+                    onClick={() => setEditNote("")}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
                   >
                     <X size={12} />
                   </button>
                 )}
               </div>
+            </div>
 
-              {/* Category List */}
-              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-3">
-                {filteredCategories.length > 0 ? (
-                  filteredCategories.map((c) => {
-                    const isSelected = activeCategoryItem?.suggestedCategoryId === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => handleSelectCategory(c)}
-                        className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
-                        style={{
-                          background: isSelected
-                            ? isDark
-                              ? "rgba(255, 255, 255, 0.06)"
-                              : "rgba(0, 0, 0, 0.04)"
-                            : "transparent",
-                        }}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <IconRenderer icon={c.emoji} size="w-4 h-4" />
-                          <span
-                            className="text-[12.5px] font-medium truncate"
-                            style={{
-                              color: isSelected
-                                ? "var(--text-primary)"
-                                : "var(--text-secondary)",
-                            }}
-                          >
-                            {c.name}
-                          </span>
-                        </div>
-                        {isSelected ? (
-                          <Check size={13} strokeWidth={2.5} className="text-[var(--text-primary)] shrink-0" />
-                        ) : (
-                          <ChevronRight
-                            size={13}
-                            strokeWidth={2}
-                            className="text-[var(--text-tertiary)] shrink-0"
-                          />
-                        )}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="py-6 text-center text-[11.5px] text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Kategori tidak ditemukan" : "No category found"}
-                  </div>
-                )}
-              </div>
+            {/* Footer Actions: Delete & Save */}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleDeleteReviewItem(editingItem.id)}
+                className="w-10 h-10 rounded-xl border flex items-center justify-center cursor-pointer active:scale-95"
+                style={{
+                  background: buttonGlassBg,
+                  borderColor: hairlineDivider,
+                  color: "var(--text-tertiary)",
+                }}
+                title={isIndonesian ? "Hapus Item" : "Delete Item"}
+              >
+                <Trash2 size={14} strokeWidth={2} />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveEditModal}
+                className="flex-1 h-10 rounded-xl font-semibold text-[12.5px] flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                style={{
+                  background: isDark ? "#ffffff" : "#18181b",
+                  color: isDark ? "#000000" : "#ffffff",
+                }}
+              >
+                <Check size={14} strokeWidth={2.5} />
+                <span>
+                  {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
+                </span>
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ── 6. Account / Wallet Picker Popover Sheet ── */}
-        {activeItemForWallet && (
+      {/* ── 6. Category Picker Popover Sheet ── */}
+      {activeItemForCategory && (
+        <div
+          className="fixed inset-0 z-[105] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
+          style={{ background: "rgba(0, 0, 0, 0.45)" }}
+          onClick={() => {
+            setActiveItemForCategory(null);
+            setSearchCategoryQuery("");
+          }}
+        >
           <div
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
-            style={{ background: "rgba(0, 0, 0, 0.45)" }}
-            onClick={() => {
-              setActiveItemForWallet(null);
-              setSearchWalletQuery("");
+            className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[82dvh] flex flex-col"
+            style={{
+              background: isDark
+                ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
+                : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
+              borderColor: buttonGlassBorder,
+              color: "var(--text-primary)",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div
-              className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[88dvh] sm:max-h-[80vh] flex flex-col"
-              style={{
-                background: isDark
-                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
-                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
-                borderColor: buttonGlassBorder,
-                color: "var(--text-primary)",
-                boxShadow: isDark
-                  ? "0 18px 48px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12)"
-                  : "0 14px 36px rgba(0, 0, 0, 0.1), inset 0 1px 0 #ffffff",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
-              }}
-              onClick={(e) => e.stopPropagation()}
+              className="flex items-center justify-between pb-2.5 mb-2.5 border-b"
+              style={{ borderColor: hairlineDivider }}
             >
-              <div
-                className="flex items-center justify-between pb-2.5 mb-2.5 border-b"
-                style={{ borderColor: hairlineDivider }}
+              <h4 className="text-[13.5px] font-bold">
+                {isIndonesian ? "Pilih Kategori" : "Select Category"}
+              </h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveItemForCategory(null);
+                  setSearchCategoryQuery("");
+                }}
+                className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)]"
               >
-                <div>
-                  <h4 className="text-[13.5px] font-bold">
-                    {activeItemForWallet.field === "destinationWalletId"
-                      ? isIndonesian
-                        ? "Pilih Akun Tujuan"
-                        : "Select Destination Account"
-                      : isIndonesian
-                        ? "Pilih Akun Sumber"
-                        : "Select Source Account"}
-                  </h4>
-                  {activeWalletItem && (
-                    <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                      {activeWalletItem.cleanDescription || activeWalletItem.description}
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveItemForWallet(null);
-                    setSearchWalletQuery("");
-                  }}
-                  className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                >
-                  <X size={13} strokeWidth={2} />
-                </button>
-              </div>
+                <X size={13} strokeWidth={2} />
+              </button>
+            </div>
 
-              {/* Search Bar (if more than 3 wallets) */}
-              {wallets.length > 3 && (
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl mb-2.5 border"
-                  style={{
-                    background: buttonGlassBg,
-                    borderColor: buttonGlassBorder,
-                  }}
-                >
-                  <Search size={13} strokeWidth={2} className="text-[var(--text-tertiary)] shrink-0" />
-                  <input
-                    type="text"
-                    value={searchWalletQuery}
-                    onChange={(e) => setSearchWalletQuery(e.target.value)}
-                    placeholder={isIndonesian ? "Cari akun..." : "Search account..."}
-                    className="bg-transparent text-[12.5px] font-medium text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none w-full"
-                    autoFocus
-                  />
-                  {searchWalletQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchWalletQuery("")}
-                      className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              )}
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-xl mb-2.5 border"
+              style={{
+                background: buttonGlassBg,
+                borderColor: buttonGlassBorder,
+              }}
+            >
+              <Search size={13} strokeWidth={2} className="text-[var(--text-tertiary)] shrink-0" />
+              <input
+                type="text"
+                value={searchCategoryQuery}
+                onChange={(e) => setSearchCategoryQuery(e.target.value)}
+                placeholder={isIndonesian ? "Cari kategori..." : "Search categories..."}
+                className="bg-transparent text-[12.5px] font-medium text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none w-full"
+              />
+            </div>
 
-              {/* Wallet List */}
-              <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-3">
-                {filteredWallets.length > 0 ? (
-                  filteredWallets.map((w) => {
-                    const currentId =
-                      activeItemForWallet.field === "destinationWalletId"
-                        ? activeWalletItem?.destinationWalletId
-                        : (activeWalletItem?.walletId || wallets[0]?.id);
-                    const isSelected = currentId === w.id;
-                    return (
-                      <button
-                        key={w.id}
-                        type="button"
-                        onClick={() => handleSelectWallet(w)}
-                        className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
-                        style={{
-                          background: isSelected
-                            ? isDark
-                              ? "rgba(255, 255, 255, 0.06)"
-                              : "rgba(0, 0, 0, 0.04)"
-                            : "transparent",
-                        }}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                            style={{
-                              background: buttonGlassBg,
-                              border: buttonGlassBorder,
-                              color: "var(--text-primary)",
-                            }}
-                          >
-                            <CreditCard size={13} strokeWidth={2} />
-                          </div>
-                          <div className="min-w-0">
-                            <span
-                              className="text-[12.5px] font-medium truncate block"
-                              style={{
-                                color: isSelected
-                                  ? "var(--text-primary)"
-                                  : "var(--text-secondary)",
-                              }}
-                            >
-                              {w.name}
-                            </span>
-                            <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums block">
-                              {formatWithPreferred(balancesById[w.id] ?? w.balance ?? 0)}
-                            </span>
-                          </div>
-                        </div>
-                        {isSelected ? (
-                          <Check size={13} strokeWidth={2.5} className="text-[var(--text-primary)] shrink-0" />
-                        ) : (
-                          <ChevronRight
-                            size={13}
-                            strokeWidth={2}
-                            className="text-[var(--text-tertiary)] shrink-0"
-                          />
-                        )}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="py-6 text-center text-[11.5px] text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Akun tidak ditemukan" : "No account found"}
-                  </div>
-                )}
-              </div>
+            <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-2">
+              {filteredCategories.map((c) => {
+                const isSelected = activeCategoryItem?.suggestedCategoryId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleSelectCategory(c)}
+                    className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
+                    style={{
+                      background: isSelected
+                        ? isDark
+                          ? "rgba(255, 255, 255, 0.06)"
+                          : "rgba(0, 0, 0, 0.04)"
+                        : "transparent",
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <IconRenderer icon={c.emoji} size="w-4 h-4" />
+                      <span className="text-[12.5px] font-medium truncate">
+                        {c.name}
+                      </span>
+                    </div>
+                    {isSelected ? (
+                      <Check size={13} strokeWidth={2.5} className="text-[var(--text-primary)] shrink-0" />
+                    ) : (
+                      <ChevronRight size={13} strokeWidth={2} className="text-[var(--text-tertiary)] shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* ── 7. Account / Wallet Picker Popover Sheet ── */}
+      {activeItemForWallet && (
+        <div
+          className="fixed inset-0 z-[105] flex items-end sm:items-center justify-center p-4 pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4 backdrop-blur-md"
+          style={{ background: "rgba(0, 0, 0, 0.45)" }}
+          onClick={() => {
+            setActiveItemForWallet(null);
+            setSearchWalletQuery("");
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-[24px] p-3.5 border select-none max-h-[82dvh] flex flex-col"
+            style={{
+              background: isDark
+                ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
+                : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
+              borderColor: buttonGlassBorder,
+              color: "var(--text-primary)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="flex items-center justify-between pb-2.5 mb-2.5 border-b"
+              style={{ borderColor: hairlineDivider }}
+            >
+              <h4 className="text-[13.5px] font-bold">
+                {activeItemForWallet.field === "destinationWalletId"
+                  ? isIndonesian
+                    ? "Pilih Akun Tujuan"
+                    : "Select Destination Account"
+                  : isIndonesian
+                  ? "Pilih Akun Sumber"
+                  : "Select Source Account"}
+              </h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveItemForWallet(null);
+                  setSearchWalletQuery("");
+                }}
+                className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)]"
+              >
+                <X size={13} strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-2">
+              {filteredWallets.map((w) => {
+                const currentId =
+                  activeItemForWallet.field === "destinationWalletId"
+                    ? activeWalletItem?.destinationWalletId
+                    : activeWalletItem?.walletId || wallets[0]?.id;
+                const isSelected = currentId === w.id;
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => handleSelectWallet(w)}
+                    className="w-full p-2.5 rounded-xl flex items-center justify-between hover:bg-white/[0.04] active:scale-[0.98] transition-all cursor-pointer text-left"
+                    style={{
+                      background: isSelected
+                        ? isDark
+                          ? "rgba(255, 255, 255, 0.06)"
+                          : "rgba(0, 0, 0, 0.04)"
+                        : "transparent",
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CreditCard size={14} strokeWidth={2} />
+                      <div className="min-w-0">
+                        <span className="text-[12.5px] font-medium truncate block">
+                          {w.name}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums block">
+                          {formatWithPreferred(balancesById[w.id] ?? w.balance ?? 0)}
+                        </span>
+                      </div>
+                    </div>
+                    {isSelected ? (
+                      <Check size={13} strokeWidth={2.5} className="text-[var(--text-primary)] shrink-0" />
+                    ) : (
+                      <ChevronRight size={13} strokeWidth={2} className="text-[var(--text-tertiary)] shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

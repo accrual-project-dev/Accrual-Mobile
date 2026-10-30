@@ -23,6 +23,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { useSpace } from "../../contexts/SpaceContext";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
+import { useAddTransaction } from "../../hooks/useTransactions";
 
 export function useInboxDrain() {
   const isDrainingRef = useRef(false);
@@ -32,6 +33,7 @@ export function useInboxDrain() {
   const { activeSpaceId, activeSpace, defaultSpaceId } = useSpace();
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
+  const addTxMutation = useAddTransaction();
 
   const drainInbox = useCallback(async () => {
     if (isDrainingRef.current) return;
@@ -40,7 +42,7 @@ export function useInboxDrain() {
     const ownerId = getCaptureOwner(user?.id) || user?.id || "guest_local_user";
 
     try {
-      // Ensure the iOS App Group always knows the active ownerId so native AppIntents never fail with CaptureError.noOwner
+      // Ensure the iOS App Group always knows the active ownerId so native AppIntents never fail
       if (typeof AccrualInbox.setOwner === "function") {
         await AccrualInbox.setOwner({ ownerId }).catch(() => {});
       }
@@ -53,17 +55,91 @@ export function useInboxDrain() {
         activeSpaceId !== "all" ? activeSpaceId : defaultSpaceId,
       );
       const targetSpaceName =
-        activeSpace?.id !== "all"
-          ? activeSpace?.name
+        activeSpace?.id !== "all" && activeSpace?.name
+          ? activeSpace.name
           : isIndonesian
           ? "Space Pribadi"
           : "Personal Space";
 
       const allIds = items.map((i) => i.id);
       const validStatementItems: ParsedStatementItem[] = [];
+      let directRecordedCount = 0;
+      let lastDirectRecordedInfo: {
+        amount: number;
+        categoryName: string;
+        walletName: string;
+        note: string;
+        dateLabel: string;
+      } | null = null;
 
       for (const item of items) {
         const rawText = (item.raw_text || "").trim();
+
+        const parsedDate = new Date(item.transaction_date || item.captured_at);
+        const validDate = !isNaN(parsedDate.getTime()) ? parsedDate : new Date();
+        const dateStr = format(validDate, "yyyy-MM-dd");
+        const timeStr = format(validDate, "HH:mm");
+        const fullLocalOccurredOn = format(validDate, "yyyy-MM-dd'T'HH:mm:ss");
+
+        // ── FAST PATH: DIALOG GLASS -> Directly record into Transactions (skip Review/Draft) ──
+        if (item.source === "glass_dialog") {
+          const directAmount = Math.abs(Number(item.amount || 0));
+          if (directAmount <= 0) continue;
+
+          // Match category by name from item.title
+          const catHint = (item.title || "").trim().toLowerCase();
+          const matchedCat =
+            (catHint
+              ? categories.find(
+                  (c) =>
+                    c.name.trim().toLowerCase() === catHint ||
+                    c.name.trim().toLowerCase().includes(catHint) ||
+                    catHint.includes(c.name.trim().toLowerCase()),
+                )
+              : undefined) ||
+            categories.find((c) => c.type !== "income") ||
+            categories[0];
+
+          // Match wallet/account by name from item.source_app or item.wallet_hint
+          const walHint = (item.source_app || item.wallet_hint || "").trim().toLowerCase();
+          const matchedWal =
+            (walHint
+              ? wallets.find(
+                  (w) =>
+                    w.name.trim().toLowerCase() === walHint ||
+                    w.name.trim().toLowerCase().includes(walHint) ||
+                    walHint.includes(w.name.trim().toLowerCase()),
+                )
+              : undefined) || wallets[0];
+
+          // Clean note: ONLY use what the user explicitly typed in Note. If empty, keep null!
+          const explicitNote = (item.subtitle ?? item.raw_text ?? "").trim();
+
+          await addTxMutation.mutateAsync({
+            id: item.id,
+            amount: directAmount,
+            type: matchedCat?.type === "income" ? "income" : "expense",
+            category_id: matchedCat?.id || null,
+            wallet_id: matchedWal?.id || null,
+            to_wallet_id: null,
+            note: explicitNote.length > 0 ? explicitNote : null,
+            occurred_on: fullLocalOccurredOn,
+            created_at: validDate.toISOString(),
+            ledger_id: targetSpaceId,
+            space_id: targetSpaceId === "personal" ? null : targetSpaceId,
+          });
+
+          directRecordedCount += 1;
+          lastDirectRecordedInfo = {
+            amount: directAmount,
+            categoryName:
+              matchedCat?.name || (isIndonesian ? "Pengeluaran" : "Expense"),
+            walletName: matchedWal?.name || "Cash",
+            note: explicitNote,
+            dateLabel: `${format(validDate, "d MMM yyyy")}, ${timeStr}`,
+          };
+          continue;
+        }
 
         // 1. If from notification channel, enforce 3-Layer Promo/OTP/Spam Blocker
         if (
@@ -73,16 +149,11 @@ export function useInboxDrain() {
           continue;
         }
 
-        const parsedDate = new Date(item.transaction_date || item.captured_at);
-        const validDate = !isNaN(parsedDate.getTime()) ? parsedDate : new Date();
-        const dateStr = format(validDate, "yyyy-MM-dd");
-        const timeStr = format(validDate, "HH:mm");
-
         // 2. Try intelligent enrichment via Bank Notification Parser or Slip Parser
         let resolvedAmount = Math.abs(Number(item.amount || 0));
         let resolvedType: "income" | "expense" | "transfer" =
           item.direction === "income" ? "income" : "expense";
-        let resolvedDesc = item.merchant || item.subtitle || item.title || "";
+        let resolvedDesc = (item.merchant || item.subtitle || "").trim();
         let resolvedWalletId: string | null = null;
         let resolvedWalletName: string | undefined =
           item.wallet_hint || item.source_app || undefined;
@@ -188,7 +259,7 @@ export function useInboxDrain() {
           }
         }
 
-        // 4. Match category by title/hint (for Glass Dialog) or Merchant Memory & Semantic Classifier
+        // 4. Match category by title/hint or Merchant Memory & Semantic Classifier
         if (resolvedType !== "transfer" && !resolvedCatId && categories.length > 0) {
           if (resolvedCatName) {
             const catHintLower = resolvedCatName.toLowerCase();
@@ -244,18 +315,8 @@ export function useInboxDrain() {
           if (catObj) resolvedCatEmoji = catObj.emoji;
         }
 
-        const defaultDesc =
-          resolvedType === "income"
-            ? isIndonesian
-              ? "Dana Masuk"
-              : "Income"
-            : resolvedType === "transfer"
-            ? "Transfer"
-            : isIndonesian
-            ? "Pengeluaran"
-            : "Expense";
-
-        const finalDesc = resolvedDesc || defaultDesc;
+        // Keep cleanDescription empty if there was no real merchant/note so notes aren't polluted
+        const finalDesc = resolvedDesc.trim();
         const resolvedConfidence =
           typeof item.confidence === "number" && item.confidence > 0 ? item.confidence : 0.9;
 
@@ -287,21 +348,40 @@ export function useInboxDrain() {
         });
       }
 
-      // Acknowledge all processed IDs (including filtered promo items) so native cleans up files
+      // Acknowledge all processed IDs so native cleans up files and resets app icon badge
       await AccrualInbox.ack({ ids: allIds, ownerId });
+
+      // Notify UI if Dialog Glass directly recorded transactions
+      if (directRecordedCount > 0 && lastDirectRecordedInfo) {
+        window.dispatchEvent(
+          new CustomEvent("trouvaille:test-hud", {
+            detail: {
+              amount: lastDirectRecordedInfo.amount,
+              type: "expense",
+              categoryName: lastDirectRecordedInfo.categoryName,
+              walletName: lastDirectRecordedInfo.walletName,
+              note: lastDirectRecordedInfo.note,
+            },
+          }),
+        );
+        showToast(
+          isIndonesian
+            ? `Transaksi Dialog Glass berhasil dicatat ke ${targetSpaceName}`
+            : `Dialog Glass transaction recorded to ${targetSpaceName}`,
+          "add",
+          null,
+          3200,
+        );
+      }
 
       if (validStatementItems.length === 0) return;
 
-      const firstSource = items[0]?.source;
+      const firstSource = items.find((i) => i.source !== "glass_dialog")?.source;
       const sourceTitle =
         firstSource === "shortcut_notification"
           ? isIndonesian
             ? "Notifikasi Transaksi"
             : "Transaction Notification"
-          : firstSource === "glass_dialog"
-          ? isIndonesian
-            ? "Dialog Glass (Back Tap)"
-            : "Glass Dialog (Back Tap)"
           : firstSource === "smart_text"
           ? isIndonesian
             ? "Teks Papan Klip Pintar"
@@ -317,8 +397,6 @@ export function useInboxDrain() {
       const draftSource: DraftSourceType =
         firstSource === "shortcut_notification"
           ? "notification"
-          : firstSource === "glass_dialog"
-          ? "glass_dialog"
           : firstSource === "smart_text"
           ? "smart_text"
           : firstSource === "card_transaction"
@@ -329,14 +407,18 @@ export function useInboxDrain() {
 
       // Fire native local notification
       const firstItem = validStatementItems[0];
+      const displayLabel =
+        firstItem.cleanDescription ||
+        firstItem.suggestedCategoryName ||
+        (isIndonesian ? "Transaksi" : "Transaction");
       const notifTitle = isIndonesian
         ? `Draft Masuk (${targetSpaceName})`
         : `Draft Queued (${targetSpaceName})`;
       const notifBody =
         validStatementItems.length === 1
-          ? `${formatNotificationCurrency(firstItem.amount)} • ${
-              firstItem.cleanDescription
-            }${firstItem.walletName ? ` (${firstItem.walletName})` : ""}`
+          ? `${formatNotificationCurrency(firstItem.amount)} • ${displayLabel}${
+              firstItem.walletName ? ` (${firstItem.walletName})` : ""
+            }`
           : isIndonesian
           ? `${validStatementItems.length} transaksi baru siap ditinjau di ${targetSpaceName}`
           : `${validStatementItems.length} new transactions ready for review in ${targetSpaceName}`;
@@ -365,6 +447,7 @@ export function useInboxDrain() {
     defaultSpaceId,
     categories,
     wallets,
+    addTxMutation,
   ]);
 
   useEffect(() => {

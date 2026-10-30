@@ -309,7 +309,24 @@ function AppShell() {
         wallet_id: item.walletId || wallets[0]?.id || null,
         to_wallet_id: item.type === "transfer" ? (item.destinationWalletId || null) : null,
         occurred_on: fullOccurredOn,
-        note: item.cleanDescription || item.description,
+        note: (() => {
+          const rawNote = (item.cleanDescription ?? item.description ?? "").trim();
+          const catNameLower = (item.suggestedCategoryName || "").trim().toLowerCase();
+          const walNameLower = (item.walletName || "").trim().toLowerCase();
+          const rawLower = rawNote.toLowerCase();
+          if (
+            !rawNote ||
+            rawLower === "pengeluaran" ||
+            rawLower === "expense" ||
+            rawLower === "dana masuk" ||
+            rawLower === "income" ||
+            rawLower === catNameLower ||
+            rawLower === `${catNameLower}${walNameLower}`
+          ) {
+            return null;
+          }
+          return rawNote;
+        })(),
         ledger_id: targetSpaceId,
         space_id: targetSpaceId === "personal" ? null : targetSpaceId,
       };
@@ -620,7 +637,52 @@ function AppShell() {
               ? "Pintasan Accrual"
               : "Accrual Shortcut";
 
-          // Canonical Invariant: 100% of Shortcut transactions enter Draft Inbox on the Active Space
+          // Fast-Path for Dialog Glass: directly record into Transactions (skip Review/Draft)
+          if (res.sourceChannel === "glass_dialog") {
+            const cleanNote = note.trim();
+            const paddedTime = timeStr.split(":").length === 2 ? `${timeStr.padStart(5, "0")}:00` : timeStr;
+            addTxMutation.mutate({
+              amount: targetAmount,
+              type: targetType,
+              category_id: targetType === "transfer" ? null : targetCatId,
+              wallet_id: targetWalletId,
+              to_wallet_id: targetToWalletId,
+              occurred_on: `${occurred_on}T${paddedTime}`,
+              note: cleanNote.length > 0 ? cleanNote : null,
+              ledger_id: effectiveSpaceId,
+              space_id: effectiveSpaceId === "personal" ? null : effectiveSpaceId,
+            });
+            triggerSuccessHaptic();
+            const displayWalletInfo =
+              targetType === "transfer"
+                ? `${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
+                : walName;
+            void showNativeLocalNotification({
+              title: isIndonesian
+                ? `Transaksi Tercatat • ${targetSpaceName}`
+                : `Transaction Recorded • ${targetSpaceName}`,
+              body: `${
+                targetType === "expense" ? "-" : targetType === "income" ? "+" : ""
+              }${formatNotificationCurrency(targetAmount)} • ${
+                targetType === "transfer" ? "Transfer" : catName
+              } (${displayWalletInfo})${cleanNote ? ` · ${cleanNote}` : ""}`,
+            });
+            setRecordedShortcutTx({
+              amount: targetAmount,
+              type: targetType,
+              categoryName: targetType === "transfer" ? "Transfer" : catName,
+              walletName: displayWalletInfo,
+              date: `${format(txDate, "d MMM yyyy")}, ${timeStr}`,
+              note: cleanNote,
+              source: "shortcut",
+              spaceName: targetSpaceName,
+              ledgerId: effectiveSpaceId,
+              ledgerName: targetSpaceName,
+            });
+            return;
+          }
+
+          // Canonical Invariant: Other Shortcut transactions enter Draft Inbox on the Active Space
           const reviewItem: ParsedStatementItem = {
             id: `shortcut-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             date: occurred_on,

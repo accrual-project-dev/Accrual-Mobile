@@ -1,5 +1,6 @@
 import Foundation
 import Capacitor
+import UserNotifications
 
 public enum GuestCaptureDiscardPolicy {
     public static func permits(owner: String, activeOwner: String?) -> Bool {
@@ -28,13 +29,18 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                 let defaults = try DraftInbox.defaults()
                 if let owner = call.getString("ownerId"), !owner.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     defaults.set(owner, forKey: DraftInbox.ownerKey)
+                    defaults.synchronize()
+                    DraftInbox.updateBadge(forOwner: owner)
                 } else if call.options["ownerId"] is NSNull {
                     defaults.removeObject(forKey: DraftInbox.ownerKey)
+                    defaults.synchronize()
+                    if #available(iOS 16.0, *) {
+                        UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+                    }
                 } else {
                     call.reject("ownerId must be a nonempty string or null.")
                     return
                 }
-                defaults.synchronize()
                 call.resolve(["success": true])
             }
         } catch { call.reject(error.localizedDescription) }
@@ -47,11 +53,6 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         do {
             try DraftInbox.withLock {
-                // Keep active owner synchronized in App Group UserDefaults whenever drain is called
-                if let defaults = try? DraftInbox.defaults() {
-                    defaults.set(owner, forKey: DraftInbox.ownerKey)
-                    defaults.synchronize()
-                }
                 let directory = try DraftInbox.directory()
                 let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
                     .filter { $0.pathExtension == "json" }
@@ -59,12 +60,12 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                 for file in files {
                     guard let data = try? Data(contentsOf: file),
                           let item = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          let itemOwner = item["owner_id"] as? String,
-                          (itemOwner == owner || itemOwner == DraftInbox.fallbackOwner),
+                          item["owner_id"] as? String == owner,
                           let id = item["id"] as? String,
                           DraftInbox.validID(id), file.lastPathComponent == "\(id).json" else { continue }
                     items.append(item)
                 }
+                DraftInbox.updateBadge(forOwner: owner)
                 call.resolve(["items": items])
             }
         } catch { call.reject(error.localizedDescription) }
@@ -98,6 +99,7 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                     let rewritten = try JSONSerialization.data(withJSONObject: item)
                     try rewritten.write(to: file, options: .atomic)
                 }
+                DraftInbox.updateBadge(forOwner: toOwner)
                 call.resolve(["success": true])
             }
         } catch { call.reject(error.localizedDescription) }
@@ -134,7 +136,7 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                     matching.append(file)
                 }
                 var discarded = 0
-                defer { DraftInbox.updateBadge() }
+                defer { DraftInbox.updateBadge(forOwner: activeOwner) }
                 for file in matching {
                     try FileManager.default.removeItem(at: file)
                     discarded += 1
@@ -162,15 +164,13 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                     let file = directory.appendingPathComponent("\(id).json")
                     guard let data = try? Data(contentsOf: file),
                           let item = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          item["id"] as? String == id,
-                          let itemOwner = item["owner_id"] as? String,
-                          (itemOwner == owner || itemOwner == DraftInbox.fallbackOwner) else { continue }
+                          item["id"] as? String == id, item["owner_id"] as? String == owner else { continue }
                     do {
                         try FileManager.default.removeItem(at: file)
                         removed.append(id)
                     } catch { /* Failed removals remain pending and are not acknowledged. */ }
                 }
-                DraftInbox.updateBadge()
+                DraftInbox.updateBadge(forOwner: owner)
                 call.resolve(["success": removed.count == Set(ids).count, "acknowledged": removed.count, "ids": removed])
             }
         } catch { call.reject(error.localizedDescription) }
