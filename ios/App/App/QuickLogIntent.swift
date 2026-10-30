@@ -207,12 +207,7 @@ public struct LogNotificationTransactionIntent: AppIntent {
     @Parameter(title: "Received At") public var receivedAt: Date?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("Log notification \(\.$notificationText)") {
-            \.$title
-            \.$subtitle
-            \.$sourceApp
-            \.$receivedAt
-        }
+        Summary("Log notification \(\.$notificationText) titled \(\.$title) subtitled \(\.$subtitle) from \(\.$sourceApp) at \(\.$receivedAt)")
     }
 
     public init() {}
@@ -228,25 +223,23 @@ public struct LogNotificationTransactionIntent: AppIntent {
 @available(iOS 16.0, *)
 public struct LogQuickDraftIntent: AppIntent {
     public static var title: LocalizedStringResource = "Log Quick Draft Transaction"
-    public static var description = IntentDescription("Save quick dialog input (amount, category, account, date, note) to Accrual Drafts.")
+    public static var description = IntentDescription("Save quick dialog input (amount, category, account, date & time, note) to Accrual Drafts.")
     public static var openAppWhenRun = false
-    @Parameter(title: "Amount") public var amount: Double
+    @Parameter(title: "Amount") public var amount: Double?
     @Parameter(title: "Category") public var category: String?
     @Parameter(title: "Account / Wallet") public var wallet: String?
     @Parameter(title: "Date & Time") public var transactionDate: Date?
     @Parameter(title: "Note") public var note: String?
 
+    /// All 5 parameters are placed directly inside Summary so none are hidden behind the (>) disclosure toggle
     public static var parameterSummary: some ParameterSummary {
-        Summary("Log \(\.$amount) (\(\.$category)) from \(\.$wallet) to Accrual Draft") {
-            \.$transactionDate
-            \.$note
-        }
+        Summary("Log \(\.$amount) for \(\.$category) from \(\.$wallet) on \(\.$transactionDate) with note \(\.$note)")
     }
 
     public init() {}
     public func perform() async throws -> some IntentResult & ProvidesDialog {
         let ownerSnapshot = try DraftInbox.currentOwner()
-        let cleanAmount = Int(abs(amount.rounded()))
+        let cleanAmount = Int(abs((amount ?? 0).rounded()))
         let cleanCategory = (category ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanWallet = (wallet ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanNote = (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
