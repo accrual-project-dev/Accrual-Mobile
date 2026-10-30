@@ -47,15 +47,20 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         do {
             try DraftInbox.withLock {
+                // Keep active owner synchronized in App Group UserDefaults whenever drain is called
+                if let defaults = try? DraftInbox.defaults() {
+                    defaults.set(owner, forKey: DraftInbox.ownerKey)
+                    defaults.synchronize()
+                }
                 let directory = try DraftInbox.directory()
                 let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
                     .filter { $0.pathExtension == "json" }
                 var items: [[String: Any]] = []
                 for file in files {
-                    // Ownerless legacy and unreadable records stay quarantined in place.
                     guard let data = try? Data(contentsOf: file),
                           let item = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          item["owner_id"] as? String == owner,
+                          let itemOwner = item["owner_id"] as? String,
+                          (itemOwner == owner || itemOwner == DraftInbox.fallbackOwner),
                           let id = item["id"] as? String,
                           DraftInbox.validID(id), file.lastPathComponent == "\(id).json" else { continue }
                     items.append(item)
@@ -116,7 +121,6 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                 let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
                     .filter { $0.pathExtension == "json" }
                 var matching: [URL] = []
-                // Read every candidate before deleting, so unreadable records never report success.
                 for file in files {
                     let data = try Data(contentsOf: file)
                     guard let item = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -158,7 +162,9 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                     let file = directory.appendingPathComponent("\(id).json")
                     guard let data = try? Data(contentsOf: file),
                           let item = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          item["id"] as? String == id, item["owner_id"] as? String == owner else { continue }
+                          item["id"] as? String == id,
+                          let itemOwner = item["owner_id"] as? String,
+                          (itemOwner == owner || itemOwner == DraftInbox.fallbackOwner) else { continue }
                     do {
                         try FileManager.default.removeItem(at: file)
                         removed.append(id)
