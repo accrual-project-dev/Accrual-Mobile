@@ -1,9 +1,22 @@
+import { format } from "date-fns";
 import type { Category, Wallet, Transaction, TransactionType } from "./types";
-import { parseBankNotification } from "./bankNotificationParser";
-import { parseNaturalTransaction } from "./nlpParser";
+import {
+  parseBankNotification,
+  isPromotionalOrSpamNotification,
+} from "./bankNotificationParser";
+import {
+  parseNaturalTransaction,
+  parseMultiNaturalTransactions,
+} from "./nlpParser";
 import { parseSlipText } from "./slipParser";
-import { isMultiTransactionHistoryText, parseScreenshotHistory } from "./screenshotHistoryParser";
+import {
+  isMultiTransactionHistoryText,
+  parseScreenshotHistory,
+} from "./screenshotHistoryParser";
 import type { ParsedStatementItem } from "./statementParser";
+import { classifySemanticCategory } from "./semanticClassifier";
+import { getMerchantMemory } from "./merchantCategoryMemory";
+import { resolveActiveDraftSpaceId, type DraftSourceType } from "./draftTransactionService";
 
 export interface DeepLinkPrefill {
   amount?: number;
@@ -17,13 +30,25 @@ export interface DeepLinkPrefill {
   toWalletId?: string;
   date?: Date;
   time?: string;
+  spaceId?: string;
 }
 
 export interface DeepLinkResult {
-  action: "transaction" | "voice" | "scan" | "import" | "navigate" | "restore_balance" | "batch_review" | "none";
+  action:
+    | "transaction"
+    | "voice"
+    | "scan"
+    | "import"
+    | "navigate"
+    | "restore_balance"
+    | "batch_review"
+    | "none";
   path?: string;
   autoSave?: boolean;
-  requiresReview?: boolean;
+  fromShortcut?: boolean;
+  isIgnoredPromo?: boolean;
+  sourceChannel?: DraftSourceType;
+  spaceId?: string;
   matchedCategoryName?: string;
   matchedWalletName?: string;
   matchedToWalletName?: string;
@@ -35,9 +60,15 @@ export interface DeepLinkResult {
  * Extracts hours and minutes from a date-time string.
  * Supports "17:30", "17.30", "17:30:00", "05:30 PM", "5:30pm", "5.30 am", "at 17:30", etc.
  */
-export function extractTimeComponents(str?: string | null): { hours: number; minutes: number } | null {
+export function extractTimeComponents(
+  str?: string | null,
+): { hours: number; minutes: number } | null {
   if (!str || typeof str !== "string") return null;
-  const match = str.match(/(?:at\s+)?(\d{1,2})[:.](\d{2})(?::\d{2})?(?:\s*([ap]\.?m\.?))?/i);
+  // Avoid matching date parts like "28.09.2026" as time
+  const cleaned = str.replace(/\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b/g, " ");
+  const match = cleaned.match(
+    /(?:at\s+|pukul\s+|jam\s+|\b)(\d{1,2})[:.](\d{2})(?::\d{2})?(?:\s*([ap]\.?m\.?))?/i,
+  );
   if (!match) return null;
   let h = parseInt(match[1], 10);
   const m = parseInt(match[2], 10);
@@ -56,10 +87,12 @@ export function extractTimeComponents(str?: string | null): { hours: number; min
  */
 export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
   if (!dateStr || typeof dateStr !== "string") return undefined;
-  // Strip leading day names (e.g. "Senin, ", "Monday, ") often produced by iOS Shortcuts
   const clean = dateStr
     .trim()
-    .replace(/^(?:senin|selasa|rabu|kamis|jumat|jum'at|sabtu|minggu|monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+/i, "")
+    .replace(
+      /^(?:senin|selasa|rabu|kamis|jumat|jum'at|sabtu|minggu|monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+/i,
+      "",
+    )
     .trim();
   if (!clean) return undefined;
 
@@ -82,8 +115,6 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
 
   let resolvedDate: Date | undefined;
 
-  // Try standard JS parse only if it has reasonable year (e.g. ISO 8601 or YYYY-MM-DD)
-  // NEVER allow loose JS parse on strings like "28" which JS parses as Year 0028 AD!
   if (!/^\d{1,2}$/.test(clean)) {
     const stdDate = new Date(clean);
     if (
@@ -99,8 +130,9 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     }
   }
 
-  // Pattern 0: Single day number (e.g. "28" or "28 at 09:30") -> interpret as current month & year
-  const singleDayMatch = clean.match(/^(\d{1,2})(?:\s+(?:at|pukul|jam)?\s*[\d:.]+)?$/i);
+  const singleDayMatch = clean.match(
+    /^(\d{1,2})(?:\s+(?:at|pukul|jam)?\s*[\d:.]+)?$/i,
+  );
   if (singleDayMatch) {
     const day = parseInt(singleDayMatch[1], 10);
     if (day >= 1 && day <= 31) {
@@ -109,7 +141,6 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     }
   }
 
-  // Pattern A: "28/09/2026", "28-09-2026", "28/09/26" (DD/MM/YYYY or DD-MM-YYYY)
   if (!resolvedDate) {
     const numMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
     if (numMatch) {
@@ -123,7 +154,6 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     }
   }
 
-  // Pattern B: "28 Sep 2026", "28 September 2026", "28 Okt 2026", "28-Agu-2026"
   if (!resolvedDate) {
     const textMatch =
       clean.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{2,4})/i) ||
@@ -140,9 +170,10 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     }
   }
 
-  // Pattern B2: "28 Sep", "28 September" without year -> infer current year
   if (!resolvedDate) {
-    const textNoYearMatch = clean.match(/^(\d{1,2})\s+([a-zA-Z]+)(?:\s+(?:at|pukul|jam)?\s*[\d:.]+)?$/i);
+    const textNoYearMatch = clean.match(
+      /^(\d{1,2})\s+([a-zA-Z]+)(?:\s+(?:at|pukul|jam)?\s*[\d:.]+)?$/i,
+    );
     if (textNoYearMatch) {
       const d = parseInt(textNoYearMatch[1], 10);
       const mStr = textNoYearMatch[2].toLowerCase();
@@ -154,7 +185,6 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
     }
   }
 
-  // Pattern C: YYYY-MM-DD
   if (!resolvedDate) {
     const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (isoMatch) {
@@ -168,7 +198,6 @@ export function parseIndonesianDate(dateStr?: string | null): Date | undefined {
   }
 
   if (resolvedDate) {
-    // Sanity check year: clamp strictly between 2000 and 2100
     if (resolvedDate.getFullYear() < 2000 || resolvedDate.getFullYear() > 2100) {
       resolvedDate = new Date();
     }
@@ -225,7 +254,15 @@ export function parseCurrencyAmount(rawStr?: string | null): number {
 export function sanitizeDeepLinkNote(note?: string | null): string {
   if (!note || typeof note !== "string") return "";
   const trimmed = note.trim();
-  if (trimmed === "-" || trimmed === "--") return "";
+  if (
+    trimmed === "-" ||
+    trimmed === "--" ||
+    trimmed.toLowerCase() === "null" ||
+    trimmed.toLowerCase() === "n/a" ||
+    /^screenshot\.(?:png|jpg|jpeg|heic)$/i.test(trimmed)
+  ) {
+    return "";
+  }
   return trimmed;
 }
 
@@ -235,16 +272,20 @@ export function sanitizeDeepLinkNote(note?: string | null): string {
  * Nominal: 50.000
  * Kategori: Makanan & Minuman
  * Akun: BCA
+ * Tanggal: 30 Okt 2026 14:30
  * Catatan: Makan siang
  */
 export function parseStructuredShortcutText(
   text: string,
   categories: Category[] = [],
-  wallets: Wallet[] = []
+  wallets: Wallet[] = [],
 ): DeepLinkResult | null {
   if (!text || typeof text !== "string") return null;
 
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
   let rawAmount: string | undefined;
   let rawCategory: string | undefined;
   let rawWallet: string | undefined;
@@ -252,6 +293,7 @@ export function parseStructuredShortcutText(
   let rawNote: string | undefined;
   let rawDate: string | undefined;
   let rawType: TransactionType | undefined;
+  let rawSpace: string | undefined;
   let hasStructuredKey = false;
 
   for (const line of lines) {
@@ -274,7 +316,9 @@ export function parseStructuredShortcutText(
         key === "dompet" ||
         key === "dari" ||
         key === "account" ||
-        key === "source"
+        key === "source" ||
+        key === "card" ||
+        key === "kartu"
       ) {
         hasStructuredKey = true;
         rawWallet = val;
@@ -292,11 +336,18 @@ export function parseStructuredShortcutText(
         key === "note" ||
         key === "notes" ||
         key === "keterangan" ||
-        key === "deskripsi"
+        key === "deskripsi" ||
+        key === "merchant"
       ) {
         hasStructuredKey = true;
         rawNote = sanitizeDeepLinkNote(val);
-      } else if (key === "tanggal" || key === "date" || key === "datetime" || key === "waktu" || key === "time") {
+      } else if (
+        key === "tanggal" ||
+        key === "date" ||
+        key === "datetime" ||
+        key === "waktu" ||
+        key === "time"
+      ) {
         hasStructuredKey = true;
         if (!rawDate) {
           rawDate = val;
@@ -309,6 +360,9 @@ export function parseStructuredShortcutText(
         if (t === "income" || t === "pemasukan") rawType = "income";
         else if (t === "transfer") rawType = "transfer";
         else rawType = "expense";
+      } else if (key === "space" || key === "space_id") {
+        hasStructuredKey = true;
+        rawSpace = val;
       }
     }
   }
@@ -327,7 +381,7 @@ export function parseStructuredShortcutText(
       (rawCategory && c.id.toLowerCase() === rawCategory.toLowerCase()) ||
       (rawCategory && c.name.toLowerCase() === rawCategory.toLowerCase()) ||
       (rawCategory && c.name.toLowerCase().includes(rawCategory.toLowerCase())) ||
-      (rawCategory && rawCategory.toLowerCase().includes(c.name.toLowerCase()))
+      (rawCategory && rawCategory.toLowerCase().includes(c.name.toLowerCase())),
   );
   if (!matchedCat && categories.length > 0) {
     matchedCat = categories.find((c) => c.type !== "income") || categories[0];
@@ -338,7 +392,7 @@ export function parseStructuredShortcutText(
       (rawWallet && w.id.toLowerCase() === rawWallet.toLowerCase()) ||
       (rawWallet && w.name.toLowerCase() === rawWallet.toLowerCase()) ||
       (rawWallet && w.name.toLowerCase().includes(rawWallet.toLowerCase())) ||
-      (rawWallet && rawWallet.toLowerCase().includes(w.name.toLowerCase()))
+      (rawWallet && rawWallet.toLowerCase().includes(w.name.toLowerCase())),
   );
   if (!matchedWal && wallets.length > 0) {
     matchedWal = wallets[0];
@@ -351,7 +405,7 @@ export function parseStructuredShortcutText(
         w.id.toLowerCase() === rawToWallet.toLowerCase() ||
         w.name.toLowerCase() === rawToWallet.toLowerCase() ||
         w.name.toLowerCase().includes(rawToWallet.toLowerCase()) ||
-        rawToWallet.toLowerCase().includes(w.name.toLowerCase())
+        rawToWallet.toLowerCase().includes(w.name.toLowerCase()),
     );
     if (matchedToWal && matchedWal && matchedToWal.id === matchedWal.id) {
       matchedToWal = wallets.find((w) => w.id !== matchedWal?.id);
@@ -365,10 +419,15 @@ export function parseStructuredShortcutText(
   const timeComp = extractTimeComponents(rawDate);
   const timeStr = timeComp
     ? `${String(timeComp.hours).padStart(2, "0")}:${String(timeComp.minutes).padStart(2, "0")}`
-    : undefined;
+    : format(parsedDate, "HH:mm");
+
+  const targetSpaceId = resolveActiveDraftSpaceId(rawSpace);
 
   return {
     action: "transaction",
+    fromShortcut: true,
+    sourceChannel: "glass_dialog",
+    spaceId: targetSpaceId,
     matchedCategoryName: matchedCat?.name,
     matchedWalletName: matchedWal?.name,
     matchedToWalletName: matchedToWal?.name,
@@ -384,31 +443,35 @@ export function parseStructuredShortcutText(
       toWalletId: matchedToWal?.id,
       date: parsedDate,
       time: timeStr,
+      spaceId: targetSpaceId,
     },
   };
 }
 
 /**
- * Parses incoming URL scheme strings (e.g. `trouvaille://add?text=...`, `trouvaille://voice`, etc.)
- * or standard web search parameters.
+ * Parses incoming URL scheme strings (e.g. `accrual://...`, `trouvaille://...`)
+ * and routes all Shortcut transaction captures to the Active Space Draft Inbox.
  */
 export function parseDeepLink(
   urlString: string,
   categories: Category[] = [],
   wallets: Wallet[] = [],
-  existingTransactions: Transaction[] = []
+  existingTransactions: Transaction[] = [],
+  activeSpaceId?: string | null,
 ): DeepLinkResult {
   if (!urlString || typeof urlString !== "string") {
     return { action: "none" };
   }
 
   try {
-    // Standardize URL scheme to a valid dummy HTTP URL for safe URLSearchParams parsing
     let targetUrl = urlString.trim();
     if (targetUrl.startsWith("?")) {
       targetUrl = `https://accrual.internal/${targetUrl}`;
     } else if (/^(?:accrual|trouvaille):\/\//i.test(targetUrl)) {
-      targetUrl = targetUrl.replace(/^(?:accrual|trouvaille):\/\//i, "https://accrual.internal/");
+      targetUrl = targetUrl.replace(
+        /^(?:accrual|trouvaille):\/\//i,
+        "https://accrual.internal/",
+      );
     } else if (!/^https?:\/\//i.test(targetUrl)) {
       return { action: "none" };
     }
@@ -419,21 +482,20 @@ export function parseDeepLink(
       const base = targetUrl.slice(0, qIndex);
       let query = targetUrl.slice(qIndex + 1);
 
-      // 1. Replace raw spaces with %20
       query = query.replace(/ /g, "%20");
 
-      // 2. Protect parameter delimiter '&' by encoding literal '&' that are part of values (e.g. Makanan & Minuman)
       const tokens = query.split("&");
       const reconstructedTokens: string[] = [];
       const isKnownParamKey = (t: string) =>
-        /^(?:action|mode|text|teks|title|q|ocr|content|amount|nominal|note|catatan|deskripsi|type|tipe|category|kategori|category_id|categoryid|wallet|rekening|dompet|akun|account|wallet_id|walletid|dari|to_wallet|to_wallet_id|towallet|ke|tujuan|date|tanggal|datetime|time|waktu|autosave|auto|otomatis)=/i.test(t);
+        /^(?:action|mode|source|channel|text|teks|title|judul|subtitle|subjudul|app|source_app|aplikasi|at|received_at|waktu_terima|q|ocr|content|amount|nominal|jumlah|note|catatan|deskripsi|merchant|type|tipe|category|kategori|category_id|categoryid|wallet|rekening|dompet|akun|account|card|kartu|wallet_id|walletid|dari|to_wallet|to_wallet_id|towallet|ke|tujuan|date|tanggal|datetime|time|waktu|space|space_id|ledger|ledger_id|autosave|auto|otomatis|draft)=/i.test(
+          t,
+        );
 
       for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
         if (i === 0 || isKnownParamKey(token)) {
           reconstructedTokens.push(token);
         } else {
-          // Token is a continuation of the previous parameter value that had an unencoded '&' (e.g. "Minuman" from "Makanan & Minuman")
           const lastIdx = reconstructedTokens.length - 1;
           if (lastIdx >= 0) {
             reconstructedTokens[lastIdx] += "%26" + token;
@@ -451,7 +513,16 @@ export function parseDeepLink(
     const actionPath = parsed.pathname.replace(/^\/+/, "").toLowerCase();
     const params = parsed.searchParams;
 
-    // 1. Direct modal routing actions (via path, ?mode=, or ?action=)
+    const explicitSpaceParam =
+      params.get("space") ||
+      params.get("space_id") ||
+      params.get("ledger") ||
+      params.get("ledger_id");
+    const resolvedSpaceId = resolveActiveDraftSpaceId(
+      explicitSpaceParam || activeSpaceId,
+    );
+
+    // 1. Direct modal & utility routing actions
     if (
       actionPath === "restore-balance" ||
       actionPath === "clean-sync" ||
@@ -462,7 +533,11 @@ export function parseDeepLink(
     ) {
       return { action: "restore_balance" };
     }
-    if (actionPath === "voice" || params.get("mode") === "voice" || params.get("action") === "voice") {
+    if (
+      actionPath === "voice" ||
+      params.get("mode") === "voice" ||
+      params.get("action") === "voice"
+    ) {
       return { action: "voice" };
     }
     if (
@@ -474,36 +549,24 @@ export function parseDeepLink(
       params.get("mode") === "inbox" ||
       params.get("action") === "review"
     ) {
-      return { action: "batch_review" };
-    }
-    if (actionPath === "scan" || params.get("mode") === "scan" || params.get("action") === "scan") {
-      return { action: "scan" };
-    }
-    if (actionPath === "import" || params.get("mode") === "import" || params.get("action") === "import") {
-      return { action: "import" };
+      return { action: "batch_review", spaceId: resolvedSpaceId };
     }
     if (
-      actionPath === "capture" ||
-      params.get("mode") === "capture" ||
-      params.get("action") === "capture"
+      actionPath === "scan" ||
+      params.get("mode") === "scan" ||
+      params.get("action") === "scan"
     ) {
-      const captureText =
-        params.get("text") ||
-        params.get("teks") ||
-        params.get("content") ||
-        params.get("ocr");
-      if (captureText && isMultiTransactionHistoryText(captureText)) {
-        const batchItems = parseScreenshotHistory(captureText, existingTransactions, categories, wallets);
-        if (batchItems && batchItems.length > 0) {
-          return { action: "batch_review", batchItems };
-        }
-      }
+      return { action: "scan" };
     }
-    if (params.get("action") === "add") {
-      return { action: "transaction" };
+    if (
+      actionPath === "import" ||
+      params.get("mode") === "import" ||
+      params.get("action") === "import"
+    ) {
+      return { action: "import" };
     }
 
-    // 2. Direct tab navigation routes & Widget deep-link aliases
+    // 2. Direct tab navigation routes
     if (actionPath === "calendar") {
       return { action: "navigate", path: "/calendar" };
     }
@@ -556,19 +619,38 @@ export function parseDeepLink(
       return { action: "navigate", path: "/" };
     }
 
-    // 2. Extract potential parameter tokens
-    const rawText =
+    // 3. Extract Shortcut & Notification parameters
+    const rawTextParam =
       params.get("text") ||
       params.get("teks") ||
-      params.get("title") ||
       params.get("q") ||
       params.get("ocr") ||
       params.get("content");
-    const directAmount = params.get("amount") || params.get("nominal");
+    const notifTitle = params.get("title") || params.get("judul");
+    const notifSubtitle = params.get("subtitle") || params.get("subjudul");
+    const notifSourceApp =
+      params.get("app") || params.get("source_app") || params.get("aplikasi");
+    const notifReceivedAt =
+      params.get("at") || params.get("received_at") || params.get("waktu_terima");
+
+    // If `title` was used as legacy `rawText` only when `text` is absent and `actionPath !== "notify"`
+    const rawText =
+      rawTextParam ||
+      (actionPath !== "notify" && !notifSubtitle && !notifSourceApp
+        ? notifTitle
+        : "");
+
+    const directAmount =
+      params.get("amount") || params.get("nominal") || params.get("jumlah");
+    const directMerchant = params.get("merchant");
     const directNote = sanitizeDeepLinkNote(
-      params.get("note") || params.get("catatan") || params.get("deskripsi")
+      params.get("note") ||
+        params.get("catatan") ||
+        params.get("deskripsi") ||
+        directMerchant,
     );
-    const directType = (params.get("type") || params.get("tipe")) as TransactionType | null;
+    const directType = (params.get("type") ||
+      params.get("tipe")) as TransactionType | null;
     const directCategory =
       params.get("category") ||
       params.get("kategori") ||
@@ -580,29 +662,197 @@ export function parseDeepLink(
       params.get("dompet") ||
       params.get("akun") ||
       params.get("account") ||
+      params.get("card") ||
+      params.get("kartu") ||
       params.get("wallet_id") ||
       params.get("walletId") ||
-      params.get("dari");
+      params.get("dari") ||
+      notifSourceApp;
     const directToWallet =
       params.get("to_wallet") ||
       params.get("to_wallet_id") ||
       params.get("toWallet") ||
       params.get("ke") ||
       params.get("tujuan");
-    const directDate = params.get("date") || params.get("tanggal") || params.get("datetime");
+    const directDate =
+      params.get("date") ||
+      params.get("tanggal") ||
+      params.get("datetime") ||
+      notifReceivedAt;
     const directTime = params.get("time") || params.get("waktu");
 
-    // Case A: Direct structured parameters (e.g. from Siri Shortcuts with ask for input / Dialog)
+    const sourceParam = (
+      params.get("source") ||
+      params.get("channel") ||
+      actionPath ||
+      ""
+    ).toLowerCase();
+
+    const resolvedChannel: DraftSourceType =
+      sourceParam.includes("notify") || sourceParam.includes("notification")
+        ? "notification"
+        : sourceParam.includes("scan-screen") ||
+          sourceParam.includes("screen_scan") ||
+          sourceParam.includes("capture")
+        ? "screen_scan"
+        : sourceParam.includes("wallet-tap") || sourceParam.includes("wallet_tap")
+        ? "wallet_tap"
+        : sourceParam.includes("smart-text") || sourceParam.includes("smart_text")
+        ? "smart_text"
+        : directAmount
+        ? "glass_dialog"
+        : "back_tap";
+
+    // Guard against unextracted image filename placeholder (e.g. if user passed Screenshot image instead of Extracted Text)
+    if (rawText && /^screenshot(?:\s*\d*)?\.(?:png|jpg|jpeg|heic|pdf)$/i.test(rawText.trim())) {
+      return { action: "none" };
+    }
+
+    // 4. Explicit Notification Reader Channel (`accrual://notify?...` or `source=notification`)
+    if (
+      actionPath === "notify" ||
+      resolvedChannel === "notification" ||
+      notifSourceApp ||
+      notifSubtitle
+    ) {
+      const textToParse = [rawText, notifSubtitle, notifTitle]
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      if (!textToParse) {
+        return { action: "none" };
+      }
+
+      if (isPromotionalOrSpamNotification(rawText || "", notifTitle, notifSubtitle)) {
+        return { action: "none", isIgnoredPromo: true };
+      }
+
+      const bankResult = parseBankNotification(textToParse, categories, wallets, {
+        title: notifTitle,
+        subtitle: notifSubtitle,
+        sourceApp: notifSourceApp,
+        receivedAt: notifReceivedAt || directDate,
+      });
+
+      if (!bankResult || bankResult.amount <= 0) {
+        return { action: "none", isIgnoredPromo: true };
+      }
+
+      const matchedCat = categories.find(
+        (c) => c.id === bankResult.suggestedCategoryId,
+      );
+      const matchedWal = wallets.find(
+        (w) => w.id === bankResult.suggestedWalletId,
+      );
+      const matchedToWal = wallets.find(
+        (w) => w.id === bankResult.suggestedToWalletId,
+      );
+      const effectiveDate =
+        bankResult.occurredAt ||
+        parseIndonesianDate(notifReceivedAt || directDate) ||
+        new Date();
+      const timeComp = extractTimeComponents(notifReceivedAt || directDate);
+      const effectiveTime = timeComp
+        ? `${String(timeComp.hours).padStart(2, "0")}:${String(timeComp.minutes).padStart(2, "0")}`
+        : format(effectiveDate, "HH:mm");
+
+      return {
+        action: "transaction",
+        autoSave: false,
+        fromShortcut: true,
+        sourceChannel: "notification",
+        spaceId: resolvedSpaceId,
+        matchedCategoryName: matchedCat?.name,
+        matchedWalletName: matchedWal?.name || bankResult.sourceApp,
+        matchedToWalletName: matchedToWal?.name,
+        prefilledValues: {
+          amount: bankResult.amount,
+          type: bankResult.type,
+          note:
+            directNote ||
+            (bankResult.type === "transfer"
+              ? ""
+              : bankResult.merchantOrNote || ""),
+          category_id:
+            bankResult.type === "transfer"
+              ? undefined
+              : bankResult.suggestedCategoryId,
+          categoryId:
+            bankResult.type === "transfer"
+              ? undefined
+              : bankResult.suggestedCategoryId,
+          wallet_id: bankResult.suggestedWalletId,
+          walletId: bankResult.suggestedWalletId,
+          to_wallet_id: bankResult.suggestedToWalletId,
+          toWalletId: bankResult.suggestedToWalletId,
+          date: effectiveDate,
+          time: effectiveTime,
+          spaceId: resolvedSpaceId,
+        },
+      };
+    }
+
+    // 5. Case A: Direct structured parameters (Glass Dialog, Wallet Card Tap, or 1-Tap Preset)
     if (directAmount) {
       const cleanNum = parseCurrencyAmount(directAmount);
-      const uniqueMatch = <T extends { id: string; name: string }>(items: T[], query: string | null): T | undefined => {
-        if (!query) return undefined;
-        const matches = items.filter(item => item.id.toLowerCase() === query.toLowerCase() || item.name.toLowerCase() === query.toLowerCase());
-        return matches.length === 1 ? matches[0] : undefined;
-      };
-      const matchedWal = uniqueMatch(wallets, directWallet);
-      const matchedCat = uniqueMatch(categories, directCategory);
-      const matchedToWal = uniqueMatch(wallets, directToWallet);
+      let matchedCat = categories.find(
+        (c) =>
+          (directCategory &&
+            c.id.toLowerCase() === directCategory.toLowerCase()) ||
+          (directCategory &&
+            c.name.toLowerCase() === directCategory.toLowerCase()) ||
+          (directCategory &&
+            c.name.toLowerCase().includes(directCategory.toLowerCase())) ||
+          (directCategory &&
+            directCategory.toLowerCase().includes(c.name.toLowerCase())),
+      );
+
+      // If no explicit category was passed (e.g. Wallet Tap with Merchant), infer category from merchant/note!
+      if (!matchedCat && directNote && categories.length > 0) {
+        const mem = getMerchantMemory(directNote);
+        if (mem) {
+          matchedCat = categories.find((c) => c.id === mem.categoryId);
+        }
+        if (!matchedCat) {
+          const sem = classifySemanticCategory(directNote, categories, "expense");
+          if (sem.category) {
+            matchedCat = sem.category;
+          }
+        }
+      }
+
+      if (!matchedCat && categories.length > 0) {
+        matchedCat =
+          categories.find((c) => c.type !== "income") || categories[0];
+      }
+
+      let matchedWal = wallets.find(
+        (w) =>
+          (directWallet && w.id.toLowerCase() === directWallet.toLowerCase()) ||
+          (directWallet &&
+            w.name.toLowerCase() === directWallet.toLowerCase()) ||
+          (directWallet &&
+            w.name.toLowerCase().includes(directWallet.toLowerCase())) ||
+          (directWallet &&
+            directWallet.toLowerCase().includes(w.name.toLowerCase())),
+      );
+      if (!matchedWal && wallets.length > 0) {
+        matchedWal = wallets[0];
+      }
+
+      let matchedToWal: Wallet | undefined;
+      if (directToWallet) {
+        matchedToWal = wallets.find(
+          (w) =>
+            w.id.toLowerCase() === directToWallet.toLowerCase() ||
+            w.name.toLowerCase() === directToWallet.toLowerCase() ||
+            w.name.toLowerCase().includes(directToWallet.toLowerCase()) ||
+            directToWallet.toLowerCase().includes(w.name.toLowerCase()),
+        );
+        if (matchedToWal && matchedWal && matchedToWal.id === matchedWal.id) {
+          matchedToWal = wallets.find((w) => w.id !== matchedWal?.id);
+        }
+      }
 
       let combinedDateStr = directDate;
       if (directDate && directTime && !directDate.includes(directTime)) {
@@ -612,28 +862,37 @@ export function parseDeepLink(
       }
 
       const parsedDate = parseIndonesianDate(combinedDateStr) || new Date();
-      const timeComp = extractTimeComponents(combinedDateStr) || extractTimeComponents(directTime);
+      const timeComp =
+        extractTimeComponents(combinedDateStr) ||
+        extractTimeComponents(directTime);
       const effectiveTime = timeComp
         ? `${String(timeComp.hours).padStart(2, "0")}:${String(timeComp.minutes).padStart(2, "0")}`
-        : directTime || undefined;
+        : directTime || format(parsedDate, "HH:mm");
 
-      const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
-      // Auto-save only if explicitly requested (opt-in) to prevent unintended auto-inserts
-      const validType = !directType || ["income", "expense", "transfer"].includes(directType);
-      const validMapping = validType && !!matchedWal && (directType === "transfer" || directToWallet ? !!matchedToWal && matchedToWal.id !== matchedWal.id : !!matchedCat && matchedCat.type === (directType === "income" ? "income" : "expense"));
-      const shouldAutoSave = (autoParam === "true" || autoParam === "1" || autoParam === "ya") && Number.isFinite(cleanNum) && cleanNum > 0 && validMapping;
+      const autoParam = (
+        params.get("autosave") ||
+        params.get("auto") ||
+        params.get("otomatis") ||
+        ""
+      ).toLowerCase();
+      const shouldAutoSave =
+        (autoParam === "true" || autoParam === "1" || autoParam === "ya") &&
+        !isNaN(cleanNum) &&
+        cleanNum > 0;
 
       const effectiveType: TransactionType =
         directType === "income"
           ? "income"
-          : directType === "transfer" || directToWallet
+          : directType === "transfer" || matchedToWal
           ? "transfer"
           : "expense";
 
       return {
         action: "transaction",
         autoSave: shouldAutoSave,
-        requiresReview: !validMapping,
+        fromShortcut: true,
+        sourceChannel: resolvedChannel,
+        spaceId: resolvedSpaceId,
         matchedCategoryName: matchedCat?.name,
         matchedWalletName: matchedWal?.name,
         matchedToWalletName: matchedToWal?.name,
@@ -649,29 +908,50 @@ export function parseDeepLink(
           toWalletId: matchedToWal?.id,
           date: parsedDate,
           time: effectiveTime,
+          spaceId: resolvedSpaceId,
         },
       };
     }
 
-    // Case B: Raw text provided (from iOS Back Tap OCR / Shortcuts Notification Automations / Dialog Shortcuts)
+    // 6. Case B: Raw text provided (Screen Scanner, Notification, Smart Text/Clipboard, or Structured Dialog)
     if (rawText) {
       const trimmedText = rawText.trim();
-      const autoParam = (params.get("autosave") || params.get("auto") || params.get("otomatis") || "").toLowerCase();
-      const isAutoRequested = autoParam === "true" || autoParam === "1" || autoParam === "ya";
+      const autoParam = (
+        params.get("autosave") ||
+        params.get("auto") ||
+        params.get("otomatis") ||
+        ""
+      ).toLowerCase();
+      const isAutoRequested =
+        autoParam === "true" || autoParam === "1" || autoParam === "ya";
 
-      // B-Pre: Multi-Transaction Screenshot History Check (GoPay Riwayat, Shopee, BCA Mutasi)
+      // B-Pre 1: Multi-Transaction Screenshot History Check (GoPay Riwayat, Shopee, BCA Mutasi)
       if (isMultiTransactionHistoryText(trimmedText)) {
-        const batchItems = parseScreenshotHistory(trimmedText, existingTransactions, categories, wallets);
+        const batchItems = parseScreenshotHistory(
+          trimmedText,
+          existingTransactions,
+          categories,
+          wallets,
+        );
         if (batchItems && batchItems.length >= 2) {
           return {
             action: "batch_review",
-            batchItems,
+            fromShortcut: true,
+            sourceChannel: "screen_scan",
+            spaceId: resolvedSpaceId,
+            batchItems: batchItems.map((it) => ({
+              ...it,
+              spaceId: resolvedSpaceId,
+            })),
           };
         } else if (batchItems && batchItems.length === 1) {
           const single = batchItems[0];
           return {
             action: "transaction",
             autoSave: isAutoRequested,
+            fromShortcut: true,
+            sourceChannel: "screen_scan",
+            spaceId: resolvedSpaceId,
             matchedCategoryName: single.suggestedCategoryName || undefined,
             matchedWalletName: single.walletName || undefined,
             matchedToWalletName: single.destinationWalletName || undefined,
@@ -679,25 +959,46 @@ export function parseDeepLink(
               amount: single.amount,
               type: single.type,
               note: single.cleanDescription || single.description,
-              category_id: single.type === "transfer" ? undefined : (single.suggestedCategoryId || undefined),
-              categoryId: single.type === "transfer" ? undefined : (single.suggestedCategoryId || undefined),
+              category_id:
+                single.type === "transfer"
+                  ? undefined
+                  : single.suggestedCategoryId || undefined,
+              categoryId:
+                single.type === "transfer"
+                  ? undefined
+                  : single.suggestedCategoryId || undefined,
               wallet_id: single.walletId || undefined,
               walletId: single.walletId || undefined,
               to_wallet_id: single.destinationWalletId || undefined,
               toWalletId: single.destinationWalletId || undefined,
               date: single.date ? new Date(single.date) : new Date(),
               time: single.time,
+              spaceId: resolvedSpaceId,
             },
           };
         }
       }
 
-      // B0: Structured Shortcut Text (from iOS Dialog Shortcuts: "Nominal: ...\nKategori: ...\nAkun: ...\nCatatan: ...")
-      const structuredResult = parseStructuredShortcutText(trimmedText, categories, wallets);
-      if (structuredResult && structuredResult.prefilledValues?.amount && structuredResult.prefilledValues.amount > 0) {
+      // B0: Structured Shortcut Text ("Nominal: ...\nKategori: ...\nAkun: ...\nCatatan: ...")
+      const structuredResult = parseStructuredShortcutText(
+        trimmedText,
+        categories,
+        wallets,
+      );
+      if (
+        structuredResult &&
+        structuredResult.prefilledValues?.amount &&
+        structuredResult.prefilledValues.amount > 0
+      ) {
         return {
           ...structuredResult,
           autoSave: isAutoRequested,
+          fromShortcut: true,
+          spaceId: resolvedSpaceId,
+          prefilledValues: {
+            ...structuredResult.prefilledValues,
+            spaceId: resolvedSpaceId,
+          },
         };
       }
 
@@ -705,60 +1006,105 @@ export function parseDeepLink(
         trimmedText.includes("\n") ||
         trimmedText.includes("\r") ||
         trimmedText.length > 70 ||
-        /(?:struk|nota|total|subtotal|biaya admin|rekening|pengirim|penerima|no\.?\s*referensi|bi-fast|bukti transfer|transfer berhasil|transaksi berhasil)/i.test(trimmedText);
+        /(?:struk|nota|total|subtotal|biaya admin|rekening|pengirim|penerima|no\.?\s*referensi|bi-fast|bukti transfer|transfer berhasil|transaksi berhasil)/i.test(
+          trimmedText,
+        );
 
-      // B1: If multi-line OCR text or matches slip characteristics (Back Tap Live Text OCR output),
-      // prioritize parseSlipText so transfer slips (e.g. SeaBank -> ShopeePay) are accurately parsed!
+      // B1: Multi-line OCR text or transfer slip characteristics (Screen Scanner Live Text OCR output)
       if (isMultiLineOrSlip) {
         const slipResult = parseSlipText(trimmedText, wallets, categories);
         if (slipResult && slipResult.amount && slipResult.amount > 0) {
           return {
             action: "transaction",
             autoSave: isAutoRequested,
+            fromShortcut: true,
+            sourceChannel: "screen_scan",
+            spaceId: resolvedSpaceId,
             matchedCategoryName: slipResult.categoryName || undefined,
             matchedWalletName: slipResult.sourceWalletName || undefined,
             matchedToWalletName: slipResult.destinationWalletName || undefined,
             prefilledValues: {
               amount: slipResult.amount,
               type: slipResult.type,
-              note: directNote || "", // Strictly empty note for scanned receipts/slips unless explicit directNote
-              category_id: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
-              categoryId: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+              note:
+                directNote ||
+                (slipResult.type === "transfer"
+                  ? ""
+                  : sanitizeDeepLinkNote(slipResult.merchantOrRecipient)),
+              category_id:
+                slipResult.type === "transfer"
+                  ? undefined
+                  : slipResult.categoryId || undefined,
+              categoryId:
+                slipResult.type === "transfer"
+                  ? undefined
+                  : slipResult.categoryId || undefined,
               wallet_id: slipResult.sourceWalletId || undefined,
               walletId: slipResult.sourceWalletId || undefined,
               to_wallet_id: slipResult.destinationWalletId || undefined,
               toWalletId: slipResult.destinationWalletId || undefined,
               date: slipResult.date || new Date(),
-              time: slipResult.time || undefined,
+              time: slipResult.time || format(slipResult.date || new Date(), "HH:mm"),
+              spaceId: resolvedSpaceId,
             },
           };
         }
       }
 
-      // B2: Indonesian Bank / E-Wallet push notification parser (single-line notifications from iOS notification center)
-      const bankResult = parseBankNotification(trimmedText, categories, wallets);
+      // B2: Indonesian Bank / E-Wallet push notification parser (with 3-Layer Promo Shield)
+      if (isPromotionalOrSpamNotification(trimmedText, notifTitle, notifSubtitle)) {
+        return { action: "none", isIgnoredPromo: true };
+      }
+
+      const bankResult = parseBankNotification(trimmedText, categories, wallets, {
+        title: notifTitle,
+        subtitle: notifSubtitle,
+        sourceApp: notifSourceApp,
+        receivedAt: notifReceivedAt,
+      });
       if (bankResult && bankResult.amount > 0) {
-        const matchedCat = categories.find((c) => c.id === bankResult.suggestedCategoryId);
-        const matchedWal = wallets.find((w) => w.id === bankResult.suggestedWalletId);
-        const matchedToWal = wallets.find((w) => w.id === bankResult.suggestedToWalletId);
+        const matchedCat = categories.find(
+          (c) => c.id === bankResult.suggestedCategoryId,
+        );
+        const matchedWal = wallets.find(
+          (w) => w.id === bankResult.suggestedWalletId,
+        );
+        const matchedToWal = wallets.find(
+          (w) => w.id === bankResult.suggestedToWalletId,
+        );
 
         return {
           action: "transaction",
           autoSave: isAutoRequested,
+          fromShortcut: true,
+          sourceChannel: "notification",
+          spaceId: resolvedSpaceId,
           matchedCategoryName: matchedCat?.name,
           matchedWalletName: matchedWal?.name,
           matchedToWalletName: matchedToWal?.name,
           prefilledValues: {
             amount: bankResult.amount,
             type: bankResult.type,
-            note: directNote || (bankResult.type === "transfer" ? "" : (bankResult.merchantOrNote || "")),
-            category_id: bankResult.type === "transfer" ? undefined : bankResult.suggestedCategoryId,
-            categoryId: bankResult.type === "transfer" ? undefined : bankResult.suggestedCategoryId,
+            note:
+              directNote ||
+              (bankResult.type === "transfer"
+                ? ""
+                : bankResult.merchantOrNote || ""),
+            category_id:
+              bankResult.type === "transfer"
+                ? undefined
+                : bankResult.suggestedCategoryId,
+            categoryId:
+              bankResult.type === "transfer"
+                ? undefined
+                : bankResult.suggestedCategoryId,
             wallet_id: bankResult.suggestedWalletId,
             walletId: bankResult.suggestedWalletId,
             to_wallet_id: bankResult.suggestedToWalletId,
             toWalletId: bankResult.suggestedToWalletId,
-            date: new Date(),
+            date: bankResult.occurredAt || new Date(),
+            time: format(bankResult.occurredAt || new Date(), "HH:mm"),
+            spaceId: resolvedSpaceId,
           },
         };
       }
@@ -770,6 +1116,9 @@ export function parseDeepLink(
           return {
             action: "transaction",
             autoSave: isAutoRequested,
+            fromShortcut: true,
+            sourceChannel: "screen_scan",
+            spaceId: resolvedSpaceId,
             matchedCategoryName: slipResult.categoryName || undefined,
             matchedWalletName: slipResult.sourceWalletName || undefined,
             matchedToWalletName: slipResult.destinationWalletName || undefined,
@@ -777,54 +1126,136 @@ export function parseDeepLink(
               amount: slipResult.amount,
               type: slipResult.type,
               note: directNote || "",
-              category_id: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
-              categoryId: slipResult.type === "transfer" ? undefined : (slipResult.categoryId || undefined),
+              category_id:
+                slipResult.type === "transfer"
+                  ? undefined
+                  : slipResult.categoryId || undefined,
+              categoryId:
+                slipResult.type === "transfer"
+                  ? undefined
+                  : slipResult.categoryId || undefined,
               wallet_id: slipResult.sourceWalletId || undefined,
               walletId: slipResult.sourceWalletId || undefined,
               to_wallet_id: slipResult.destinationWalletId || undefined,
               toWalletId: slipResult.destinationWalletId || undefined,
               date: slipResult.date || new Date(),
               time: slipResult.time || undefined,
+              spaceId: resolvedSpaceId,
             },
           };
         }
       }
 
-      // B4: Try Natural Language Transaction parser (e.g., "Kopi tuku 25rb pakai gopay")
+      // B4: Multi-Item Natural Language Parser (Smart Text / Clipboard / Voice Compound Sentences)
+      const multiNlpResults = parseMultiNaturalTransactions(
+        trimmedText,
+        categories,
+        wallets,
+        new Date(),
+      ).filter((item) => item.amount && item.amount > 0);
+
+      if (multiNlpResults.length >= 2) {
+        const batchItems: ParsedStatementItem[] = multiNlpResults.map(
+          (item, idx) => {
+            const matchedCat =
+              categories.find((c) => c.id === item.categoryId) || categories[0];
+            const matchedWal =
+              wallets.find((w) => w.id === item.walletId) || wallets[0];
+            const txDate = item.date || new Date();
+            return {
+              id: `nlp-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+              date: format(txDate, "yyyy-MM-dd"),
+              time: format(txDate, "HH:mm"),
+              description:
+                sanitizeDeepLinkNote(item.note) ||
+                matchedCat?.name ||
+                "Transaksi",
+              cleanDescription:
+                sanitizeDeepLinkNote(item.note) ||
+                matchedCat?.name ||
+                "Transaksi",
+              amount: item.amount!,
+              type: item.type || "expense",
+              walletId: matchedWal?.id || null,
+              walletName: matchedWal?.name || null,
+              destinationWalletId: item.toWalletId || null,
+              destinationWalletName: item.toWalletName || null,
+              suggestedCategoryId:
+                item.type === "transfer"
+                  ? null
+                  : item.categoryId || matchedCat?.id || null,
+              suggestedCategoryName:
+                item.type === "transfer"
+                  ? null
+                  : item.categoryName || matchedCat?.name || null,
+              suggestedCategoryEmoji: matchedCat?.emoji || null,
+              isDuplicate: false,
+              selected: true,
+              raw: trimmedText,
+              confidence: 0.9,
+              needsReview: false,
+              spaceId: resolvedSpaceId,
+            };
+          },
+        );
+        return {
+          action: "batch_review",
+          fromShortcut: true,
+          sourceChannel: "smart_text",
+          spaceId: resolvedSpaceId,
+          batchItems,
+        };
+      }
+
+      // B5: Single Natural Language Transaction parser (e.g., "Kopi tuku 25rb pakai gopay")
       const nlpResult = parseNaturalTransaction(trimmedText, categories, wallets);
       if (nlpResult && nlpResult.amount && nlpResult.amount > 0) {
-        const matchedCat = categories.find((c) => c.id === nlpResult.categoryId) || categories[0];
-        const matchedWal = wallets.find((w) => w.id === nlpResult.walletId) || wallets[0];
+        const matchedCat =
+          categories.find((c) => c.id === nlpResult.categoryId) || categories[0];
+        const matchedWal =
+          wallets.find((w) => w.id === nlpResult.walletId) || wallets[0];
+        const txDate = nlpResult.date || new Date();
         return {
           action: "transaction",
           autoSave: isAutoRequested,
+          fromShortcut: true,
+          sourceChannel: "smart_text",
+          spaceId: resolvedSpaceId,
           matchedCategoryName: matchedCat?.name,
           matchedWalletName: matchedWal?.name,
           prefilledValues: {
             amount: nlpResult.amount,
             type: nlpResult.type || "expense",
-            note: directNote || sanitizeDeepLinkNote(nlpResult.note) || sanitizeDeepLinkNote(trimmedText.slice(0, 40)),
+            note:
+              directNote ||
+              sanitizeDeepLinkNote(nlpResult.note) ||
+              sanitizeDeepLinkNote(trimmedText.slice(0, 40)),
             category_id: nlpResult.categoryId || matchedCat?.id,
             categoryId: nlpResult.categoryId || matchedCat?.id,
             wallet_id: nlpResult.walletId || matchedWal?.id,
             walletId: nlpResult.walletId || matchedWal?.id,
-            date: new Date(),
+            date: txDate,
+            time: format(txDate, "HH:mm"),
+            spaceId: resolvedSpaceId,
           },
         };
       }
 
-      // B5: Fallback if amount couldn't be extracted, open with note
+      // B6: Fallback if amount couldn't be extracted, open with note
       return {
         action: "transaction",
         autoSave: false,
+        fromShortcut: false,
+        spaceId: resolvedSpaceId,
         prefilledValues: {
           note: directNote || sanitizeDeepLinkNote(trimmedText.slice(0, 60)),
           type: "expense",
+          spaceId: resolvedSpaceId,
         },
       };
     }
 
-    // Case C: Explicit open transaction modal (e.g. `accrual://log?type=...`, `trouvaille://add` or `trouvaille://transaction`)
+    // 7. Case C: Explicit open transaction modal (e.g. `accrual://log?type=...`, `trouvaille://add`)
     if (
       actionPath === "add" ||
       actionPath === "log" ||
@@ -837,10 +1268,15 @@ export function parseDeepLink(
         return { action: "scan" };
       }
       const targetType: TransactionType =
-        logType === "income" ? "income" : logType === "transfer" ? "transfer" : "expense";
+        logType === "income"
+          ? "income"
+          : logType === "transfer"
+          ? "transfer"
+          : "expense";
       return {
         action: "transaction",
-        prefilledValues: { type: targetType },
+        spaceId: resolvedSpaceId,
+        prefilledValues: { type: targetType, spaceId: resolvedSpaceId },
       };
     }
 

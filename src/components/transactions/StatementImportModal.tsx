@@ -727,7 +727,7 @@ export function StatementImportModal({ isOpen, onClose }: StatementImportModalPr
     triggerSuccessHaptic();
     showToast(
       isIndonesian
-        ? `${imported} transaksi berhasil dicatat ke buku kas`
+        ? `${imported} transaksi berhasil dicatat ke space aktif`
         : `Successfully imported ${imported} transactions`,
       "add",
       null,

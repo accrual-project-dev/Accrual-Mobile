@@ -23,19 +23,16 @@ import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { InitialSyncScreen } from "./components/ui/InitialSyncScreen";
 import { SyncStatusPill } from "./components/ui/SyncStatusPill";
 import { ClipboardTransactionBanner } from "./components/common/ClipboardTransactionBanner";
-import { saveDraftBatch, getAllDraftItems, removeDraftItem, setCaptureDraftOwner, adoptCaptureDrafts, discardCaptureDrafts } from "./lib/draftTransactionService";
+import {
+  saveDraftBatch,
+  getAllDraftItems,
+  removeDraftItems,
+  resolveActiveDraftSpaceId,
+} from "./lib/draftTransactionService";
 import { useInboxDrain } from "./features/inbox/useInboxDrain";
 import type { ParsedStatementItem } from "./lib/statementParser";
 import { App as CapApp } from "@capacitor/app";
 import { parseDeepLink } from "./lib/deepLinkHandler";
-import { shouldDeferShortcut } from "./lib/shortcutReadiness";
-import { enqueueLocalCapture, adoptLocalCaptures, readLocalCaptures, ackLocalCaptures } from "./features/inbox/localCaptureQueue";
-import { getCaptureOwner } from "./features/inbox/captureOwner";
-import { generateUUID } from "./lib/utils";
-import { AccrualInbox } from "./plugins/accrualInbox";
-import { GUEST_CAPTURE_OWNER_KEY } from "./features/inbox/captureOwner";
-import { Capacitor } from "@capacitor/core";
-import { useSecurityLock } from "./contexts/SecurityLockContext";
 import { useLanguage } from "./contexts/LanguageContext";
 import { useToast } from "./contexts/ToastContext";
 import { triggerSuccessHaptic, triggerHaptic } from "./lib/haptics";
@@ -44,6 +41,8 @@ import {
   syncWeeklyDigestNotification,
   syncMonthEndReviewNotification,
   checkBudgetThresholdAlerts,
+  showNativeLocalNotification,
+  formatNotificationCurrency,
 } from "./lib/notifications";
 import {
   DynamicIslandHUD,
@@ -168,12 +167,7 @@ import { useTheme } from "./contexts/ThemeContext";
 
 function AppShell() {
   const { user, isGuest, exitGuestMode } = useAuth();
-  const { isLocked } = useSecurityLock();
-  let draftOwner: string | null = null;
-  try { draftOwner=getCaptureOwner(user?.id); } catch { /* No capture processing without persistent session storage. */ }
-  setCaptureDraftOwner(draftOwner);
-  useEffect(()=>{window.dispatchEvent(new CustomEvent("trouvaille:drafts-updated"));},[draftOwner]);
-  const { activeSpaceId, setActiveSpaceId, currentUserRole, spaces } = useSpace();
+  const { activeSpaceId, activeSpace, defaultSpaceId, setActiveSpaceId, currentUserRole } = useSpace();
   const navigate = useNavigate();
 
   useWidgetSync();
@@ -264,8 +258,8 @@ function AppShell() {
   const [syncedTxCount, setSyncedTxCount] = useState(0);
   const { isPrivacyShieldEnabled, isPrivacyShieldActive, setIsPrivacyShieldActive } =
     usePrivacy();
-  const { data: categories = [], isSuccess: categoriesReady } = useCategories();
-  const { data: wallets = [], isSuccess: walletsReady } = useWallets();
+  const { data: categories = [] } = useCategories();
+  const { data: wallets = [] } = useWallets();
   const addTxMutation = useAddTransaction();
   const batchAddTx = useBatchAddTransactions();
   const [batchReviewOpen, setBatchReviewOpen] = useState(false);
@@ -285,54 +279,54 @@ function AppShell() {
     subscription,
   } = useSubscription();
   const [recordedShortcutTx, setRecordedShortcutTx] = useState<ShortcutRecordedTxData | null>(null);
-  const [editingCaptureTx, setEditingCaptureTx] = useState<import("./lib/types").Transaction | null>(null);
-  const [savedCaptureTx, setSavedCaptureTx] = useState<import("./lib/types").Transaction | null>(null);
-  useEffect(()=>{setBatchReviewOpen(false);setBatchReviewItems([]);setAddSheetOpen(false);setRecordedShortcutTx(null);setEditingCaptureTx(null);setSavedCaptureTx(null);},[draftOwner]);
-  useEffect(() => {
-    const saved=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.transaction){setSavedCaptureTx(detail.transaction);setRecordedShortcutTx({...detail.transaction,transactionId:detail.transaction.id,categoryName:detail.categoryName,walletName:detail.walletName,source:"shortcut"});}};
-    window.addEventListener("accrual:capture-saved",saved);return()=>window.removeEventListener("accrual:capture-saved",saved);
-  }, []);
   const [joinLedgerOpen, setJoinLedgerOpen] = useState(false);
   const [joinLedgerCode, setJoinLedgerCode] = useState("");
 
 
 
   const handleConfirmBatchReview = async (selectedItems: ParsedStatementItem[]) => {
-    if (selectedItems.some(item=>"captureLedgerId" in item)) {
-      const key=`accrual_capture_review_ids:${user?.id}`;
-      const ids:Record<string,string>=JSON.parse(localStorage.getItem(key)||"{}");
-      for(const item of selectedItems.filter(item=>"captureLedgerId" in item)){
-        if(item.captureOwnerId!==getCaptureOwner(user?.id)) throw new Error("Capture owner changed before review approval");
-        const ledger=item.captureLedgerId;
-        if(!user?.id || !ledger || !spaces.some(s=>s.id===ledger && s.role!=="viewer") || !item.walletId || !wallets.some(w=>w.id===item.walletId)) throw new Error("Select capture account and ledger");
-        const id=ids[item.id] || (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)?item.id:generateUUID());
-        ids[item.id]=id;localStorage.setItem(key,JSON.stringify(ids));
-        await addTxMutation.mutateAsync({id,expectedUserId:user.id,amount:item.amount,type:item.type,category_id:item.type==='transfer'?null:item.suggestedCategoryId,wallet_id:item.walletId,to_wallet_id:item.destinationWalletId||null,occurred_on:item.date+'T'+(item.time?.length===5?item.time+':00':item.time||'00:00:00'),note:item.cleanDescription||item.description,ledger_id:ledger,space_id:ledger});
-        removeDraftItem(item.id);
-      }
-      selectedItems=selectedItems.filter(item=>!("captureLedgerId" in item));
-      if(!selectedItems.length){showToast(isIndonesian?'Tangkapan tersimpan di perangkat.':'Captures saved on device.','add');return;}
-    }
-    const payload = selectedItems.map((item) => ({
-      amount: item.amount,
-      type: item.type,
-      category_id: item.type === "transfer" ? null : (item.suggestedCategoryId || null),
-      wallet_id: item.walletId || null,
-      to_wallet_id: item.type === "transfer" ? (item.destinationWalletId || null) : null,
-      occurred_on: item.date,
-      note: item.cleanDescription || item.description,
-      ledger_id: activeSpaceId !== "all" ? activeSpaceId : "personal",
-      space_id: activeSpaceId !== "all" ? activeSpaceId : null,
-    }));
+    const fallbackSpaceId = resolveActiveDraftSpaceId(
+      activeSpaceId !== "all" ? activeSpaceId : defaultSpaceId
+    );
+    const payload = selectedItems.map((item) => {
+      const targetSpaceId =
+        item.spaceId && item.spaceId !== "all" ? item.spaceId : fallbackSpaceId;
+      const baseDateStr = (item.date || format(new Date(), "yyyy-MM-dd")).slice(0, 10);
+      const rawTime =
+        item.time && /^\d{1,2}:\d{2}(?::\d{2})?$/.test(item.time)
+          ? item.time
+          : format(new Date(), "HH:mm:ss");
+      const paddedTime =
+        rawTime.split(":").length === 2
+          ? `${rawTime.padStart(5, "0")}:00`
+          : rawTime;
+      const fullOccurredOn = `${baseDateStr}T${paddedTime}`;
+
+      return {
+        amount: item.amount,
+        type: item.type,
+        category_id: item.type === "transfer" ? null : (item.suggestedCategoryId || null),
+        wallet_id: item.walletId || wallets[0]?.id || null,
+        to_wallet_id: item.type === "transfer" ? (item.destinationWalletId || null) : null,
+        occurred_on: fullOccurredOn,
+        note: item.cleanDescription || item.description,
+        ledger_id: targetSpaceId,
+        space_id: targetSpaceId === "personal" ? null : targetSpaceId,
+      };
+    });
 
     await batchAddTx.mutateAsync(payload);
+    // Clean up approved items from Draft Inbox immediately
+    removeDraftItems(selectedItems.map((it) => it.id));
+
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
     queryClient.invalidateQueries({ queryKey: ["wallets"] });
+    queryClient.invalidateQueries({ queryKey: ["monthSummary"] });
 
     showToast(
       isIndonesian
-        ? `${selectedItems.length} transaksi berhasil dicatat!`
-        : `${selectedItems.length} transactions recorded!`,
+        ? `${selectedItems.length} transaksi berhasil dicatat ke ${activeSpace?.name || "Space Aktif"}!`
+        : `${selectedItems.length} transactions recorded to ${activeSpace?.name || "Active Space"}!`,
       "add",
       null,
       3000
@@ -340,22 +334,26 @@ function AppShell() {
   };
 
   const handleSaveDraftReview = (itemsToDraft: ParsedStatementItem[]) => {
+    const targetSpaceId = resolveActiveDraftSpaceId(
+      activeSpaceId !== "all" ? activeSpaceId : defaultSpaceId
+    );
     saveDraftBatch(
       itemsToDraft,
-      batchSourceTitle || (isIndonesian ? "Tangkapan Layar" : "Screenshot"),
-      "back_tap"
+      batchSourceTitle || (isIndonesian ? "Pintasan Transaksi" : "Shortcut Transaction"),
+      "back_tap",
+      targetSpaceId
     );
     showToast(
       isIndonesian
-        ? `${itemsToDraft.length} transaksi disimpan ke antrean draft`
-        : `${itemsToDraft.length} transactions saved to draft inbox`,
+        ? `${itemsToDraft.length} transaksi disimpan ke Draft (${activeSpace?.name || "Space Aktif"})`
+        : `${itemsToDraft.length} transactions saved to Draft (${activeSpace?.name || "Active Space"})`,
       "info",
       null,
       3000
     );
   };
   // Queue for deep links that arrive before categories/wallets have loaded (cold-launch race condition fix)
-  const pendingDeepLinkRef = useRef<string[]>([]);
+  const pendingDeepLinkRef = useRef<string | null>(null);
   const hasHandledColdLaunchUrlRef = useRef(false);
   const lastHandledUrlRef = useRef<string | null>(null);
   const lastHandledTimeRef = useRef<number>(0);
@@ -393,17 +391,21 @@ function AppShell() {
       setRecordedShortcutTx({
         amount: detail?.amount || 75000,
         type: detail?.type || "expense",
-        categoryName: detail?.categoryName || (isIndonesian ? "Makanan" : "Food"),
+        categoryName: detail?.categoryName || (isIndonesian ? "Makanan & Minuman" : "Food & Beverage"),
         walletName: detail?.walletName || "BCA",
-        date: format(new Date(), "d MMM yyyy"),
-        note: detail?.note || (isIndonesian ? "Kopi Kenangan" : "Coffee"),
+        date: format(new Date(), "d MMM yyyy, HH:mm"),
+        note: detail?.note || (isIndonesian ? "Simulasi Pintasan" : "Shortcut Simulation"),
+        source: "shortcut_draft",
+        spaceName: activeSpace?.name || (isIndonesian ? "Space Pribadi" : "Personal Space"),
       });
     };
     window.addEventListener("trouvaille:test-hud", handleTestHud);
+    window.addEventListener("accrual:test-hud", handleTestHud);
     return () => {
       window.removeEventListener("trouvaille:test-hud", handleTestHud);
+      window.removeEventListener("accrual:test-hud", handleTestHud);
     };
-  }, [isIndonesian]);
+  }, [isIndonesian, activeSpace?.name]);
 
 
   // Handle iOS Custom URL Scheme (trouvaille://...), Back Tap Shortcuts, and Web Share Target
@@ -461,17 +463,77 @@ function AppShell() {
         } catch {}
       }
 
-      const res = parseDeepLink(rawUrl, categories, wallets, allTxs);
+      const targetSpaceId = resolveActiveDraftSpaceId(
+        activeSpaceId !== "all" ? activeSpaceId : defaultSpaceId
+      );
+      const targetSpaceName =
+        activeSpace?.id !== "all" && activeSpace?.name
+          ? activeSpace.name
+          : isIndonesian
+          ? "Space Pribadi"
+          : "Personal Space";
+
+      const res = parseDeepLink(rawUrl, categories, wallets, allTxs, targetSpaceId);
+
+      if (res.isIgnoredPromo) {
+        showToast(
+          isIndonesian
+            ? "Notifikasi promosi / non-transaksi diabaikan otomatis"
+            : "Promotional / non-transaction notification ignored",
+          "info",
+          null,
+          2800
+        );
+        return;
+      }
 
       if (res.action === "batch_review" && res.batchItems && res.batchItems.length > 0) {
-        const ownerId=getCaptureOwner(user?.id);
-        if(ownerId){
-          const query = new URL(rawUrl.replace(/^(?:accrual|trouvaille):\/\//i,"https://accrual.internal/")).searchParams;
-          enqueueLocalCapture({schema_version:2,id:generateUUID(),owner_id:ownerId,source:"url",captured_at:new Date().toISOString(),transaction_date:new Date().toISOString(),raw_text:query.get("text")||query.get("content")||query.get("ocr")||"",allow_auto:false});return;
-        }
-        triggerHaptic("medium");
-        setBatchReviewItems(res.batchItems);
-        setBatchSourceTitle(res.matchedWalletName || (isIndonesian ? "Riwayat Layar" : "Screen History"));
+        triggerSuccessHaptic();
+        const effectiveSpaceId = res.spaceId || targetSpaceId;
+        const normalizedBatch = res.batchItems.map((it) => ({
+          ...it,
+          spaceId: effectiveSpaceId,
+          spaceName: targetSpaceName,
+        }));
+        const sourceLabel =
+          res.sourceChannel === "smart_text"
+            ? isIndonesian
+              ? "Teks & Papan Klip Cerdas"
+              : "Smart Text & Clipboard"
+            : res.matchedWalletName ||
+              (isIndonesian ? "Pindai Layar" : "Screen Scanner");
+
+        // Persist 100% of shortcut batch items directly into Draft Inbox on Active Space
+        saveDraftBatch(
+          normalizedBatch,
+          sourceLabel,
+          res.sourceChannel || "screen_scan",
+          effectiveSpaceId
+        );
+
+        const totalBatchAmt = normalizedBatch.reduce((s, i) => s + (i.amount || 0), 0);
+        void showNativeLocalNotification({
+          title: isIndonesian
+            ? `${normalizedBatch.length} Draft Masuk (${targetSpaceName})`
+            : `${normalizedBatch.length} Drafts Queued (${targetSpaceName})`,
+          body: isIndonesian
+            ? `Total ${formatNotificationCurrency(totalBatchAmt)} siap ditinjau di ${targetSpaceName}.`
+            : `Total ${formatNotificationCurrency(totalBatchAmt)} ready for review in ${targetSpaceName}.`,
+        });
+
+        setRecordedShortcutTx({
+          amount: totalBatchAmt,
+          type: "expense",
+          categoryName: `${normalizedBatch.length} ${isIndonesian ? "Transaksi" : "Items"}`,
+          walletName: sourceLabel,
+          date: format(new Date(), "d MMM yyyy, HH:mm"),
+          source: "shortcut_draft",
+          spaceName: targetSpaceName,
+          draftCount: normalizedBatch.length,
+        });
+
+        setBatchReviewItems(normalizedBatch);
+        setBatchSourceTitle(`${sourceLabel} · ${targetSpaceName}`);
         setBatchReviewOpen(true);
         return;
       }
@@ -484,29 +546,152 @@ function AppShell() {
       }
 
       if (res.action === "transaction") {
-        try {
-          const normalized = rawUrl.startsWith("?") ? `https://accrual.internal/${rawUrl}` : rawUrl.replace(/^(?:accrual|trouvaille):\/\//i, "https://accrual.internal/");
-          const params = new URL(normalized).searchParams;
-          const rawText = params.get("text") || params.get("teks") || params.get("content") || params.get("ocr") || params.get("q") || params.get("title");
-          const amount = params.get("amount") || params.get("nominal");
-          if (!rawText && !amount) { setPrefilledValues(res.prefilledValues || null); setAddSheetOpen(true); return; }
-          const ownerId = getCaptureOwner(user?.id);
-          if (!ownerId) throw new Error("Capture requires an active session");
-          const wallet = params.get("wallet") || params.get("account") || params.get("rekening") || params.get("akun") || params.get("dompet") || params.get("wallet_id");
-          const text = rawText || [
-            `Nominal: ${amount}`,
-            `Tipe: ${params.get("type") || params.get("tipe") || "expense"}`,
-            `Kategori: ${params.get("category") || params.get("kategori") || params.get("category_id") || ""}`,
-            `Akun: ${wallet || ""}`,
-            `Tujuan: ${params.get("to_wallet") || params.get("to_wallet_id") || params.get("ke") || ""}`,
-            `Catatan: ${params.get("note") || params.get("catatan") || ""}`,
-          ].join("\n");
-          enqueueLocalCapture({ schema_version: 2, id: generateUUID(), owner_id: ownerId, source: "url", source_app: wallet || undefined,
-            captured_at: new Date().toISOString(), transaction_date: (res.prefilledValues?.date || new Date()).toISOString(), raw_text: text,
-            allow_auto: /^(true|1|ya)$/i.test(params.get("autosave") || params.get("auto") || params.get("otomatis") || "") });
-        } catch (error) {
-          console.error("[CaptureURL]", error);
-          showToast(isIndonesian ? "Tangkapan belum tersimpan. Jalankan Pintasan kembali." : "Capture was not saved. Run the shortcut again.", "error");
+        if (res.prefilledValues?.amount && res.prefilledValues.amount > 0) {
+          const isUUID = (val?: string | null) =>
+            Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+          const targetAmount = res.prefilledValues.amount;
+          const targetType: "income" | "expense" | "transfer" =
+            res.prefilledValues.type === "income"
+              ? "income"
+              : res.prefilledValues.type === "transfer"
+              ? "transfer"
+              : "expense";
+
+          const isGuestUser = !user?.id || user.id === "guest_local_user";
+          const rawCatId =
+            res.prefilledValues.category_id ||
+            categories.find((c) => c.type !== "income")?.id ||
+            categories[0]?.id ||
+            null;
+          const targetCatId = isUUID(rawCatId) ? rawCatId : isGuestUser ? rawCatId : null;
+
+          const rawWalletId =
+            res.prefilledValues.wallet_id || wallets[0]?.id || null;
+          const targetWalletId = isUUID(rawWalletId)
+            ? rawWalletId
+            : isGuestUser
+            ? rawWalletId
+            : (wallets[0]?.id && isUUID(wallets[0].id) ? wallets[0].id : null);
+
+          const rawToWalletId =
+            targetType === "transfer"
+              ? res.prefilledValues.to_wallet_id ||
+                wallets.find((w) => w.id !== targetWalletId)?.id ||
+                null
+              : null;
+          const targetToWalletId = isUUID(rawToWalletId) ? rawToWalletId : isGuestUser ? rawToWalletId : null;
+
+          const txDate = res.prefilledValues.date || new Date();
+          const occurred_on = format(txDate, "yyyy-MM-dd");
+          const timeStr = res.prefilledValues.time || format(txDate, "HH:mm");
+          const note = res.prefilledValues.note || "";
+
+          const catObj = categories.find((c) => c.id === targetCatId);
+          const walObj = wallets.find((w) => w.id === targetWalletId);
+          const toWalObj = wallets.find((w) => w.id === targetToWalletId);
+
+          const catName =
+            catObj?.name || res.matchedCategoryName || (isIndonesian ? "Pengeluaran" : "Expense");
+          const walName =
+            walObj?.name || res.matchedWalletName || (isIndonesian ? "Akun Utama" : "Default Account");
+          const toWalName =
+            toWalObj?.name || res.matchedToWalletName || "";
+
+          const effectiveSpaceId = res.spaceId || targetSpaceId;
+          const channelLabel =
+            res.sourceChannel === "notification"
+              ? isIndonesian
+                ? "Notifikasi Bank"
+                : "Bank Notification"
+              : res.sourceChannel === "screen_scan"
+              ? isIndonesian
+                ? "Pindai Layar"
+                : "Screen Scanner"
+              : res.sourceChannel === "glass_dialog"
+              ? isIndonesian
+                ? "Dialog Kaca"
+                : "Glass Dialog"
+              : res.sourceChannel === "wallet_tap"
+              ? isIndonesian
+                ? "Transaksi Kartu"
+                : "Wallet Card Tap"
+              : isIndonesian
+              ? "Pintasan Accrual"
+              : "Accrual Shortcut";
+
+          // Canonical Invariant: 100% of Shortcut transactions enter Draft Inbox on the Active Space
+          const reviewItem: ParsedStatementItem = {
+            id: `shortcut-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            date: occurred_on,
+            time: timeStr,
+            description: note || (targetType === "transfer" ? `${walName} → ${toWalName}` : catName),
+            cleanDescription: note || (targetType === "transfer" ? `${walName} → ${toWalName}` : catName),
+            amount: targetAmount,
+            type: targetType,
+            walletId: targetWalletId,
+            walletName: walName,
+            destinationWalletId: targetToWalletId,
+            destinationWalletName: toWalName,
+            suggestedCategoryId: targetType === "transfer" ? null : targetCatId,
+            suggestedCategoryName: targetType === "transfer" ? null : catName,
+            suggestedCategoryEmoji: catObj?.emoji || null,
+            isDuplicate: false,
+            selected: true,
+            raw: rawUrl,
+            confidence: 0.92,
+            needsReview: !res.prefilledValues.category_id && targetType !== "transfer",
+            spaceId: effectiveSpaceId,
+            spaceName: targetSpaceName,
+          };
+
+          saveDraftBatch(
+            [reviewItem],
+            channelLabel,
+            res.sourceChannel || "back_tap",
+            effectiveSpaceId
+          );
+
+          triggerSuccessHaptic();
+
+          const displayWalletInfo =
+            targetType === "transfer"
+              ? `${walName} → ${toWalName || (isIndonesian ? "Tujuan" : "Destination")}`
+              : walName;
+
+          void showNativeLocalNotification({
+            title: isIndonesian
+              ? `Draft Masuk • ${targetSpaceName}`
+              : `Draft Queued • ${targetSpaceName}`,
+            body: `${
+              targetType === "expense" ? "-" : targetType === "income" ? "+" : ""
+            }${formatNotificationCurrency(targetAmount)} • ${
+              targetType === "transfer" ? "Transfer" : catName
+            } (${displayWalletInfo})${note ? ` · ${note}` : ""}`,
+          });
+
+          setRecordedShortcutTx({
+            amount: targetAmount,
+            type: targetType,
+            categoryName: targetType === "transfer" ? "Transfer" : catName,
+            walletName: displayWalletInfo,
+            date: `${format(txDate, "d MMM yyyy")}, ${timeStr}`,
+            note: note,
+            source: "shortcut_draft",
+            spaceName: targetSpaceName,
+            ledgerId: effectiveSpaceId,
+            ledgerName: targetSpaceName,
+          });
+
+          setBatchReviewItems([reviewItem]);
+          setBatchSourceTitle(`${channelLabel} · ${targetSpaceName}`);
+          setBatchReviewOpen(true);
+          return;
+        } else {
+          if (res.prefilledValues) {
+            setPrefilledValues(res.prefilledValues);
+          }
+          setAddSheetOpen(true);
         }
       } else if (res.action === "restore_balance") {
         triggerSuccessHaptic();
@@ -571,9 +756,12 @@ function AppShell() {
   }, [
     categories,
     wallets,
+    allTxs,
     addTxMutation,
     isIndonesian,
     activeSpaceId,
+    activeSpace,
+    defaultSpaceId,
     navigate,
     queryClient,
     showToast,
@@ -590,14 +778,46 @@ function AppShell() {
     lastHandledUrlRef.current = rawUrl;
     lastHandledTimeRef.current = now;
 
-    if (shouldDeferShortcut(rawUrl, { userReady: !!user?.id, locked: isLocked, categoriesReady, walletsReady })) {
-      pendingDeepLinkRef.current.push(rawUrl);
+    const lower = rawUrl.toLowerCase();
+    // Fast path: if the deep link is for direct modal or tab navigation, dispatch immediately without waiting for category cache
+    if (
+      lower.includes("voice") ||
+      lower.includes("scan") ||
+      lower.includes("import") ||
+      lower.includes("calendar") ||
+      lower.includes("bills") ||
+      lower.includes("reports") ||
+      lower.includes("report") ||
+      lower.includes("settings") ||
+      lower.includes("assets") ||
+      lower.includes("wealth") ||
+      lower.includes("transactions") ||
+      lower.includes("history") ||
+      lower.includes("home") ||
+      lower.includes("log") ||
+      lower.includes("add") ||
+      lower.includes("networth") ||
+      lower.includes("allocation") ||
+      lower.includes("cash") ||
+      lower.includes("runway") ||
+      lower.includes("savings") ||
+      lower.includes("cashflow") ||
+      lower.includes("capital") ||
+      lower.includes("activity") ||
+      lower.includes("balance-sheet") ||
+      lower.includes("spending-stability")
+    ) {
+      handleUrlDispatch.current?.(rawUrl);
       return;
     }
-    handleUrlDispatch.current?.(rawUrl);
-  }, [user?.id, isLocked, categoriesReady, walletsReady]);
-  const tryDispatchRef = useRef(tryDispatch);
-  tryDispatchRef.current = tryDispatch;
+
+    if (categories.length > 0 || wallets.length > 0) {
+      pendingDeepLinkRef.current = null;
+      handleUrlDispatch.current?.(rawUrl);
+    } else {
+      pendingDeepLinkRef.current = rawUrl;
+    }
+  }, [categories.length, wallets.length]);
 
   // Stage 1: Register Capacitor URL listener + cold-launch URL inspection
   useEffect(() => {
@@ -611,7 +831,7 @@ function AppShell() {
       CapApp.getLaunchUrl()
         .then((launch) => {
           if (isSubscribed && launch?.url) {
-            tryDispatchRef.current(launch.url);
+            tryDispatch(launch.url);
           }
         })
         .catch(() => {});
@@ -619,14 +839,14 @@ function AppShell() {
 
     // 2. Web / PWA URL params on load (e.g. ?text=...)
     if (typeof window !== "undefined" && window.location.search) {
-      tryDispatchRef.current(window.location.href);
+      tryDispatch(window.location.href);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     // 3. Warm launch / running background URL scheme events
     CapApp.addListener("appUrlOpen", (event) => {
       if (isSubscribed && event?.url) {
-        tryDispatchRef.current(event.url);
+        tryDispatch(event.url);
       }
     })
       .then((handle) => {
@@ -640,7 +860,7 @@ function AppShell() {
         urlListenerHandle.remove();
       }
     };
-  }, []);
+  }, [tryDispatch]);
 
   // Dedicated Android Hardware/Gesture Back Button listener (isolated from URL listeners)
   useEffect(() => {
@@ -717,10 +937,12 @@ function AppShell() {
 
   // Stage 2: Drain queued deep link once categories/wallets have loaded
   useEffect(() => {
-    if (!user?.id || isLocked || !categoriesReady || !walletsReady) return;
-    const queued = pendingDeepLinkRef.current.splice(0);
-    queued.forEach(url => handleUrlDispatch.current?.(url));
-  }, [user?.id, isLocked, categoriesReady, walletsReady]);
+    if ((categories.length > 0 || wallets.length > 0) && pendingDeepLinkRef.current) {
+      const queued = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      handleUrlDispatch.current?.(queued);
+    }
+  }, [categories, wallets]);
 
   // Sync smart notifications (Weekly Financial Digest, Month-End Wealth Review, Budget Threshold Alerts)
   useEffect(() => {
@@ -758,7 +980,7 @@ function AppShell() {
 
       const migrationKey = `trouvaille_migrated_guest_${user.id}`;
       const isAlreadyHandled = localStorage.getItem(migrationKey) === "true";
-      if ((!isAlreadyHandled && hasGuestData()) || localStorage.getItem(GUEST_CAPTURE_OWNER_KEY)) {
+      if (!isAlreadyHandled && hasGuestData()) {
         setShowGuestMigrationModal(true);
       } else if (!isAlreadyHandled) {
         localStorage.setItem(migrationKey, "true");
@@ -1058,16 +1280,7 @@ function AppShell() {
               type="button"
               onClick={async () => {
                 triggerSuccessHaptic();
-                try {
-                const guestOwner = localStorage.getItem(GUEST_CAPTURE_OWNER_KEY);
-                if (guestOwner && Capacitor.getPlatform() === "ios") {
-                  await AccrualInbox.setOwner({ ownerId: user.id });
-                  await AccrualInbox.adoptOwner({ fromOwnerId: guestOwner, toOwnerId: user.id });
-                }
-                if(guestOwner){adoptLocalCaptures(guestOwner,user.id);adoptCaptureDrafts(guestOwner,user.id);}
                 await migrateGuestDataToCloud(user.id);
-                localStorage.removeItem(GUEST_CAPTURE_OWNER_KEY);
-                window.dispatchEvent(new CustomEvent("accrual:capture-settings"));
                 localStorage.setItem(`trouvaille_onboarded_${user.id}`, "true");
                 localStorage.setItem("trouvaille_onboarded", "true");
                 setIsOnboarded(true);
@@ -1075,10 +1288,6 @@ function AppShell() {
                 queryClient.invalidateQueries({ queryKey: ["wallets"] });
                 queryClient.invalidateQueries({ queryKey: ["transactions"] });
                 queryClient.invalidateQueries({ queryKey: ["categories"] });
-                } catch (error) {
-                  console.error("[CaptureMigration]", error);
-                  showToast(isIndonesian ? "Pemindahan belum selesai. Data tamu tetap disimpan. Coba lagi." : "Migration is incomplete. Guest data is retained. Please retry.", "info");
-                }
               }}
               className={`w-full py-3.5 rounded-[22px] font-semibold text-[13.5px] active:scale-[0.98] transition-all cursor-pointer ${
                 isDark
@@ -1091,22 +1300,13 @@ function AppShell() {
 
             <button
               type="button"
-              onClick={async () => {
+              onClick={() => {
                 triggerHaptic("light");
-                try {
-                const guestOwner=localStorage.getItem(GUEST_CAPTURE_OWNER_KEY);
-                if(guestOwner && Capacitor.getPlatform()==="ios") await AccrualInbox.discardGuestOwner({ownerId:guestOwner});
-                if(guestOwner){discardCaptureDrafts(guestOwner);ackLocalCaptures(guestOwner,readLocalCaptures(guestOwner).map(item=>item.id));}
                 discardGuestData(user.id);
-                localStorage.removeItem(GUEST_CAPTURE_OWNER_KEY);
                 setShowGuestMigrationModal(false);
                 queryClient.invalidateQueries({ queryKey: ["categories"] });
                 queryClient.invalidateQueries({ queryKey: ["wallets"] });
                 queryClient.invalidateQueries({ queryKey: ["transactions"] });
-                } catch (error) {
-                  console.error("[CaptureDiscard]", error);
-                  showToast(isIndonesian ? "Penghapusan data tamu belum selesai. Coba lagi." : "Guest data removal is incomplete. Please retry.", "info");
-                }
               }}
               className={`w-full py-3 rounded-[22px] font-medium text-[12.5px] active:scale-[0.98] transition-all cursor-pointer ${
                 isDark ? "text-white/50 hover:text-white" : "text-zinc-500 hover:text-zinc-900"
@@ -1364,9 +1564,7 @@ function AppShell() {
             onClose={() => {
               setAddSheetOpen(false);
               setPrefilledValues(null);
-              setEditingCaptureTx(null);
             }}
-            transaction={editingCaptureTx}
             initialValues={prefilledValues}
             onOpenScan={() => {
               setAddSheetOpen(false);
@@ -1386,11 +1584,30 @@ function AppShell() {
       {/* Dynamic Island Floating Glass HUD Capsule for Auto-saved Shortcut & Live Partner Transactions */}
       <DynamicIslandHUD
         data={recordedShortcutTx}
-        onClose={() => {setRecordedShortcutTx(null);setSavedCaptureTx(null);}}
+        onClose={() => setRecordedShortcutTx(null)}
         onEdit={() => {
-          if (savedCaptureTx && recordedShortcutTx?.transactionId===savedCaptureTx.id) {
-            setEditingCaptureTx(savedCaptureTx);setSavedCaptureTx(null);setPrefilledValues(null);setRecordedShortcutTx(null);setAddSheetOpen(true);
-          } else {setRecordedShortcutTx(null);navigate('/transactions');}
+          if (recordedShortcutTx) {
+            const currentDrafts = getAllDraftItems(
+              activeSpaceId !== "all" ? activeSpaceId : undefined
+            );
+            setRecordedShortcutTx(null);
+            if (currentDrafts.length > 0) {
+              setBatchReviewItems(currentDrafts);
+              setBatchSourceTitle(
+                isIndonesian
+                  ? `Draft Transaksi · ${activeSpace?.name || "Space Aktif"}`
+                  : `Draft Inbox · ${activeSpace?.name || "Active Space"}`
+              );
+              setBatchReviewOpen(true);
+            } else {
+              setPrefilledValues({
+                amount: recordedShortcutTx.amount,
+                type: recordedShortcutTx.type,
+                note: recordedShortcutTx.note,
+              });
+              setAddSheetOpen(true);
+            }
+          }
         }}
         onViewLedger={(ledgerId) => {
           setActiveSpaceId(ledgerId);

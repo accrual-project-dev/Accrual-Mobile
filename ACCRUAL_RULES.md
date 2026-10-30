@@ -1,6 +1,6 @@
 # ACCRUAL CANONICAL ARCHITECTURAL & OPERATIONAL RULES
 ### The Supreme Engineering, Design & Data Invariant Specification
-**Version:** 3.0.0 (Release v1.3.26) · **Target Scope:** Mobile (`Accrual`) & Apple Ecosystem Integration
+**Version:** 3.0.0 (Release v1.3.26) · **Target Scope:** Mobile (`Accrual`) & Apple Ecosystem Integration  
 **Authority:** Syntheticae / Accrual Core Engineering
 
 ---
@@ -277,17 +277,25 @@
 
 ---
 
-## 15. Native Shortcuts Capture Invariants
+## 15. Shortcuts, URL Scheme & iOS Ingestion Invariants (STRICT)
 
-The shared registry `src/lib/shortcutsConfig.ts` defines two primary routes. Screenshot capture passes Take Screenshot output to the native background `ScanPaymentScreenshotIntent`; iOS 16+ Back Tap and supported Action Button binding remain available. iOS 27 screenshot automation is optional. Screenshots are never automatically deleted.
+> [!IMPORTANT]
+> **HYBRID URL SCHEME PIPELINE & APPINTENT HYGIENE**
+> Apple Shortcuts integrations must adhere strictly to the verified URL scheme ingestion pipeline and clean AppIntent discoverability rules.
 
-Bank notification automation requires iOS 27 and an available app notification trigger. Map actual text, title, subtitle, source app, and received time to `LogNotificationTransactionIntent`. This trigger is unavailable on iOS 16–26.
+### 15.1 Five Canonical Shortcuts Presets
+The system defines strictly 5 verified presets:
+1. `screen_scan` (Pindai Layar / Screen Scanner)
+2. `glass_dialog` (Dialog Cepat / Glass Dialog)
+3. `notification_reader` (Otomasi Notifikasi Bank / Bank Notification)
+4. `voice_entry` (Dikte Suara / Voice Entry)
+5. `receipt_scan` (Pindai Struk Fisik / Receipt Scanner)
 
-Native actions transport raw owner-scoped captures through the inbox. Automatic persistence requires complete, unambiguous data, an explicit ledger, and a matching source-to-wallet/category rule. Unresolved captures remain in review; wallet balance never selects the destination. Capture acceptance is distinct from ledger persistence and cloud synchronization.
+### 15.2 Hybrid URL Scheme Ingestion
+- Ingestion from Shortcuts must utilize standard iOS URL Schemes (`accrual://add?text=...&autosave=true` and `accrual://add?amount=...&autosave=true`).
+- When received, `deepLinkHandler.ts` parses parameters and writes transactions directly to Supabase (`useAddTransaction`), triggering the Dynamic Island HUD confirmation capsule.
+- Never rely solely on App Group background file transport without fallback, as App Groups can fail silently in sandboxed Shortcuts extension daemons.
 
-Quick Add replaces the sequential Glass Dialog wizard and opens `accrual://add`. Voice, receipt scanning, and review use `accrual://voice`, `accrual://scan`, and `accrual://inbox`. URL schemes are not a universal automatic-save pipeline.
-
-Setup follows install or manual assembly → bind trigger → test a real capture and inspect its result. No built-in iCloud links are currently verified. URL syntax does not establish publication, contents, installation, or successful execution. Personal links remain labeled unverified. Never offer raw `.shortcut` downloads, fabricated installed/tested detection, screenshot deletion, or unverified Watch/locked-device claims. Internal Control Widget intents remain undiscoverable to avoid duplicate library entries.
-
-### Owner-scoped capture retention
-Logout clears visible session caches while preserving owner-scoped raw captures, receipt journals, review identifiers, capture mapping preferences, unresolved capture drafts, and captured pending mutations. These records are hidden from other owners and are processed only after the original owner signs in and unlocks. Bulk draft deletion affects only the current owner's visible drafts. Guest pending captures change ownership only after explicit migration consent; failed persistence keeps the migration pending and retains the guest owner token.
+### 15.3 AppIntent Discoverability & Clean Action Library
+- All internal, navigation, or Control Center / Lock Screen intents (such as `VoiceEntryControlIntent`, `ScanReceiptControlIntent`, `QuickAddControlIntent` in `NetWorthWidget.swift`) must specify `static var isDiscoverable: Bool { false }` to avoid polluting the Shortcuts action library or causing duplicate entries.
+- Never provide raw `.shortcut` binary downloads (`href="/shortcuts/*.shortcut"`), as iOS Safari and WKWebView reject raw binary imports. Always provide verified iCloud links (`https://www.icloud.com/shortcuts/<32_hex_uuid>`) and 1-tap URL scheme copiers.

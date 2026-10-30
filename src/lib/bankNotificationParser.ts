@@ -1,6 +1,15 @@
 import type { Category, Wallet, TransactionType } from "./types";
 import { parseNaturalTransaction } from "./nlpParser";
 import { BANK_ALIASES, KNOWN_MERCHANT_PATTERNS } from "./slipParser";
+import { classifySemanticCategory } from "./semanticClassifier";
+import { getMerchantMemory } from "./merchantCategoryMemory";
+
+export interface BankNotificationMetadata {
+  title?: string | null;
+  subtitle?: string | null;
+  sourceApp?: string | null;
+  receivedAt?: string | null;
+}
 
 export interface DetectedBankNotification {
   rawText: string;
@@ -8,6 +17,7 @@ export interface DetectedBankNotification {
   amount: number;
   merchantOrNote: string;
   type: TransactionType;
+  occurredAt?: Date;
   suggestedWalletId?: string;
   suggestedWalletName?: string;
   suggestedToWalletId?: string;
@@ -17,19 +27,97 @@ export interface DetectedBankNotification {
 }
 
 /**
+ * Layer 1: Hard Promotional, Marketing, Voucher & Loan Offer Blacklist
+ */
+export const PROMO_BLACKLIST_PATTERNS: RegExp[] = [
+  /\b(?:diskon|cashback|voucher|voucer|promo|promosi|reward|rewards|kupon|coupon)\b/i,
+  /\b(?:serbu|klaim|claim|undian|hadiah|flash\s*sale|payday\s*sale|special\s*offer|penawaran\s*spesial)\b/i,
+  /\b(?:bunga\s*rendah|limit\s*pinjaman|limit\s*kredit|ajukan\s*sekarang|aktifkan\s*paylater|spaylater\s*kamu|gopay\s*later\s*kamu)\b/i,
+  /\b(?:nikmati\s+keuntungan|s&k\s*berlaku|syarat\s*&\s*ketentuan|hingga\s*rp|up\s*to\s*rp|s\/d\s*rp|dapatkan\s+saldo|bonus\s+saldo)\b/i,
+  /\b(?:gratis\s*ongkir|bebas\s*biaya\s*admin\s*hingga|yuk\s*transaksi|jangan\s*lewatkan|khusus\s*buat\s*kamu)\b/i,
+];
+
+/**
+ * Layer 2: Security, OTP, Login Alert, Failed Transaction & Unpaid Reminder Blocker
+ */
+export const NON_MUTATION_BLACKLIST_PATTERNS: RegExp[] = [
+  /\b(?:otp|kode\s*rahasia|kode\s*verifikasi|verification\s*code|jangan\s*berikan|jangan\s*bagikan)\b/i,
+  /\b(?:login\s*baru|perangkat\s*baru|aktivitas\s*masuk|ubah\s*pin|ganti\s*pin|reset\s*password|kata\s*sandi)\b/i,
+  /\b(?:transaksi\s*gagal|pembayaran\s*gagal|transfer\s*gagal|dibatalkan|ditolak|tidak\s*mencukupi|saldo\s*kurang|kadaluarsa|expired)\b/i,
+  /\b(?:menunggu\s*pembayaran|bayar\s*sebelum|segera\s*lunasi|tagihan\s*akan\s*jatuh\s*tempo|kode\s*virtual\s*account\s*dibuat)\b/i,
+];
+
+/**
+ * Definitive completed financial mutation verbs.
+ * If a real receipt contains a secondary promo note (e.g. "Pembayaran Rp 45.000 berhasil. Kamu hemat Rp 5.000"),
+ * the presence of a definitive mutation phrase rescues the transaction while stripping the promo clause.
+ */
+const DEFINITIVE_MUTATION_REGEX =
+  /\b(?:pembayaran\s+(?:qris\s+)?berhasil|pembayaran\s+sukses|transaksi\s+berhasil|transfer\s+berhasil|kamu\s+berhasil\s+(?:bayar|transfer)|kamu\s+telah\s+(?:bayar|membayar|transfer)|berhasil\s+(?:dibayar|membayar|transfer|top\s*up|isi\s*saldo)|dana\s+masuk|uang\s+masuk|transfer\s+masuk|menerima\s+transfer|berhasil\s+diterima|telah\s+diterima|mutasi\s+(?:debit|kredit))\b/i;
+
+/**
+ * Checks whether a notification text (combined with title/subtitle) is promotional spam,
+ * an OTP/security alert, or a failed/pending notification that must NOT be logged as a transaction.
+ */
+export function isPromotionalOrSpamNotification(
+  text: string,
+  title?: string | null,
+  subtitle?: string | null,
+): boolean {
+  const combined = [title, subtitle, text].filter(Boolean).join(" ").trim();
+  if (!combined) return true;
+
+  // Layer 2 (OTP / Security / Failed / Pending) is unconditionally blocked
+  if (NON_MUTATION_BLACKLIST_PATTERNS.some((rx) => rx.test(combined))) {
+    return true;
+  }
+
+  // Layer 1 (Promo / Cashback / Voucher / Marketing)
+  const hasPromoKeyword = PROMO_BLACKLIST_PATTERNS.some((rx) => rx.test(combined));
+  if (hasPromoKeyword) {
+    // Only allow if it has an explicit completed transaction verb AND is not a "Dapatkan cashback..." headline
+    const isDefinitiveReceipt = DEFINITIVE_MUTATION_REGEX.test(combined);
+    const startsWithPromo =
+      /^\s*(?:promo|diskon|cashback|voucher|kupon|klaim|serbu|nikmati|dapatkan|spesial|yuk|jangan\s+lewatkan)/i.test(
+        title || text,
+      );
+    if (!isDefinitiveReceipt || startsWithPromo) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Detects if a text string looks like an Indonesian m-Banking, SMS, or e-Wallet payment notification
- * and extracts financial tokens with transfer vs expense intelligence.
+ * and extracts financial tokens with transfer vs expense intelligence and 3-layer anti-promo filtering.
  */
 export function parseBankNotification(
   text: string,
   categories: Category[] = [],
   wallets: Wallet[] = [],
+  metadata?: BankNotificationMetadata,
 ): DetectedBankNotification | null {
   if (!text || typeof text !== "string") return null;
-  const clean = text.trim();
-  if (clean.length < 8 || clean.length > 1000) return null;
+  const cleanText = text.trim();
+  const cleanTitle = metadata?.title?.trim() || "";
+  const cleanSubtitle = metadata?.subtitle?.trim() || "";
+  const cleanSourceApp = metadata?.sourceApp?.trim() || "";
 
-  const lower = clean.toLowerCase();
+  const combinedRaw = [cleanTitle, cleanSubtitle, cleanText]
+    .filter(Boolean)
+    .join(" — ")
+    .trim();
+
+  if (combinedRaw.length < 6 || combinedRaw.length > 1500) return null;
+
+  // 0. Run 3-Layer Promo, Marketing, OTP & Failed Transaction Shield
+  if (isPromotionalOrSpamNotification(cleanText, cleanTitle, cleanSubtitle)) {
+    return null;
+  }
+
+  const lower = `${cleanSourceApp} ${cleanTitle} ${cleanSubtitle} ${cleanText}`.toLowerCase();
 
   // 1. Check for banking / e-wallet signal keywords
   const bankSignals = [
@@ -64,6 +152,7 @@ export function parseBankNotification(
     "spay",
     "shopee",
     "dana",
+    "linkaja",
     "qris",
     "transfer",
     "transfer berhasil",
@@ -82,30 +171,44 @@ export function parseBankNotification(
     "kamu telah bayar",
     "kamu berhasil bayar",
     "berhasil bayar",
+    "berhasil dibayar",
   ];
 
   const hasSignal = bankSignals.some((sig) => lower.includes(sig));
   if (!hasSignal) return null;
 
+  // Strip secondary discount/hemat clauses before extracting the primary transaction amount
+  const sanitizedForAmount = cleanText
+    .replace(
+      /\b(?:hemat|diskon|cashback|potongan|voucher|reward|koin)\s*(?:rp\.?|idr)?\s*[\d.,]+/gi,
+      "",
+    )
+    .replace(
+      /\b(?:saldo\s*(?:akhir|tersedia|kamu|anda)|sisa\s*saldo)\s*[:=]?\s*(?:rp\.?|idr)?\s*[\d.,]+/gi,
+      "",
+    );
+
   // 2. Extract amount (e.g. "Rp 10.000", "Rp10000", "sebesar 10.000", "sebesar Rp 10.000", "senilai 50.000")
   const amountRegex = /(?:sebesar\s+rp\.?|senilai\s+rp\.?|rp\.?|idr|sebesar|senilai)\s*([\d.,]+)/i;
-  const amountMatch = clean.match(amountRegex);
+  const amountMatch =
+    sanitizedForAmount.match(amountRegex) ||
+    cleanSubtitle.match(amountRegex) ||
+    cleanTitle.match(amountRegex);
 
   let amount = 0;
   if (amountMatch && amountMatch[1]) {
-    const rawNum = amountMatch[1].trim();
-    // Normalize Indonesian numbers: 10.000 or 10.000,00
+    const rawNum = amountMatch[1].trim().replace(/[.,]+$/, "");
     let normalized = rawNum;
     if (normalized.includes(".") && normalized.includes(",")) {
       normalized = normalized.replace(/\./g, "").replace(",", ".");
     } else if (normalized.includes(".")) {
       const parts = normalized.split(".");
-      if (parts[parts.length - 1].length === 3) {
+      if (parts[parts.length - 1].length === 3 || parts.length > 2) {
         normalized = normalized.replace(/\./g, "");
       }
     } else if (normalized.includes(",")) {
       const parts = normalized.split(",");
-      if (parts[parts.length - 1].length === 3) {
+      if (parts[parts.length - 1].length === 3 || parts.length > 2) {
         normalized = normalized.replace(/,/g, "");
       } else {
         normalized = normalized.replace(",", ".");
@@ -117,9 +220,9 @@ export function parseBankNotification(
     }
   }
 
-  // Fallback: look for standalone numbers (supporting 1.000, 5.000, 10.000, 100.000, etc.)
+  // Fallback: look for standalone formatted numbers (supporting 1.000, 5.000, 10.000, 100.000, etc.)
   if (amount <= 0) {
-    const fallbackNum = clean.match(/\b(\d{1,3}(?:\.\d{3})+)\b/);
+    const fallbackNum = sanitizedForAmount.match(/\b(\d{1,3}(?:\.\d{3})+)\b/);
     if (fallbackNum && fallbackNum[1]) {
       const num = parseFloat(fallbackNum[1].replace(/\./g, ""));
       if (!isNaN(num) && num >= 1000) amount = num;
@@ -128,11 +231,10 @@ export function parseBankNotification(
 
   if (amount <= 0) return null;
 
-  // 3. Detect Source Bank / E-Wallet
-  let sourceApp = "Bank / E-Wallet";
+  // 3. Detect Source Bank / E-Wallet (prioritizing explicit metadata.sourceApp and title)
+  let sourceApp = cleanSourceApp || "Bank / E-Wallet";
   let matchedSourceWallet: Wallet | undefined;
 
-  // Helper to match wallet against keywords and aliases
   const findWalletByKeyword = (kw: string) => {
     const kwLower = kw.toLowerCase();
     const aliases = BANK_ALIASES[kwLower] || [kwLower];
@@ -172,7 +274,13 @@ export function parseBankNotification(
   } else if (lower.includes("cimb") || lower.includes("octo")) {
     sourceApp = "CIMB Niaga";
     matchedSourceWallet = findWalletByKeyword("cimb");
-  } else if (lower.includes("shopeepay") || lower.includes("spay")) {
+  } else if (lower.includes("jenius") || lower.includes("btpn")) {
+    sourceApp = "Jenius";
+    matchedSourceWallet = findWalletByKeyword("jenius");
+  } else if (lower.includes("bsi")) {
+    sourceApp = "BSI";
+    matchedSourceWallet = findWalletByKeyword("bsi");
+  } else if (lower.includes("shopeepay") || lower.includes("spay") || lower.includes("shopee")) {
     sourceApp = "ShopeePay";
     matchedSourceWallet = findWalletByKeyword("shopeepay");
   } else if (lower.includes("gopay") || lower.includes("gojek")) {
@@ -184,8 +292,16 @@ export function parseBankNotification(
   } else if (lower.includes("dana")) {
     sourceApp = "DANA";
     matchedSourceWallet = findWalletByKeyword("dana");
+  } else if (lower.includes("linkaja")) {
+    sourceApp = "LinkAja";
+    matchedSourceWallet = findWalletByKeyword("linkaja");
   } else if (lower.includes("qris")) {
-    sourceApp = "QRIS";
+    sourceApp = cleanSourceApp || "QRIS";
+  }
+
+  // If explicit sourceApp was provided in metadata and still no wallet matched, try direct matching
+  if (!matchedSourceWallet && cleanSourceApp && wallets.length > 0) {
+    matchedSourceWallet = findWalletByKeyword(cleanSourceApp);
   }
 
   // Fallback to primary wallet if not resolved
@@ -206,10 +322,7 @@ export function parseBankNotification(
   let destinationCandidate = "";
 
   if (isTransferOrTopup) {
-    // Check patterns like:
-    // "ke ShopeePay ...", "ke BCA ...", "ke rek BCA ...", "ke rek ...", "ke [Target]"
-    // "Top Up ShopeePay ...", "Top up GoPay ..."
-    const keMatch = clean.match(
+    const keMatch = cleanText.match(
       /(?:ke\s+(?:bank\s+|rek(?:ening)?\s+)?|tujuan\s+|top\s*up\s+|isi\s+saldo\s+)([A-Za-z0-9\s&@_.-]+?)(?:\s+(?:berhasil|sukses|sebesar|senilai|rp|\d{3,}|\(|\.|\n|$))/i,
     );
     if (keMatch && keMatch[1]) {
@@ -218,7 +331,6 @@ export function parseBankNotification(
 
     if (destinationCandidate && wallets.length > 0) {
       const destLower = destinationCandidate.toLowerCase();
-      // Match candidate against user wallets (excluding source wallet)
       for (const w of wallets) {
         if (matchedSourceWallet && w.id === matchedSourceWallet.id) continue;
         const wLower = w.name.toLowerCase();
@@ -242,44 +354,38 @@ export function parseBankNotification(
     lower.includes("uang masuk") ||
     lower.includes("diterima dari") ||
     lower.includes("kredit") ||
-    lower.includes("kamu menerima");
+    lower.includes("kamu menerima") ||
+    lower.includes("berhasil diterima");
 
   let type: TransactionType = "expense";
   if (isIncome) {
     type = "income";
   } else if (isTransferOrTopup && matchedDestinationWallet) {
-    // Internal transfer between user's own wallets (e.g. SeaBank to ShopeePay)
     type = "transfer";
   } else {
-    // External transfer to a person or payment to merchant
     type = "expense";
   }
 
   // 6. Extract Merchant / Note
   let merchantOrNote = "";
   if (type === "transfer" && matchedDestinationWallet) {
-    merchantOrNote = ""; // Clean note for transfers
+    merchantOrNote = "";
   } else {
-    // Check known merchants first!
     for (const km of KNOWN_MERCHANT_PATTERNS) {
-      if (km.match(clean)) {
+      if (km.match(combinedRaw)) {
         merchantOrNote = km.name;
         break;
       }
     }
 
     if (!merchantOrNote) {
-      const targetMatch = clean.match(
-        /(?:ke|di|pada)\s+([A-Za-z0-9\s&'.-]+?)(?:\s+(?:berhasil|sukses|sebesar|senilai|rp|tanggal|\.|\n|$))/i,
+      const targetMatch = cleanText.match(
+        /(?:ke|di|pada|untuk|merchant)\s+([A-Za-z0-9\s&'.-]+?)(?:\s+(?:berhasil|sukses|sebesar|senilai|rp|tanggal|via|pakai|dengan|\.|\n|$))/i,
       );
       if (targetMatch && targetMatch[1]) {
         let extracted = targetMatch[1].trim();
-        // Strip trailing app/wallet clauses e.g. "via GoPay", "pake GoPay", "di Livin", "dari Kantong Utama"
         extracted = extracted
           .replace(/\s+(?:via|pake|pakai|lewat|dari|di)\s+[A-Za-z0-9\s'.-]+$/i, "")
-          .trim();
-        // Strip leading recipient tokens e.g. "rek 1234567890 an ", "an ", "a/n "
-        extracted = extracted
           .replace(/^(?:rek(?:ening)?\s+)?(?:\d+\s+)?(?:an\s+|a\/n\s+)/i, "")
           .trim();
         if (extracted.length >= 2) {
@@ -289,34 +395,77 @@ export function parseBankNotification(
     }
 
     if (!merchantOrNote || merchantOrNote.length < 2) {
-      let remaining = clean
+      let remaining = cleanText
         .replace(/(?:sebesar\s+rp\.?|senilai\s+rp\.?|rp\.?|idr)\s*[\d.,]+/gi, "")
         .replace(
           /transfer|berhasil|sukses|pembayaran|sebesar|senilai|transaksi|debit|kredit|rekening|kamu telah bayar|kamu berhasil bayar|kamu berhasil/gi,
           "",
         )
-        .replace(/[0-9]{6,}/g, "") // remove account numbers
+        .replace(/[0-9]{6,}/g, "")
         .trim();
       merchantOrNote =
-        remaining.slice(0, 35) ||
+        remaining.slice(0, 40) ||
+        cleanSubtitle ||
         (type === "income" ? "Dana Masuk" : `${sourceApp} Payment`);
     }
   }
 
-  // 7. Suggest Category using NLP parser
-  const nlpResult = parseNaturalTransaction(merchantOrNote || clean, categories, wallets);
+  // 7. Suggest Category using Merchant Memory -> Semantic Classifier -> NLP Parser
+  let suggestedCategoryId: string | undefined;
+  let suggestedCategoryName: string | undefined;
+
+  if (type !== "transfer" && categories.length > 0) {
+    const mem = getMerchantMemory(merchantOrNote || cleanText);
+    if (mem) {
+      const foundCat = categories.find((c) => c.id === mem.categoryId);
+      if (foundCat) {
+        suggestedCategoryId = foundCat.id;
+        suggestedCategoryName = foundCat.name;
+      }
+    }
+
+    if (!suggestedCategoryId) {
+      const sem = classifySemanticCategory(
+        `${merchantOrNote} ${cleanText}`,
+        categories,
+        type === "income" ? "income" : "expense",
+      );
+      if (sem.category) {
+        suggestedCategoryId = sem.category.id;
+        suggestedCategoryName = sem.category.name;
+      }
+    }
+
+    if (!suggestedCategoryId) {
+      const nlpResult = parseNaturalTransaction(merchantOrNote || cleanText, categories, wallets);
+      if (nlpResult.categoryId) {
+        suggestedCategoryId = nlpResult.categoryId;
+        suggestedCategoryName = nlpResult.categoryName || undefined;
+      }
+    }
+  }
+
+  // 8. Parse receivedAt timestamp if provided
+  let occurredAt: Date | undefined;
+  if (metadata?.receivedAt) {
+    const d = new Date(metadata.receivedAt);
+    if (!isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2100) {
+      occurredAt = d;
+    }
+  }
 
   return {
-    rawText: clean,
+    rawText: combinedRaw,
     sourceApp,
     amount,
     merchantOrNote,
     type,
+    occurredAt,
     suggestedWalletId: matchedSourceWallet?.id || undefined,
     suggestedWalletName: matchedSourceWallet?.name || undefined,
     suggestedToWalletId: matchedDestinationWallet?.id || undefined,
     suggestedToWalletName: matchedDestinationWallet?.name || undefined,
-    suggestedCategoryId: type === "transfer" ? undefined : nlpResult.categoryId || undefined,
-    suggestedCategoryName: type === "transfer" ? undefined : nlpResult.categoryName || undefined,
+    suggestedCategoryId,
+    suggestedCategoryName,
   };
 }

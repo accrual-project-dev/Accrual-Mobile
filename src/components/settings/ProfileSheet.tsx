@@ -272,7 +272,7 @@ export function ProfileSheet({
                       </p>
                       <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
                         {isIndonesian
-                          ? "Kosongkan transaksi pada ruang aktif"
+                          ? "Kosongkan transaksi pada space aktif"
                           : "Wipe transactions in active space"}
                       </p>
                     </div>

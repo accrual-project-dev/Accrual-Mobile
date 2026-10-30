@@ -204,7 +204,7 @@ export function TopIdentityCapsule({
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span>
-                {isIndonesian ? "Ruang Aktif: " : "Active Space: "}
+                {isIndonesian ? "Space Aktif: " : "Active Space: "}
                 <strong className="text-[var(--text-primary)]">
                   {activeSpace.name}
                 </strong>

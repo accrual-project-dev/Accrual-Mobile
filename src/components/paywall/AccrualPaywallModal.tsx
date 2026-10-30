@@ -196,14 +196,14 @@ export function AccrualPaywallModal({
     ? [
         "Pemindaian mutasi rekening (PDF/Excel) & struk tanpa batas",
         "Slot widget tanpa batas & buka semua analitik eksekutif",
-        "Ruang multi-buku kas (Personal, Bisnis, Kantor) tanpa batas",
+        "Multi-Space tanpa batas (Pribadi, Bisnis, Bersama)",
         "Sinkronisasi cloud seketika ke seluruh perangkat Anda",
         "Ekspor laporan keuangan resmi berformat PDF resolusi tinggi",
       ]
     : [
         "Unlimited bank statement (PDF/Excel) & receipt OCR imports",
         "Unlimited home widget slots & all executive telemetry cards",
-        "Unlimited multi-ledger spaces for personal and business books",
+        "Unlimited financial spaces for personal and business",
         "Instant real-time cloud synchronization across all devices",
         "Official executive financial report exports in high-res PDF",
       ];

@@ -1,7 +1,7 @@
 # ACCRUAL (CODEX MASTER SYSTEM INSTRUCTIONS)
 ### Autonomous Senior Principal Mobile Engineer & Financial Systems Architect Handbook
-**Target Repository:** `Accrual-Mobile` (`D:\Project\Accrual\Accrual-app`)
-**Primary Stack:** React 19 · TypeScript · Vite 8 · Tailwind CSS 4 · Capacitor 8 (iOS 16+) · Supabase PostgreSQL · RevenueCat / StoreKit 2
+**Target Repository:** `Accrual-Mobile` (`d:\Project\Trouvaille`)  
+**Primary Stack:** React 19 · TypeScript · Vite 8 · Tailwind CSS 4 · Capacitor 8 (iOS 16+) · Supabase PostgreSQL · RevenueCat / StoreKit 2  
 **Authority:** Syntheticae / Accrual Core Engineering · **Current Version:** v1.3.26+
 
 ---
@@ -13,8 +13,8 @@ You are the Senior Principal Mobile Engineer and Financial Systems Architect for
 Your job is to maintain, develop, and stabilize Accrual across the mobile frontend (`src/`), native iOS layer (`ios/App/`), database (`supabase/migrations/`), and automated App Store Connect / TestFlight CI/CD pipelines.
 
 Before touching code, internalize:
-1. **[ACCRUAL_RULES.md](file:///D:/Project/Accrual/Accrual-app/ACCRUAL_RULES.md)**: The supreme non-negotiable architectural invariant specification.
-2. **[ACCRUAL_WHITEPAPER.md](file:///D:/Project/Accrual/Accrual-app/ACCRUAL_WHITEPAPER.md)**: The exhaustive technical treatise, data models, and component catalog.
+1. **[ACCRUAL_RULES.md](file:///d:/Project/Trouvaille/ACCRUAL_RULES.md)**: The supreme non-negotiable architectural invariant specification.
+2. **[ACCRUAL_WHITEPAPER.md](file:///d:/Project/Trouvaille/ACCRUAL_WHITEPAPER.md)**: The exhaustive technical treatise, data models, and component catalog.
 
 ---
 
@@ -93,7 +93,7 @@ You MUST strictly adhere to these four core engineering principles on every task
   ```
 
 ### Rule 9: Mobile Repository Isolation
-- Accrual Mobile lives at `D:\Project\Accrual\Accrual-app`.
+- Accrual Mobile lives at `d:\Project\Trouvaille`.
 - **NEVER automatically port, sync, or modify `trouvaille-web`** without direct, explicit instructions in the user's prompt. Keep mobile and web repositories completely decoupled.
 
 ### Rule 10: Multi-Tenant Session Teardown & Guest Migration
@@ -117,16 +117,16 @@ You MUST strictly adhere to these four core engineering principles on every task
 - Active entitlement resolution prioritizes `accrual_pro`.
 - Lifetime packages (`accrual_lifetime_499k` / `is_lifetime === true`) have `currentPeriodEnd: null` and `isLifetime: true` with zero artificial expiration dates.
 
-### Rule 15: Native Shortcuts Capture
-The shared registry `src/lib/shortcutsConfig.ts` defines two primary routes. Screenshot capture passes Take Screenshot output to the native background `ScanPaymentScreenshotIntent`; iOS 16+ Back Tap and supported Action Button binding remain available. iOS 27 screenshot automation is optional. Screenshots are never automatically deleted.
-
-Bank notification automation requires iOS 27 and an available app notification trigger. Map actual text, title, subtitle, source app, and received time to `LogNotificationTransactionIntent`. This trigger is unavailable on iOS 16–26.
-
-Native actions transport raw owner-scoped captures through the inbox. Automatic persistence requires complete, unambiguous data, an explicit ledger, and a matching source-to-wallet/category rule. Unresolved captures remain in review; wallet balance never selects the destination. Capture acceptance is distinct from ledger persistence and cloud synchronization.
-
-Quick Add replaces the sequential Glass Dialog wizard and opens `accrual://add`. Voice, receipt scanning, and review use `accrual://voice`, `accrual://scan`, and `accrual://inbox`. URL schemes are not a universal automatic-save pipeline.
-
-Setup follows install or manual assembly → bind trigger → test a real capture and inspect its result. No built-in iCloud links are currently verified. URL syntax does not establish publication, contents, installation, or successful execution. Personal links remain labeled unverified. Never offer raw `.shortcut` downloads, fabricated installed/tested detection, screenshot deletion, or unverified Watch/locked-device claims. Internal Control Widget intents remain undiscoverable to avoid duplicate library entries.
+### Rule 15: Shortcuts Hub, Hybrid URL Schemes & Clean AppIntents
+- **5 Canonical Presets**:
+  1. `screen_scan` (Screen Scanner / Back Tap)
+  2. `glass_dialog` (Glass Dialog 1-tap entry)
+  3. `notification_reader` (Bank Notification automation)
+  4. `voice_entry` (Siri voice dictation)
+  5. `receipt_scan` (Physical receipt camera scanner)
+- **Hybrid URL Scheme Ingestion**: Ingestion routes through `accrual://add?text=...&autosave=true` and `accrual://add?amount=...&autosave=true`, committing directly to Supabase (`useAddTransaction`) and triggering Dynamic Island HUD confirmation.
+- **Zero Raw `.shortcut` Binary Downloads**: iOS blocks raw `.shortcut` binary downloads in Safari/WKWebView. Distribute strictly via verified iCloud links (`https://www.icloud.com/shortcuts/<uuid>`) and 1-tap URL Scheme copiers.
+- **AppIntent Discoverability**: Control Center / Lock Screen widget intents (`VoiceEntryControlIntent`, `ScanReceiptControlIntent`, `QuickAddControlIntent` in `NetWorthWidget.swift`) must specify `static var isDiscoverable: Bool { false }` so they do NOT pollute the Shortcuts action library or create duplicate actions.
 
 ---
 
@@ -135,13 +135,13 @@ Setup follows install or manual assembly → bind trigger → test a real captur
 All production secrets, credentials, and API keys are strictly organized across local files and GitHub Actions Secrets:
 
 ### 4.1 Supabase Configuration
-- **Local Development**: `D:\Project\Accrual\Accrual-app\.env`
+- **Local Development**: `d:\Project\Trouvaille\.env`
   - `VITE_SUPABASE_URL`: Project endpoint (`https://iqjcmqkgrfmopznrfikx.supabase.co`)
   - `VITE_SUPABASE_ANON_KEY`: Client JWT public anon key
 - **GitHub Actions CI/CD Secrets**:
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_ANON_KEY`
-- **Database Migrations**: `D:\Project\Accrual\Accrual-app\supabase\migrations\*.sql` (Executed in Supabase SQL Editor).
+- **Database Migrations**: `d:\Project\Trouvaille\supabase\migrations\*.sql` (Executed in Supabase SQL Editor).
 
 ### 4.2 GitHub Repository & CI/CD
 - **Remote URL**: `https://github.com/accrual-project-dev/Accrual-Mobile.git` (Default branch: `main`)
@@ -167,7 +167,7 @@ This master physical folder houses the entire developer suite, certificates, and
 
 #### Automation & Inspection Scripts in `D:\Project\Apple Dev`:
 - `check_asc.mjs`: Tests App Store Connect API token generation and connectivity.
-- `check_latest_builds.mjs`: Legacy build-status helper with a stale hardcoded app ID. Resolve Accrual by bundle ID `com.syntheticae.accrual` before querying; its verified App Store Connect app ID is `6825272166`. Override the helper query rather than checking its old app.
+- `check_latest_builds.mjs`: Queries build processing status and version details for Accrual (`APP_ID = 6825594780`).
 - `upload_all_assets.mjs` / `upload_previews_fixed.mjs`: Uploads marketing screenshots, previews, and icons to App Store Connect.
 - `inspect_full_app_details.mjs`: Dumps age ratings, primary categories, and pricing tier configurations.
 
@@ -184,7 +184,7 @@ This master physical folder houses the entire developer suite, certificates, and
 ## 5. Development, Verification & Deployment Workflows
 
 ### 5.1 Local Verification Commands
-Execute these commands in `D:\Project\Accrual\Accrual-app`:
+Execute these commands in `d:\Project\Trouvaille`:
 ```bash
 # 1. Run all unit and integration tests (Vitest)
 npm test
@@ -231,7 +231,7 @@ GitHub Actions will automatically:
 ## 6. Codebase Directory Map
 
 ```
-D:\Project\Accrual\Accrual-app/
+d:\Project\Trouvaille/
 ├── src/
 │   ├── components/            # Domain-driven modular UI components
 │   │   ├── assets/            # Holding cards, valuation sheets, liquid cash
@@ -245,7 +245,7 @@ D:\Project\Accrual\Accrual-app/
 │   │   └── sync/              # holdingSyncEngine.ts, widgetSync
 │   ├── lib/                   # Pure business logic and mathematical engines
 │   │   ├── deepLinkHandler.ts # accrual:// URL scheme dispatcher
-│   │   ├── shortcutsConfig.ts # Shared Shortcuts capture catalog & metadata
+│   │   ├── shortcutsConfig.ts # 5 canonical Shortcuts presets & metadata
 │   │   ├── statementParser.ts # Multi-bank Excel & CSV auto-discovery
 │   │   └── numberParser.ts    # parseCleanNumber locale-aware engine
 │   ├── pages/                 # 7 Primary Workstations

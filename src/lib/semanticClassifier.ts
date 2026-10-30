@@ -342,13 +342,21 @@ function cleanToken(token: string): string {
  * 2. Matches input tokens against the canonical Concept Taxonomy.
  * 3. Finds user categories matching the identified concept.
  */
+import type { TransactionType } from "./types";
+
 export function classifySemanticCategory(
   inputText: string,
   categories: Category[],
+  typeHint?: TransactionType,
 ): SemanticClassificationResult {
   if (!inputText || !categories || categories.length === 0) {
     return { category: null, conceptId: null, confidence: 0, matchedKeyword: null };
   }
+
+  const pool = typeHint && typeHint !== "transfer"
+    ? categories.filter((c) => c.type === typeHint)
+    : categories;
+  const activeCategories = pool.length > 0 ? pool : categories;
 
   const rawLower = inputText.toLowerCase();
   const tokens = rawLower
@@ -357,7 +365,7 @@ export function classifySemanticCategory(
     .filter((t) => t.length >= 2);
 
   // 1. Direct Category Name Match (High Priority)
-  for (const cat of categories) {
+  for (const cat of activeCategories) {
     const catName = cat.name.toLowerCase().trim();
     if (!catName) continue;
     // Exact or word boundary match
@@ -439,7 +447,7 @@ export function classifySemanticCategory(
   let bestMatchedCat: Category | null = null;
   let highestCatAffinity = 0;
 
-  for (const cat of categories) {
+  for (const cat of activeCategories) {
     const catLower = cat.name.toLowerCase();
     let affinity = 0;
 

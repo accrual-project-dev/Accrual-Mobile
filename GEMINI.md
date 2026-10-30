@@ -1,7 +1,7 @@
 # Karpathy Behavioral Guidelines (MANDATORY)
 
 > [!IMPORTANT]
-> **MANDATORY PRE-EXECUTION INVARIANT**
+> **MANDATORY PRE-EXECUTION INVARIANT**  
 > Before executing any task, user request, or touching any code, ALWAYS read, internalize, and strictly follow these 4 Karpathy behavioral principles.
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
@@ -207,7 +207,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 8. Master Rulebook Linkage (STRICT)
 
 > [!IMPORTANT]
-> **CANONICAL REFERENCE: `ACCRUAL_RULES.md` & `ACCRUAL_WHITEPAPER.md`**
+> **CANONICAL REFERENCE: `ACCRUAL_RULES.md` & `ACCRUAL_WHITEPAPER.md`**  
 > For the exhaustive, unified specification governing UI aesthetics, UX ergonomics, Statement & Ingestion parsing, Full ISO timestamps, Session Teardown, and Financial Report Exports, always adhere strictly to [ACCRUAL_RULES.md](file:///d:/Project/Trouvaille/ACCRUAL_RULES.md) and [ACCRUAL_WHITEPAPER.md](file:///d:/Project/Trouvaille/ACCRUAL_WHITEPAPER.md).
 
 ### 8.1 Ingestion & Statement Parser Invariants:

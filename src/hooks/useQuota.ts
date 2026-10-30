@@ -206,11 +206,11 @@ export function useQuota() {
         openPaywall({
           feature: "multi_ledger",
           title: isIndonesian
-            ? "Batas Ruang Buku Kas Tercapai"
-            : "Ledger Space Limit Reached",
+            ? "Batas Space Tercapai"
+            : "Space Limit Reached",
           description: isIndonesian
-            ? `Akun standar dapat mengelola hingga ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} ruang buku kas (Personal & 1 Ruang Tambahan). Beralih ke Accrual Pro untuk membuat ruang multi-buku tanpa batas.`
-            : `Standard accounts can manage up to ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} ledger spaces (Personal & 1 Additional Space). Upgrade to Accrual Pro for unlimited spaces.`,
+            ? `Akun standar dapat mengelola hingga ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} space finansial (Space Pribadi & 1 Space Tambahan). Beralih ke Accrual Pro untuk membuat space tanpa batas.`
+            : `Standard accounts can manage up to ${MONETIZATION_LIMITS.FREE_MAX_LEDGERS} financial spaces (Personal Space & 1 Additional Space). Upgrade to Accrual Pro for unlimited spaces.`,
         });
         return false;
       }

@@ -2074,7 +2074,7 @@ export function TransactionSheet({
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 <span>
-                  {isIndonesian ? "Ruang:" : "Space:"}{" "}
+                  {isIndonesian ? "Space:" : "Space:"}{" "}
                   <strong className="text-[var(--text-primary)]">
                     {activeSpace.name}
                   </strong>

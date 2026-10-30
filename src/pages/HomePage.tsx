@@ -104,10 +104,17 @@ export function HomePage({
   const navigate = useNavigate();
   const { t, isIndonesian } = useLanguage();
   const {
+    activeSpace,
+    activeSpaceId,
+    defaultSpaceId,
+    setActiveSpaceId,
+    filterTransactionsBySpace,
+  } = useSpace();
+  const {
     items: allDraftItems,
     count: draftCount,
     clearAll: clearAllDrafts,
-  } = useDraftTransactions();
+  } = useDraftTransactions(activeSpaceId);
   useCurrency();
 
   const [todayDate, setTodayDate] = useState(() => startOfDay(new Date()));
@@ -205,13 +212,7 @@ export function HomePage({
 
   const [payingBill, setPayingBill] = useState<any | null>(null);
 
-  const {
-    activeSpace,
-    activeSpaceId,
-    defaultSpaceId,
-    setActiveSpaceId,
-    filterTransactionsBySpace,
-  } = useSpace();
+
 
   const allTxs = useMemo(() => {
     return filterTransactionsBySpace(rawAllTxs, activeSpaceId);
@@ -909,8 +910,8 @@ export function HomePage({
                 </p>
                 <p className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">
                   {isIndonesian
-                    ? "Tersimpan di draft · Saldo belum terpotong"
-                    : "Saved in drafts · Balance unchanged"}
+                    ? `Draft di ${activeSpace?.name || "Space Aktif"} · Saldo belum terpotong`
+                    : `Draft in ${activeSpace?.name || "Active Space"} · Balance unchanged`}
                 </p>
               </div>
             </div>

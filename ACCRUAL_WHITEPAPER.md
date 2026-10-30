@@ -1,7 +1,7 @@
 # Accrual: Private Financial Intelligence & Luxury Architectural System
 ### Comprehensive Technical Paper & System Specification
-**Version:** 5.0.0 (Release v1.3.26) · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS (App Store Connect / TestFlight) & Web PWA
-**Author:** Syntheticae / Accrual Core Engineering
+**Version:** 5.0.0 (Release v1.3.26) · **Classification:** Executive Technical Treatise & Architectural Blueprint · **Platform:** Native iOS (App Store Connect / TestFlight) & Web PWA  
+**Author:** Syntheticae / Accrual Core Engineering  
 **Revision Date:** Late October 2026  
 
 ---
@@ -12,7 +12,7 @@ Modern personal financial software has largely devolved into fragmented, visuall
 
 **Accrual** (formerly Project Trouvaille) was engineered as an uncompromising antidote: a local-first, zero-knowledge encrypted, private wealth operating system wrapped in a hyper-refined **Monochrome Apple Luxury Glassmorphism** interface. Built with **React 19**, **Vite 8**, **Tailwind CSS 4**, and native **Capacitor 8 iOS** runtime deployed officially via **Apple App Store Connect & TestFlight**, Accrual harmonizes:
 
-1. **Multi-Modal Cognitive & Physical Ingestion Ecosystem**: Real-time natural voice processing capable of decomposing compound spoken phrases into multiple discrete transactions, Indonesian colloquial slang decoding, phonetic auto-correction, on-device receipt OCR with Tesseract.js WASM, automated multi-bank statement parsers (BCA, Mandiri, Jenius, BNI), push notification transaction interception, contactless e-money NFC transit card balance readers (Flazz, e-money, TapCash, Brizzi, JakCard), and native **Apple Shortcuts & iPhone Back Tap Integrations** featuring screenshot and iOS 27 bank notification capture with owner-scoped inbox transport and explicit mapping before automatic persistence.
+1. **Multi-Modal Cognitive & Physical Ingestion Ecosystem**: Real-time natural voice processing capable of decomposing compound spoken phrases into multiple discrete transactions, Indonesian colloquial slang decoding, phonetic auto-correction, on-device receipt OCR with Tesseract.js WASM, automated multi-bank statement parsers (BCA, Mandiri, Jenius, BNI), push notification transaction interception, contactless e-money NFC transit card balance readers (Flazz, e-money, TapCash, Brizzi, JakCard), and native **Apple Shortcuts & iPhone Back Tap Integrations** featuring 5 canonical presets (`screen_scan`, `glass_dialog`, `notification_reader`, `voice_entry`, `receipt_scan`) powered by a verified hybrid URL Scheme (`accrual://`) pipeline with instant Supabase persistence and Dynamic Island HUD confirmation.
 2. **Silicon Valley Wealth Bento & Asset Valuation Engine**: Comprehensive multi-asset tracking covering crypto, US equities, Indonesian stocks (IDX), physical gold, mutual funds, and fixed assets with straight-line depreciation modeling, real-time live price feeds, automated USDT balance reconciliation, and staking yield tracking.
 3. **Actuarial Simulation & Deep Telemetry Suite**: 10,000-iteration stochastic Monte Carlo wealth projections, FIRE retirement modeling (LeanFIRE, FatFIRE, CoastFIRE with 4% SWR), Debt Snowball and Avalanche payoff optimizers, 6-pillar financial health diagnostic scoring, hierarchical Category Sunburst charts, and interactive Recharts Sankey cashflow diagrams.
 4. **Personal Financial Modeling & Zero-Based Budgeting**: Unified single-card Category Budget Deck, digital envelope allocations, Cashflow Pulse velocity, Expense Volatility Index, Liquidity Horizon metrics, and interactive What-If scenario forecasting.
@@ -129,7 +129,7 @@ Floating capsules, top flyout banners, and status controls must never employ har
 - **Dynamic Coordinate Formula**:
   $$\text{Top Placement} = \max(\text{env}(\text{safe-area-inset-top}, 0\text{px}) + 18\text{px}, 28\text{px})$$
 - **Centered Horizontal Constrainment**: Combined with `left-4 right-4 max-w-md mx-auto` to ensure uniform floating symmetry across all device aspect ratios (from compact iPhones to iPads and desktop browser viewports).
-- Applied across all floating system surfaces including [`ClipboardTransactionBanner`](file:///D:/Project/Accrual/Accrual-app/src/components/common/ClipboardTransactionBanner.tsx), [`ProfileMenuModal`](file:///D:/Project/Accrual/Accrual-app/src/components/home/ProfileMenuModal.tsx), and [`PullToRefreshIndicator`](file:///D:/Project/Accrual/Accrual-app/src/components/ui/PullToRefreshIndicator.tsx).
+- Applied across all floating system surfaces including [`ClipboardTransactionBanner`](file:///d:/Project/Trouvaille/src/components/common/ClipboardTransactionBanner.tsx), [`ProfileMenuModal`](file:///d:/Project/Trouvaille/src/components/home/ProfileMenuModal.tsx), and [`PullToRefreshIndicator`](file:///d:/Project/Trouvaille/src/components/ui/PullToRefreshIndicator.tsx).
 
 ### 2.5 Bottom Sheet & Sliding Panel Architecture Rule (Architectural Rule 5)
 Bottom sheets and sliding action panels in Trouvaille follow a unified single-scroll container paradigm:
@@ -221,10 +221,10 @@ Customization dialogs and settings drawers implement a strict typographic and ae
 
 ### 3.2 Performance, Memoization & Anti-Pattern Remediation
 During the comprehensive architectural audit and remediation, several foundational performance enhancements were integrated across the runtime:
-- **Module-Scoped Formatter Caches (`FORMATTER_CACHE` & `DATE_FORMATTER_CACHE`)**: High-overhead initializations of `Intl.NumberFormat` and `Intl.DateTimeFormat` are cached via module-level `Map` structures in [`src/lib/currency.ts`](file:///D:/Project/Accrual/Accrual-app/src/lib/currency.ts) and [`src/lib/utils.ts`](file:///D:/Project/Accrual/Accrual-app/src/lib/utils.ts). This eliminates thousands of redundant object instantiations during rapid list rendering and virtualized chart updates.
-- **Elimination of Cascading Effect Loops (Pure Derived State)**: Redundant `useEffect` synchronization hooks that mirror props or auth contexts into local state (such as user avatar and display name in [`HomePage.tsx`](file:///D:/Project/Accrual/Accrual-app/src/pages/HomePage.tsx)) were refactored into pure derived state, eliminating double-render cycles on route entry.
-- **React 19 `useDeferredValue` for Non-Blocking Filtering**: High-frequency text search on [`TransactionsPage.tsx`](file:///D:/Project/Accrual/Accrual-app/src/pages/TransactionsPage.tsx) is decoupled from the main input thread using `useDeferredValue(search)`, guaranteeing responsive 60fps typing while concurrently filtering thousands of records.
-- **Immutable Math Invariants**: Replaced in-place array mutations in statistical engines (such as the Largest Remainder percentage allocator in [`BalanceCard.tsx`](file:///D:/Project/Accrual/Accrual-app/src/components/ui/BalanceCard.tsx)) with strictly pure functions to prevent stale reference regressions.
+- **Module-Scoped Formatter Caches (`FORMATTER_CACHE` & `DATE_FORMATTER_CACHE`)**: High-overhead initializations of `Intl.NumberFormat` and `Intl.DateTimeFormat` are cached via module-level `Map` structures in [`src/lib/currency.ts`](file:///d:/Project/Trouvaille/src/lib/currency.ts) and [`src/lib/utils.ts`](file:///d:/Project/Trouvaille/src/lib/utils.ts). This eliminates thousands of redundant object instantiations during rapid list rendering and virtualized chart updates.
+- **Elimination of Cascading Effect Loops (Pure Derived State)**: Redundant `useEffect` synchronization hooks that mirror props or auth contexts into local state (such as user avatar and display name in [`HomePage.tsx`](file:///d:/Project/Trouvaille/src/pages/HomePage.tsx)) were refactored into pure derived state, eliminating double-render cycles on route entry.
+- **React 19 `useDeferredValue` for Non-Blocking Filtering**: High-frequency text search on [`TransactionsPage.tsx`](file:///d:/Project/Trouvaille/src/pages/TransactionsPage.tsx) is decoupled from the main input thread using `useDeferredValue(search)`, guaranteeing responsive 60fps typing while concurrently filtering thousands of records.
+- **Immutable Math Invariants**: Replaced in-place array mutations in statistical engines (such as the Largest Remainder percentage allocator in [`BalanceCard.tsx`](file:///d:/Project/Trouvaille/src/components/ui/BalanceCard.tsx)) with strictly pure functions to prevent stale reference regressions.
 
 ---
 
@@ -389,17 +389,31 @@ To eradicate manual logging friction, Trouvaille integrates a 6-pillar ingestion
 - Calculates itemized shares with proportional distribution of taxes, service charges, and discount vouchers.
 - Generates formatted WhatsApp settlement messages with bank payment details and QRIS deep links.
 
-### 5.7 Apple Shortcuts & Native Capture
+### 5.7 Apple Shortcuts, Siri Voice & iOS Ingestion Ecosystem (5 Canonical Presets)
+Accrual features a battle-tested, hardware-level iOS automation architecture that bridges Apple system services directly into the client ledger and Supabase database without launching the full web viewport:
 
-The shared registry `src/lib/shortcutsConfig.ts` defines two primary routes. Screenshot capture passes Take Screenshot output to the native background `ScanPaymentScreenshotIntent`; iOS 16+ Back Tap and supported Action Button binding remain available. iOS 27 screenshot automation is optional. Screenshots are never automatically deleted.
+1. **5 Canonical Shortcuts Presets (`src/lib/shortcutsConfig.ts`, `AppleShortcutsGuideModal.tsx`)**:
+   - **Preset 1: Pindai Layar / Screen Scanner (`screen_scan`)**: Triggered via iPhone Back Tap (*Ketuk Bagian Belakang Dua Kali*) or Action Button. Automatically captures screen, performs on-device OCR, and dispatches to `accrual://add?text=...&autosave=true` for instant ledger commit and Dynamic Island HUD confirmation.
+   - **Preset 2: Dialog Cepat / Glass Dialog (`glass_dialog`)**: Prompts sequential high-contrast native Apple glass dialogs for amount, category, wallet, and optional note, immediately dispatching to `accrual://add?amount=...&category=...&wallet=...&autosave=true`.
+   - **Preset 3: Otomasi Notifikasi Bank (`notification_reader`)**: Operates inside iOS Shortcuts Personal Automations (*Saat menerima notifikasi dari BCA, Mandiri, BRI, GoPay, DANA*). Filters promotional spam and passes raw notification text for auto-parsing and background ingestion.
+   - **Preset 4: Dikte Suara / Voice Entry (`voice_entry`)**: Natural speech entry via Siri (*"Hey Siri, Catat di Accrual"*) or lock screen controls, utilizing on-device audio transcription mapped to `accrual://voice`.
+   - **Preset 5: Pindai Struk Fisik / Receipt Scanner (`receipt_scan`)**: Direct 1-tap hardware camera activation mapped to `accrual://scan` for physical thermal receipt scanning with WASM OCR.
 
-Bank notification automation requires iOS 27 and an available app notification trigger. Map actual text, title, subtitle, source app, and received time to `LogNotificationTransactionIntent`. This trigger is unavailable on iOS 16–26.
+2. **Verified iCloud Distribution & Zero-Broken Binary Downloads**:
+   - iOS Safari and WKWebView reject raw binary `.shortcut` downloads. Accrual exclusively distributes shortcuts via verified official Apple iCloud links (`https://www.icloud.com/shortcuts/<uuid>`) coupled with 1-tap URL Scheme configuration copiers and visual flow guides.
 
-Native actions transport raw owner-scoped captures through the inbox. Automatic persistence requires complete, unambiguous data, an explicit ledger, and a matching source-to-wallet/category rule. Unresolved captures remain in review; wallet balance never selects the destination. Capture acceptance is distinct from ledger persistence and cloud synchronization.
+3. **Universal Deep Link Dispatcher (`src/lib/deepLinkHandler.ts`)**:
+   - Native URL Scheme: `accrual://`
+     - `accrual://add?text={raw_text}&autosave=true`
+     - `accrual://add?amount={number}&category={cat}&wallet={wallet}&note={note}&autosave=true`
+     - `accrual://voice`
+     - `accrual://scan`
+     - `accrual://inbox`
+   - Validates query payloads, executes optimistic balance deductions, persists directly to Supabase (`useAddTransaction`), and presents the high-contrast Dynamic Island HUD capsule.
 
-Quick Add replaces the sequential Glass Dialog wizard and opens `accrual://add`. Voice, receipt scanning, and review use `accrual://voice`, `accrual://scan`, and `accrual://inbox`. URL schemes are not a universal automatic-save pipeline.
-
-Setup follows install or manual assembly → bind trigger → test a real capture and inspect its result. No built-in iCloud links are currently verified. URL syntax does not establish publication, contents, installation, or successful execution. Personal links remain labeled unverified. Never offer raw `.shortcut` downloads, fabricated installed/tested detection, screenshot deletion, or unverified Watch/locked-device claims. Internal Control Widget intents remain undiscoverable to avoid duplicate library entries.
+4. **iOS 18 Control Center & Lock Screen Control Widgets**:
+   - Integrated with WidgetKit (`AccrualVoiceControl`, `AccrualScanControl`, `AccrualQuickAddControl`) utilizing `ControlWidgetButton`.
+   - All internal Control Widget intents define `static var isDiscoverable: Bool { false }` to guarantee zero pollution or duplicate entries in the user's iOS Shortcuts action library.
 
 ### 5.8 Smart Statement & Multi-Bank Ingestion Engine v2.0
 In Version 3.6.0, Trouvaille dramatically elevated its spreadsheet and bank statement intelligence (`src/lib/statementParser.ts`, `src/lib/excelParser.ts`, `src/lib/csvColumnDetector.ts`):
@@ -1060,7 +1074,7 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
      - `{wallets.length} Dompet / Wallets`
      - `{categories.length} Kategori / Categories`
      - `{bills.length} Tagihan / Bills`
-   - *Sliding Sheet Contents*: Screen capture and iOS 27 bank notification setup, direct Quick Add, voice and receipt actions, owner-scoped source mapping rules, and review inbox navigation.
+   - *Sliding Sheet Contents*: Kelola Buku Kas (`ManageLedgersSheet`), Kategori Pengeluaran & Pemasukan (`CategoryManagementSheets`), Akun & Dompet (`WalletManagementSheets`), Target Anggaran Bulanan (`BudgetTargetSheet`), Tagihan Rutin & Komitmen (`BillManagementSheets`), Target Finansial & FIRE (`GoalManagementSheets`), Valuasi Portofolio & Aset (`AssetValuationSheet`), and Impor Rekening Koran BCA / CSV (`StatementImportModal`).
 
 2. **Hub 2: Pintasan & Ekosistem iOS (`Automations & Shortcuts`)**:
    - *Scope*: Hardware-level Apple ecosystem integrations, chassis physical triggers, and rapid transaction entry presets.
@@ -1069,7 +1083,7 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
      - `Ketuk Belakang Aktif / Back Tap Ready`
      - `{shortcuts.length} Preset / Presets`
      - `1-Ketukan / 1-Tap Quick`
-   - *Sliding Sheet Contents*: Screen capture and iOS 27 bank notification setup, direct Quick Add, voice and receipt actions, owner-scoped source mapping rules, and review inbox navigation.
+   - *Sliding Sheet Contents*: Pintasan Ketuk Belakang Kaca & Dikte (`AppleShortcutsGuideModal` tab `back_tap`), Pintasan Tombol Aksi iPhone 15/16 Pro (`AppleShortcutsGuideModal` tab `action_button`), Preset Pintasan Cepat 1-Ketukan (`ShortcutManagementSheets`), and Otomatisasi Kartu Apple Pay (`AppleShortcutsGuideModal` tab `automation`).
 
 3. **Hub 3: Privasi, Keamanan & Vault (`Security & Data Vault`)**:
    - *Scope*: Zero-knowledge cryptographic storage, biometric hardware gating, screen masking, and cloud synchronization.
@@ -1078,7 +1092,7 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
      - `Face ID / PIN / Kunci Nonaktif`
      - `Sensor Aktif / Shield On`
      - `AES-256 Vault`
-   - *Sliding Sheet Contents*: Screen capture and iOS 27 bank notification setup, direct Quick Add, voice and receipt actions, owner-scoped source mapping rules, and review inbox navigation.
+   - *Sliding Sheet Contents*: Perisai Privasi / Sensor Saldo (`Privacy Shield` toggle), Kunci Aplikasi Biometrik Face ID / PIN (`SecurityLockContext` toggle with auto-lock timeout `0m / 1m / 5m` and `PinSetupModal`), Izin Kamera & Berkas Struk (`MediaPermissionsSheet`), Sinkronisasi Cloud (`flushPendingMutations` with live sync status badge), Tautkan Web Dashboard via QR (`WebDashboardLinkModal`), Vault Terenkripsi AES-256 (`EncryptedVaultModal`), Ekspor Laporan Keuangan & Pajak (`LuxuryReportExportSheet`), and Reset Data Pembukuan (`ResetTransactionsSheet`).
 
 4. **Hub 4: Preferensi & Tampilan (`Preferences & Experience`)**:
    - *Scope*: Aesthetic personalization, monetary denominations, localization, tactile haptic feedback, and notification pacing.
@@ -1087,7 +1101,7 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
      - `Obsidian / Alabaster`
      - Base Currency Code (`IDR / USD / EUR / SGD / JPY / GBP`)
      - `Bahasa Indonesia / English`
-   - *Sliding Sheet Contents*: Screen capture and iOS 27 bank notification setup, direct Quick Add, voice and receipt actions, owner-scoped source mapping rules, and review inbox navigation.
+   - *Sliding Sheet Contents*: Tampilan Terang Alabaster / Gelap Obsidian (`ThemeContext` toggle), Mata Uang Utama (`CurrencySwitcherSheet`), Bahasa Aplikasi (`LanguageSwitcherSheet`), Papan Tombol Angka Kustom (`ToggleSwitch` for tactile liquid numpad), Label Transaksi (#) (`ToggleSwitch` for multi-tag hashtags), Simpan Berkas Lampiran Struk (`ToggleSwitch`), Pengingat Streak Harian (`ToggleSwitch` with native time picker), Peringatan Tagihan Jatuh Tempo (`ToggleSwitch`), and Ulangi Wizard Kustomisasi (`handleRerunCustomization`).
 
 #### Native iOS Sliding Bottom Sheet Transition Paradigm:
 - **Zero Nested Scrollbars & Height Restrictions**: Conforms strictly to Architectural Rule 5. Child grids render with natural vertical flow or `flex-1` without low artificial height caps (`max-h-[55vh]`), expanding smoothly up to `92dvh`.
@@ -1112,10 +1126,10 @@ Auto-advances every 6 seconds with tactile pagination indicators; pauses automat
 | 6 | **Financial Architecture** | Target Finansial & FIRE | `GoalManagementSheets.tsx` | Milestone savings targets & emergency fund pacing | Tap to open sheet |
 | 7 | **Financial Architecture** | Valuasi Portofolio & Aset | `AssetValuationSheet.tsx` | Crypto, stocks, gold & fixed asset depreciation | Tap to open sheet |
 | 8 | **Financial Architecture** | Impor Rekening Koran | `StatementImportModal.tsx` | Automated BCA & generic CSV bank statement parsing | Tap to open modal |
-| 9 | **Automations & Shortcuts** | Pintasan Ketuk Belakang (Kaca & Dikte) | `AppleShortcutsGuideModal.tsx` | Capture payment screenshots through the native background action | Tap to view tutorial & copy |
+| 9 | **Automations & Shortcuts** | Pintasan Ketuk Belakang (Kaca & Dikte) | `AppleShortcutsGuideModal.tsx` | Double-tap iPhone back chassis to trigger glass dialog | Tap to view tutorial & copy |
 | 10 | **Automations & Shortcuts** | Pintasan Tombol Aksi | `AppleShortcutsGuideModal.tsx` | iPhone 15/16 Pro hardware button 1-press quick add | Tap to view tutorial & copy |
 | 11 | **Automations & Shortcuts** | Preset Pintasan Cepat | `ShortcutManagementSheets.tsx` | 1-tap routine expense templates (e.g. "Kopi 25k") | Tap to manage presets |
-| 12 | **Automations & Shortcuts** | Notifikasi Bank iOS 27 | `AppleShortcutsGuideModal.tsx` | iOS 27 notification trigger and native background capture | Tap to view automation setup |
+| 12 | **Automations & Shortcuts** | Otomatisasi Apple Pay | `AppleShortcutsGuideModal.tsx` | Contactless card tap automation & background prompt | Tap to view automation setup |
 | 13 | **Security & Data Vault** | Perisai Privasi (Sensor Saldo) | `PrivacyContext.tsx` | Obfuscates monetary figures across all cards & reports | Apple iOS Toggle Switch |
 | 14 | **Security & Data Vault** | Kunci Biometrik (Face ID / PIN) | `SecurityLockContext.tsx` | Enforces hardware Face ID or passcode on app launch | Toggle + Timeout pills |
 | 15 | **Security & Data Vault** | Ubah / Atur PIN Cadangan | `PinSetupModal.tsx` | 6-digit numeric fallback passcode with double entry | Tap to open PIN modal |
@@ -1411,7 +1425,7 @@ Duration    ~100 seconds
 ## 13. Repository Architecture & Codebase Map
 
 ```
-D:\Project\Accrual\Accrual-app\
+d:\Project\Trouvaille\
 ├── ios\                                  # Capacitor Native iOS Swift Project
 │   └── App\
 │       ├── App\                          # Native Swift AppDelegate, assets & entitlements

@@ -48,8 +48,8 @@ interface ManageLedgersSheetProps {
 const LEDGER_ICONS = [
   {
     name: "BookOpen",
-    label: "General Book",
-    labelId: "Buku Kas Umum",
+    label: "General Space",
+    labelId: "Space Umum",
     icon: BookOpen,
   },
   {

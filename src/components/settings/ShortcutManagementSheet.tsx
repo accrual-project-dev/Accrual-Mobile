@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Zap,
   Plus,
@@ -9,18 +9,24 @@ import {
   Check,
   X,
   Link2,
+  Play,
 } from "lucide-react";
 import { BottomSheet } from "../ui/BottomSheet";
+import { GlassSelect } from "../ui/GlassSelect";
 import { IconRenderer } from "../ui/IconRenderer";
 import { useShortcuts, type Shortcut } from "../../hooks/useShortcuts";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
+import { useSpace } from "../../contexts/SpaceContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useToast } from "../../contexts/ToastContext";
 import { formatLiveAmountInput, generateUUID } from "../../lib/utils";
-import { triggerHaptic } from "../../lib/haptics";
+import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
+import { saveDraftBatch, resolveActiveDraftSpaceId } from "../../lib/draftTransactionService";
+import { showNativeLocalNotification, formatNotificationCurrency } from "../../lib/notifications";
+import { format } from "date-fns";
 
 interface ShortcutManagementSheetProps {
   isOpen: boolean;
@@ -34,11 +40,18 @@ export function ShortcutManagementSheet({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { isIndonesian } = useLanguage();
-  const { preferredCurrency, currencyMeta, convertToIdr, convertFromIdr, formatWithPreferred } = useCurrency();
+  const {
+    preferredCurrency,
+    currencyMeta,
+    convertToIdr,
+    convertFromIdr,
+    formatWithPreferred,
+  } = useCurrency();
   const { showToast } = useToast();
   const { shortcuts, saveShortcut, deleteShortcut } = useShortcuts();
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
+  const { activeSpaceId, activeSpace, defaultSpaceId } = useSpace();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -53,7 +66,47 @@ export function ShortcutManagementSheet({
   const allowDecimals = currencyMeta.decimals > 0;
   const maxDecimals = currencyMeta.decimals || 2;
 
-  const filteredCategories = categories.filter((c) => c.type === type);
+  const filteredCategories = useMemo(
+    () => categories.filter((c) => c.type === type),
+    [categories, type],
+  );
+
+  const categoryOptions = useMemo(
+    () => [
+      {
+        value: "",
+        label: isIndonesian ? "Otomatis" : "Default",
+      },
+      ...filteredCategories.map((c) => ({
+        value: c.id,
+        label: c.name,
+        icon: c.emoji,
+      })),
+    ],
+    [filteredCategories, isIndonesian],
+  );
+
+  const walletOptions = useMemo(
+    () => [
+      {
+        value: "",
+        label: isIndonesian ? "Otomatis" : "Default",
+      },
+      ...wallets.map((w) => ({
+        value: w.id,
+        label: w.name,
+        icon: w.icon,
+      })),
+    ],
+    [wallets, isIndonesian],
+  );
+
+  const activeSpaceLabel =
+    activeSpace?.id !== "all" && activeSpace?.name
+      ? activeSpace.name
+      : isIndonesian
+      ? "Space Pribadi"
+      : "Personal Space";
 
   const openNewForm = () => {
     triggerHaptic("light");
@@ -128,11 +181,11 @@ export function ShortcutManagementSheet({
     showToast(
       editingId
         ? isIndonesian
-          ? "Preset diperbarui"
-          : "Preset updated"
+          ? "Preset diperbarui & disinkronkan"
+          : "Preset updated & synced"
         : isIndonesian
-          ? "Preset ditambahkan"
-          : "Preset added",
+        ? "Preset ditambahkan & disinkronkan"
+        : "Preset added & synced",
       editingId ? "update" : "add",
     );
   };
@@ -147,7 +200,7 @@ export function ShortcutManagementSheet({
     if (cat?.name) params.append("category", cat.name);
     if (wal?.name) params.append("wallet", wal.name);
     if (s.note || s.title) params.append("note", s.note || s.title);
-    params.append("autosave", "true");
+    params.append("draft", "true");
 
     const scheme = `accrual://add?${params.toString()}`;
     navigator.clipboard.writeText(scheme);
@@ -157,12 +210,67 @@ export function ShortcutManagementSheet({
     );
   };
 
+  const handleQueuePresetToDraft = (s: Shortcut) => {
+    triggerSuccessHaptic();
+    const targetSpaceId = resolveActiveDraftSpaceId(
+      activeSpaceId !== "all" ? activeSpaceId : defaultSpaceId,
+    );
+    const cat =
+      categories.find((c) => c.id === s.category_id) ||
+      categories.find((c) => c.type === s.type) ||
+      categories[0];
+    const wal = wallets.find((w) => w.id === s.wallet_id) || wallets[0];
+    const now = new Date();
+    const effectiveAmount = s.amount > 0 ? s.amount : 25000;
+
+    const draftItem = {
+      id: `preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      date: format(now, "yyyy-MM-dd"),
+      time: format(now, "HH:mm"),
+      description: s.note || s.title,
+      cleanDescription: s.note || s.title,
+      amount: effectiveAmount,
+      type: s.type,
+      walletId: wal?.id || null,
+      walletName: wal?.name || "BCA",
+      suggestedCategoryId: cat?.id || null,
+      suggestedCategoryName: cat?.name || s.title,
+      suggestedCategoryEmoji: cat?.emoji || null,
+      isDuplicate: false,
+      selected: true,
+      raw: s.title,
+      confidence: 0.98,
+      needsReview: false,
+      spaceId: targetSpaceId,
+      spaceName: activeSpaceLabel,
+    };
+
+    saveDraftBatch([draftItem], s.title, "manual", targetSpaceId);
+
+    void showNativeLocalNotification({
+      title: isIndonesian
+        ? `Draft Masuk • ${activeSpaceLabel}`
+        : `Draft Queued • ${activeSpaceLabel}`,
+      body: `${s.type === "expense" ? "-" : "+"}${formatNotificationCurrency(
+        effectiveAmount,
+      )} • ${s.title}${wal?.name ? ` (${wal.name})` : ""}`,
+    });
+
+    showToast(
+      isIndonesian
+        ? `"${s.title}" masuk ke Draft (${activeSpaceLabel})`
+        : `"${s.title}" queued in Draft (${activeSpaceLabel})`,
+      "add",
+    );
+  };
+
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div
-        className="px-5 pt-2 space-y-4"
+        className="px-5 pt-2 space-y-4 select-none"
         style={{
-          paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
+          paddingBottom:
+            "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
         }}
       >
         {/* Header */}
@@ -192,8 +300,8 @@ export function ShortcutManagementSheet({
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {isIndonesian
-                  ? "Isi otomatis nominal, kategori & akun dalam 1 ketukan"
-                  : "Auto-fill amount, category & account in 1 tap"}
+                  ? `Tersinkronisasi ke Cloud · Target: ${activeSpaceLabel}`
+                  : `Cloud Synced · Target: ${activeSpaceLabel}`}
               </p>
             </div>
           </div>
@@ -217,7 +325,7 @@ export function ShortcutManagementSheet({
         </div>
 
         {isFormOpen ? (
-          /* Preset Editor Form */
+          /* Preset Editor Form — Unified Liquid Glass Styling */
           <div
             className="p-4 rounded-2xl space-y-3.5"
             style={{
@@ -235,13 +343,15 @@ export function ShortcutManagementSheet({
                     ? "Ubah Preset"
                     : "Edit Preset"
                   : isIndonesian
-                    ? "Preset Baru"
-                    : "New Preset"}
+                  ? "Preset Baru"
+                  : "New Preset"}
               </span>
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
-                aria-label={isIndonesian ? "Tutup formulir preset" : "Close preset form"}
+                aria-label={
+                  isIndonesian ? "Tutup formulir preset" : "Close preset form"
+                }
                 title={isIndonesian ? "Tutup" : "Close"}
                 className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
                 style={{
@@ -368,63 +478,23 @@ export function ShortcutManagementSheet({
               </div>
             </div>
 
-            {/* Category & Account Selectors */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label
-                  className="text-[10.5px] font-semibold uppercase tracking-wider mb-1 block"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Kategori" : "Category"}
-                </label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full px-2.5 py-2.5 rounded-xl text-[12px] font-medium outline-none"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <option value="">
-                    {isIndonesian ? "Otomatis" : "Default"}
-                  </option>
-                  {filteredCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Category & Account Glass Selectors */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <GlassSelect
+                label={isIndonesian ? "Kategori" : "Category"}
+                value={categoryId}
+                onChange={setCategoryId}
+                options={categoryOptions}
+                placeholder={isIndonesian ? "Otomatis" : "Default"}
+              />
 
-              <div>
-                <label
-                  className="text-[10.5px] font-semibold uppercase tracking-wider mb-1 block"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {isIndonesian ? "Akun" : "Account"}
-                </label>
-                <select
-                  value={walletId}
-                  onChange={(e) => setWalletId(e.target.value)}
-                  className="w-full px-2.5 py-2.5 rounded-xl text-[12px] font-medium outline-none"
-                  style={{
-                    background: "var(--glass-fill)",
-                    border: "1px solid var(--glass-border)",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <option value="">
-                    {isIndonesian ? "Otomatis" : "Default"}
-                  </option>
-                  {wallets.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <GlassSelect
+                label={isIndonesian ? "Akun" : "Account"}
+                value={walletId}
+                onChange={setWalletId}
+                options={walletOptions}
+                placeholder={isIndonesian ? "Otomatis" : "Default"}
+              />
             </div>
 
             {/* Note */}
@@ -440,9 +510,7 @@ export function ShortcutManagementSheet({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder={
-                  isIndonesian
-                    ? "Catatan transaksi..."
-                    : "Transaction note..."
+                  isIndonesian ? "Catatan transaksi..." : "Transaction note..."
                 }
                 className="w-full px-3 py-2.5 rounded-xl text-[13px] font-medium outline-none"
                 style={{
@@ -469,8 +537,8 @@ export function ShortcutManagementSheet({
                     ? "Simpan Perubahan"
                     : "Save Changes"
                   : isIndonesian
-                    ? "Simpan Preset"
-                    : "Save Preset"}
+                  ? "Simpan Preset"
+                  : "Save Preset"}
               </span>
             </button>
           </div>
@@ -507,15 +575,13 @@ export function ShortcutManagementSheet({
                 style={{ color: "var(--text-tertiary)" }}
               >
                 {isIndonesian
-                  ? "Buat tombol cepat untuk transaksi rutin seperti kopi, parkir, atau langganan agar pencatatan lebih instan."
-                  : "Create 1-tap chips for frequent transactions like coffee, parking, or transit for instant logging."}
+                  ? "Buat tombol cepat untuk transaksi rutin seperti kopi, parkir, atau bensin agar pencatatan ke Space Aktif lebih instan."
+                  : "Create 1-tap chips for frequent transactions like coffee, parking, or transit for instant logging into your Active Space."}
               </p>
             </div>
             <button
               type="button"
               onClick={openNewForm}
-              aria-label={isIndonesian ? "Buat preset pertama" : "Create first preset"}
-              title={isIndonesian ? "Buat preset pertama" : "Create first preset"}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-semibold active:scale-95 transition-all cursor-pointer mt-1"
               style={{
                 background: "var(--glass-fill)",
@@ -547,8 +613,6 @@ export function ShortcutManagementSheet({
                   <button
                     type="button"
                     onClick={() => openEditForm(s)}
-                    aria-label={isIndonesian ? `Ubah preset ${s.title}` : `Edit preset ${s.title}`}
-                    title={isIndonesian ? `Ubah preset ${s.title}` : `Edit preset ${s.title}`}
                     className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer bg-transparent border-0 p-0"
                   >
                     <div
@@ -590,8 +654,8 @@ export function ShortcutManagementSheet({
                               ? "Pemasukan"
                               : "Income"
                             : isIndonesian
-                              ? "Pengeluaran"
-                              : "Expense"}
+                            ? "Pengeluaran"
+                            : "Expense"}
                         </span>
                       </div>
                       <div
@@ -605,8 +669,8 @@ export function ShortcutManagementSheet({
                           {s.amount > 0
                             ? formatWithPreferred(s.amount)
                             : isIndonesian
-                              ? "Nominal fleksibel"
-                              : "Flexible amount"}
+                            ? "Nominal fleksibel"
+                            : "Flexible amount"}
                         </span>
                         {cat ? ` · ${cat.name}` : ""}
                         {wal ? ` · ${wal.name}` : ""}
@@ -615,6 +679,29 @@ export function ShortcutManagementSheet({
                   </button>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    {s.amount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleQueuePresetToDraft(s)}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                        style={{
+                          background: "var(--glass-fill)",
+                          color: "var(--text-primary)",
+                        }}
+                        aria-label={
+                          isIndonesian
+                            ? `Masukkan ${s.title} ke Draft`
+                            : `Queue ${s.title} to Draft`
+                        }
+                        title={
+                          isIndonesian
+                            ? "Masukkan ke Draft Space Aktif"
+                            : "Queue to Active Space Draft"
+                        }
+                      >
+                        <Play size={13} strokeWidth={2} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleCopyScheme(s)}
@@ -623,7 +710,11 @@ export function ShortcutManagementSheet({
                         background: "var(--glass-fill)",
                         color: "var(--text-secondary)",
                       }}
-                      aria-label={isIndonesian ? `Salin skema URL ${s.title}` : `Copy URL scheme ${s.title}`}
+                      aria-label={
+                        isIndonesian
+                          ? `Salin skema URL ${s.title}`
+                          : `Copy URL scheme ${s.title}`
+                      }
                       title={isIndonesian ? "Salin Skema" : "Copy Scheme"}
                     >
                       <Link2 size={13.5} strokeWidth={1.75} />
@@ -636,7 +727,11 @@ export function ShortcutManagementSheet({
                         background: "var(--glass-fill)",
                         color: "var(--text-secondary)",
                       }}
-                      aria-label={isIndonesian ? `Ubah preset ${s.title}` : `Edit preset ${s.title}`}
+                      aria-label={
+                        isIndonesian
+                          ? `Ubah preset ${s.title}`
+                          : `Edit preset ${s.title}`
+                      }
                       title={isIndonesian ? "Ubah" : "Edit"}
                     >
                       <PenLine size={13.5} strokeWidth={1.75} />
@@ -656,7 +751,11 @@ export function ShortcutManagementSheet({
                         background: "var(--glass-fill)",
                         color: "var(--text-tertiary)",
                       }}
-                      aria-label={isIndonesian ? `Hapus preset ${s.title}` : `Delete preset ${s.title}`}
+                      aria-label={
+                        isIndonesian
+                          ? `Hapus preset ${s.title}`
+                          : `Delete preset ${s.title}`
+                      }
                       title={isIndonesian ? "Hapus" : "Delete"}
                     >
                       <Trash2 size={13.5} strokeWidth={1.75} />

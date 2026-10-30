@@ -110,11 +110,11 @@ export function SubscriptionSuccessModal({
     },
     {
       title: isIndonesian
-        ? "Multi-Buku Kas & Brankas Terenkripsi Biometrik"
-        : "Unlimited Multi-Ledgers & Encrypted Vault",
+        ? "Multi-Space Tanpa Batas & Brankas Terenkripsi"
+        : "Unlimited Financial Spaces & Encrypted Vault",
       desc: isIndonesian
-        ? "Pisahkan buku kas bisnis, pribadi, dan lindungi dengan PIN/Face ID."
-        : "Isolate personal and business books, protected with PIN/Face ID.",
+        ? "Pisahkan space bisnis, pribadi, dan lindungi dengan PIN/Face ID."
+        : "Isolate personal and business spaces, protected with PIN/Face ID.",
       icon: Lock,
     },
     {

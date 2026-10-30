@@ -111,10 +111,16 @@ export function TransactionsPage({
 }: TransactionsPageProps = {}) {
   const { isStealthMode, toggleStealthMode } = usePrivacy();
   const {
+    activeSpace,
+    activeSpaceId,
+    setActiveSpaceId,
+    filterTransactionsBySpace,
+  } = useSpace();
+  const {
     items: allDraftItems,
     count: draftCount,
     clearAll: clearAllDrafts,
-  } = useDraftTransactions();
+  } = useDraftTransactions(activeSpaceId);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
@@ -169,12 +175,7 @@ export function TransactionsPage({
   const { user } = useAuth();
   const { preferredCurrency, currencyMeta } = useCurrency();
   const { t, isIndonesian } = useLanguage();
-  const {
-    activeSpace,
-    activeSpaceId,
-    setActiveSpaceId,
-    filterTransactionsBySpace,
-  } = useSpace();
+
 
   // Selection Mode State for Bulk Actions
   const [isSelectMode, setIsSelectMode] = useState(false);

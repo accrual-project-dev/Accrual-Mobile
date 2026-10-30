@@ -20,10 +20,12 @@ export interface DynamicIslandHUDData {
   walletName?: string;
   date?: string;
   note?: string;
-  source?: "shortcut" | "partner_sync";
+  source?: "shortcut" | "shortcut_draft" | "partner_sync";
   partnerName?: string;
   ledgerId?: string;
   ledgerName?: string;
+  spaceName?: string;
+  draftCount?: number;
 }
 
 export type ShortcutRecordedTxData = DynamicIslandHUDData;
@@ -562,9 +564,13 @@ export function DynamicIslandHUD({
                       {isPartnerSync
                         ? data.partnerName ||
                           (isIndonesian ? "Rekan" : "Partner")
-                        : isIndonesian
-                          ? "Pencatatan Otomatis"
-                          : "Auto Logged"}
+                        : data.source === "shortcut_draft"
+                          ? isIndonesian
+                            ? `Masuk Draft · ${data.spaceName || data.ledgerName || "Space Aktif"}`
+                            : `Draft Queued · ${data.spaceName || data.ledgerName || "Active Space"}`
+                          : isIndonesian
+                            ? "Pencatatan Otomatis"
+                            : "Auto Logged"}
                     </span>
 
                     {!isPartnerSync && (
