@@ -170,15 +170,25 @@ public struct ScanPaymentScreenshotIntent: AppIntent {
     public static var openAppWhenRun = false
     @Parameter(title: "Screenshot Image") public var screenshot: IntentFile?
     @Parameter(title: "Extracted Text") public var extractedText: String?
+
+    public static var parameterSummary: some ParameterSummary {
+        Summary("Scan payment from \(\.$extractedText)") {
+            \.$screenshot
+        }
+    }
+
     public init() {}
-    public func perform() async throws -> some IntentResult & ProvidesDialog {
+    public func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         let ownerSnapshot = try DraftInbox.currentOwner()
         var text = (extractedText ?? "").replacingOccurrences(of: "\u{FFFC}", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty, let screenshot = screenshot {
             text = try await OCR.recognize(data: screenshot.data)
         }
         try DraftInbox.capture(text: text, source: "shortcut_screenshot", ownerSnapshot: ownerSnapshot)
-        return .result(dialog: IntentDialog(stringLiteral: CaptureLanguage.text("Captured for review in Accrual.", "Tangkapan siap ditinjau di Accrual.")))
+        return .result(
+            value: "DELETE_SCREENSHOT",
+            dialog: IntentDialog(stringLiteral: CaptureLanguage.text("Captured for review in Accrual.", "Tangkapan siap ditinjau di Accrual."))
+        )
     }
 }
 
@@ -195,6 +205,16 @@ public struct LogNotificationTransactionIntent: AppIntent {
     @Parameter(title: "Notif Subtitle") public var notifSubtitle: String?
     @Parameter(title: "App") public var sourceApp: String?
     @Parameter(title: "Received At") public var receivedAt: Date?
+
+    public static var parameterSummary: some ParameterSummary {
+        Summary("Log notification \(\.$notificationText)") {
+            \.$title
+            \.$subtitle
+            \.$sourceApp
+            \.$receivedAt
+        }
+    }
+
     public init() {}
     public func perform() async throws -> some IntentResult {
         let ownerSnapshot = try DraftInbox.currentOwner()
@@ -202,6 +222,69 @@ public struct LogNotificationTransactionIntent: AppIntent {
                                ownerSnapshot: ownerSnapshot, at: receivedAt ?? Date(), app: sourceApp, title: title ?? notifTitle,
                                subtitle: subtitle ?? notifSubtitle)
         return .result()
+    }
+}
+
+@available(iOS 16.0, *)
+public struct LogQuickDraftIntent: AppIntent {
+    public static var title: LocalizedStringResource = "Log Quick Draft Transaction"
+    public static var description = IntentDescription("Save quick dialog input (amount, category, account, date, note) to Accrual Drafts.")
+    public static var openAppWhenRun = false
+    @Parameter(title: "Amount") public var amount: Double
+    @Parameter(title: "Category") public var category: String?
+    @Parameter(title: "Account / Wallet") public var wallet: String?
+    @Parameter(title: "Date & Time") public var transactionDate: Date?
+    @Parameter(title: "Note") public var note: String?
+
+    public static var parameterSummary: some ParameterSummary {
+        Summary("Log \(\.$amount) (\(\.$category)) from \(\.$wallet) to Accrual Draft") {
+            \.$transactionDate
+            \.$note
+        }
+    }
+
+    public init() {}
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
+        let ownerSnapshot = try DraftInbox.currentOwner()
+        let cleanAmount = Int(abs(amount.rounded()))
+        let cleanCategory = (category ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanWallet = (wallet ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanNote = (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = [
+            "Rp \(cleanAmount)",
+            cleanNote.isEmpty ? nil : cleanNote,
+            cleanCategory.isEmpty ? nil : cleanCategory,
+            cleanWallet.isEmpty ? nil : cleanWallet
+        ].compactMap { $0 }.joined(separator: "\n")
+        try DraftInbox.capture(
+            text: text,
+            source: "shortcut_notification",
+            ownerSnapshot: ownerSnapshot,
+            at: transactionDate ?? Date(),
+            app: cleanWallet.isEmpty ? nil : cleanWallet,
+            title: cleanCategory.isEmpty ? nil : cleanCategory,
+            subtitle: cleanNote.isEmpty ? nil : cleanNote
+        )
+        return .result(dialog: IntentDialog(stringLiteral: CaptureLanguage.text("Captured for review in Accrual.", "Tangkapan siap ditinjau di Accrual.")))
+    }
+}
+
+@available(iOS 16.0, *)
+public struct LogSmartTextIntent: AppIntent {
+    public static var title: LocalizedStringResource = "Log Smart Text Transaction"
+    public static var description = IntentDescription("Capture clipboard or transaction text for review in Accrual.")
+    public static var openAppWhenRun = false
+    @Parameter(title: "Transaction Text") public var text: String
+
+    public static var parameterSummary: some ParameterSummary {
+        Summary("Log text \(\.$text) to Accrual Draft")
+    }
+
+    public init() {}
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
+        let ownerSnapshot = try DraftInbox.currentOwner()
+        try DraftInbox.capture(text: text, source: "shortcut_screenshot", ownerSnapshot: ownerSnapshot)
+        return .result(dialog: IntentDialog(stringLiteral: CaptureLanguage.text("Captured for review in Accrual.", "Tangkapan siap ditinjau di Accrual.")))
     }
 }
 
@@ -236,16 +319,21 @@ public struct VoiceLogExpenseIntent: AppIntent {
     }
 }
 
-/// Retained for existing personal automations. Values are captured as raw text only.
+/// Retained for personal automations & Wallet Card Tap. Values are captured as raw text only.
 @available(iOS 16.0, *)
 public struct LogCardTransactionIntent: AppIntent {
     public static var title: LocalizedStringResource = "Log Card Transaction"
     public static var description = IntentDescription("Capture card transaction details for review.")
     public static var openAppWhenRun = false
-    public static var isDiscoverable = false
+    public static var isDiscoverable = true
     @Parameter(title: "Amount") public var amount: Double?
     @Parameter(title: "Merchant") public var merchant: String?
     @Parameter(title: "Card") public var cardName: String?
+
+    public static var parameterSummary: some ParameterSummary {
+        Summary("Log card transaction \(\.$amount) at \(\.$merchant) (\(\.$cardName))")
+    }
+
     public init() {}
     public func perform() async throws -> some IntentResult & ProvidesDialog {
         let ownerSnapshot = try DraftInbox.currentOwner()
@@ -284,6 +372,8 @@ public struct AccrualShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: OpenInboxIntent(), phrases: ["Open drafts in \(.applicationName)", "Tinjau transaksi di \(.applicationName)"], shortTitle: "Review Captures", systemImageName: "tray.full")
         AppShortcut(intent: ScanPaymentScreenshotIntent(), phrases: ["Scan payment screenshot in \(.applicationName)", "Pindai pembayaran di \(.applicationName)"], shortTitle: "Capture Screenshot", systemImageName: "doc.viewfinder.fill")
+        AppShortcut(intent: LogQuickDraftIntent(), phrases: ["Quick draft in \(.applicationName)", "Catat cepat di \(.applicationName)"], shortTitle: "Quick Draft", systemImageName: "plus.rectangle.on.rectangle")
+        AppShortcut(intent: LogSmartTextIntent(), phrases: ["Log clipboard text in \(.applicationName)", "Catat teks di \(.applicationName)"], shortTitle: "Smart Text", systemImageName: "doc.on.clipboard")
     }
 }
 #endif

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { App } from "@capacitor/app";
 import { format } from "date-fns";
 import { AccrualInbox, type InboxDraft } from "../../plugins/accrualInbox";
+import { getCaptureOwner } from "./captureOwner";
 import {
   saveDraftBatch,
   resolveActiveDraftSpaceId,
@@ -36,9 +37,14 @@ export function useInboxDrain() {
     if (isDrainingRef.current) return;
     isDrainingRef.current = true;
 
-    const ownerId = user?.id || "guest_local_user";
+    const ownerId = getCaptureOwner(user?.id) || user?.id || "guest_local_user";
 
     try {
+      // Ensure the iOS App Group always knows the active ownerId so native AppIntents never fail with CaptureError.noOwner
+      if (typeof AccrualInbox.setOwner === "function") {
+        await AccrualInbox.setOwner({ ownerId }).catch(() => {});
+      }
+
       const res = await AccrualInbox.drain({ ownerId });
       const items: InboxDraft[] = res?.items || [];
       if (!items.length) return;
@@ -62,7 +68,7 @@ export function useInboxDrain() {
         // 1. If from notification channel, enforce 3-Layer Promo/OTP/Spam Blocker
         if (
           item.source === "shortcut_notification" &&
-          isPromotionalOrSpamNotification(rawText, item.merchant)
+          isPromotionalOrSpamNotification(rawText, item.merchant || item.title)
         ) {
           continue;
         }
@@ -76,19 +82,21 @@ export function useInboxDrain() {
         let resolvedAmount = Math.abs(Number(item.amount || 0));
         let resolvedType: "income" | "expense" | "transfer" =
           item.direction === "income" ? "income" : "expense";
-        let resolvedDesc = item.merchant || "";
+        let resolvedDesc = item.merchant || item.subtitle || item.title || "";
         let resolvedWalletId: string | null = null;
-        let resolvedWalletName: string | undefined = item.wallet_hint || undefined;
+        let resolvedWalletName: string | undefined =
+          item.wallet_hint || item.source_app || undefined;
         let resolvedToWalletId: string | null = null;
         let resolvedToWalletName: string | undefined;
         let resolvedCatId: string | null = null;
-        let resolvedCatName: string | null = null;
+        let resolvedCatName: string | null = item.title || null;
         let resolvedCatEmoji: string | null = null;
 
         if (item.source === "shortcut_notification" && rawText) {
           const bankParsed = parseBankNotification(rawText, categories, wallets, {
-            sourceApp: item.wallet_hint,
-            title: item.merchant,
+            sourceApp: item.source_app || item.wallet_hint,
+            title: item.title || item.merchant,
+            subtitle: item.subtitle,
             receivedAt: item.transaction_date || item.captured_at,
           });
           if (!bankParsed && isPromotionalOrSpamNotification(rawText)) {
@@ -96,20 +104,33 @@ export function useInboxDrain() {
           }
           if (bankParsed) {
             if (resolvedAmount <= 0) resolvedAmount = bankParsed.amount;
-            resolvedType = bankParsed.type === "transfer" ? "transfer" : bankParsed.type === "income" ? "income" : "expense";
+            resolvedType =
+              bankParsed.type === "transfer"
+                ? "transfer"
+                : bankParsed.type === "income"
+                ? "income"
+                : "expense";
             resolvedDesc = bankParsed.merchantOrNote || resolvedDesc;
             resolvedWalletId = bankParsed.suggestedWalletId || null;
             resolvedWalletName = bankParsed.suggestedWalletName || resolvedWalletName;
             resolvedToWalletId = bankParsed.suggestedToWalletId || null;
             resolvedToWalletName = bankParsed.suggestedToWalletName;
             resolvedCatId = bankParsed.suggestedCategoryId || null;
-            resolvedCatName = bankParsed.suggestedCategoryName || null;
+            resolvedCatName = bankParsed.suggestedCategoryName || resolvedCatName;
           }
-        } else if (item.source === "shortcut_screenshot" && rawText) {
+        } else if (
+          (item.source === "shortcut_screenshot" || item.source === "smart_text") &&
+          rawText
+        ) {
           const slipParsed = parseSlipText(rawText, wallets, categories);
           if (slipParsed && slipParsed.amount && slipParsed.amount > 0) {
             if (resolvedAmount <= 0) resolvedAmount = slipParsed.amount;
-            resolvedType = slipParsed.type === "transfer" ? "transfer" : slipParsed.type === "income" ? "income" : "expense";
+            resolvedType =
+              slipParsed.type === "transfer"
+                ? "transfer"
+                : slipParsed.type === "income"
+                ? "income"
+                : "expense";
             resolvedDesc = slipParsed.merchantOrRecipient || resolvedDesc;
             resolvedWalletId = slipParsed.sourceWalletId;
             resolvedWalletName = slipParsed.sourceWalletName || resolvedWalletName;
@@ -117,7 +138,31 @@ export function useInboxDrain() {
             resolvedToWalletName = slipParsed.destinationWalletName || undefined;
             resolvedCatId = slipParsed.categoryId;
             resolvedCatName = slipParsed.categoryName;
+          } else if (resolvedAmount <= 0) {
+            const bankFallback = parseBankNotification(rawText, categories, wallets);
+            if (bankFallback && bankFallback.amount > 0) {
+              resolvedAmount = bankFallback.amount;
+              resolvedType =
+                bankFallback.type === "transfer"
+                  ? "transfer"
+                  : bankFallback.type === "income"
+                  ? "income"
+                  : "expense";
+              resolvedDesc = bankFallback.merchantOrNote || resolvedDesc;
+              resolvedWalletId = bankFallback.suggestedWalletId || null;
+              resolvedWalletName = bankFallback.suggestedWalletName || resolvedWalletName;
+              resolvedCatId = bankFallback.suggestedCategoryId || null;
+              resolvedCatName = bankFallback.suggestedCategoryName || null;
+            }
           }
+        } else if (item.source === "card_transaction" && rawText && resolvedAmount <= 0) {
+          const firstNum = rawText.match(/(\d+(?:[.,]\d+)?)/);
+          if (firstNum) {
+            resolvedAmount = Math.round(Number(firstNum[1].replace(/,/g, "")));
+          }
+          const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+          if (lines.length >= 2 && !resolvedDesc) resolvedDesc = lines[1];
+          if (lines.length >= 3 && !resolvedWalletName) resolvedWalletName = lines[2];
         }
 
         if (resolvedAmount <= 0) continue;
@@ -143,16 +188,32 @@ export function useInboxDrain() {
           }
         }
 
-        // 4. Match category via Merchant Memory & Semantic Classifier if still unresolved
+        // 4. Match category by title/hint (for Glass Dialog) or Merchant Memory & Semantic Classifier
         if (resolvedType !== "transfer" && !resolvedCatId && categories.length > 0) {
+          if (resolvedCatName) {
+            const catHintLower = resolvedCatName.toLowerCase();
+            const matchedByName = categories.find(
+              (c) =>
+                c.name.toLowerCase() === catHintLower ||
+                c.name.toLowerCase().includes(catHintLower) ||
+                catHintLower.includes(c.name.toLowerCase()),
+            );
+            if (matchedByName) {
+              resolvedCatId = matchedByName.id;
+              resolvedCatName = matchedByName.name;
+              resolvedCatEmoji = matchedByName.emoji;
+            }
+          }
           const lookupText = `${resolvedDesc} ${rawText}`.trim();
-          const mem = getMerchantMemory(resolvedDesc || rawText);
-          if (mem) {
-            const foundCat = categories.find((c) => c.id === mem.categoryId);
-            if (foundCat) {
-              resolvedCatId = foundCat.id;
-              resolvedCatName = foundCat.name;
-              resolvedCatEmoji = foundCat.emoji;
+          if (!resolvedCatId) {
+            const mem = getMerchantMemory(resolvedDesc || rawText);
+            if (mem) {
+              const foundCat = categories.find((c) => c.id === mem.categoryId);
+              if (foundCat) {
+                resolvedCatId = foundCat.id;
+                resolvedCatName = foundCat.name;
+                resolvedCatEmoji = foundCat.emoji;
+              }
             }
           }
           if (!resolvedCatId && lookupText) {
@@ -189,15 +250,14 @@ export function useInboxDrain() {
               ? "Dana Masuk"
               : "Income"
             : resolvedType === "transfer"
-            ? isIndonesian
-              ? "Transfer"
-              : "Transfer"
+            ? "Transfer"
             : isIndonesian
             ? "Pengeluaran"
             : "Expense";
 
         const finalDesc = resolvedDesc || defaultDesc;
-        const resolvedConfidence = typeof item.confidence === "number" ? item.confidence : 0.85;
+        const resolvedConfidence =
+          typeof item.confidence === "number" && item.confidence > 0 ? item.confidence : 0.9;
 
         validStatementItems.push({
           id: item.id,
@@ -238,6 +298,14 @@ export function useInboxDrain() {
           ? isIndonesian
             ? "Notifikasi Transaksi"
             : "Transaction Notification"
+          : firstSource === "glass_dialog"
+          ? isIndonesian
+            ? "Dialog Glass (Back Tap)"
+            : "Glass Dialog (Back Tap)"
+          : firstSource === "smart_text"
+          ? isIndonesian
+            ? "Teks Papan Klip Pintar"
+            : "Smart Clipboard Text"
           : firstSource === "card_transaction"
           ? isIndonesian
             ? "Transaksi Kartu / Dompet"
@@ -249,6 +317,10 @@ export function useInboxDrain() {
       const draftSource: DraftSourceType =
         firstSource === "shortcut_notification"
           ? "notification"
+          : firstSource === "glass_dialog"
+          ? "glass_dialog"
+          : firstSource === "smart_text"
+          ? "smart_text"
           : firstSource === "card_transaction"
           ? "wallet_tap"
           : "screen_scan";
