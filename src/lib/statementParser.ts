@@ -33,6 +33,10 @@ export interface ParsedStatementItem {
   duplicateReason?: string;
   selected: boolean;
   raw: string;
+  captureReason?: string | null;
+  captureLedgerId?: string | null;
+  captureOwnerId?: string | null;
+  captureTimestampConfirmed?: boolean;
   confidence?: number;
   needsReview?: boolean;
   spaceId?: string | null;
