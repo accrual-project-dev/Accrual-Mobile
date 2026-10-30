@@ -1,8 +1,8 @@
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 
-export const APP_VERSION = "1.3.22";
-export const APP_BUILD_NUMBER = "1322";
+export const APP_VERSION = "1.3.27";
+export const APP_BUILD_NUMBER = "1327";
 
 export interface AppReleaseInfo {
   currentVersion: string;
@@ -14,11 +14,9 @@ export interface AppReleaseInfo {
   changelogId: string[];
   changelogEn: string[];
   downloads: {
-    androidApk: string;
-    iosIpa: string;
-    sideStoreSourceUrl: string;
+    appStoreUrl: string;
   };
-  source: "manifest" | "github" | "fallback";
+  source: "manifest" | "fallback";
 }
 
 /**
@@ -65,16 +63,19 @@ export async function openDownloadUrl(url: string): Promise<void> {
 }
 
 /**
- * Checks for the latest application update from version manifest or GitHub API.
+ * Checks for the latest official release notes and version manifest.
+ * Strictly compliant with Apple App Store Guideline 2.5.2 & 2.3.10 (zero external sideloading or third-party binary links).
  */
 export async function checkForAppUpdate(): Promise<AppReleaseInfo> {
+  const officialAppStoreUrl = "https://apps.apple.com/app/id6825272166";
+
   const fallbackInfo: AppReleaseInfo = {
     currentVersion: APP_VERSION,
     currentBuild: APP_BUILD_NUMBER,
     latestVersion: APP_VERSION,
     latestBuild: APP_BUILD_NUMBER,
     hasUpdate: false,
-    releaseDate: "2026-10-29",
+    releaseDate: "2026-10-30",
     changelogId: [
       "Distribusi rilis resmi Apple App Store & TestFlight",
       "Peningkatan ketahanan sinkronisasi langganan StoreKit 2 & RevenueCat",
@@ -88,19 +89,14 @@ export async function checkForAppUpdate(): Promise<AppReleaseInfo> {
       "Automated screenshot capture flow for Draft Archive transaction approvals",
     ],
     downloads: {
-      androidApk:
-        "https://iqjcmqkgrfmopznrfikx.supabase.co/storage/v1/object/public/app-releases/Accrual-latest.apk",
-      iosIpa:
-        "https://github.com/syntheticae/Trouvaille/releases/download/latest/Accrual.ipa",
-      sideStoreSourceUrl: "https://trouvaille-drab.vercel.app/sidestore.json",
+      appStoreUrl: officialAppStoreUrl,
     },
     source: "fallback",
   };
 
   try {
-    // 1. Primary source: version.json hosted on the web deployment or Supabase
     const manifestUrl =
-      typeof window !== "undefined"
+      typeof window !== "undefined" && window.location.origin.startsWith("http")
         ? `${window.location.origin}/version.json?t=${Date.now()}`
         : "https://trouvaille-drab.vercel.app/version.json";
 
@@ -118,7 +114,7 @@ export async function checkForAppUpdate(): Promise<AppReleaseInfo> {
         currentVersion: APP_VERSION,
         currentBuild: APP_BUILD_NUMBER,
         latestVersion: latestVer,
-        latestBuild: String(data.build || ""),
+        latestBuild: String(data.build || APP_BUILD_NUMBER),
         hasUpdate,
         releaseDate: data.releaseDate || fallbackInfo.releaseDate,
         changelogId: Array.isArray(data.changelog)
@@ -128,72 +124,13 @@ export async function checkForAppUpdate(): Promise<AppReleaseInfo> {
           ? data.changelog_en
           : fallbackInfo.changelogEn,
         downloads: {
-          androidApk:
-            data.downloads?.androidApk || fallbackInfo.downloads.androidApk,
-          iosIpa: data.downloads?.iosIpa || fallbackInfo.downloads.iosIpa,
-          sideStoreSourceUrl:
-            data.downloads?.sideStoreSourceUrl ||
-            fallbackInfo.downloads.sideStoreSourceUrl,
+          appStoreUrl: officialAppStoreUrl,
         },
         source: "manifest",
       };
     }
   } catch (err) {
     console.info("[AppUpdate] Manifest lookup notice:", err);
-  }
-
-  // 2. Secondary source: GitHub Releases API
-  try {
-    const ghRes = await fetch(
-      "https://api.github.com/repos/syntheticae/Trouvaille/releases/latest",
-      {
-        headers: { Accept: "application/vnd.github.v3+json" },
-      },
-    );
-
-    if (ghRes.ok) {
-      const ghData = await ghRes.json();
-      const tagVer = (ghData.tag_name || "").replace(/^v/i, "");
-      const hasUpdate = tagVer ? compareVersions(tagVer, APP_VERSION) > 0 : false;
-
-      let ipaUrl = fallbackInfo.downloads.iosIpa;
-      let apkUrl = fallbackInfo.downloads.androidApk;
-
-      if (Array.isArray(ghData.assets)) {
-        const ipaAsset = ghData.assets.find((a: any) =>
-          (a.name || "").endsWith(".ipa"),
-        );
-        const apkAsset = ghData.assets.find((a: any) =>
-          (a.name || "").endsWith(".apk"),
-        );
-        if (ipaAsset?.browser_download_url) {
-          ipaUrl = ipaAsset.browser_download_url;
-        }
-        if (apkAsset?.browser_download_url) {
-          apkUrl = apkAsset.browser_download_url;
-        }
-      }
-
-      return {
-        currentVersion: APP_VERSION,
-        currentBuild: APP_BUILD_NUMBER,
-        latestVersion: tagVer || APP_VERSION,
-        hasUpdate,
-        releaseDate: ghData.published_at
-          ? ghData.published_at.substring(0, 10)
-          : fallbackInfo.releaseDate,
-        changelogId: fallbackInfo.changelogId,
-        changelogEn: fallbackInfo.changelogEn,
-        downloads: {
-          androidApk: apkUrl,
-          iosIpa: ipaUrl,
-          sideStoreSourceUrl: fallbackInfo.downloads.sideStoreSourceUrl,
-        },
-        source: "github",
-      };
-    }
-  } catch (ghErr) {
-    console.info("[AppUpdate] GitHub release lookup notice:", ghErr);
   }
 
   return fallbackInfo;

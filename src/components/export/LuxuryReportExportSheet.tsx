@@ -131,8 +131,8 @@ export function LuxuryReportExportSheet({
         );
       } else if (exportFormat === "pdf") {
         const filename = isIndonesian
-          ? `Trouvaille - Laporan Keuangan${spaceSegment} - ${safePeriod}.pdf`
-          : `Trouvaille - Financial Statement${spaceSegment} - ${safePeriod}.pdf`;
+          ? `Accrual - Laporan Keuangan${spaceSegment} - ${safePeriod}.pdf`
+          : `Accrual - Financial Statement${spaceSegment} - ${safePeriod}.pdf`;
 
         if (action === "share") {
           const ok = await shareLuxuryPdf(
@@ -174,15 +174,15 @@ export function LuxuryReportExportSheet({
       } else if (exportFormat === "csv") {
         const csvContent = generateCsvContent(filteredTransactions, wallets, isIndonesian);
         const filename = isIndonesian
-          ? `Trouvaille - Catatan Transaksi${spaceSegment} - ${safePeriod}.csv`
-          : `Trouvaille - Transaction Records${spaceSegment} - ${safePeriod}.csv`;
+          ? `Accrual - Catatan Transaksi${spaceSegment} - ${safePeriod}.csv`
+          : `Accrual - Transaction Records${spaceSegment} - ${safePeriod}.csv`;
 
         if (action === "share") {
           const ok = await shareOrDownloadFile(
             csvContent,
             filename,
             "text/csv;charset=utf-8;",
-            isIndonesian ? "Catatan Transaksi Trouvaille" : "Trouvaille Transaction Records",
+            isIndonesian ? "Catatan Transaksi Accrual" : "Accrual Transaction Records",
           );
           if (ok) {
             triggerSuccessHaptic();
@@ -210,8 +210,8 @@ export function LuxuryReportExportSheet({
           allTxs,
         );
         const filename = isIndonesian
-          ? `Trouvaille - Cadangan Data Vault${spaceSegment} - ${safePeriod}.json`
-          : `Trouvaille - Data Vault Backup${spaceSegment} - ${safePeriod}.json`;
+          ? `Accrual - Cadangan Data Vault${spaceSegment} - ${safePeriod}.json`
+          : `Accrual - Data Vault Backup${spaceSegment} - ${safePeriod}.json`;
 
         if (action === "share") {
           const ok = await shareOrDownloadFile(

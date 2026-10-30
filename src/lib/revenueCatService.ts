@@ -4,6 +4,7 @@
 // - Rule 1: Zero native colored emojis
 // - Rule 2: Monochrome Apple Luxury Theme & Obsidian styling
 // - Rule 6: 100% pure localization support
+// - Apple App Store Guideline 2.1 & 3.1.1: Zero Mock Bypass on Native iOS
 // ======================================================================
 
 import { Capacitor } from "@capacitor/core";
@@ -39,7 +40,8 @@ class RevenueCatService {
 
   /**
    * Initializes RevenueCat Purchases SDK.
-   * Automatically falls back to mock mode if running on web or without valid API keys.
+   * On native iOS/Android, strictly requires a valid RevenueCat API key and StoreKit configuration.
+   * Mock mode is strictly restricted to non-native local web development.
    */
   public async initialize(userId?: string): Promise<boolean> {
     const targetUserId = userId && userId !== "guest" ? userId : null;
@@ -56,15 +58,21 @@ class RevenueCatService {
         ? import.meta.env.VITE_REVENUECAT_APPLE_KEY
         : import.meta.env.VITE_REVENUECAT_GOOGLE_KEY;
 
-    // Fallback to Mock Sandbox if on web or if API key is not yet configured
-    if (!isNative || !apiKey || apiKey.trim() === "") {
-      this.isMockMode = true;
+    // On Web (non-native), allow mock mode only during local development
+    if (!isNative) {
+      this.isMockMode = Boolean(import.meta.env.DEV);
       this.isConfigured = true;
       this.currentUserId = targetUserId;
-      console.info(
-        "[RevenueCat] Operating in resilient Mock/Sandbox mode (Web or missing API key)."
-      );
       return true;
+    }
+
+    // On Native iOS/Android, NEVER enable mock mode if API key is missing
+    if (!apiKey || apiKey.trim() === "") {
+      this.isMockMode = false;
+      this.isConfigured = false;
+      this.currentUserId = targetUserId;
+      console.error("[RevenueCat] Missing native RevenueCat API key for platform:", platform);
+      return false;
     }
 
     try {
@@ -91,7 +99,9 @@ class RevenueCatService {
 
       // Configure native Purchases SDK for the first time
       try {
-        await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+        await Purchases.setLogLevel({
+          level: import.meta.env.DEV ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN,
+        });
       } catch {}
 
       await Purchases.configure({
@@ -105,9 +115,9 @@ class RevenueCatService {
       console.info("[RevenueCat] Native Purchases SDK configured successfully.");
       return true;
     } catch (err) {
-      console.warn("[RevenueCat] Initialization failed, falling back to mock mode:", err);
-      this.isMockMode = true;
-      this.isConfigured = true;
+      console.error("[RevenueCat] Native initialization failed:", err);
+      this.isMockMode = false;
+      this.isConfigured = false;
       this.currentUserId = targetUserId;
       return false;
     }
@@ -162,7 +172,8 @@ class RevenueCatService {
    */
   public async getOffering(): Promise<PurchasesOffering | null> {
     if (!this.isConfigured) {
-      await this.initialize();
+      const ok = await this.initialize(this.currentUserId || undefined);
+      if (!ok) return null;
     }
 
     if (this.isMockMode) {
@@ -245,16 +256,31 @@ class RevenueCatService {
    * Purchases a specific plan by identifier.
    */
   public async purchasePlan(planId: SubscriptionPlanId): Promise<PurchaseResult> {
+    const isNative = Capacitor.isNativePlatform();
+
     if (!this.isConfigured) {
-      await this.initialize();
+      const initialized = await this.initialize(this.currentUserId || undefined);
+      if (!initialized && isNative) {
+        return {
+          success: false,
+          error: this.formatErrorMessage({ code: "23", message: "configuration" }),
+        };
+      }
     }
 
-    // If mock mode, simulate successful StoreKit purchase
-    if (this.isMockMode) {
-      console.info(`[RevenueCat:Mock] Simulated purchase for ${planId} succeeded.`);
+    // Mock mode is strictly prohibited on native iOS/Android
+    if (this.isMockMode && !isNative) {
+      console.info(`[RevenueCat:Mock] Simulated web dev purchase for ${planId} succeeded.`);
       return {
         success: true,
         planId,
+      };
+    }
+
+    if (!this.isConfigured) {
+      return {
+        success: false,
+        error: this.formatErrorMessage({ code: "23", message: "configuration" }),
       };
     }
 
@@ -303,19 +329,10 @@ class RevenueCatService {
         customerInfo = result.customerInfo;
       }
 
-      const hasEntitlement = Boolean(
-        customerInfo.entitlements?.active &&
-        (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] ||
-         Object.keys(customerInfo.entitlements.active).length > 0)
-      );
-
-      const hasActiveSub = Boolean(
-        customerInfo.activeSubscriptions &&
-        customerInfo.activeSubscriptions.includes(productId)
-      );
+      const isActivePro = this.isProEntitlementActive(customerInfo);
 
       return {
-        success: hasEntitlement || hasActiveSub,
+        success: isActivePro,
         customerInfo,
         planId,
       };
@@ -400,12 +417,29 @@ class RevenueCatService {
     customerInfo?: CustomerInfo;
     error?: string;
   }> {
+    const isNative = Capacitor.isNativePlatform();
+
     if (!this.isConfigured) {
-      await this.initialize();
+      const initialized = await this.initialize(this.currentUserId || undefined);
+      if (!initialized && isNative) {
+        return {
+          success: false,
+          hasActivePro: false,
+          error: this.formatErrorMessage({ code: "23", message: "configuration" }),
+        };
+      }
     }
 
-    if (this.isMockMode) {
+    if (this.isMockMode && !isNative) {
       return { success: true, hasActivePro: false };
+    }
+
+    if (!this.isConfigured) {
+      return {
+        success: false,
+        hasActivePro: false,
+        error: this.formatErrorMessage({ code: "23", message: "configuration" }),
+      };
     }
 
     try {
@@ -475,6 +509,23 @@ class RevenueCatService {
   }
 
   /**
+   * Fetches the latest CustomerInfo from native StoreKit/RevenueCat and maps it to UserSubscription.
+   */
+  public async getCustomerInfoSubscription(): Promise<UserSubscription | null> {
+    if (!Capacitor.isNativePlatform() || this.isMockMode || !this.isConfigured) {
+      return null;
+    }
+
+    try {
+      const { customerInfo } = await Purchases.getCustomerInfo();
+      if (!customerInfo) return null;
+      return this.mapCustomerInfoToSubscription(customerInfo);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Converts RevenueCat customer info to an Accrual UserSubscription snapshot.
    */
   public mapCustomerInfoToSubscription(
@@ -492,9 +543,7 @@ class RevenueCatService {
     const fallbackSubId =
       customerInfo.activeSubscriptions?.find((id) => knownProProductIds.has(id)) || null;
 
-    const isPro = Boolean(
-      (entitlement && entitlement.isActive !== false) || fallbackSubId
-    );
+    const isPro = this.isProEntitlementActive(customerInfo);
 
     const resolvedPlanId =
       planIdHint ||
@@ -511,7 +560,10 @@ class RevenueCatService {
       status: isPro ? (entitlement?.periodType === "TRIAL" ? "trialing" : "active") : "expired",
       planId: resolvedPlanId,
       store: "app_store",
-      originalTransactionId: entitlement?.originalPurchaseDate || null,
+      originalTransactionId:
+        entitlement?.originalPurchaseDate ||
+        customerInfo.originalPurchaseDate ||
+        (isPro ? `rc_${Date.now()}` : null),
       trialStartAt: entitlement?.periodType === "TRIAL" ? entitlement.originalPurchaseDate : null,
       trialEndAt: entitlement?.periodType === "TRIAL" ? entitlement.expirationDate : null,
       currentPeriodStart: entitlement?.latestPurchaseDate || null,

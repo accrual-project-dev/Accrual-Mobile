@@ -192,7 +192,7 @@ export function FinancialWrappedModal({
       const filename = `Accrual-Wrapped-${periodTitle.replace(/\s+/g, "-")}.png`;
       const file = new File([blob], filename, { type: "image/png" });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: `Accrual Wrapped · ${periodTitle}`,
@@ -207,8 +207,10 @@ export function FinancialWrappedModal({
         const a = document.createElement("a");
         a.href = url;
         a.download = filename;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
         showToast(
           isIndonesian ? "Poster berhasil diunduh!" : "Poster downloaded!",
           "info",

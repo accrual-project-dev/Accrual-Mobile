@@ -16,6 +16,7 @@ import { parseSlipText } from "../../lib/slipParser";
 import { classifySemanticCategory } from "../../lib/semanticClassifier";
 import { getMerchantMemory } from "../../lib/merchantCategoryMemory";
 import { showNativeLocalNotification, formatNotificationCurrency } from "../../lib/notifications";
+import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useSpace } from "../../contexts/SpaceContext";
@@ -24,6 +25,7 @@ import { useWallets } from "../../hooks/useWallets";
 
 export function useInboxDrain() {
   const isDrainingRef = useRef(false);
+  const { user } = useAuth();
   const { isIndonesian } = useLanguage();
   const { showToast } = useToast();
   const { activeSpaceId, activeSpace, defaultSpaceId } = useSpace();
@@ -34,8 +36,10 @@ export function useInboxDrain() {
     if (isDrainingRef.current) return;
     isDrainingRef.current = true;
 
+    const ownerId = user?.id || "guest_local_user";
+
     try {
-      const res = await AccrualInbox.drain();
+      const res = await AccrualInbox.drain({ ownerId });
       const items: InboxDraft[] = res?.items || [];
       if (!items.length) return;
 
@@ -193,6 +197,7 @@ export function useInboxDrain() {
             : "Expense";
 
         const finalDesc = resolvedDesc || defaultDesc;
+        const resolvedConfidence = typeof item.confidence === "number" ? item.confidence : 0.85;
 
         validStatementItems.push({
           id: item.id,
@@ -212,15 +217,18 @@ export function useInboxDrain() {
           isDuplicate: false,
           selected: true,
           raw: rawText,
-          confidence: item.confidence,
-          needsReview: item.confidence < 0.7 || item.direction === "unknown",
+          confidence: resolvedConfidence,
+          needsReview: resolvedConfidence < 0.7 || item.direction === "unknown",
           spaceId: targetSpaceId,
           spaceName: targetSpaceName,
+          captureOwnerId: ownerId,
+          captureLedgerId: targetSpaceId,
+          captureTimestampConfirmed: true,
         });
       }
 
       // Acknowledge all processed IDs (including filtered promo items) so native cleans up files
-      await AccrualInbox.ack({ ids: allIds });
+      await AccrualInbox.ack({ ids: allIds, ownerId });
 
       if (validStatementItems.length === 0) return;
 
@@ -277,6 +285,7 @@ export function useInboxDrain() {
       isDrainingRef.current = false;
     }
   }, [
+    user?.id,
     isIndonesian,
     showToast,
     activeSpaceId,

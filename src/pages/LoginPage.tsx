@@ -147,6 +147,12 @@ export function LoginPage() {
           if (authError) throw authError;
 
           if (authData?.session) {
+            const givenName = result.response?.givenName?.trim() || "";
+            const familyName = result.response?.familyName?.trim() || "";
+            const fullName = [givenName, familyName].filter(Boolean).join(" ");
+            if (fullName && !authData.session.user?.user_metadata?.full_name) {
+              supabase.auth.updateUser({ data: { full_name: fullName } }).catch(() => {});
+            }
             savePersistentSession(authData.session);
             setSession(authData.session);
             triggerSuccessHaptic();
@@ -175,6 +181,10 @@ export function LoginPage() {
             clientId: "546912593526-fvfdliju0vqfchkoq2sfocd6vplfdmrm.apps.googleusercontent.com",
           });
 
+          try {
+            await GoogleSignIn.signOut();
+          } catch {}
+
           // Generate secure cryptographic nonce
           const rawNonce =
             typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -194,11 +204,36 @@ export function LoginPage() {
             );
           }
 
-          const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
+          // Inspect JWT payload to determine whether the Google iOS SDK embedded the nonce claim
+          let tokenHasNonce = false;
+          try {
+            const parts = idToken.split(".");
+            if (parts.length >= 2) {
+              const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+              const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), "=");
+              const payload = JSON.parse(atob(padded));
+              tokenHasNonce = Boolean(payload?.nonce);
+            }
+          } catch {}
+
+          let { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
             provider: "google",
             token: idToken,
-            nonce: rawNonce,
+            ...(tokenHasNonce ? { nonce: rawNonce } : {}),
           });
+
+          if (
+            authError &&
+            typeof authError.message === "string" &&
+            authError.message.toLowerCase().includes("nonce")
+          ) {
+            const retryRes = await supabase.auth.signInWithIdToken({
+              provider: "google",
+              token: idToken,
+            });
+            authData = retryRes.data;
+            authError = retryRes.error;
+          }
 
           if (authError) throw authError;
 
@@ -276,10 +311,13 @@ export function LoginPage() {
       }
     } catch (err: any) {
       setError(
-        err?.message ||
-          (isIndonesian
-            ? `Gagal masuk dengan ${provider === "apple" ? "Apple" : "Google"}.`
-            : `Failed to sign in with ${provider === "apple" ? "Apple" : "Google"}.`),
+        formatAuthError(
+          err?.message ||
+            (isIndonesian
+              ? `Gagal masuk dengan ${provider === "apple" ? "Apple" : "Google"}.`
+              : `Failed to sign in with ${provider === "apple" ? "Apple" : "Google"}.`),
+          isIndonesian,
+        ),
       );
     } finally {
       setLoading(false);

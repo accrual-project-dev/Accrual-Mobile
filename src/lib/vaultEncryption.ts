@@ -294,16 +294,36 @@ export function downloadVaultFile(
   filename?: string,
 ): void {
   const json = JSON.stringify(payload, null, 2);
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const resolvedName = filename || `accrual_vault_${dateStr}.accrual`;
   const blob = new Blob([json], { type: "application/json" });
+
+  if (
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent || "")
+  ) {
+    try {
+      const file = new File([blob], resolvedName, { type: "application/json" });
+      if (navigator.canShare({ files: [file] })) {
+        void navigator.share({
+          files: [file],
+          title: resolvedName,
+        }).catch(() => {});
+        return;
+      }
+    } catch {}
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   a.href = url;
-  a.download = filename || `accrual_vault_${dateStr}.accrual`;
+  a.download = resolvedName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 export async function parseVaultFile(file: File): Promise<EncryptedVaultPayload> {

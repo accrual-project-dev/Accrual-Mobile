@@ -397,6 +397,46 @@ export function LegalModal({
                   : "We reserve the right to update, maintain, and refine application features for ongoing stability and security. Accrual is architected with an offline-first priority to remain accessible without internet connectivity."}
               </p>
             </div>
+
+            {/* Section 5: Apple Standard EULA */}
+            <div
+              className="p-3.5 rounded-2xl border space-y-2"
+              style={{
+                background: "var(--bg-elevated)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Scale
+                  size={15}
+                  strokeWidth={1.8}
+                  className="text-[var(--text-primary)]"
+                />
+                <h4 className="text-[12.5px] font-semibold text-[var(--text-primary)]">
+                  {isIndonesian
+                    ? "5. Perjanjian Lisensi Pengguna Akhir (Apple Standard EULA)"
+                    : "5. Licensed Application End User License Agreement (EULA)"}
+                </h4>
+              </div>
+              <p className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
+                {isIndonesian
+                  ? "Langganan perpanjangan otomatis Accrual Pro di iOS tunduk pada Perjanjian Lisensi Pengguna Akhir Aplikasi Berlisensi Standar Apple (Apple Standard EULA)."
+                  : "Accrual Pro auto-renewable subscriptions on iOS are governed by the Apple Standard Licensed Application End User License Agreement (EULA)."}
+              </p>
+              <a
+                href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerHaptic("light")}
+                className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold underline text-[var(--text-primary)] pt-0.5"
+              >
+                <span>
+                  {isIndonesian
+                    ? "Baca Apple Standard EULA Resmi"
+                    : "Read Official Apple Standard EULA"}
+                </span>
+              </a>
+            </div>
           </div>
         )}
 

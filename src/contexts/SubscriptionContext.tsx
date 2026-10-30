@@ -12,6 +12,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
+import { Capacitor } from "@capacitor/core";
 import type {
   UserSubscription,
   SubscriptionPlanId,
@@ -177,10 +178,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setIsCancelModalOpen(false);
     };
     window.addEventListener("trouvaille_session_teardown", handleTeardown);
-    return () => window.removeEventListener("trouvaille_session_teardown", handleTeardown);
+    window.addEventListener("trouvaille:session-cleared", handleTeardown);
+    return () => {
+      window.removeEventListener("trouvaille_session_teardown", handleTeardown);
+      window.removeEventListener("trouvaille:session-cleared", handleTeardown);
+    };
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const syncStoreKitEntitlement = async (targetUserId?: string) => {
+      const ok = await revenueCatService.initialize(targetUserId);
+      if (!ok || !isMounted || !Capacitor.isNativePlatform()) return;
+      const liveSub = await revenueCatService.getCustomerInfoSubscription();
+      if (isMounted && liveSub && liveSub.tier === "premium") {
+        saveToLocal(liveSub);
+      }
+    };
+
     if (!user || user.id === GUEST_USER_ID) {
       // Switched to guest / logged out: load guest state or default free
       try {
@@ -199,8 +215,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       } catch {
         setSubscription(DEFAULT_SUBSCRIPTION);
       }
-      revenueCatService.initialize();
-      return;
+      void syncStoreKitEntitlement();
+      return () => {
+        isMounted = false;
+      };
     }
 
     // Authenticated user: load user cache and fetch remote
@@ -215,9 +233,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       }
     } catch {}
 
-    fetchRemoteSubscription();
-    revenueCatService.initialize(user.id);
-  }, [fetchRemoteSubscription, user]);
+    void fetchRemoteSubscription();
+    void syncStoreKitEntitlement(user.id);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchRemoteSubscription, saveToLocal, user]);
 
   const isPremium = useMemo(() => {
     if (subscription.isLifetime) return true;
@@ -271,7 +293,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
 
-        // 1. Trigger purchase via RevenueCat StoreKit bridge (or mock sandbox)
+        // 1. Trigger purchase via RevenueCat StoreKit bridge
         const result = await revenueCatService.purchasePlan(planId);
         if (!result.success) {
           if (result.cancelled) {
@@ -282,13 +304,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           return { success: false, error: result.error };
         }
 
-        triggerSuccessHaptic();
-
         let updatedSub: UserSubscription;
         if (result.customerInfo) {
           updatedSub = revenueCatService.mapCustomerInfoToSubscription(result.customerInfo, planId);
-        } else {
-          // Mock Sandbox calculation
+        } else if (!Capacitor.isNativePlatform() && import.meta.env.DEV) {
+          // Local Web Development Sandbox calculation only
           const isLifetime = planId === "accrual_lifetime_499k";
           const hasTrial = planId === "accrual_annual_199k";
           const now = new Date();
@@ -301,6 +321,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             status: hasTrial ? "trialing" : "active",
             planId,
             store: "app_store",
+            originalTransactionId: `dev_mock_${now.getTime()}`,
             isLifetime,
             trialStartAt: hasTrial ? now.toISOString() : null,
             trialEndAt: trialEnd,
@@ -313,7 +334,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 ).toISOString(),
             updatedAt: now.toISOString(),
           };
+        } else {
+          return {
+            success: false,
+            error: revenueCatService.formatErrorMessage({ code: "23", message: "configuration" }),
+          };
         }
+
+        triggerSuccessHaptic();
 
         // 2. Save locally immediately
         saveToLocal(updatedSub);
@@ -328,6 +356,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 status: updatedSub.status,
                 plan_id: updatedSub.planId,
                 store: updatedSub.store,
+                original_transaction_id: updatedSub.originalTransactionId || null,
                 trial_start_at: updatedSub.trialStartAt,
                 trial_end_at: updatedSub.trialEndAt,
                 current_period_start: updatedSub.currentPeriodStart,
@@ -375,6 +404,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 status: restoredSub.status,
                 plan_id: restoredSub.planId,
                 store: restoredSub.store,
+                original_transaction_id: restoredSub.originalTransactionId || null,
                 trial_start_at: restoredSub.trialStartAt,
                 trial_end_at: restoredSub.trialEndAt,
                 current_period_start: restoredSub.currentPeriodStart,
@@ -397,7 +427,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         return { success: false, hasActivePro: false, error: restoreRes.error };
       }
 
-      // 2. In offline/mock mode, check remote Supabase record if logged in
+      // 2. Fallback: check remote Supabase record if logged in
       if (user && user.id !== GUEST_USER_ID) {
         const remoteSub = await fetchRemoteSubscription();
         const activeSub = remoteSub || subscription;
@@ -419,7 +449,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, saveToLocal, fetchRemoteSubscription, subscription.tier, closePaywall, openSuccessModal]);
+  }, [user, saveToLocal, fetchRemoteSubscription, subscription, closePaywall, openSuccessModal]);
 
   const setLocalTierOverride = useCallback(
     (tier: "free" | "premium") => {

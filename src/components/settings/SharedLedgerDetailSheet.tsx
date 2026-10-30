@@ -189,7 +189,7 @@ export function SharedLedgerDetailSheet({
       ? `Ayo bergabung ke space bersama '${liveLedger.name}' di Accrual! Masukkan kode: ${inviteCode} atau buka: ${webUrl}`
       : `Join the shared space '${liveLedger.name}' on Accrual! Use code: ${inviteCode} or open: ${webUrl}`;
 
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         await navigator.share({
           title: `Accrual - ${liveLedger.name}`,

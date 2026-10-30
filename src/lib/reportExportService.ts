@@ -736,6 +736,23 @@ export function downloadExportFile(
   mimeType = "text/csv;charset=utf-8;",
 ): void {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
+  if (
+    Capacitor.isNativePlatform() &&
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function"
+  ) {
+    try {
+      const file = new File([blob], filename, { type: mimeType.split(";")[0] || "text/plain" });
+      if (navigator.canShare({ files: [file] })) {
+        void navigator.share({
+          files: [file],
+          title: filename,
+        }).catch(() => {});
+        return;
+      }
+    } catch {}
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -743,7 +760,7 @@ export function downloadExportFile(
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 /**
@@ -757,7 +774,7 @@ export async function shareOrDownloadFile(
 ): Promise<boolean> {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
 
-  if (navigator.share && navigator.canShare) {
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
     try {
       const file = new File([blob], filename, { type: mimeType });
       if (navigator.canShare({ files: [file] })) {
@@ -996,7 +1013,7 @@ export async function downloadLuxuryExcel(
 ): Promise<void> {
   const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
 
-  if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+  if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
     try {
       const file = new File([blob], filename, {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1023,7 +1040,7 @@ export async function downloadLuxuryExcel(
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 /**
@@ -1039,7 +1056,7 @@ export async function shareLuxuryExcel(
 ): Promise<boolean> {
   const blob = await generateLuxuryExcelBlob(transactions, summary, wallets, categories, isIndonesian);
 
-  if (navigator.share && navigator.canShare) {
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
     try {
       const file = new File([blob], filename, {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1070,7 +1087,7 @@ export async function shareLuxuryExcel(
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
   return true;
 }
 
@@ -1990,7 +2007,7 @@ export async function downloadLuxuryPdf(
   const blob = doc.output("blob");
 
   // In native Capacitor iOS WKWebView, <a download> is ignored; Web Share API prompts native "Save to Files"
-  if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+  if (Capacitor.isNativePlatform() && typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
     try {
       const file = new File([blob], filename, { type: "application/pdf" });
       if (navigator.canShare({ files: [file] })) {
@@ -2028,7 +2045,7 @@ export async function shareLuxuryPdf(
   const doc = generateLuxuryPdf(transactions, summary, wallets, categories, isIndonesian, allTransactions, options);
   const blob = doc.output("blob");
 
-  if (navigator.share && navigator.canShare) {
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
     try {
       const file = new File([blob], filename, { type: "application/pdf" });
       if (navigator.canShare({ files: [file] })) {

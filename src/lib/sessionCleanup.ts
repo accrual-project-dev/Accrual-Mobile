@@ -65,6 +65,7 @@ export const USER_SESSION_STORAGE_KEYS = [
   "trouvaille_budget_period_start",
   "trouvaille_avatar",
   "accrual_subscription_state_v1",
+  "accrual_subscription_state_v1_guest",
 ] as const;
 
 const PRESERVED_SETTINGS_KEYS = new Set([
@@ -192,11 +193,14 @@ export async function clearAllLocalUserSessionData(
     console.warn("[SessionCleanup] terminateOCRWorker warning:", ocrErr);
   }
 
-  // 9. Notify mounted React Contexts (e.g. SpaceProvider) to purge in-memory state immediately
+  // 9. Notify mounted React Contexts (e.g. SpaceProvider, SubscriptionProvider) to purge in-memory state immediately
+  // Dispatches both legacy and Rule 14.1 canonical event names
   try {
     if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
       window.dispatchEvent(new CustomEvent("trouvaille_session_teardown"));
+      window.dispatchEvent(new CustomEvent("trouvaille:session-cleared"));
     }
   } catch {}
 }
 
+export const performCompleteSessionTeardown = clearAllLocalUserSessionData;

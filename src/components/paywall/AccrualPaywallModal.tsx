@@ -542,7 +542,7 @@ export function AccrualPaywallModal({
               : "Subscriptions renew automatically via your Apple ID unless canceled at least 24 hours before expiration."}
           </p>
 
-          <div className="flex items-center gap-3 text-[10px] text-[var(--text-tertiary)] mt-0.5">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 text-[10px] text-[var(--text-tertiary)] mt-0.5">
             <button
               type="button"
               onClick={() => {
@@ -564,6 +564,16 @@ export function AccrualPaywallModal({
             >
               {isIndonesian ? "Kebijakan Privasi" : "Privacy Policy"}
             </button>
+            <span>•</span>
+            <a
+              href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => triggerHaptic("light")}
+              className="hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            >
+              {isIndonesian ? "EULA Standar Apple" : "Apple Standard EULA"}
+            </a>
           </div>
         </div>
       </div>
