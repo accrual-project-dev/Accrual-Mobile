@@ -173,8 +173,8 @@ export function LegalModal({
               </div>
               <p className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
                 {isIndonesian
-                  ? "Accrual beroperasi tanpa skrip pelacak pihak ketiga, tanpa telemetri perilaku pengguna, dan tanpa jaringan periklanan. Kami tidak pernah menjual, menyewakan, atau memonetisasi data finansial Anda kepada pihak mana pun."
-                  : "Accrual operates with zero third-party tracking scripts, zero behavioural telemetry, and zero advertising networks. We never sell, lease, or monetize your financial data to any entity."}
+                  ? "Accrual tidak menggunakan iklan atau pelacakan lintas aplikasi untuk iklan. RevenueCat memproses pengenal pengguna dan data pembelian untuk validasi, pemulihan, dan analitik pembelian."
+                  : "Accrual does not use advertising or cross-app advertising tracking. RevenueCat processes user identifiers and purchase information for validation, restoration, and purchase analytics."}
               </p>
             </div>
 
@@ -200,8 +200,8 @@ export function LegalModal({
               </div>
               <p className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
                 {isIndonesian
-                  ? "Dalam Mode Tamu, seluruh data disimpan 100% secara lokal pada penyimpanan perangkat Anda. Jika Anda menghubungkan akun awan, data disinkronkan secara aman ke peladen Supabase dengan Kebijakan Keamanan Tingkat Baris yang ketat sehingga hanya akun Anda yang dapat mengakses data tersebut."
-                  : "In Guest Mode, all data is stored 100% locally on your device storage. If you connect a cloud account, data is synced securely to Supabase servers with strict Row Level Security policies ensuring only your authenticated account can access the records."}
+                  ? "Dalam Mode Tamu, catatan disimpan pada perangkat. Jika Anda masuk, data dapat disinkronkan ke Supabase; anggota yang diundang dapat mengakses buku bersama sesuai perannya. Sinkronisasi awan tidak menggunakan enkripsi ujung ke ujung."
+                  : "In Guest Mode, records are stored on your device. If you sign in, data can sync to Supabase; invited members can access shared ledgers according to their roles. Cloud sync is not end-to-end encrypted."}
               </p>
             </div>
 
@@ -458,14 +458,14 @@ export function LegalModal({
                 />
                 <h4 className="text-[12.5px] font-semibold text-[var(--text-primary)]">
                   {isIndonesian
-                    ? "1. Kriptografi Brankas Perangkat Keras"
-                    : "1. Hardware Vault Cryptography"}
+                    ? "1. Ekspor Cadangan Terenkripsi"
+                    : "1. Encrypted Backup Export"}
                 </h4>
               </div>
               <p className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
                 {isIndonesian
-                  ? "Fitur Brankas Terenkripsi Accrual menggunakan standar kriptografi WebCrypto terverifikasi: derivasi kunci sandi PBKDF2 dengan 100.000 iterasi hash SHA-256 yang dipadukan dengan enkripsi simetris autentikasi AES-GCM 256-bit."
-                  : "Accrual's Encrypted Vault employs verified WebCrypto standards: PBKDF2 key derivation with 100,000 SHA-256 iterations paired with authenticated AES-GCM 256-bit symmetric encryption."}
+                  ? "Ekspor cadangan terenkripsi Accrual menggunakan WebCrypto: derivasi kunci sandi PBKDF2 dengan 100.000 iterasi hash SHA-256 yang dipadukan dengan enkripsi simetris autentikasi AES-GCM 256-bit."
+                  : "Accrual's encrypted backup export uses WebCrypto: PBKDF2 key derivation with 100,000 SHA-256 iterations paired with authenticated AES-GCM 256-bit symmetric encryption."}
               </p>
             </div>
 

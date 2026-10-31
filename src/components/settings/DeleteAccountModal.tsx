@@ -4,7 +4,7 @@ import { BottomSheet } from "../ui/BottomSheet";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { supabase } from "../../lib/supabase";
+import { deleteAccountOnServer } from "../../lib/accountDeletion";
 import { clearAllLocalUserSessionData } from "../../lib/sessionCleanup";
 import { triggerHaptic } from "../../lib/haptics";
 
@@ -31,30 +31,10 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
     triggerHaptic("heavy");
 
     try {
-      // 1. If connected to Supabase account, attempt server-side record cleanup
-      if (session?.user?.id && !isGuest) {
-        const userId = session.user.id;
-        try {
-          // Attempt atomic server-side full account & data wipe via RPC
-          const { error: rpcErr } = await supabase.rpc("delete_user_account");
-          if (rpcErr) {
-            // Fallback: manual wipe across all tables including holdings, budgets, and ledgers
-            await Promise.allSettled([
-              supabase.from("transactions").delete().eq("user_id", userId),
-              supabase.from("wallets").delete().eq("user_id", userId),
-              supabase.from("categories").delete().eq("user_id", userId),
-              supabase.from("bills").delete().eq("user_id", userId),
-              supabase.from("goals").delete().eq("user_id", userId),
-              supabase.from("holdings").delete().eq("user_id", userId),
-              supabase.from("user_budgets").delete().eq("user_id", userId),
-              supabase.from("user_shortcuts").delete().eq("user_id", userId),
-              supabase.from("ledger_members").delete().eq("user_id", userId),
-              supabase.from("ledgers").delete().eq("user_id", userId),
-            ]);
-          }
-        } catch (serverErr) {
-          console.warn("[DeleteAccount] Server wipe warning:", serverErr);
-        }
+      // Do not clear the local account until the server confirms deletion.
+      if (!isGuest) {
+        if (!session?.user?.id) throw new Error(isIndonesian ? "Sesi akun tidak tersedia. Silakan masuk kembali." : "Account session is unavailable. Please sign in again.");
+        await deleteAccountOnServer(session.user.id);
       }
 
       // 2. Wipe all multi-tenant local storage, IndexedDB vault, biometric credentials & emit teardown event (Rule 8.2)
