@@ -17,7 +17,7 @@ Accrual does **NOT** sell, rent, monetize, or broker your personal or financial 
 To provide core wealth tracking and multi-asset portfolio features, Accrual processes the following categories of information:
 
 ### A. Account Identification
-- **Email Address & User ID:** If you sign in via Email, Sign in with Apple, or Google Sign-In, we store your authenticated User ID and email address to manage your account session and secure cloud backup.
+- **Name, Email Address & User ID:** If you sign in via Email, Sign in with Apple, or Google Sign-In, we store your authenticated User ID and email address to manage your account session and secure cloud backup.
 - **Sign in with Apple:** Supports Apple's Private Relay ("Hide My Email"), allowing you to register with an anonymous, forwarded email address.
 
 ### B. Financial Portfolio & Transaction Data
@@ -27,7 +27,7 @@ To provide core wealth tracking and multi-asset portfolio features, Accrual proc
 ### C. Device Permissions
 - **Biometric Authentication (Face ID / Touch ID):** Used strictly on-device to lock and unlock the application vault. Biometric measurements are handled entirely by Apple Secure Enclave and never leave your device.
 - **Camera & Photo Library:** Requested only when you choose to scan physical receipts or upload statement documents.
-- **Microphone & Speech Recognition:** Requested only if you utilize voice quick-add commands. Voice audio is processed via on-device speech APIs and is not recorded for advertising.
+- **Microphone & Speech Recognition:** Requested only if you utilize voice quick-add commands. Speech recognition uses the platform speech service; availability and processing depend on the device and platform settings.
 
 ---
 
@@ -41,14 +41,14 @@ To provide core wealth tracking and multi-asset portfolio features, Accrual proc
 
 ## 4. Third-Party Service Providers
 We partner only with industry-standard, security-audited infrastructure providers:
-- **Apple StoreKit & RevenueCat:** Processes in-app purchases and verifies subscription entitlements. Financial billing details (credit cards, billing addresses) are managed exclusively by Apple and are never visible to Accrual.
-- **Supabase Cloud (PostgreSQL):** Hosts your encrypted database with strict Row Level Security (RLS). Every database query is cryptographically constrained to your unique user ID.
+- **Apple StoreKit & RevenueCat:** Apple processes payments. RevenueCat processes purchase history, subscription status, user identifiers, and technical information for purchase validation, restoration, and purchase analytics. Full card numbers are not provided to Accrual.
+- **Supabase Cloud (PostgreSQL):** Stores account and financial records for signed-in users. Invited members can access shared ledgers according to their permissions. Cloud synchronization uses HTTPS; financial records are not end-to-end encrypted.
 
 ---
 
 ## 5. Data Security & Storage
-- All network communication uses Transport Layer Security (TLS 1.3 / HTTPS).
-- Sensitive local credentials and biometric PINs are stored in the device's hardware-backed Keychain / Secure Enclave.
+- Cloud connections use HTTPS. Market quote requests may be sent to third-party market data providers.
+- The application stores session information and a derived PIN verifier locally. Optional biometric credentials can use platform secure storage. Encrypted backup exports use a user-provided passphrase.
 - You have the absolute right to export your complete financial records (CSV/JSON/PDF) or delete your entire account and associated cloud data at any time directly within **Settings > Delete Account**.
 
 ---
