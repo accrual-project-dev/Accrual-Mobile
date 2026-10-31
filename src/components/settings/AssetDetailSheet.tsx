@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Plus,
   Minus,
   Edit3,
   Check,
   X,
+  ArrowLeft,
   ArrowUpRight,
   ArrowDownRight,
   RotateCcw,
@@ -152,7 +153,7 @@ export function AssetDetailSheet({
     "1D" | "1W" | "1M" | "6M" | "YTD" | "1Y" | "ALL"
   >("1M");
 
-  // Unified Inline Asset Editing State (Replaces detached floating double-cards)
+  // Single Unified BottomSheet View State (Replaces redundant double bottom sheets)
   const [isEditingAsset, setIsEditingAsset] = useState<boolean>(false);
   const [editName, setEditName] = useState<string>("");
   const [editSymbol, setEditSymbol] = useState<string>("");
@@ -162,8 +163,35 @@ export function AssetDetailSheet({
   const [editCustomPrice, setEditCustomPrice] = useState<string>("");
   const [editIsCustomPrice, setEditIsCustomPrice] = useState<boolean>(false);
 
+  // Buy / Sell action states (Rendered directly in the SAME BottomSheet — Zero Double Sheet)
+  const [actionModal, setActionModal] = useState<"none" | "buy" | "sell">(
+    "none",
+  );
+  const [modalPriceMode, setModalPriceMode] = useState<"auto" | "custom">(
+    "auto",
+  );
+  const [inputNominal, setInputNominal] = useState<string>("");
+  const [inputUnits, setInputUnits] = useState<string>("");
+  const [inputPrice, setInputPrice] = useState<string>("");
+  const [inputDate, setInputDate] = useState<string>(() =>
+    format(new Date(), "yyyy-MM-dd"),
+  );
+  const [inputNote, setInputNote] = useState<string>("");
+  const [linkToWallet, setLinkToWallet] = useState<boolean>(false);
+  const [selectedWalletId, setSelectedWalletId] = useState<string>("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+
+  // Reset sub-views whenever sheet closes or holding changes
+  useEffect(() => {
+    if (!isOpen) {
+      setActionModal("none");
+      setIsEditingAsset(false);
+    }
+  }, [isOpen, holding?.id]);
+
   const handleOpenEditAsset = (_focusField?: "units" | "price" | "all") => {
     if (!holding) return;
+    setActionModal("none");
     setEditName(holding.name || "");
     setEditSymbol(holding.symbol || "");
     const rawType = holding.asset_type as string;
@@ -183,10 +211,14 @@ export function AssetDetailSheet({
           ).display
         : "",
     );
-    const shouldEnableCustom = _focusField === "price" ? true : Boolean(holding.is_custom_price);
+    const shouldEnableCustom =
+      _focusField === "price" ? true : Boolean(holding.is_custom_price);
     setEditIsCustomPrice(shouldEnableCustom);
     const initialCustom =
-      holding.custom_price || holding.current_price || holding.avg_buy_price || 0;
+      holding.custom_price ||
+      holding.current_price ||
+      holding.avg_buy_price ||
+      0;
     setEditCustomPrice(
       initialCustom > 0
         ? formatLiveAmountInput(
@@ -212,7 +244,10 @@ export function AssetDetailSheet({
     const trimmedSymbol = editSymbol.trim().toUpperCase() || holding.symbol;
 
     if (isNaN(parsedUnits) || parsedUnits < 0) {
-      showToast(isIndonesian ? "Jumlah unit tidak valid" : "Invalid unit amount", "delete");
+      showToast(
+        isIndonesian ? "Jumlah unit tidak valid" : "Invalid unit amount",
+        "delete",
+      );
       return;
     }
 
@@ -225,7 +260,7 @@ export function AssetDetailSheet({
         isIndonesian
           ? `Aset ${trimmedSymbol} telah dihapus karena unit bernilai 0.`
           : `Asset ${trimmedSymbol} removed as units reached 0.`,
-        "delete"
+        "delete",
       );
       return;
     }
@@ -236,13 +271,24 @@ export function AssetDetailSheet({
       symbol: trimmedSymbol,
       asset_type: editType,
       units: parsedUnits,
-      avg_buy_price: !isNaN(parsedBuyPrice) && parsedBuyPrice > 0 ? parsedBuyPrice : holding.avg_buy_price,
+      avg_buy_price:
+        !isNaN(parsedBuyPrice) && parsedBuyPrice > 0
+          ? parsedBuyPrice
+          : holding.avg_buy_price,
       is_custom_price: editIsCustomPrice,
-      custom_price: editIsCustomPrice && !isNaN(parsedCustomPrice) ? parsedCustomPrice : undefined,
-      current_price: editIsCustomPrice && !isNaN(parsedCustomPrice) && parsedCustomPrice > 0
-        ? parsedCustomPrice
-        : holding.current_price,
-      price_source: editIsCustomPrice ? "manual" : (holding.price_source === "manual" ? "cache" : holding.price_source),
+      custom_price:
+        editIsCustomPrice && !isNaN(parsedCustomPrice)
+          ? parsedCustomPrice
+          : undefined,
+      current_price:
+        editIsCustomPrice && !isNaN(parsedCustomPrice) && parsedCustomPrice > 0
+          ? parsedCustomPrice
+          : holding.current_price,
+      price_source: editIsCustomPrice
+        ? "manual"
+        : holding.price_source === "manual"
+        ? "cache"
+        : holding.price_source,
       last_price_updated_at: new Date().toISOString(),
     };
 
@@ -253,27 +299,9 @@ export function AssetDetailSheet({
       isIndonesian
         ? `Detail aset ${trimmedSymbol} berhasil diperbarui.`
         : `Asset ${trimmedSymbol} details successfully updated.`,
-      "update"
+      "update",
     );
   };
-
-  // Buy / Sell action modal states
-  const [actionModal, setActionModal] = useState<"none" | "buy" | "sell">(
-    "none",
-  );
-  const [modalPriceMode, setModalPriceMode] = useState<"auto" | "custom">(
-    "auto",
-  );
-  const [inputNominal, setInputNominal] = useState<string>("");
-  const [inputUnits, setInputUnits] = useState<string>("");
-  const [inputPrice, setInputPrice] = useState<string>("");
-  const [inputDate, setInputDate] = useState<string>(() =>
-    format(new Date(), "yyyy-MM-dd"),
-  );
-  const [inputNote, setInputNote] = useState<string>("");
-  const [linkToWallet, setLinkToWallet] = useState<boolean>(false);
-  const [selectedWalletId, setSelectedWalletId] = useState<string>("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
   // Valuation computations
   const valuation = useMemo(() => {
@@ -318,8 +346,8 @@ export function AssetDetailSheet({
                 ? `Setoran dari ${fromW.name}`
                 : `Deposit from ${fromW.name}`
               : isIndonesian
-                ? "Pembelian Aset"
-                : "Asset Purchase");
+              ? "Pembelian Aset"
+              : "Asset Purchase");
         } else if (tx.wallet_id && cryptoWalletIds.has(tx.wallet_id)) {
           isMatch = true;
           actType = "sell";
@@ -331,8 +359,8 @@ export function AssetDetailSheet({
                 ? `Transfer ke ${toW.name}`
                 : `Transfer to ${toW.name}`
               : isIndonesian
-                ? "Pencairan Aset"
-                : "Asset Liquidation");
+              ? "Pencairan Aset"
+              : "Asset Liquidation");
         }
       } else if (holding.symbol) {
         const sym = holding.symbol.toUpperCase();
@@ -345,9 +373,12 @@ export function AssetDetailSheet({
       if (isMatch) {
         const txDateStr = (tx.occurred_on || "").slice(0, 10);
         const empiricalMeta = extractCryptoMetadataFromTx(tx, directActivities);
-        let rate: number | undefined = (tx as any).customPrice || empiricalMeta.rate;
-        let units: number | undefined = (tx as any).customUnits || empiricalMeta.units;
-        const isEstimated = !empiricalMeta.isEmpirical && !(tx as any).customPrice;
+        let rate: number | undefined =
+          (tx as any).customPrice || empiricalMeta.rate;
+        let units: number | undefined =
+          (tx as any).customUnits || empiricalMeta.units;
+        const isEstimated =
+          !empiricalMeta.isEmpirical && !(tx as any).customPrice;
 
         if (!rate) {
           rate = estimateHistoricalAssetPrice(
@@ -399,7 +430,7 @@ export function AssetDetailSheet({
     return finalActivities.sort((a, b) =>
       (b.date || "").localeCompare(a.date || ""),
     );
-  }, [holding, allTxs, wallets]);
+  }, [holding, allTxs, wallets, isIndonesian]);
 
   // Chart data points
   const chartData = useMemo(() => {
@@ -429,7 +460,7 @@ export function AssetDetailSheet({
     }));
   }, [categories, actionModal]);
 
-  // Early return setelah seluruh hook dipanggil
+  // Early return after all hooks
   if (!holding || !valuation) return null;
 
   const currentPrice = holding.current_price || holding.avg_buy_price;
@@ -455,6 +486,7 @@ export function AssetDetailSheet({
   // Handlers
   const handleOpenBuy = () => {
     triggerHaptic("light");
+    setIsEditingAsset(false);
     setInputNominal("");
     setInputUnits("");
     const formattedPrice =
@@ -478,6 +510,7 @@ export function AssetDetailSheet({
 
   const handleOpenSell = () => {
     triggerHaptic("light");
+    setIsEditingAsset(false);
     setInputNominal("");
     setInputUnits("");
     const formattedPrice =
@@ -500,7 +533,6 @@ export function AssetDetailSheet({
     setActionModal("sell");
   };
 
-  // Dual-Input Smart Handler: Otomatis memformat titik pemisah ribuan saat mengetik Rupiah
   const handleNominalChange = (valStr: string) => {
     const cleanDigits = valStr.replace(/\D/g, "");
     const formattedDisplay = cleanDigits
@@ -509,26 +541,27 @@ export function AssetDetailSheet({
     setInputNominal(formattedDisplay);
 
     const nominal = cleanDigits ? parseFloat(cleanDigits) : 0;
-    const cleanPrice = parseCleanNumber(inputPrice, !isIndonesian) || currentPrice;
+    const cleanPrice =
+      parseCleanNumber(inputPrice, !isIndonesian) || currentPrice;
     if (nominal > 0 && cleanPrice > 0) {
       const computedUnits = nominal / cleanPrice;
       const decimals =
         holding.asset_type === "crypto"
           ? 8
           : holding.asset_type === "gold"
-            ? 4
-            : 2;
+          ? 4
+          : 2;
       setInputUnits(Number(computedUnits.toFixed(decimals)).toString());
     } else {
       setInputUnits("");
     }
   };
 
-  // Dual-Input Smart Handler: Ketika user mengetik Unit
   const handleUnitsChange = (valStr: string) => {
     setInputUnits(valStr);
     const units = parseFloat(valStr.replace(/,/g, "."));
-    const cleanPrice = parseCleanNumber(inputPrice, !isIndonesian) || currentPrice;
+    const cleanPrice =
+      parseCleanNumber(inputPrice, !isIndonesian) || currentPrice;
     if (!isNaN(units) && units > 0 && cleanPrice > 0) {
       const computedNominal = Math.round(units * cleanPrice);
       setInputNominal(
@@ -616,7 +649,8 @@ export function AssetDetailSheet({
       : `${inputDate}T${timePart}`;
 
     const costBasis = (holding.avg_buy_price || 0) * units;
-    const realizedPnL = actionModal === "sell" ? totalAmount - costBasis : undefined;
+    const realizedPnL =
+      actionModal === "sell" ? totalAmount - costBasis : undefined;
 
     const result = recordHoldingActivity(
       holding.id,
@@ -630,8 +664,12 @@ export function AssetDetailSheet({
         note:
           inputNote ||
           (actionModal === "buy"
-            ? (isIndonesian ? `Beli ${holding.symbol}` : `Buy ${holding.symbol}`)
-            : (isIndonesian ? `Jual ${holding.symbol}` : `Sell ${holding.symbol}`)),
+            ? isIndonesian
+              ? `Beli ${holding.symbol}`
+              : `Buy ${holding.symbol}`
+            : isIndonesian
+            ? `Jual ${holding.symbol}`
+            : `Sell ${holding.symbol}`),
       },
       user?.id,
     );
@@ -641,12 +679,12 @@ export function AssetDetailSheet({
       const txNote =
         inputNote ||
         (actionModal === "buy"
-          ? (isIndonesian
-              ? `Beli ${formatHoldingUnits(units)} ${holding.symbol} @ ${formatWithPreferred(price)}`
-              : `Buy ${formatHoldingUnits(units)} ${holding.symbol} @ ${formatWithPreferred(price)}`)
-          : (isIndonesian
-              ? `Likuidasi ${formatHoldingUnits(units)} ${holding.symbol} (Pokok: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`
-              : `Liquidate ${formatHoldingUnits(units)} ${holding.symbol} (Principal: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`));
+          ? isIndonesian
+            ? `Beli ${formatHoldingUnits(units)} ${holding.symbol} @ ${formatWithPreferred(price)}`
+            : `Buy ${formatHoldingUnits(units)} ${holding.symbol} @ ${formatWithPreferred(price)}`
+          : isIndonesian
+          ? `Likuidasi ${formatHoldingUnits(units)} ${holding.symbol} (Pokok: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`
+          : `Liquidate ${formatHoldingUnits(units)} ${holding.symbol} (Principal: ${formatWithPreferred(costBasis)}, Realized P&L: ${pnlSign}${formatWithPreferred(Math.abs(realizedPnL ?? 0))})`);
 
       const sourceWalletId = holding.wallet_id;
       const isTransferPossible = Boolean(
@@ -655,7 +693,6 @@ export function AssetDetailSheet({
 
       if (actionModal === "sell") {
         if (isTransferPossible) {
-          // Transfer from Asset/Crypto Wallet to selected Cash Wallet (Bank)
           addTx.mutate({
             type: "transfer",
             amount: totalAmount,
@@ -666,7 +703,6 @@ export function AssetDetailSheet({
             note: txNote,
           });
         } else {
-          // Direct Cash Inflow from Asset Liquidation
           addTx.mutate({
             type: "income",
             amount: totalAmount,
@@ -677,9 +713,7 @@ export function AssetDetailSheet({
           });
         }
       } else {
-        // Buy action
         if (isTransferPossible) {
-          // Transfer from funding Cash Wallet (Bank) to Asset/Crypto Wallet
           addTx.mutate({
             type: "transfer",
             amount: totalAmount,
@@ -690,7 +724,6 @@ export function AssetDetailSheet({
             note: txNote,
           });
         } else {
-          // Direct Cash Expense from funding Cash Wallet
           addTx.mutate({
             type: "expense",
             amount: totalAmount,
@@ -768,7 +801,6 @@ export function AssetDetailSheet({
     ? "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.22)"
     : "inset 0 1px 0 #ffffff, 0 1px 3px rgba(30, 35, 50, 0.035)";
 
-  // Hairline Gradient Divider (Menggantikan border putih solid dengan gradasi transparan halus)
   const gradientDivider = {
     background: isDark
       ? "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.075) 15%, rgba(255, 255, 255, 0.075) 85%, transparent 100%)"
@@ -777,548 +809,346 @@ export function AssetDetailSheet({
     width: "100%",
   };
 
+  const dynamicSheetTitle =
+    actionModal === "buy"
+      ? isIndonesian
+        ? `Tambah Unit ${holding.symbol}`
+        : `Add ${holding.symbol} Units`
+      : actionModal === "sell"
+      ? isIndonesian
+        ? `Kurangi Unit ${holding.symbol}`
+        : `Reduce ${holding.symbol} Units`
+      : holding.name;
+
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title={holding.name}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} title={dynamicSheetTitle}>
       <div className="px-5 sm:px-6 space-y-3.5 pb-[calc(env(safe-area-inset-bottom,16px)+28px)] pt-1 select-none max-w-lg mx-auto">
-        {/* ============================================================ */}
-        {/* 1. HERO & BALANCE (Apple Stocks Parity)                     */}
-        {/* ============================================================ */}
-        <div
-          className="p-4 sm:p-5 rounded-3xl space-y-3 relative overflow-hidden transition-all"
-          style={{
-            background: controlBg,
-            border: controlBorder,
-            boxShadow: controlShadow,
-          }}
-        >
-          {/* Specular Rim Light */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-[10%] right-[10%] top-[1px] h-[1.5px] rounded-full"
-            style={{
-              background: isDark
-                ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), rgba(255,255,255,0.5), rgba(255,255,255,0.3), transparent)"
-                : "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8), transparent)",
-            }}
-          />
-
-          {/* Header Row: Symbol, Category & Edit/Delete Actions */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 font-bold"
-                style={{
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.08)"
-                    : "rgba(0, 0, 0, 0.05)",
-                  border: controlBorder,
-                }}
-              >
-                <IconRenderer
-                  icon={holding.icon || "TrendingUp"}
-                  size="w-4.5 h-4.5"
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="text-[14px] font-bold text-[var(--text-primary)] font-mono truncate">
-                    {holding.symbol}
-                  </span>
-                  <span
-                    className="px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border leading-none"
-                    style={{
-                      background: isDark
-                        ? "rgba(255, 255, 255, 0.05)"
-                        : "rgba(0, 0, 0, 0.04)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
-                    {getTypeBadge(holding.asset_type, isIndonesian)}
-                  </span>
+        {actionModal !== "none" ? (
+          /* ============================================================ */
+          /* SINGLE BOTTOM SHEET VIEW: ADD / REDUCE ASSET UNITS           */
+          /* ============================================================ */
+          <form onSubmit={handleConfirmAction} className="space-y-3.5">
+            {/* Sub-header with Back to Asset Overview */}
+            <div className="flex items-center justify-between pb-1">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setActionModal("none");
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
+                  style={{
+                    background: controlBg,
+                    border: controlBorder,
+                  }}
+                  title={isIndonesian ? "Kembali" : "Back"}
+                >
+                  <ArrowLeft size={14} strokeWidth={2} />
+                </button>
+                <div>
+                  <h3 className="text-[13.5px] font-bold text-[var(--text-primary)] leading-tight">
+                    {actionModal === "buy"
+                      ? isIndonesian
+                        ? `Alokasi Pembelian ${holding.symbol}`
+                        : `Allocate ${holding.symbol} Purchase`
+                      : isIndonesian
+                      ? `Likuidasi Posisi ${holding.symbol}`
+                      : `Liquidate ${holding.symbol} Position`}
+                  </h3>
+                  <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-none tabular-nums">
+                    {isIndonesian ? "Kepemilikan saat ini:" : "Current balance:"}{" "}
+                    {formatHoldingUnits(holding.units)} {holding.symbol} (
+                    {formatWithPreferred(valuation.marketValue)})
+                  </p>
                 </div>
-                <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-1 leading-none">
-                  {holding.name}
-                </p>
               </div>
             </div>
 
-            {/* Edit Asset Button (Replaces Trash Can with Direct Edit) */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  handleOpenEditAsset("all");
-                }}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+            {/* Input 1: Nominal IDR */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5 block">
+                {actionModal === "buy"
+                  ? isIndonesian
+                    ? "Nominal Investasi (IDR)"
+                    : "Investment Amount (IDR)"
+                  : isIndonesian
+                  ? "Nominal Likuidasi (IDR)"
+                  : "Liquidated Amount (IDR)"}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={inputNominal}
+                onChange={(e) => handleNominalChange(e.target.value)}
+                placeholder={isIndonesian ? "misal: 500.000" : "e.g. 500,000"}
+                className="w-full px-3.5 h-10.5 rounded-2xl text-[13px] font-semibold tabular-nums outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
                 style={{
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.06)"
-                    : "rgba(0, 0, 0, 0.04)",
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
                 }}
-                title={isIndonesian ? "Ubah Detail Aset" : "Edit Asset Details"}
-              >
-                <Edit3 size={13} strokeWidth={1.8} />
-              </button>
+              />
             </div>
-          </div>
 
-          {/* Big Balance & Floating PnL Display */}
-          <div className="pt-0.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
-              {isIndonesian ? "Total Nilai Pasar" : "Total Market Value"}
-            </span>
-            <div className="flex items-baseline justify-between flex-wrap gap-2 mt-0.5">
-              <h2 className="text-[26px] sm:text-[28px] font-bold tracking-tight text-[var(--text-primary)] tabular-nums leading-none">
-                {formatWithPreferred(valuation.marketValue)}
-              </h2>
-              <div
-                className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 shrink-0 tabular-nums border"
-                style={{
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.06)"
-                    : "rgba(0, 0, 0, 0.04)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                {isProfitable ? (
-                  <ArrowUpRight size={13} strokeWidth={2.2} />
+            {/* Input 2: Units */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between px-0.5">
+                <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                  {actionModal === "buy"
+                    ? isIndonesian
+                      ? "Unit yang Ditambah"
+                      : "Units to Add"
+                    : isIndonesian
+                    ? "Unit yang Dikurangi"
+                    : "Units to Reduce"}
+                </label>
+                {actionModal === "sell" ? (
+                  <button
+                    type="button"
+                    onClick={() => handleUnitsChange(String(holding.units))}
+                    className="text-[10px] text-[var(--text-primary)] hover:underline cursor-pointer font-bold tabular-nums"
+                  >
+                    {isIndonesian
+                      ? `Maks: ${formatHoldingUnits(holding.units)} (Semua)`
+                      : `Max: ${formatHoldingUnits(holding.units)}`}
+                  </button>
                 ) : (
-                  <ArrowDownRight size={13} strokeWidth={2.2} />
+                  <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
+                    {isIndonesian ? "Saat ini:" : "Hold:"}{" "}
+                    {formatHoldingUnits(holding.units)}
+                  </span>
                 )}
-                <span>
-                  {isProfitable ? "+" : "−"}
-                  {formatWithPreferred(Math.abs(valuation.floatingPnL))} (
-                  {isProfitable ? "+" : ""}
-                  {valuation.floatingPnLPct.toFixed(2)}%)
-                </span>
               </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={inputUnits}
+                onChange={(e) => handleUnitsChange(e.target.value)}
+                placeholder={
+                  isIndonesian
+                    ? `Jumlah unit dalam ${holding.symbol}`
+                    : `Units in ${holding.symbol}`
+                }
+                className="w-full px-3.5 h-10.5 rounded-2xl text-[13px] font-semibold tabular-nums outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
+                }}
+              />
             </div>
-          </div>
 
-          {/* Chart Header & Segmented Pill Range Selector */}
-          <div className="pt-2 border-t border-[var(--glass-border)]/50 space-y-2">
-            <div className="flex items-center justify-between text-[10.5px]">
-              <span className="font-semibold text-[var(--text-tertiary)]">
-                {getStockRangeLabel(timeframe, isIndonesian)} ·{" "}
-                {holding.currency || "IDR"}
-              </span>
-              <span className="text-[var(--text-secondary)] font-medium tabular-nums">
-                {isIndonesian ? "Spot:" : "Live:"}{" "}
-                {holding.native_currency && holding.native_currency !== "IDR" && holding.native_price
-                  ? `${holding.native_currency} ${holding.native_price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${formatWithPreferred(currentPrice)})`
-                  : formatWithPreferred(currentPrice)}{" "}
-                / unit
-              </span>
-            </div>
-
-            {/* Apple Stock Segmented Pill Track */}
-            <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
-              {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as const).map(
-                (r) => {
-                  const isActive = timeframe === r;
-                  return (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => {
-                        setTimeframe(r);
-                        triggerHaptic("light");
-                      }}
-                      className="h-6 px-2.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none active:scale-95"
-                      style={{
-                        background: isActive
+            {/* Input 3: Price Per Unit with Auto / Custom Broker */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between px-0.5">
+                <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                  {isIndonesian ? "Harga Eksekusi per Unit" : "Price per Unit"}
+                </label>
+                <div
+                  className="flex items-center p-0.5 rounded-full border"
+                  style={{
+                    background: controlBg,
+                    borderColor: "var(--glass-border)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setModalPriceMode("auto");
+                      handlePriceChange(String(currentPrice));
+                    }}
+                    className="h-5 px-2.5 rounded-full text-[9.5px] font-semibold transition-all cursor-pointer"
+                    style={{
+                      background:
+                        modalPriceMode === "auto"
                           ? isDark
-                            ? "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.84) 48%, rgba(244,245,247,0.90) 100%)"
+                            ? "#ffffff"
                             : "#18181b"
                           : "transparent",
-                        color: isActive
+                      color:
+                        modalPriceMode === "auto"
                           ? isDark
                             ? "#000000"
                             : "#ffffff"
                           : "var(--text-tertiary)",
-                        border: isActive
-                          ? isDark
-                            ? "1px solid rgba(255, 255, 255, 0.95)"
-                            : "1px solid #18181b"
-                          : "1px solid transparent",
-                        boxShadow: isActive
-                          ? isDark
-                            ? "inset 0 1px 0 #ffffff, 0 2px 6px rgba(0, 0, 0, 0.25)"
-                            : "0 2px 6px rgba(0, 0, 0, 0.14)"
-                          : "none",
-                      }}
-                    >
-                      {r}
-                    </button>
-                  );
-                },
-              )}
-            </div>
-
-            {/* Interactive Area Chart */}
-            <div className="h-[120px] w-full mt-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={chartData}
-                  margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient
-                      id="assetHeroGradient"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="0%"
-                        stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                        stopOpacity={isDark ? 0.22 : 0.1}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor={isDark ? "#FFFFFF" : "#18181b"}
-                        stopOpacity={0.0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="2 3"
-                    stroke={
-                      isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"
-                    }
-                    vertical={false}
-                    horizontal={true}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{
-                      fontSize: 9,
-                      fill: isDark ? "rgba(255,255,255,0.4)" : "#71717a",
-                      fontFamily: "Urbanist",
-                      fontWeight: 600,
                     }}
-                    axisLine={false}
-                    tickLine={false}
-                    dy={3}
-                  />
-                  <YAxis
-                    orientation="right"
-                    width={34}
-                    domain={["auto", "auto"]}
-                    tick={{
-                      fontSize: 9,
-                      fill: isDark ? "rgba(255,255,255,0.4)" : "#71717a",
-                      fontFamily: "Urbanist",
-                      fontWeight: 700,
+                  >
+                    {isIndonesian ? "Otomatis" : "Auto API"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setModalPriceMode("custom");
                     }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={formatAxisY}
-                    dx={-2}
-                  />
-                  <Tooltip content={<GlassTooltip formatFn={formatWithPreferred} />} />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke={isDark ? "#FFFFFF" : "#18181b"}
-                    strokeWidth={1.8}
-                    fill="url(#assetHeroGradient)"
-                    dot={false}
-                    activeDot={{
-                      r: 3.5,
-                      fill: isDark ? "#FFFFFF" : "#18181b",
-                      stroke: isDark
-                        ? "rgba(0,0,0,0.5)"
-                        : "rgba(255,255,255,0.9)",
-                      strokeWidth: 1.5,
-                    }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* 2. GROUPED METRICS OR INLINE ASSET EDITOR                    */}
-        {/* ============================================================ */}
-        {isEditingAsset ? (
-          <form
-            onSubmit={handleSaveAssetDetails}
-            className="rounded-2xl p-4 space-y-3.5 transition-all select-none"
-            style={{
-              background: controlBg,
-              border: controlBorder,
-              boxShadow: controlShadow,
-            }}
-          >
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.05)"
-                      : "rgba(0, 0, 0, 0.04)",
-                    border: controlBorder,
-                  }}
-                >
-                  <Edit3 size={13} className="text-[var(--text-primary)]" />
-                </div>
-                <div>
-                  <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
-                    {isIndonesian ? "Edit Informasi Aset" : "Edit Asset Details"}
-                  </h3>
-                  <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 leading-none">
-                    {isIndonesian
-                      ? "Perbarui parameter aset portofolio"
-                      : "Update portfolio asset parameters"}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setIsEditingAsset(false);
-                }}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
-                style={{
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.05)"
-                    : "rgba(0, 0, 0, 0.04)",
-                  border: controlBorder,
-                }}
-              >
-                <X size={12} strokeWidth={2} />
-              </button>
-            </div>
-
-            {/* Nama Aset & Ticker Symbol */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
-                  {isIndonesian ? "Nama Aset" : "Asset Name"}
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="e.g. Tether USD"
-                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.03)",
-                    border: controlBorder,
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
-                  {isIndonesian ? "Simbol / Ticker" : "Symbol / Ticker"}
-                </label>
-                <input
-                  type="text"
-                  value={editSymbol}
-                  onChange={(e) => setEditSymbol(e.target.value.toUpperCase())}
-                  placeholder="e.g. USDT"
-                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold uppercase outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.03)",
-                    border: controlBorder,
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Klasifikasi Aset Pills */}
-            <div className="space-y-1.5">
-              <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
-                {isIndonesian ? "Klasifikasi Aset" : "Asset Classification"}
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { id: "crypto", labelId: "Kripto", labelEn: "Crypto" },
-                  { id: "stock", labelId: "Saham", labelEn: "Stock" },
-                  { id: "mutual_fund", labelId: "Reksa Dana", labelEn: "Mutual Fund" },
-                  { id: "gold", labelId: "Emas", labelEn: "Gold" },
-                  { id: "bond", labelId: "Obligasi / SBN", labelEn: "Bond" },
-                  { id: "fixed_asset", labelId: "Properti / Aset Tetap", labelEn: "Real Estate / Fixed" },
-                ].map((cat) => {
-                  const isSelected = editType === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setEditType(cat.id as AssetType);
-                      }}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer"
-                      style={{
-                        background: isSelected
+                    className="h-5 px-2.5 rounded-full text-[9.5px] font-semibold transition-all cursor-pointer"
+                    style={{
+                      background:
+                        modalPriceMode === "custom"
                           ? isDark
-                            ? "rgba(255, 255, 255, 0.12)"
-                            : "rgba(0, 0, 0, 0.08)"
-                          : isDark
-                            ? "rgba(255, 255, 255, 0.03)"
-                            : "rgba(0, 0, 0, 0.02)",
-                        border: isSelected
+                            ? "#ffffff"
+                            : "#18181b"
+                          : "transparent",
+                      color:
+                        modalPriceMode === "custom"
                           ? isDark
-                            ? "1px solid rgba(255, 255, 255, 0.25)"
-                            : "1px solid rgba(0, 0, 0, 0.2)"
-                          : controlBorder,
-                        color: isSelected
-                          ? "var(--text-primary)"
+                            ? "#000000"
+                            : "#ffffff"
                           : "var(--text-tertiary)",
-                      }}
-                    >
-                      {isIndonesian ? cat.labelId : cat.labelEn}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Units & Average Buy Price (Modal Dasar) */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
-                  {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={editUnits}
-                  onChange={(e) => setEditUnits(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.03)",
-                    border: controlBorder,
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
-                  {isIndonesian ? "Harga Beli Rata-rata" : "Avg Buy Price"}
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={editBuyPrice}
-                  onChange={(e) => setEditBuyPrice(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.03)",
-                    border: controlBorder,
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Apple Toggle Switch: Kunci Harga Manual (Rule 3) */}
-            <div
-              className="p-3 rounded-xl flex items-center justify-between gap-3 transition-all"
-              style={{
-                background: isDark
-                  ? "rgba(255, 255, 255, 0.03)"
-                  : "rgba(0, 0, 0, 0.02)",
-                border: controlBorder,
-              }}
-            >
-              <div className="min-w-0 pr-2">
-                <p className="text-[12.5px] font-semibold text-[var(--text-primary)] leading-snug">
-                  {isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"}
-                </p>
-                <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-normal">
-                  {isIndonesian
-                    ? "Gunakan harga broker Anda daripada feed live"
-                    : "Use broker price rather than live feed"}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={editIsCustomPrice}
-                onClick={() => {
-                  triggerHaptic("light");
-                  setEditIsCustomPrice(!editIsCustomPrice);
-                }}
-                className={`relative shrink-0 w-10 h-5.5 rounded-full p-[2px] transition-colors duration-200 cursor-pointer focus:outline-none flex items-center ${
-                  editIsCustomPrice
-                    ? isDark ? "bg-white" : "bg-zinc-900"
-                    : isDark ? "bg-white/20" : "bg-black/20"
-                }`}
-              >
-                <span
-                  className={`inline-block w-4.5 h-4.5 rounded-full shadow-md transition-transform duration-200 ${
-                    editIsCustomPrice
-                      ? `translate-x-[18px] ${isDark ? "bg-black" : "bg-white"}`
-                      : `translate-x-0 ${isDark ? "bg-zinc-300" : "bg-white"}`
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Custom Price Input when enabled */}
-            {editIsCustomPrice && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between px-0.5">
-                  <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Harga Unit Manual" : "Custom Unit Price"}
-                  </label>
-                  <span className="text-[9.5px] font-mono text-[var(--text-tertiary)]">
-                    {isIndonesian ? "Spot live:" : "Live spot:"}{" "}
-                    {formatWithPreferred(
-                      holding.current_price || holding.avg_buy_price || 0
-                    )}
-                  </span>
+                    }}
+                  >
+                    {isIndonesian ? "Kustom" : "Custom"}
+                  </button>
                 </div>
+              </div>
+
+              <div className="relative">
                 <input
                   type="text"
                   inputMode="decimal"
-                  value={editCustomPrice}
-                  onChange={(e) => setEditCustomPrice(e.target.value)}
+                  value={inputPrice}
+                  onChange={(e) => {
+                    setModalPriceMode("custom");
+                    handlePriceChange(e.target.value);
+                  }}
                   placeholder={
-                    holding.currency === "USD" ? "e.g. 1.05" : "e.g. 16500"
+                    modalPriceMode === "auto"
+                      ? isIndonesian
+                        ? "Harga pasar"
+                        : "Market price"
+                      : holding.currency === "USD"
+                      ? "cth. 1.05"
+                      : "cth. 16.350"
                   }
-                  className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                  className="w-full px-3.5 h-10.5 rounded-2xl text-[13px] font-semibold tabular-nums outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
                   style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.04)"
-                      : "rgba(0, 0, 0, 0.03)",
+                    background: controlBg,
                     border: controlBorder,
+                    boxShadow: controlShadow,
                   }}
                 />
+                {modalPriceMode === "auto" && (
+                  <span
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-2 py-0.5 rounded-md border text-[var(--text-secondary)] pointer-events-none"
+                    style={{
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.05)",
+                      borderColor: "var(--glass-border)",
+                    }}
+                  >
+                    {isIndonesian ? "Pasar Langsung" : "Live Spot"}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Input 4: Execution Date */}
+            <div className="space-y-1">
+              <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5 block">
+                {isIndonesian ? "Tanggal Transaksi" : "Execution Date"}
+              </label>
+              <input
+                type="date"
+                value={inputDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="w-full px-3.5 h-10.5 rounded-2xl text-[12.5px] font-medium tabular-nums outline-none text-[var(--text-primary)] transition-colors cursor-pointer"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
+                  colorScheme: isDark ? "dark" : "light",
+                }}
+              />
+            </div>
+
+            {/* Optional Wallet Synchronization */}
+            {wallets.length > 0 && (
+              <div className="pt-0.5">
+                <div
+                  onClick={() => setLinkToWallet(!linkToWallet)}
+                  className="px-3.5 py-2.5 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+                  style={{
+                    background: controlBg,
+                    border: controlBorder,
+                  }}
+                >
+                  <span className="text-[12px] font-medium text-[var(--text-primary)]">
+                    {actionModal === "buy"
+                      ? isIndonesian
+                        ? "Potong dari Saldo Akun"
+                        : "Deduct from Account"
+                      : isIndonesian
+                      ? "Setor ke Saldo Akun"
+                      : "Deposit to Account"}
+                  </span>
+                  <div
+                    className="w-4.5 h-4.5 rounded-md flex items-center justify-center border transition-all"
+                    style={{
+                      background: linkToWallet
+                        ? isDark
+                          ? "#ffffff"
+                          : "#18181b"
+                        : "transparent",
+                      color: linkToWallet
+                        ? isDark
+                          ? "#000000"
+                          : "#ffffff"
+                        : "transparent",
+                      borderColor: linkToWallet
+                        ? isDark
+                          ? "#ffffff"
+                          : "#18181b"
+                        : "var(--glass-border)",
+                    }}
+                  >
+                    {linkToWallet && <Check size={11} strokeWidth={3} />}
+                  </div>
+                </div>
+
+                {linkToWallet && (
+                  <div className="mt-2 space-y-2">
+                    <GlassSelect
+                      value={selectedWalletId}
+                      onChange={setSelectedWalletId}
+                      options={walletOptions}
+                      placeholder={
+                        isIndonesian
+                          ? "Pilih akun dompet..."
+                          : "Select wallet account..."
+                      }
+                    />
+                    {categoryOptions.length > 0 &&
+                      !(
+                        holding.wallet_id &&
+                        holding.wallet_id !== selectedWalletId
+                      ) && (
+                        <GlassSelect
+                          value={selectedCategoryId}
+                          onChange={setSelectedCategoryId}
+                          options={categoryOptions}
+                          placeholder={
+                            isIndonesian
+                              ? "Pilih kategori transaksi..."
+                              : "Select transaction category..."
+                          }
+                        />
+                      )}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 pt-1">
+            {/* Action Submit Buttons */}
+            <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setIsEditingAsset(false);
-                }}
-                className="flex-1 h-9 rounded-xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
+                onClick={() => setActionModal("none")}
+                className="flex-1 h-10.5 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
                 style={{
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.05)"
-                    : "rgba(0, 0, 0, 0.04)",
+                  background: controlBg,
                   border: controlBorder,
                   color: "var(--text-secondary)",
                 }}
@@ -1327,710 +1157,919 @@ export function AssetDetailSheet({
               </button>
               <button
                 type="submit"
-                className="flex-1 h-9 rounded-xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
+                className="flex-1 h-10.5 rounded-2xl text-[12.5px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
                 style={{
                   background: isDark ? "#ffffff" : "#18181b",
                   color: isDark ? "#000000" : "#ffffff",
                 }}
               >
-                {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
+                {actionModal === "buy"
+                  ? isIndonesian
+                    ? "Konfirmasi Tambah"
+                    : "Confirm Add"
+                  : isIndonesian
+                  ? "Konfirmasi Kurangi"
+                  : "Confirm Reduce"}
               </button>
             </div>
           </form>
         ) : (
-          <div
-            className="rounded-2xl overflow-hidden transition-all"
-            style={{
-              background: controlBg,
-              border: controlBorder,
-              boxShadow: controlShadow,
-            }}
-          >
-            {/* Row 1: Units Owned */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-                  {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    handleOpenEditAsset("units");
-                  }}
-                  className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                  title={
-                    isIndonesian ? "Koreksi Saldo Unit" : "Correct Unit Balance"
-                  }
-                >
-                  <Edit3 size={11} strokeWidth={1.8} />
-                </button>
-              </div>
-              <div className="text-right">
-                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                  {formatHoldingUnits(holding.units)} {holding.symbol}
-                </span>
-              </div>
-            </div>
-
-            {/* Gradient Divider 1 */}
-            <div style={gradientDivider} />
-
-            {/* Row 2: Cost Basis (Baris Mandiri) */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-                {isIndonesian ? "Basis Biaya (Modal)" : "Cost Basis"}
-              </span>
-              <div className="text-right">
-                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                  {formatWithPreferred(valuation.costBasis)}
-                </span>
-              </div>
-            </div>
-
-            {/* Gradient Divider 2 */}
-            <div style={gradientDivider} />
-
-            {/* Row 3: Average Buy Price (DCA) */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-                {isIndonesian ? "Harga Rata-rata (DCA)" : "Average Price"}
-              </span>
-              <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">
-                {formatWithPreferred(holding.avg_buy_price)}
-              </span>
-            </div>
-
-            {/* Gradient Divider 3 */}
-            <div style={gradientDivider} />
-
-            {/* Row 4: Current Market Price with Custom Broker Price Lock */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-                  {isIndonesian ? "Harga Pasar Terkini" : "Market Price"}
-                </span>
-                {holding.is_custom_price ? (
-                  <span
-                    className="px-1.5 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
-                    style={{
-                      background: isDark
-                        ? "rgba(255, 255, 255, 0.05)"
-                        : "rgba(0, 0, 0, 0.04)",
-                      borderColor: "var(--glass-border)",
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
-                    {isIndonesian ? "Manual" : "Custom"}
-                  </span>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    handleOpenEditAsset("price");
-                  }}
-                  className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                  title={
-                    isIndonesian ? "Kunci Harga Manual" : "Lock Custom Price"
-                  }
-                >
-                  <Edit3 size={11} strokeWidth={1.8} />
-                </button>
-              </div>
-              <div className="text-right">
-                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                  {formatWithPreferred(currentPrice)}
-                </span>
-                <span className="text-[9.5px] text-[var(--text-tertiary)] block mt-0.5">
-                  {holding.is_custom_price
-                    ? (isIndonesian ? "Harga Manual Broker" : "Custom Broker Price")
-                    : (holding.price_source === "live"
-                        ? "Live Open Market API"
-                        : (isIndonesian ? "Harga Tersimpan (Offline)" : "Cached Offline Price"))}
-                </span>
-              </div>
-            </div>
-
-            {/* Gradient Divider 4 */}
-            <div style={gradientDivider} />
-
-            {/* Row 5: Unrealized Profit / Loss */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
-                {isIndonesian ? "P&L Belum Terealisasi" : "Unrealized P&L"}
-              </span>
-              <div className="text-right">
-                <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
-                  {isProfitable ? "+" : "−"}
-                  {formatWithPreferred(Math.abs(valuation.floatingPnL))}
-                </span>
-                <span className="text-[9.5px] text-[var(--text-tertiary)] tabular-nums mt-0.5 block">
-                  {isProfitable ? "+" : ""}
-                  {valuation.floatingPnLPct.toFixed(2)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* 3. PRIMARY ACTIONS: Add & Reduce Units                      */}
-        {/* ============================================================ */}
-        <div className="flex items-center gap-2 pt-0.5">
-          <button
-            type="button"
-            onClick={handleOpenBuy}
-            className="flex-1 h-10 px-4 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[12.5px] active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
-            style={{
-              background: isDark ? "#ffffff" : "#18181b",
-              color: isDark ? "#000000" : "#ffffff",
-            }}
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            <span>{isIndonesian ? "Tambah Unit" : "Add Units"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenSell}
-            className="flex-1 h-10 px-4 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[12.5px] active:scale-[0.98] transition-all cursor-pointer select-none"
-            style={{
-              background: controlBg,
-              border: controlBorder,
-              boxShadow: controlShadow,
-              color: "var(--text-primary)",
-            }}
-          >
-            <Minus size={14} strokeWidth={2.5} />
-            <span>{isIndonesian ? "Kurangi Unit" : "Reduce Units"}</span>
-          </button>
-        </div>
-
-        {/* ============================================================ */}
-        {/* 4. ACTIVITY HISTORY (Clean Telemetry Log)                   */}
-        {/* ============================================================ */}
-        <div className="space-y-2 pt-1.5">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-              {isIndonesian ? "Riwayat Aktivitas" : "Activity History"}
-            </h3>
-            <span className="text-[10px] font-mono text-[var(--text-tertiary)] opacity-80">
-              {activities.length}{" "}
-              {isIndonesian
-                ? "entri"
-                : activities.length === 1
-                  ? "entry"
-                  : "entries"}
-            </span>
-          </div>
-
-          <div className="space-y-1.5 pr-0.5">
-            {activities.length === 0 ? (
-              <div
-                className="p-4 rounded-2xl text-center text-[11px] text-[var(--text-tertiary)]"
-                style={{
-                  background: controlBg,
-                  border: controlBorder,
-                }}
-              >
-                {isIndonesian
-                  ? "Belum ada riwayat aktivitas"
-                  : "No activity recorded yet"}
-              </div>
-            ) : (
-              activities.map((act) => {
-                const isBuy = act.type === "buy" || act.type === "initial";
-                return (
-                  <div
-                    key={act.id}
-                    className="p-2.5 px-3 rounded-2xl flex items-center justify-between gap-3 transition-all"
-                    style={{
-                      background: controlBg,
-                      border: controlBorder,
-                      boxShadow: controlShadow,
-                    }}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-[11px] font-bold"
-                        style={{
-                          background: isDark
-                            ? "rgba(255, 255, 255, 0.08)"
-                            : "rgba(0, 0, 0, 0.05)",
-                          border: controlBorder,
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {isBuy ? "+" : "−"}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 leading-none">
-                          <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
-                            {act.type === "initial"
-                              ? isIndonesian
-                                ? "Saldo Awal"
-                                : "Initial Position"
-                              : act.type === "buy"
-                                ? isIndonesian
-                                  ? "Beli Unit"
-                                  : "Add Units"
-                                : isIndonesian
-                                  ? "Jual Unit"
-                                  : "Reduce Units"}
-                          </span>
-                          <span className="text-[9.5px] font-mono text-[var(--text-tertiary)] opacity-75">
-                            {formatActivityDate(act.date, isIndonesian)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1 leading-none">
-                          <p className="text-[10px] text-[var(--text-tertiary)] truncate">
-                            @ {formatWithPreferred(act.price_per_unit)}
-                          </p>
-                          {act.is_estimated && (
-                            <span
-                              className="text-[8px] font-mono px-1 py-0.5 rounded tracking-tight uppercase"
-                              style={{
-                                background: isDark
-                                  ? "rgba(255, 255, 255, 0.05)"
-                                  : "rgba(0, 0, 0, 0.04)",
-                                color: "var(--text-tertiary)",
-                                border: isDark
-                                  ? "1px solid rgba(255, 255, 255, 0.08)"
-                                  : "1px solid rgba(0, 0, 0, 0.08)",
-                              }}
-                              title={
-                                isIndonesian
-                                  ? "Kurs estimasi pasar historis"
-                                  : "Historical market estimated rate"
-                              }
-                            >
-                              {isIndonesian ? "est." : "est."}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-right">
-                        <p className="text-[12px] font-semibold text-[var(--text-primary)] tabular-nums leading-none">
-                          {formatWithPreferred(act.total_amount)}
-                        </p>
-                        <p className="text-[10px] text-[var(--text-secondary)] tabular-nums mt-1 leading-none">
-                          {isBuy ? "+" : "−"}
-                          {act.units.toLocaleString()} {holding.symbol}
-                        </p>
-                        {act.type === "sell" && typeof act.realized_pnl === "number" && (
-                          <p className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums mt-0.5 leading-none">
-                            P&L: {act.realized_pnl >= 0 ? "+" : "−"}{formatWithPreferred(Math.abs(act.realized_pnl))}
-                          </p>
-                        )}
-                      </div>
-
-                      {act.type !== "initial" && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUndoActivity(act);
-                          }}
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
-                          style={{
-                            background: isDark
-                              ? "rgba(255, 255, 255, 0.06)"
-                              : "rgba(0, 0, 0, 0.04)",
-                            border: controlBorder,
-                          }}
-                          title={
-                            isIndonesian
-                              ? "Batalkan aktivitas (Undo)"
-                              : "Revert activity"
-                          }
-                        >
-                          <RotateCcw size={12} strokeWidth={1.8} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* 5. MODAL: SMART DCA BUY / SELL FORM                         */}
-        {/* ============================================================ */}
-        {actionModal !== "none" && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none">
-            <form
-              onSubmit={handleConfirmAction}
-              className="w-full sm:max-w-md rounded-t-[28px] sm:rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in slide-in-from-bottom-5 duration-200"
+          /* ============================================================ */
+          /* MAIN ASSET OVERVIEW (HERO, METRICS / EDIT, ACTIONS, HISTORY) */
+          /* ============================================================ */
+          <>
+            {/* 1. HERO & BALANCE */}
+            <div
+              className="p-4 sm:p-5 rounded-3xl space-y-3 relative overflow-hidden transition-all"
               style={{
-                background: isDark
-                  ? "linear-gradient(160deg, rgba(26, 26, 32, 0.98) 0%, rgba(14, 14, 18, 0.99) 100%)"
-                  : "linear-gradient(160deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 247, 250, 0.98) 100%)",
+                background: controlBg,
                 border: controlBorder,
+                boxShadow: controlShadow,
               }}
             >
-              <div className="flex items-center justify-between pb-1">
-                <div className="flex items-center gap-2.5">
+              {/* Header Row: Symbol, Category & Edit Action */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 font-bold"
                     style={{
-                      background: controlBg,
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.05)",
                       border: controlBorder,
                     }}
                   >
                     <IconRenderer
                       icon={holding.icon || "TrendingUp"}
-                      size="w-4 h-4"
+                      size="w-4.5 h-4.5"
                     />
                   </div>
-                  <div>
-                    <h3 className="text-[13.5px] font-bold text-[var(--text-primary)] leading-tight">
-                      {actionModal === "buy"
-                        ? isIndonesian
-                          ? `Tambah Unit ${holding.symbol}`
-                          : `Add ${holding.symbol} Units`
-                        : isIndonesian
-                          ? `Kurangi Unit ${holding.symbol}`
-                          : `Reduce ${holding.symbol} Units`}
-                    </h3>
-                    <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-none">
-                      {actionModal === "buy"
-                        ? isIndonesian
-                          ? "Eksekusi alokasi investasi"
-                          : "Execute asset allocation"
-                        : isIndonesian
-                          ? "Likuidasi posisi portofolio"
-                          : "Liquidate asset position"}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 leading-none">
+                      <span className="text-[14px] font-bold text-[var(--text-primary)] tracking-tight truncate">
+                        {holding.symbol}
+                      </span>
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border leading-none"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.05)"
+                            : "rgba(0, 0, 0, 0.04)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-tertiary)",
+                        }}
+                      >
+                        {getTypeBadge(holding.asset_type, isIndonesian)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-tertiary)] truncate mt-1 leading-none">
+                      {holding.name}
                     </p>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActionModal("none")}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                  }}
-                >
-                  <X size={14} strokeWidth={2} />
-                </button>
-              </div>
-
-              {/* Input 1: Nominal IDR (Format Titik Otomatis) */}
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5 block">
-                  {actionModal === "buy"
-                    ? isIndonesian
-                      ? "Nominal Investasi (IDR)"
-                      : "Investment Amount (IDR)"
-                    : isIndonesian
-                      ? "Nominal Likuidasi (IDR)"
-                      : "Liquidated Amount (IDR)"}
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={inputNominal}
-                  onChange={(e) => handleNominalChange(e.target.value)}
-                  placeholder={isIndonesian ? "misal: 500.000" : "e.g. 500,000"}
-                  className="w-full px-3.5 h-10 rounded-2xl text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    boxShadow: controlShadow,
-                  }}
-                />
-              </div>
-
-              {/* Input 2: Units */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between px-0.5">
-                  <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    {actionModal === "buy"
-                      ? isIndonesian
-                        ? "Unit yang Ditambah"
-                        : "Units to Add"
-                      : isIndonesian
-                        ? "Unit yang Dikurangi"
-                        : "Units to Reduce"}
-                  </label>
-                  {actionModal === "sell" ? (
-                    <button
-                      type="button"
-                      onClick={() => handleUnitsChange(String(holding.units))}
-                      className="text-[9.5px] text-[var(--text-primary)] hover:underline cursor-pointer font-bold"
-                    >
-                      {isIndonesian
-                        ? `Maks: ${holding.units.toLocaleString()} (Semua)`
-                        : `Max: ${holding.units.toLocaleString()}`}
-                    </button>
-                  ) : (
-                    <span className="text-[9.5px] text-[var(--text-tertiary)]">
-                      {isIndonesian ? "Saat ini:" : "Hold:"}{" "}
-                      {holding.units.toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={inputUnits}
-                  onChange={(e) => handleUnitsChange(e.target.value)}
-                  placeholder={
-                    isIndonesian
-                      ? `Jumlah unit dalam ${holding.symbol}`
-                      : `Units in ${holding.symbol}`
-                  }
-                  className="w-full px-3.5 h-10 rounded-2xl text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    boxShadow: controlShadow,
-                  }}
-                />
-              </div>
-
-              {/* Input 3: Price Per Unit with Auto / Custom Broker */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between px-0.5">
-                  <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    {isIndonesian
-                      ? "Harga Eksekusi per Unit"
-                      : "Price per Unit"}
-                  </label>
-                  <div
-                    className="flex items-center p-0.5 rounded-full border"
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      handleOpenEditAsset("all");
+                    }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
                     style={{
-                      background: controlBg,
-                      borderColor: "var(--glass-border)",
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.06)"
+                        : "rgba(0, 0, 0, 0.04)",
                     }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setModalPriceMode("auto");
-                        handlePriceChange(String(currentPrice));
-                      }}
-                      className="h-5 px-2 rounded-full text-[9px] font-semibold transition-all cursor-pointer"
-                      style={{
-                        background:
-                          modalPriceMode === "auto"
-                            ? isDark
-                              ? "#ffffff"
-                              : "#18181b"
-                            : "transparent",
-                        color:
-                          modalPriceMode === "auto"
-                            ? isDark
-                              ? "#000000"
-                              : "#ffffff"
-                            : "var(--text-tertiary)",
-                      }}
-                    >
-                      {isIndonesian ? "Otomatis" : "Auto API"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("light");
-                        setModalPriceMode("custom");
-                      }}
-                      className="h-5 px-2 rounded-full text-[9px] font-semibold transition-all cursor-pointer"
-                      style={{
-                        background:
-                          modalPriceMode === "custom"
-                            ? isDark
-                              ? "#ffffff"
-                              : "#18181b"
-                            : "transparent",
-                        color:
-                          modalPriceMode === "custom"
-                            ? isDark
-                              ? "#000000"
-                              : "#ffffff"
-                            : "var(--text-tertiary)",
-                      }}
-                    >
-                      {isIndonesian ? "Kustom" : "Custom"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={inputPrice}
-                    onChange={(e) => {
-                      setModalPriceMode("custom");
-                      handlePriceChange(e.target.value);
-                    }}
-                    placeholder={
-                      modalPriceMode === "auto"
-                        ? isIndonesian
-                          ? "Harga pasar"
-                          : "Market price"
-                        : holding.currency === "USD"
-                          ? "cth. 1.05"
-                          : "cth. 16.350"
+                    title={
+                      isIndonesian ? "Ubah Detail Aset" : "Edit Asset Details"
                     }
-                    className="w-full px-3.5 h-10 rounded-2xl text-[12.5px] font-medium outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                    style={{
-                      background: controlBg,
-                      border: controlBorder,
-                      boxShadow: controlShadow,
-                    }}
-                  />
-                  {modalPriceMode === "auto" && (
-                    <span
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[8.5px] px-1.5 py-0.5 rounded-md border text-[var(--text-secondary)] pointer-events-none"
-                      style={{
-                        background: isDark
-                          ? "rgba(255, 255, 255, 0.08)"
-                          : "rgba(0, 0, 0, 0.05)",
-                        borderColor: "var(--glass-border)",
-                      }}
-                    >
-                      {isIndonesian ? "Pasar Langsung" : "Live Spot"}
-                    </span>
-                  )}
+                  >
+                    <Edit3 size={13} strokeWidth={1.8} />
+                  </button>
                 </div>
               </div>
 
-              {/* Input 4: Execution Date */}
-              <div className="space-y-1">
-                <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5 block">
-                  {isIndonesian ? "Tanggal Transaksi" : "Execution Date"}
-                </label>
-                <input
-                  type="date"
-                  value={inputDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  className="w-full px-3.5 h-10 rounded-2xl text-[12.5px] font-medium outline-none text-[var(--text-primary)] transition-colors cursor-pointer"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    boxShadow: controlShadow,
-                    colorScheme: isDark ? "dark" : "light",
-                  }}
-                />
-              </div>
-
-              {/* Optional Wallet Synchronization */}
-              {wallets.length > 0 && (
-                <div className="pt-0.5">
+              {/* Big Balance & Floating PnL Display */}
+              <div className="pt-0.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] block">
+                  {isIndonesian ? "Total Nilai Pasar" : "Total Market Value"}
+                </span>
+                <div className="flex items-baseline justify-between flex-wrap gap-2 mt-0.5">
+                  <h2 className="text-[26px] sm:text-[28px] font-bold tracking-tight text-[var(--text-primary)] tabular-nums leading-none">
+                    {formatWithPreferred(valuation.marketValue)}
+                  </h2>
                   <div
-                    onClick={() => setLinkToWallet(!linkToWallet)}
-                    className="px-3.5 py-2 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 shrink-0 tabular-nums border"
                     style={{
-                      background: controlBg,
-                      border: controlBorder,
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.06)"
+                        : "rgba(0, 0, 0, 0.04)",
+                      borderColor: "var(--glass-border)",
+                      color: "var(--text-primary)",
                     }}
                   >
-                    <span className="text-[11.5px] font-medium text-[var(--text-primary)]">
-                      {actionModal === "buy"
-                        ? isIndonesian
-                          ? "Potong dari Saldo Akun"
-                          : "Deduct from Account"
-                        : isIndonesian
-                          ? "Setor ke Saldo Akun"
-                          : "Deposit to Account"}
+                    {isProfitable ? (
+                      <ArrowUpRight size={13} strokeWidth={2.2} />
+                    ) : (
+                      <ArrowDownRight size={13} strokeWidth={2.2} />
+                    )}
+                    <span>
+                      {isProfitable ? "+" : "−"}
+                      {formatWithPreferred(Math.abs(valuation.floatingPnL))} (
+                      {isProfitable ? "+" : ""}
+                      {valuation.floatingPnLPct.toFixed(2)}%)
                     </span>
-                    <div
-                      className="w-4 h-4 rounded-md flex items-center justify-center border transition-all"
-                      style={{
-                        background: linkToWallet
-                          ? isDark
-                            ? "#ffffff"
-                            : "#18181b"
-                          : "transparent",
-                        color: linkToWallet
-                          ? isDark
-                            ? "#000000"
-                            : "#ffffff"
-                          : "transparent",
-                        borderColor: linkToWallet
-                          ? isDark
-                            ? "#ffffff"
-                            : "#18181b"
-                          : "var(--glass-border)",
-                      }}
-                    >
-                      {linkToWallet && <Check size={11} strokeWidth={3} />}
-                    </div>
                   </div>
+                </div>
+              </div>
 
-                  {linkToWallet && (
-                    <div className="mt-2 space-y-2">
-                      <GlassSelect
-                        value={selectedWalletId}
-                        onChange={setSelectedWalletId}
-                        options={walletOptions}
-                        placeholder={
-                          isIndonesian
-                            ? "Pilih akun dompet..."
-                            : "Select wallet account..."
+              {/* Chart Header & Segmented Pill Range Selector */}
+              <div className="pt-2 border-t border-[var(--glass-border)]/50 space-y-2">
+                <div className="flex items-center justify-between text-[10.5px]">
+                  <span className="font-semibold text-[var(--text-tertiary)]">
+                    {getStockRangeLabel(timeframe, isIndonesian)} ·{" "}
+                    {holding.currency || "IDR"}
+                  </span>
+                  <span className="text-[var(--text-secondary)] font-medium tabular-nums">
+                    {isIndonesian ? "Spot:" : "Live:"}{" "}
+                    {holding.native_currency &&
+                    holding.native_currency !== "IDR" &&
+                    holding.native_price
+                      ? `${holding.native_currency} ${holding.native_price.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })} (${formatWithPreferred(currentPrice)})`
+                      : formatWithPreferred(currentPrice)}{" "}
+                    / unit
+                  </span>
+                </div>
+
+                {/* Segmented Pill Track */}
+                <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
+                  {(["1D", "1W", "1M", "6M", "YTD", "1Y", "ALL"] as const).map(
+                    (r) => {
+                      const isActive = timeframe === r;
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => {
+                            setTimeframe(r);
+                            triggerHaptic("light");
+                          }}
+                          className="h-6 px-2.5 rounded-full text-[10px] font-semibold shrink-0 transition-all cursor-pointer select-none active:scale-95"
+                          style={{
+                            background: isActive
+                              ? isDark
+                                ? "#ffffff"
+                                : "#18181b"
+                              : "transparent",
+                            color: isActive
+                              ? isDark
+                                ? "#000000"
+                                : "#ffffff"
+                              : "var(--text-tertiary)",
+                          }}
+                        >
+                          {r}
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+
+                {/* Interactive Area Chart */}
+                <div className="h-[120px] w-full mt-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={chartData}
+                      margin={{ top: 4, right: 0, left: -25, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="assetHeroGradient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                            stopOpacity={isDark ? 0.22 : 0.1}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor={isDark ? "#FFFFFF" : "#18181b"}
+                            stopOpacity={0.0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="2 3"
+                        stroke={
+                          isDark
+                            ? "rgba(255,255,255,0.06)"
+                            : "rgba(0,0,0,0.06)"
+                        }
+                        vertical={false}
+                        horizontal={true}
+                      />
+                      <XAxis
+                        dataKey="label"
+                        tick={{
+                          fontSize: 9,
+                          fill: isDark ? "rgba(255,255,255,0.4)" : "#71717a",
+                          fontFamily: "Urbanist",
+                          fontWeight: 600,
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                        dy={3}
+                      />
+                      <YAxis
+                        orientation="right"
+                        width={34}
+                        domain={["auto", "auto"]}
+                        tick={{
+                          fontSize: 9,
+                          fill: isDark ? "rgba(255,255,255,0.4)" : "#71717a",
+                          fontFamily: "Urbanist",
+                          fontWeight: 700,
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={formatAxisY}
+                        dx={-2}
+                      />
+                      <Tooltip
+                        content={
+                          <GlassTooltip formatFn={formatWithPreferred} />
                         }
                       />
-                      {categoryOptions.length > 0 &&
-                        !(holding.wallet_id && holding.wallet_id !== selectedWalletId) && (
-                          <GlassSelect
-                            value={selectedCategoryId}
-                            onChange={setSelectedCategoryId}
-                            options={categoryOptions}
-                            placeholder={
-                              isIndonesian
-                                ? "Pilih kategori transaksi..."
-                                : "Select transaction category..."
-                            }
-                          />
-                        )}
-                    </div>
-                  )}
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={isDark ? "#FFFFFF" : "#18181b"}
+                        strokeWidth={1.8}
+                        fill="url(#assetHeroGradient)"
+                        dot={false}
+                        activeDot={{
+                          r: 3.5,
+                          fill: isDark ? "#FFFFFF" : "#18181b",
+                          stroke: isDark
+                            ? "rgba(0,0,0,0.5)"
+                            : "rgba(255,255,255,0.9)",
+                          strokeWidth: 1.5,
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              )}
-
-              {/* Action Submit Buttons */}
-              <div className="flex items-center gap-2 pt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setActionModal("none")}
-                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
-                  style={{
-                    background: controlBg,
-                    border: controlBorder,
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {isIndonesian ? "Batal" : "Cancel"}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 h-10 rounded-2xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
-                  style={{
-                    background: isDark ? "#ffffff" : "#18181b",
-                    color: isDark ? "#000000" : "#ffffff",
-                  }}
-                >
-                  {actionModal === "buy"
-                    ? isIndonesian
-                      ? "Konfirmasi Beli"
-                      : "Confirm Add"
-                    : isIndonesian
-                      ? "Konfirmasi Jual"
-                      : "Confirm Reduce"}
-                </button>
               </div>
-            </form>
-          </div>
+            </div>
+
+            {/* 2. GROUPED METRICS OR INLINE ASSET EDITOR */}
+            {isEditingAsset ? (
+              <form
+                onSubmit={handleSaveAssetDetails}
+                className="rounded-2xl p-4 space-y-3.5 transition-all select-none"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
+                }}
+              >
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.05)"
+                          : "rgba(0, 0, 0, 0.04)",
+                        border: controlBorder,
+                      }}
+                    >
+                      <Edit3 size={13} className="text-[var(--text-primary)]" />
+                    </div>
+                    <div>
+                      <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
+                        {isIndonesian
+                          ? "Edit Informasi Aset"
+                          : "Edit Asset Details"}
+                      </h3>
+                      <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 leading-none">
+                        {isIndonesian
+                          ? "Perbarui parameter aset portofolio"
+                          : "Update portfolio asset parameters"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setIsEditingAsset(false);
+                    }}
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer active:scale-90 transition-all"
+                    style={{
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.05)"
+                        : "rgba(0, 0, 0, 0.04)",
+                      border: controlBorder,
+                    }}
+                  >
+                    <X size={12} strokeWidth={2} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                      {isIndonesian ? "Nama Aset" : "Asset Name"}
+                    </label>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="e.g. Tether USD"
+                      className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(0, 0, 0, 0.03)",
+                        border: controlBorder,
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                      {isIndonesian ? "Simbol / Ticker" : "Symbol / Ticker"}
+                    </label>
+                    <input
+                      type="text"
+                      value={editSymbol}
+                      onChange={(e) =>
+                        setEditSymbol(e.target.value.toUpperCase())
+                      }
+                      placeholder="e.g. USDT"
+                      className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold uppercase outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(0, 0, 0, 0.03)",
+                        border: controlBorder,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                    {isIndonesian
+                      ? "Klasifikasi Aset"
+                      : "Asset Classification"}
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: "crypto", labelId: "Kripto", labelEn: "Crypto" },
+                      { id: "stock", labelId: "Saham", labelEn: "Stock" },
+                      {
+                        id: "mutual_fund",
+                        labelId: "Reksa Dana",
+                        labelEn: "Mutual Fund",
+                      },
+                      { id: "gold", labelId: "Emas", labelEn: "Gold" },
+                      {
+                        id: "bond",
+                        labelId: "Obligasi / SBN",
+                        labelEn: "Bond",
+                      },
+                      {
+                        id: "fixed_asset",
+                        labelId: "Properti / Aset Tetap",
+                        labelEn: "Real Estate / Fixed",
+                      },
+                    ].map((cat) => {
+                      const isSelected = editType === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setEditType(cat.id as AssetType);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer"
+                          style={{
+                            background: isSelected
+                              ? isDark
+                                ? "rgba(255, 255, 255, 0.12)"
+                                : "rgba(0, 0, 0, 0.08)"
+                              : isDark
+                              ? "rgba(255, 255, 255, 0.03)"
+                              : "rgba(0, 0, 0, 0.02)",
+                            border: isSelected
+                              ? isDark
+                                ? "1px solid rgba(255, 255, 255, 0.25)"
+                                : "1px solid rgba(0, 0, 0, 0.2)"
+                              : controlBorder,
+                            color: isSelected
+                              ? "var(--text-primary)"
+                              : "var(--text-tertiary)",
+                          }}
+                        >
+                          {isIndonesian ? cat.labelId : cat.labelEn}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                      {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editUnits}
+                      onChange={(e) => setEditUnits(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold tabular-nums outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(0, 0, 0, 0.03)",
+                        border: controlBorder,
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                      {isIndonesian
+                        ? "Harga Beli Rata-rata"
+                        : "Avg Buy Price"}
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editBuyPrice}
+                      onChange={(e) => setEditBuyPrice(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold tabular-nums outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(0, 0, 0, 0.03)",
+                        border: controlBorder,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  className="p-3 rounded-xl flex items-center justify-between gap-3 transition-all"
+                  style={{
+                    background: isDark
+                      ? "rgba(255, 255, 255, 0.03)"
+                      : "rgba(0, 0, 0, 0.02)",
+                    border: controlBorder,
+                  }}
+                >
+                  <div className="min-w-0 pr-2">
+                    <p className="text-[12.5px] font-semibold text-[var(--text-primary)] leading-snug">
+                      {isIndonesian
+                        ? "Kunci Harga Manual"
+                        : "Lock Custom Price"}
+                    </p>
+                    <p className="text-[10.5px] text-[var(--text-tertiary)] mt-0.5 leading-normal">
+                      {isIndonesian
+                        ? "Gunakan harga broker Anda daripada feed live"
+                        : "Use broker price rather than live feed"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={editIsCustomPrice}
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setEditIsCustomPrice(!editIsCustomPrice);
+                    }}
+                    className={`relative shrink-0 w-10 h-5.5 rounded-full p-[2px] transition-colors duration-200 cursor-pointer focus:outline-none flex items-center ${
+                      editIsCustomPrice
+                        ? isDark
+                          ? "bg-white"
+                          : "bg-zinc-900"
+                        : isDark
+                        ? "bg-white/20"
+                        : "bg-black/20"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block w-4.5 h-4.5 rounded-full shadow-md transition-transform duration-200 ${
+                        editIsCustomPrice
+                          ? `translate-x-[18px] ${
+                              isDark ? "bg-black" : "bg-white"
+                            }`
+                          : `translate-x-0 ${
+                              isDark ? "bg-zinc-300" : "bg-white"
+                            }`
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {editIsCustomPrice && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between px-0.5">
+                      <label className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                        {isIndonesian
+                          ? "Harga Unit Manual"
+                          : "Custom Unit Price"}
+                      </label>
+                      <span className="text-[9.5px] tabular-nums text-[var(--text-tertiary)]">
+                        {isIndonesian ? "Spot live:" : "Live spot:"}{" "}
+                        {formatWithPreferred(
+                          holding.current_price || holding.avg_buy_price || 0,
+                        )}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editCustomPrice}
+                      onChange={(e) => setEditCustomPrice(e.target.value)}
+                      placeholder={
+                        holding.currency === "USD" ? "e.g. 1.05" : "e.g. 16500"
+                      }
+                      className="w-full px-3 h-9 rounded-xl text-[12.5px] font-semibold tabular-nums outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                      style={{
+                        background: isDark
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "rgba(0, 0, 0, 0.03)",
+                        border: controlBorder,
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setIsEditingAsset(false);
+                    }}
+                    className="flex-1 h-9 rounded-xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer"
+                    style={{
+                      background: isDark
+                        ? "rgba(255, 255, 255, 0.05)"
+                        : "rgba(0, 0, 0, 0.04)",
+                      border: controlBorder,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {isIndonesian ? "Batal" : "Cancel"}
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 h-9 rounded-xl text-[12px] font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
+                    style={{
+                      background: isDark ? "#ffffff" : "#18181b",
+                      color: isDark ? "#000000" : "#ffffff",
+                    }}
+                  >
+                    {isIndonesian ? "Simpan Perubahan" : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div
+                className="rounded-2xl overflow-hidden transition-all"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
+                }}
+              >
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                      {isIndonesian ? "Unit Dimiliki" : "Units Owned"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        handleOpenEditAsset("units");
+                      }}
+                      className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                      title={
+                        isIndonesian
+                          ? "Koreksi Saldo Unit"
+                          : "Correct Unit Balance"
+                      }
+                    >
+                      <Edit3 size={11} strokeWidth={1.8} />
+                    </button>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                      {formatHoldingUnits(holding.units)} {holding.symbol}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={gradientDivider} />
+
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                    {isIndonesian ? "Basis Biaya (Modal)" : "Cost Basis"}
+                  </span>
+                  <div className="text-right">
+                    <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                      {formatWithPreferred(valuation.costBasis)}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={gradientDivider} />
+
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                    {isIndonesian
+                      ? "Harga Rata-rata (DCA)"
+                      : "Average Price"}
+                  </span>
+                  <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">
+                    {formatWithPreferred(holding.avg_buy_price)}
+                  </span>
+                </div>
+
+                <div style={gradientDivider} />
+
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                      {isIndonesian
+                        ? "Harga Pasar Terkini"
+                        : "Market Price"}
+                    </span>
+                    {holding.is_custom_price ? (
+                      <span
+                        className="px-1.5 py-0.2 rounded text-[7.5px] font-semibold uppercase tracking-wider border leading-none"
+                        style={{
+                          background: isDark
+                            ? "rgba(255, 255, 255, 0.05)"
+                            : "rgba(0, 0, 0, 0.04)",
+                          borderColor: "var(--glass-border)",
+                          color: "var(--text-tertiary)",
+                        }}
+                      >
+                        {isIndonesian ? "Manual" : "Custom"}
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        handleOpenEditAsset("price");
+                      }}
+                      className="p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                      title={
+                        isIndonesian
+                          ? "Kunci Harga Manual"
+                          : "Lock Custom Price"
+                      }
+                    >
+                      <Edit3 size={11} strokeWidth={1.8} />
+                    </button>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                      {formatWithPreferred(currentPrice)}
+                    </span>
+                    <span className="text-[9.5px] text-[var(--text-tertiary)] block mt-0.5">
+                      {holding.is_custom_price
+                        ? isIndonesian
+                          ? "Harga Manual Broker"
+                          : "Custom Broker Price"
+                        : holding.price_source === "live"
+                        ? "Live Open Market API"
+                        : isIndonesian
+                        ? "Harga Tersimpan (Offline)"
+                        : "Cached Offline Price"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={gradientDivider} />
+
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[12px] font-medium text-[var(--text-tertiary)]">
+                    {isIndonesian
+                      ? "P&L Belum Terealisasi"
+                      : "Unrealized P&L"}
+                  </span>
+                  <div className="text-right">
+                    <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums block leading-tight">
+                      {isProfitable ? "+" : "−"}
+                      {formatWithPreferred(Math.abs(valuation.floatingPnL))}
+                    </span>
+                    <span className="text-[9.5px] text-[var(--text-tertiary)] tabular-nums mt-0.5 block">
+                      {isProfitable ? "+" : ""}
+                      {valuation.floatingPnLPct.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. PRIMARY ACTIONS: Add & Reduce Units */}
+            <div className="flex items-center gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={handleOpenBuy}
+                className="flex-1 h-10 px-4 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[12.5px] active:scale-[0.98] transition-all cursor-pointer shadow-sm select-none"
+                style={{
+                  background: isDark ? "#ffffff" : "#18181b",
+                  color: isDark ? "#000000" : "#ffffff",
+                }}
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                <span>{isIndonesian ? "Tambah Unit" : "Add Units"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenSell}
+                className="flex-1 h-10 px-4 rounded-2xl flex items-center justify-center gap-1.5 font-semibold text-[12.5px] active:scale-[0.98] transition-all cursor-pointer select-none"
+                style={{
+                  background: controlBg,
+                  border: controlBorder,
+                  boxShadow: controlShadow,
+                  color: "var(--text-primary)",
+                }}
+              >
+                <Minus size={14} strokeWidth={2.5} />
+                <span>{isIndonesian ? "Kurangi Unit" : "Reduce Units"}</span>
+              </button>
+            </div>
+
+            {/* 4. ACTIVITY HISTORY */}
+            <div className="space-y-2 pt-1.5">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                  {isIndonesian ? "Riwayat Aktivitas" : "Activity History"}
+                </h3>
+                <span className="text-[10px] tabular-nums text-[var(--text-tertiary)] opacity-80">
+                  {activities.length}{" "}
+                  {isIndonesian
+                    ? "entri"
+                    : activities.length === 1
+                    ? "entry"
+                    : "entries"}
+                </span>
+              </div>
+
+              <div className="space-y-1.5 pr-0.5">
+                {activities.length === 0 ? (
+                  <div
+                    className="p-4 rounded-2xl text-center text-[11px] text-[var(--text-tertiary)]"
+                    style={{
+                      background: controlBg,
+                      border: controlBorder,
+                    }}
+                  >
+                    {isIndonesian
+                      ? "Belum ada riwayat aktivitas"
+                      : "No activity recorded yet"}
+                  </div>
+                ) : (
+                  activities.map((act) => {
+                    const isBuy = act.type === "buy" || act.type === "initial";
+                    return (
+                      <div
+                        key={act.id}
+                        className="p-2.5 px-3 rounded-2xl flex items-center justify-between gap-3 transition-all"
+                        style={{
+                          background: controlBg,
+                          border: controlBorder,
+                          boxShadow: controlShadow,
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-[11px] font-bold"
+                            style={{
+                              background: isDark
+                                ? "rgba(255, 255, 255, 0.08)"
+                                : "rgba(0, 0, 0, 0.05)",
+                              border: controlBorder,
+                              color: "var(--text-primary)",
+                            }}
+                          >
+                            {isBuy ? "+" : "−"}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 leading-none">
+                              <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
+                                {act.type === "initial"
+                                  ? isIndonesian
+                                    ? "Saldo Awal"
+                                    : "Initial Position"
+                                  : act.type === "buy"
+                                  ? isIndonesian
+                                    ? "Beli Unit"
+                                    : "Add Units"
+                                  : isIndonesian
+                                  ? "Jual Unit"
+                                  : "Reduce Units"}
+                              </span>
+                              <span className="text-[9.5px] tabular-nums text-[var(--text-tertiary)] opacity-75">
+                                {formatActivityDate(act.date, isIndonesian)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1 leading-none">
+                              <p className="text-[10px] text-[var(--text-tertiary)] tabular-nums truncate">
+                                @ {formatWithPreferred(act.price_per_unit)}
+                              </p>
+                              {act.is_estimated && (
+                                <span
+                                  className="text-[8px] font-semibold px-1 py-0.5 rounded tracking-tight uppercase"
+                                  style={{
+                                    background: isDark
+                                      ? "rgba(255, 255, 255, 0.05)"
+                                      : "rgba(0, 0, 0, 0.04)",
+                                    color: "var(--text-tertiary)",
+                                    border: isDark
+                                      ? "1px solid rgba(255, 255, 255, 0.08)"
+                                      : "1px solid rgba(0, 0, 0, 0.08)",
+                                  }}
+                                >
+                                  est.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="text-right">
+                            <p className="text-[12px] font-semibold text-[var(--text-primary)] tabular-nums leading-none">
+                              {formatWithPreferred(act.total_amount)}
+                            </p>
+                            <p className="text-[10px] text-[var(--text-secondary)] tabular-nums mt-1 leading-none">
+                              {isBuy ? "+" : "−"}
+                              {act.units.toLocaleString()} {holding.symbol}
+                            </p>
+                            {act.type === "sell" &&
+                              typeof act.realized_pnl === "number" && (
+                                <p className="text-[9px] text-[var(--text-tertiary)] tabular-nums mt-0.5 leading-none">
+                                  P&L: {act.realized_pnl >= 0 ? "+" : "−"}
+                                  {formatWithPreferred(
+                                    Math.abs(act.realized_pnl),
+                                  )}
+                                </p>
+                              )}
+                          </div>
+
+                          {act.type !== "initial" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUndoActivity(act);
+                              }}
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] active:scale-90 transition-all cursor-pointer"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255, 255, 255, 0.06)"
+                                  : "rgba(0, 0, 0, 0.04)",
+                                border: controlBorder,
+                              }}
+                              title={
+                                isIndonesian
+                                  ? "Batalkan aktivitas (Undo)"
+                                  : "Revert activity"
+                              }
+                            >
+                              <RotateCcw size={12} strokeWidth={1.8} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </BottomSheet>

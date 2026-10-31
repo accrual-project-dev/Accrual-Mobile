@@ -82,7 +82,6 @@ function readDraftBatches(spaceId?: string | null, includeAll = false, strict = 
       return [];
     }
 
-
     // Keep unreviewed records until the owner explicitly removes them.
     const valid = parsed
       .filter((b) => {
@@ -97,8 +96,13 @@ function readDraftBatches(spaceId?: string | null, includeAll = false, strict = 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
     }
 
-    const scoped = includeAll ? valid : valid.map((batch) => ({ ...batch, items: batch.items.filter(visibleToOwner) })).filter((batch) => batch.items.length > 0);
-    if (spaceId && spaceId !== "all") return scoped.filter((batch) => (batch.spaceId || "personal") === spaceId);
+    const scoped = includeAll
+      ? valid
+      : valid
+          .map((batch) => ({ ...batch, items: batch.items.filter(visibleToOwner) }))
+          .filter((batch) => batch.items.length > 0);
+    if (spaceId && spaceId !== "all")
+      return scoped.filter((batch) => (batch.spaceId || "personal") === spaceId);
     return scoped;
   } catch (err) {
     console.warn("[DraftService] Failed to read drafts from storage:", err);
@@ -182,12 +186,50 @@ export function saveDraftBatch(
 }
 
 /**
+ * Updates a single draft item in-place across all persisted draft batches.
+ * Ensures edits made in BatchTransactionReviewSheet are immediately persisted to localStorage.
+ */
+export function updateDraftItem(updatedItem: ParsedStatementItem): void {
+  if (!updatedItem || !updatedItem.id) return;
+  try {
+    const existing = readDraftBatches(null, true);
+    let found = false;
+    const nextBatches = existing.map((b) => ({
+      ...b,
+      items: b.items.map((it) => {
+        if (it.id === updatedItem.id && visibleToOwner(it)) {
+          found = true;
+          return {
+            ...it,
+            ...updatedItem,
+            spaceId: updatedItem.spaceId || it.spaceId || b.spaceId || "personal",
+          };
+        }
+        return it;
+      }),
+    }));
+    if (found) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextBatches));
+      notifyDraftsUpdated();
+    }
+  } catch (err) {
+    console.error("[DraftService] Failed to update draft item:", err);
+  }
+}
+
+/**
  * Removes a specific batch by its ID.
  */
 export function deleteDraftBatch(batchId: string): void {
   try {
     const existing = readDraftBatches(null, true, true);
-    const updated = existing.map((b) => b.id === batchId ? { ...b, items: b.items.filter((item) => !visibleToOwner(item)) } : b).filter((b) => b.items.length > 0);
+    const updated = existing
+      .map((b) =>
+        b.id === batchId
+          ? { ...b, items: b.items.filter((item) => !visibleToOwner(item)) }
+          : b
+      )
+      .filter((b) => b.items.length > 0);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     notifyDraftsUpdated();
   } catch (err) {
@@ -230,10 +272,16 @@ export function removeDraftItems(itemIds: string[]): void {
  */
 export function clearAllDrafts(spaceId?: string | null): void {
   try {
-    const remaining = readDraftBatches(null, true).map((batch) => ({
-      ...batch,
-      items: batch.items.filter((item) => !visibleToOwner(item) || (!!spaceId && spaceId !== "all" && (batch.spaceId || "personal") !== spaceId)),
-    })).filter((batch) => batch.items.length > 0);
+    const remaining = readDraftBatches(null, true)
+      .map((batch) => ({
+        ...batch,
+        items: batch.items.filter(
+          (item) =>
+            !visibleToOwner(item) ||
+            (!!spaceId && spaceId !== "all" && (batch.spaceId || "personal") !== spaceId)
+        ),
+      }))
+      .filter((batch) => batch.items.length > 0);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
     notifyDraftsUpdated();
   } catch (err) {
@@ -242,20 +290,33 @@ export function clearAllDrafts(spaceId?: string | null): void {
 }
 
 export function hasCaptureDrafts(owner: string): boolean {
-  return readDraftBatches(null, true).some((batch) => batch.items.some((item) => item.captureOwnerId === owner));
+  return readDraftBatches(null, true).some((batch) =>
+    batch.items.some((item) => item.captureOwnerId === owner)
+  );
 }
 
 export function adoptCaptureDrafts(fromOwner: string, toOwner: string): void {
-  const batches = readDraftBatches(null, true).map((batch) => ({ ...batch, items: batch.items.map((item) => item.captureOwnerId === fromOwner ? { ...item, captureOwnerId: toOwner } : item) }));
+  const batches = readDraftBatches(null, true).map((batch) => ({
+    ...batch,
+    items: batch.items.map((item) =>
+      item.captureOwnerId === fromOwner ? { ...item, captureOwnerId: toOwner } : item
+    ),
+  }));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(batches));
   notifyDraftsUpdated();
 }
 
 export function discardCaptureDrafts(owner: string): void {
-  const batches = readDraftBatches(null, true).map((batch) => ({ ...batch, items: batch.items.filter((item) => item.captureOwnerId !== owner) })).filter((batch) => batch.items.length > 0);
+  const batches = readDraftBatches(null, true)
+    .map((batch) => ({
+      ...batch,
+      items: batch.items.filter((item) => item.captureOwnerId !== owner),
+    }))
+    .filter((batch) => batch.items.length > 0);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(batches));
   notifyDraftsUpdated();
 }
+
 /**
  * React hook to reactively subscribe to draft updates in any component,
  * automatically scoped to the provided activeSpaceId (or all spaces).
@@ -296,6 +357,7 @@ export function useDraftTransactions(activeSpaceId?: string | null) {
     items: totalItems,
     count: totalItems.length,
     saveBatch: saveDraftBatch,
+    updateItem: updateDraftItem,
     deleteBatch: deleteDraftBatch,
     removeItem: removeDraftItem,
     removeItems: removeDraftItems,

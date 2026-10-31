@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import SwiftUI
 
 public struct WidgetHeatmapDot: Codable {
@@ -258,20 +258,42 @@ public struct AccrualWidgetSnapshot: Codable {
     }
 }
 
+// MARK: - Pure Urbanist Typography Helper (Zero Monospace, Tabular Digits)
+public enum AccrualFont {
+    public static func urbanist(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let fontName: String
+        switch weight {
+        case .light, .ultraLight, .thin:
+            fontName = "Urbanist-Light"
+        case .medium:
+            fontName = "Urbanist-Medium"
+        case .semibold:
+            fontName = "Urbanist-SemiBold"
+        case .bold, .heavy, .black:
+            fontName = "Urbanist-Bold"
+        default:
+            fontName = "Urbanist-Regular"
+        }
+        if UIFont(name: fontName, size: size) != nil {
+            return Font.custom(fontName, size: size).monospacedDigit()
+        }
+        if UIFont(name: "Urbanist", size: size) != nil {
+            return Font.custom("Urbanist", size: size).weight(weight).monospacedDigit()
+        }
+        return Font.system(size: size, weight: weight, design: .default).monospacedDigit()
+    }
+}
+
+// MARK: - Monochrome Flat Matte Theme (Zero Glowing Shadows)
 public struct AccrualTheme {
     public static func surfaceBackground(isDark: Bool) -> some View {
-        LinearGradient(
-            gradient: Gradient(colors: isDark
-                ? [Color(red: 18/255, green: 18/255, blue: 22/255), Color(red: 9/255, green: 9/255, blue: 12/255)]
-                : [Color.white, Color(red: 244/255, green: 244/255, blue: 247/255)]
-            ),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        isDark
+            ? Color(red: 12/255, green: 12/255, blue: 15/255)
+            : Color(red: 247/255, green: 247/255, blue: 250/255)
     }
 
     public static func cardBorder(isDark: Bool) -> Color {
-        isDark ? Color.white.opacity(0.09) : Color.black.opacity(0.07)
+        isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.07)
     }
 
     public static func textPrimary(isDark: Bool) -> Color {
@@ -283,28 +305,11 @@ public struct AccrualTheme {
     }
 
     public static func textTertiary(isDark: Bool) -> Color {
-        isDark ? Color.white.opacity(0.42) : Color(red: 140/255, green: 140/255, blue: 150/255)
+        isDark ? Color.white.opacity(0.44) : Color(red: 135/255, green: 135/255, blue: 145/255)
     }
 
     public static func fillSubtle(isDark: Bool) -> Color {
         isDark ? Color.white.opacity(0.06) : Color.black.opacity(0.045)
-    }
-}
-
-public struct SpecularRimLight: View {
-    let isDark: Bool
-    public var body: some View {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color.clear,
-                isDark ? Color.white.opacity(0.32) : Color.white.opacity(0.75),
-                Color.clear
-            ]),
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-        .frame(height: 1.2)
-        .padding(.horizontal, 22)
     }
 }
 

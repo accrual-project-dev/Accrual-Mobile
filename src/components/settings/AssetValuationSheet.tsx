@@ -3,6 +3,7 @@ import {
   RefreshCw,
   Plus,
   Coins,
+  ArrowLeft,
   ArrowUpRight,
   ArrowDownRight,
   X,
@@ -724,14 +725,16 @@ export function AssetValuationSheet({
     : "inset 0 1px 0 #ffffff, 0 2px 6px rgba(30,35,50,0.04)";
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
-      <div
-        className="px-5 pt-2 space-y-4 max-w-xl mx-auto"
-        style={{
-          paddingBottom:
-            "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
-        }}
-      >
+    <>
+      <BottomSheet isOpen={isOpen && !selectedDetailHolding} onClose={onClose}>
+        {addPhase === 0 && (
+          <div
+            className="px-5 pt-2 space-y-4 max-w-xl mx-auto"
+            style={{
+              paddingBottom:
+                "max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px)",
+            }}
+          >
         {/* Header */}
         <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-2.5">
@@ -1406,95 +1409,34 @@ export function AssetValuationSheet({
           {isIndonesian ? "Selesai" : "Done"}
         </button>
       </div>
+        )}
 
-      {/* Universal Monochrome Icon Picker Modal for Assets */}
-      <MonochromeIconPickerModal
-        isOpen={isAssetIconPickerOpen}
-        onClose={() => setIsAssetIconPickerOpen(false)}
-        selectedIcon={formIcon}
-        onSelectIcon={(iconName) => {
-          setFormIcon(iconName);
-          setHasCustomPickedAssetIcon(true);
-        }}
-        title={isIndonesian ? "Pilih Ikon Aset" : "Choose Asset Icon"}
-      />
-
-      {/* Modern Asset Detail Sheet */}
-      <AssetDetailSheet
-        isOpen={!!selectedDetailHolding}
-        onClose={() => setSelectedDetailHolding(null)}
-        holding={selectedDetailHolding}
-        onHoldingUpdated={() => {
-          const freshHoldings = getSavedHoldings(user?.id);
-          setHoldings(freshHoldings);
-          const freshUsdt = getSavedUsdtPref(user?.id);
-          setUsdtPref(freshUsdt);
-          if (user?.id && user.id !== "guest_local_user") {
-            fetchHoldingsFromSupabase(user.id).then(setHoldings);
-          }
-          if (selectedDetailHolding) {
-            if (selectedDetailHolding.symbol?.toUpperCase() === "USDT") {
-              const freshMatchingUsdt = freshHoldings.find(
-                (h) =>
-                  h.symbol?.toUpperCase() === "USDT" ||
-                  h.id.startsWith("usdt-"),
-              );
-              setSelectedDetailHolding({
-                ...selectedDetailHolding,
-                units: freshUsdt.units,
-                avg_buy_price:
-                  freshUsdt.units > 0
-                    ? Math.round(freshUsdt.costBasis / freshUsdt.units)
-                    : freshUsdt.rate,
-                current_price: freshUsdt.rate,
-                activities:
-                  freshMatchingUsdt?.activities ||
-                  selectedDetailHolding.activities,
-              });
-            } else {
-              const refreshed = freshHoldings.find(
-                (x) => x.id === selectedDetailHolding.id,
-              );
-              if (refreshed) setSelectedDetailHolding(refreshed);
-            }
-          }
-        }}
-        onDeleteHolding={(id, name) => {
-          handleDeleteHolding(id, name);
-          setSelectedDetailHolding(null);
-        }}
-        onStartEditHolding={(h) => {
-          setSelectedDetailHolding(null);
-          handleStartEditHolding(h);
-        }}
-      />
-
-      {/* Staking Yield Logger Modal */}
-      <StakingYieldModal
-        isOpen={isStakingModalOpen}
-        onClose={() => setIsStakingModalOpen(false)}
-        holdingSymbol="USDT"
-        holdingUnits={usdtPref.units}
-        liveRate={usdtPref.rate || USD_IDR_ESTIMATE}
-        wallets={wallets}
-        holdings={holdings}
-        defaultWalletId={cryptoWallet?.id}
-        userId={user?.id}
-        onSuccess={() => {
-          const freshUsdt = getSavedUsdtPref(user?.id);
-          setUsdtPref(freshUsdt);
-        }}
-      />
-
-      {/* ── Preset Picker Sheet (Phase 1) ─────────────────────────────────── */}
-      <BottomSheet
-        isOpen={addPhase === 1}
-        onClose={closeAddFlow}
-        title={
-          isIndonesian ? "Pilih Aset Investasi" : "Select Investment Asset"
-        }
-      >
-        <div className="p-5 space-y-4 select-none max-w-lg mx-auto">
+        {/* ── Preset Picker View (Phase 1 - Single BottomSheet) ────────────── */}
+        {addPhase === 1 && (
+          <div className="p-5 pt-2 space-y-4 select-none max-w-lg mx-auto">
+            <div className="flex items-center justify-between pb-1">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={closeAddFlow}
+                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform text-[var(--text-primary)]"
+                  style={{ background: controlBg, border: controlBorder }}
+                >
+                  <ArrowLeft size={14} strokeWidth={2} />
+                </button>
+                <h3 className="text-[15px] font-semibold text-[var(--text-primary)]">
+                  {isIndonesian ? "Pilih Aset Investasi" : "Select Investment Asset"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeAddFlow}
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)]"
+                style={{ background: controlBg, border: controlBorder }}
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
           {/* Search Bar */}
           <div
             className="flex items-center gap-2.5 px-3.5 h-11 rounded-2xl border transition-all"
@@ -1689,15 +1631,38 @@ export function AssetValuationSheet({
             </div>
           </div>
         </div>
-      </BottomSheet>
+        )}
 
-      {/* ── Asset Details Form Sheet (Phase 2) ────────────────────────────── */}
-      <BottomSheet
-        isOpen={addPhase === 2}
-        onClose={closeAddFlow}
-        title={formName || (isIndonesian ? "Detail Aset" : "Asset Details")}
-      >
-        <div className="p-5 space-y-4 select-none relative max-w-lg mx-auto">
+        {/* ── Asset Details Form View (Phase 2 - Single BottomSheet) ───────── */}
+        {addPhase === 2 && (
+          <div className="p-5 pt-2 space-y-4 select-none relative max-w-lg mx-auto">
+            <div className="flex items-center justify-between pb-1">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    if (editingHoldingId) closeAddFlow();
+                    else setAddPhase(1);
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform text-[var(--text-primary)]"
+                  style={{ background: controlBg, border: controlBorder }}
+                >
+                  <ArrowLeft size={14} strokeWidth={2} />
+                </button>
+                <h3 className="text-[15px] font-semibold text-[var(--text-primary)] truncate">
+                  {formName || (isIndonesian ? "Detail Aset" : "Asset Details")}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeAddFlow}
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer text-[var(--text-tertiary)]"
+                style={{ background: controlBg, border: controlBorder }}
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
           {/* Currency Toggle */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1 block">
@@ -2011,7 +1976,88 @@ export function AssetValuationSheet({
             </button>
           </div>
         </div>
+        )}
       </BottomSheet>
-    </BottomSheet>
+
+      {/* Universal Monochrome Icon Picker Modal for Assets */}
+      <MonochromeIconPickerModal
+        isOpen={isAssetIconPickerOpen}
+        onClose={() => setIsAssetIconPickerOpen(false)}
+        selectedIcon={formIcon}
+        onSelectIcon={(iconName) => {
+          setFormIcon(iconName);
+          setHasCustomPickedAssetIcon(true);
+        }}
+        title={isIndonesian ? "Pilih Ikon Aset" : "Choose Asset Icon"}
+      />
+
+      {/* Modern Asset Detail Sheet */}
+      <AssetDetailSheet
+        isOpen={!!selectedDetailHolding}
+        onClose={() => setSelectedDetailHolding(null)}
+        holding={selectedDetailHolding}
+        onHoldingUpdated={() => {
+          const freshHoldings = getSavedHoldings(user?.id);
+          setHoldings(freshHoldings);
+          const freshUsdt = getSavedUsdtPref(user?.id);
+          setUsdtPref(freshUsdt);
+          if (user?.id && user.id !== "guest_local_user") {
+            fetchHoldingsFromSupabase(user.id).then(setHoldings);
+          }
+          if (selectedDetailHolding) {
+            if (selectedDetailHolding.symbol?.toUpperCase() === "USDT") {
+              const freshMatchingUsdt = freshHoldings.find(
+                (h) =>
+                  h.symbol?.toUpperCase() === "USDT" ||
+                  h.id.startsWith("usdt-"),
+              );
+              setSelectedDetailHolding({
+                ...selectedDetailHolding,
+                units: freshUsdt.units,
+                avg_buy_price:
+                  freshUsdt.units > 0
+                    ? Math.round(freshUsdt.costBasis / freshUsdt.units)
+                    : freshUsdt.rate,
+                current_price: freshUsdt.rate,
+                activities:
+                  freshMatchingUsdt?.activities ||
+                  selectedDetailHolding.activities,
+              });
+            } else {
+              const refreshed = freshHoldings.find(
+                (x) => x.id === selectedDetailHolding.id,
+              );
+              if (refreshed) setSelectedDetailHolding(refreshed);
+            }
+          }
+        }}
+        onDeleteHolding={(id, name) => {
+          handleDeleteHolding(id, name);
+          setSelectedDetailHolding(null);
+        }}
+        onStartEditHolding={(h) => {
+          setSelectedDetailHolding(null);
+          handleStartEditHolding(h);
+        }}
+      />
+
+      {/* Staking Yield Logger Modal */}
+      <StakingYieldModal
+        isOpen={isStakingModalOpen}
+        onClose={() => setIsStakingModalOpen(false)}
+        holdingSymbol="USDT"
+        holdingUnits={usdtPref.units}
+        liveRate={usdtPref.rate || USD_IDR_ESTIMATE}
+        wallets={wallets}
+        holdings={holdings}
+        defaultWalletId={cryptoWallet?.id}
+        userId={user?.id}
+        onSuccess={() => {
+          const freshUsdt = getSavedUsdtPref(user?.id);
+          setUsdtPref(freshUsdt);
+        }}
+      />
+
+    </>
   );
 }

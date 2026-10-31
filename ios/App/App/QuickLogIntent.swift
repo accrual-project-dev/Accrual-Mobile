@@ -47,6 +47,7 @@ public enum CaptureLanguage {
 public enum DraftInbox {
     public static let group = "group.com.syntheticae.accrual"
     public static let ownerKey = "accrual_capture_owner_id"
+    public static let defaultFallbackOwner = "guest_local_user"
 
     /// Serialize ownership snapshots, migration and acknowledgements across app/intent processes.
     public static func withLock<T>(_ action: () throws -> T) throws -> T {
@@ -79,16 +80,60 @@ public enum DraftInbox {
         UUID(uuidString: id) != nil || id.range(of: "^[a-fA-F0-9]{64}$", options: .regularExpression) != nil
     }
 
+    /// Resolves active owner or initializes a safe local fallback owner so background Personal Automations
+    /// (Notification & Wallet Tap) never fail silently when run while the app is closed.
     public static func currentOwner() throws -> String {
         try withLock {
-            guard let owner = try defaults().string(forKey: ownerKey), !owner.isEmpty else { throw CaptureError.noOwner }
-            return owner
+            let defs = try defaults()
+            if let owner = defs.string(forKey: ownerKey), !owner.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return owner
+            }
+            defs.set(defaultFallbackOwner, forKey: ownerKey)
+            defs.synchronize()
+            return defaultFallbackOwner
         }
     }
 
     /// Foundation-only rule shared by capture transport and the native test harness.
     public static func validOwnerSnapshot(_ snapshot: String, currentOwner: String?) -> Bool {
-        !snapshot.isEmpty && currentOwner == snapshot
+        guard !snapshot.isEmpty else { return false }
+        guard let active = currentOwner, !active.isEmpty else { return true }
+        return active == snapshot
+    }
+
+    /// Parses Indonesian / international currency strings ("Rp 50.000", "50,000", "50000") into integer amount.
+    public static func parseFlexibleAmount(_ raw: String?) -> Int {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return 0 }
+        let cleaned = raw.replacingOccurrences(of: "[^0-9.,]", with: "", options: .regularExpression)
+        guard !cleaned.isEmpty else { return 0 }
+
+        var normalized = cleaned
+        if normalized.contains(".") && normalized.contains(",") {
+            if let lastDot = normalized.lastIndex(of: "."), let lastComma = normalized.lastIndex(of: ",") {
+                if lastComma > lastDot {
+                    normalized = normalized.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
+                } else {
+                    normalized = normalized.replacingOccurrences(of: ",", with: "")
+                }
+            }
+        } else if normalized.contains(".") {
+            let parts = normalized.split(separator: ".")
+            if parts.last?.count == 3 || parts.count > 2 {
+                normalized = normalized.replacingOccurrences(of: ".", with: "")
+            }
+        } else if normalized.contains(",") {
+            let parts = normalized.split(separator: ",")
+            if parts.last?.count == 3 || parts.count > 2 {
+                normalized = normalized.replacingOccurrences(of: ",", with: "")
+            } else {
+                normalized = normalized.replacingOccurrences(of: ",", with: ".")
+            }
+        }
+
+        if let val = Double(normalized), val > 0 {
+            return Int(val.rounded())
+        }
+        return 0
     }
 
     public static func capture(
@@ -105,13 +150,15 @@ public enum DraftInbox {
             throw CaptureError.empty
         }
         try withLock {
-            let activeOwner = try defaults().string(forKey: ownerKey)
-            guard validOwnerSnapshot(ownerSnapshot, currentOwner: activeOwner) else { throw CaptureError.ownerChanged }
+            let defs = try defaults()
+            let activeOwner = defs.string(forKey: ownerKey)
+            let resolvedOwner = (activeOwner?.isEmpty == false) ? activeOwner! : ownerSnapshot
+            guard validOwnerSnapshot(ownerSnapshot, currentOwner: resolvedOwner) else { throw CaptureError.ownerChanged }
             let payload = DraftPayload(
                 source: source,
                 transaction_date: at,
                 raw_text: text,
-                owner_id: ownerSnapshot,
+                owner_id: resolvedOwner,
                 source_app: app,
                 title: title,
                 subtitle: subtitle,
@@ -139,7 +186,8 @@ public enum DraftInbox {
             if let activeOwner = activeOwner, !activeOwner.isEmpty {
                 if let data = try? Data(contentsOf: file),
                    let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   obj["owner_id"] as? String == activeOwner {
+                   let fileOwner = obj["owner_id"] as? String,
+                   (fileOwner == activeOwner || fileOwner == defaultFallbackOwner) {
                     count += 1
                 }
             } else {
@@ -238,41 +286,68 @@ public struct ScanPaymentScreenshotIntent: AppIntent {
     }
 }
 
+/// Simplified 1-Input Bank Notification Logger:
+/// In iOS Personal Automation ("When I receive a notification"), users only need to pass "Shortcut Input" into `notificationText`.
+/// Additional metadata fields remain in the expandable drawer for optional advanced mapping.
 @available(iOS 16.0, *)
 public struct LogNotificationTransactionIntent: AppIntent {
     public static var title: LocalizedStringResource = "Log Notification Transaction"
-    public static var description = IntentDescription("Capture notification text for review in Accrual.")
+    public static var description = IntentDescription("Auto-capture bank or e-wallet notification text into Accrual Drafts.")
     public static var openAppWhenRun = false
-    @Parameter(title: "Notification") public var notificationText: String?
-    @Parameter(title: "Body") public var body: String?
-    @Parameter(title: "Title") public var title: String?
+    @Parameter(title: "Shortcut Input / Notification") public var notificationText: String?
+    @Parameter(title: "Bank / App Name (Optional)") public var sourceApp: String?
+    @Parameter(title: "Title (Optional)") public var title: String?
+    @Parameter(title: "Subtitle (Optional)") public var subtitle: String?
+    @Parameter(title: "Body (Optional)") public var body: String?
     @Parameter(title: "Notif Title") public var notifTitle: String?
-    @Parameter(title: "Subtitle") public var subtitle: String?
     @Parameter(title: "Notif Subtitle") public var notifSubtitle: String?
-    @Parameter(title: "App") public var sourceApp: String?
     @Parameter(title: "Received At") public var receivedAt: Date?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("Log notification \(\.$notificationText) titled \(\.$title) subtitled \(\.$subtitle) from \(\.$sourceApp) at \(\.$receivedAt)")
+        Summary("Log bank notification \(\.$notificationText)") {
+            \.$sourceApp
+            \.$title
+            \.$subtitle
+            \.$receivedAt
+        }
     }
 
     public init() {}
-    public func perform() async throws -> some IntentResult {
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
         let ownerSnapshot = try DraftInbox.currentOwner()
-        let rawBody = notificationText ?? body ?? ""
-        try DraftInbox.capture(text: rawBody, source: "shortcut_notification",
-                               ownerSnapshot: ownerSnapshot, at: receivedAt ?? Date(), app: sourceApp, title: title ?? notifTitle,
-                               subtitle: subtitle ?? notifSubtitle)
+        let combinedText = [notificationText, body]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        let effectiveTitle = (title ?? notifTitle)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectiveSubtitle = (subtitle ?? notifSubtitle)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectiveApp = sourceApp?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let extractedAmt = DraftInbox.parseFlexibleAmount(combinedText)
+
+        try DraftInbox.capture(
+            text: combinedText,
+            source: "shortcut_notification",
+            ownerSnapshot: ownerSnapshot,
+            at: receivedAt ?? Date(),
+            app: (effectiveApp?.isEmpty == false) ? effectiveApp : nil,
+            title: (effectiveTitle?.isEmpty == false) ? effectiveTitle : nil,
+            subtitle: (effectiveSubtitle?.isEmpty == false) ? effectiveSubtitle : nil,
+            amount: extractedAmt
+        )
         DraftInbox.notifyCapture(
             title: CaptureLanguage.text("Notification Queued to Draft", "Notifikasi Masuk ke Draft"),
-            body: rawBody.isEmpty ? CaptureLanguage.text("Ready for review in Accrual.", "Siap ditinjau di Accrual.") : String(rawBody.prefix(90))
+            body: combinedText.isEmpty
+                ? CaptureLanguage.text("Ready for review in Accrual.", "Siap ditinjau di Accrual.")
+                : String(combinedText.prefix(90))
         )
-        return .result()
+        return .result(
+            dialog: IntentDialog(stringLiteral: CaptureLanguage.text("Notification saved to Accrual Drafts.", "Notifikasi disimpan ke Draft Accrual."))
+        )
     }
 }
 
 /// Dialog Glass Intent: directly recorded into Transactions (does NOT enter Review/Draft),
-/// and keeps Note completely empty when user does not type a note!
+/// and keeps Note completely empty when user does not type a note.
 @available(iOS 16.0, *)
 public struct LogQuickDraftIntent: AppIntent {
     public static var title: LocalizedStringResource = "Log Quick Draft Transaction"
@@ -296,7 +371,6 @@ public struct LogQuickDraftIntent: AppIntent {
         let cleanWallet = (wallet ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanNote = (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Store source = "glass_dialog" with raw_text = cleanNote ONLY (never concatenate Category+Wallet into raw_text!)
         try DraftInbox.capture(
             text: cleanNote,
             source: "glass_dialog",
@@ -325,11 +399,13 @@ public struct LogQuickDraftIntent: AppIntent {
     }
 }
 
+/// Retained with isDiscoverable = false for legacy saved shortcuts only (Smart Text UI removed).
 @available(iOS 16.0, *)
 public struct LogSmartTextIntent: AppIntent {
     public static var title: LocalizedStringResource = "Log Smart Text Transaction"
     public static var description = IntentDescription("Capture clipboard or transaction text for review in Accrual.")
     public static var openAppWhenRun = false
+    public static var isDiscoverable = false
     @Parameter(title: "Transaction Text") public var text: String
 
     public static var parameterSummary: some ParameterSummary {
@@ -341,7 +417,7 @@ public struct LogSmartTextIntent: AppIntent {
         let ownerSnapshot = try DraftInbox.currentOwner()
         try DraftInbox.capture(text: text, source: "shortcut_screenshot", ownerSnapshot: ownerSnapshot)
         DraftInbox.notifyCapture(
-            title: CaptureLanguage.text("Clipboard Captured to Draft", "Teks Masuk ke Draft Accrual"),
+            title: CaptureLanguage.text("Captured to Draft", "Masuk ke Draft Accrual"),
             body: String(text.prefix(90))
         )
         return .result(dialog: IntentDialog(stringLiteral: CaptureLanguage.text("Captured for review in Accrual.", "Tangkapan siap ditinjau di Accrual.")))
@@ -379,29 +455,67 @@ public struct VoiceLogExpenseIntent: AppIntent {
     }
 }
 
-/// Retained for personal automations & Wallet Card Tap. Values are captured as raw text only.
+/// Upgraded Wallet Card & NFC Tap Intent:
+/// Supports 1-tap `Shortcut Input` (from iOS Wallet Transaction trigger) OR structured `Amount`, `Merchant`, and `Card / Account`.
 @available(iOS 16.0, *)
 public struct LogCardTransactionIntent: AppIntent {
     public static var title: LocalizedStringResource = "Log Card Transaction"
-    public static var description = IntentDescription("Capture card transaction details for review.")
+    public static var description = IntentDescription("Auto-capture Apple Pay, Wallet Card Tap, or NFC transaction into Accrual Drafts.")
     public static var openAppWhenRun = false
     public static var isDiscoverable = true
-    @Parameter(title: "Amount") public var amount: Double?
-    @Parameter(title: "Merchant") public var merchant: String?
-    @Parameter(title: "Card") public var cardName: String?
+    @Parameter(title: "Shortcut Input / Transaction Details") public var transactionInput: String?
+    @Parameter(title: "Amount (Optional)") public var amount: Double?
+    @Parameter(title: "Merchant (Optional)") public var merchant: String?
+    @Parameter(title: "Card or Account (Optional)") public var cardName: String?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("Log card transaction \(\.$amount) at \(\.$merchant) (\(\.$cardName))")
+        Summary("Log card transaction \(\.$transactionInput) at \(\.$merchant) (\(\.$cardName))") {
+            \.$amount
+        }
     }
 
     public init() {}
     public func perform() async throws -> some IntentResult & ProvidesDialog {
         let ownerSnapshot = try DraftInbox.currentOwner()
-        let text = [amount.map { String($0) }, merchant, cardName].compactMap { $0 }.joined(separator: "\n")
-        try DraftInbox.capture(text: text, source: "card_transaction", ownerSnapshot: ownerSnapshot)
+        let cleanInput = (transactionInput ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanMerchant = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanCard = (cardName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var resolvedAmount = Int(abs((amount ?? 0).rounded()))
+        if resolvedAmount <= 0 {
+            resolvedAmount = DraftInbox.parseFlexibleAmount(cleanInput)
+        }
+
+        let lines = [
+            resolvedAmount > 0 ? String(resolvedAmount) : nil,
+            !cleanMerchant.isEmpty ? cleanMerchant : (!cleanInput.isEmpty ? cleanInput : nil),
+            !cleanCard.isEmpty ? cleanCard : nil
+        ].compactMap { $0 }
+
+        let rawPayloadText = lines.isEmpty ? cleanInput : lines.joined(separator: "\n")
+
+        try DraftInbox.capture(
+            text: rawPayloadText,
+            source: "card_transaction",
+            ownerSnapshot: ownerSnapshot,
+            at: Date(),
+            app: cleanCard.isEmpty ? nil : cleanCard,
+            title: cleanMerchant.isEmpty ? nil : cleanMerchant,
+            subtitle: cleanCard.isEmpty ? nil : cleanCard,
+            amount: resolvedAmount
+        )
+
+        let bodyParts = [
+            resolvedAmount > 0 ? "Rp\(NumberFormatter.localizedString(from: NSNumber(value: resolvedAmount), number: .decimal))" : nil,
+            !cleanMerchant.isEmpty ? cleanMerchant : (!cleanInput.isEmpty ? String(cleanInput.prefix(40)) : nil),
+            !cleanCard.isEmpty ? "(\(cleanCard))" : nil
+        ].compactMap { $0 }.joined(separator: " • ")
+
         DraftInbox.notifyCapture(
             title: CaptureLanguage.text("Card Transaction Captured", "Transaksi Kartu Masuk ke Draft"),
-            body: [merchant, cardName].compactMap { $0 }.joined(separator: " • ")
+            body: bodyParts.isEmpty
+                ? CaptureLanguage.text("Ready for review in Accrual.", "Siap ditinjau di Accrual.")
+                : bodyParts
         )
         return .result(dialog: IntentDialog(stringLiteral: CaptureLanguage.text("Captured for review in Accrual.", "Tangkapan siap ditinjau di Accrual.")))
     }
@@ -437,7 +551,8 @@ public struct AccrualShortcuts: AppShortcutsProvider {
         AppShortcut(intent: OpenInboxIntent(), phrases: ["Open drafts in \(.applicationName)", "Tinjau transaksi di \(.applicationName)"], shortTitle: "Review Captures", systemImageName: "tray.full")
         AppShortcut(intent: ScanPaymentScreenshotIntent(), phrases: ["Scan payment screenshot in \(.applicationName)", "Pindai pembayaran di \(.applicationName)"], shortTitle: "Capture Screenshot", systemImageName: "doc.viewfinder.fill")
         AppShortcut(intent: LogQuickDraftIntent(), phrases: ["Quick draft in \(.applicationName)", "Catat cepat di \(.applicationName)"], shortTitle: "Quick Draft", systemImageName: "plus.rectangle.on.rectangle")
-        AppShortcut(intent: LogSmartTextIntent(), phrases: ["Log clipboard text in \(.applicationName)", "Catat teks di \(.applicationName)"], shortTitle: "Smart Text", systemImageName: "doc.on.clipboard")
+        AppShortcut(intent: LogNotificationTransactionIntent(), phrases: ["Log bank notification in \(.applicationName)", "Catat notifikasi bank di \(.applicationName)"], shortTitle: "Bank Notification", systemImageName: "bell.badge.fill")
+        AppShortcut(intent: LogCardTransactionIntent(), phrases: ["Log card tap in \(.applicationName)", "Catat tap kartu di \(.applicationName)"], shortTitle: "Wallet Tap", systemImageName: "creditcard.fill")
     }
 }
 #endif

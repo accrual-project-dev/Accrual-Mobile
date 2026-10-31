@@ -5,6 +5,8 @@
 @theme {
   --font-sans:
     "Urbanist", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  --font-mono:
+    "Urbanist", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
 }
 
 /* ============================================================
@@ -1110,4 +1112,11 @@ textarea:not([readonly]) {
   box-shadow: inset 0 0 0 1000px rgba(255, 255, 255, 0.05) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   transition: background-color 9999s ease-in-out 0s !important;
+}
+
+
+/* Enforce Pure Urbanist Typography — Zero Monospace Font */
+.font-mono, code, pre, kbd, samp {
+  font-family: "Urbanist", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif !important;
+  font-variant-numeric: tabular-nums;
 }

@@ -736,6 +736,33 @@ export function parseDeepLink(
       });
 
       if (!bankResult || bankResult.amount <= 0) {
+        const nlpFallback = parseNaturalTransaction(textToParse, categories, wallets);
+        if (nlpFallback && nlpFallback.amount && nlpFallback.amount > 0) {
+          const matchedCat = categories.find((c) => c.id === nlpFallback.categoryId) || categories[0];
+          const matchedWal = wallets.find((w) => w.id === nlpFallback.walletId) || wallets[0];
+          const txDate = nlpFallback.date || parseIndonesianDate(notifReceivedAt || directDate) || new Date();
+          return {
+            action: "transaction",
+            autoSave: false,
+            fromShortcut: true,
+            sourceChannel: "notification",
+            spaceId: resolvedSpaceId,
+            matchedCategoryName: matchedCat?.name,
+            matchedWalletName: matchedWal?.name || notifSourceApp || "Bank / E-Wallet",
+            prefilledValues: {
+              amount: nlpFallback.amount,
+              type: nlpFallback.type || "expense",
+              note: directNote || sanitizeDeepLinkNote(nlpFallback.note) || sanitizeDeepLinkNote(textToParse.slice(0, 40)),
+              category_id: nlpFallback.categoryId || matchedCat?.id,
+              categoryId: nlpFallback.categoryId || matchedCat?.id,
+              wallet_id: nlpFallback.walletId || matchedWal?.id,
+              walletId: nlpFallback.walletId || matchedWal?.id,
+              date: txDate,
+              time: format(txDate, "HH:mm"),
+              spaceId: resolvedSpaceId,
+            },
+          };
+        }
         return { action: "none", isIgnoredPromo: true };
       }
 
@@ -1094,7 +1121,7 @@ export function parseDeepLink(
           action: "transaction",
           autoSave: isAutoRequested,
           fromShortcut: true,
-          sourceChannel: "notification",
+          sourceChannel: resolvedChannel === "wallet_tap" ? "wallet_tap" : "notification",
           spaceId: resolvedSpaceId,
           matchedCategoryName: matchedCat?.name,
           matchedWalletName: matchedWal?.name,
@@ -1236,7 +1263,7 @@ export function parseDeepLink(
           action: "transaction",
           autoSave: isAutoRequested,
           fromShortcut: true,
-          sourceChannel: "smart_text",
+          sourceChannel: resolvedChannel === "wallet_tap" ? "wallet_tap" : "smart_text",
           spaceId: resolvedSpaceId,
           matchedCategoryName: matchedCat?.name,
           matchedWalletName: matchedWal?.name,

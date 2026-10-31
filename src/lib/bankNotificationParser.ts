@@ -91,7 +91,7 @@ export function isPromotionalOrSpamNotification(
 }
 
 /**
- * Detects if a text string looks like an Indonesian m-Banking, SMS, or e-Wallet payment notification
+ * Detects if a text string looks like an Indonesian m-Banking, SMS, e-Wallet, or Wallet Tap notification
  * and extracts financial tokens with transfer vs expense intelligence and 3-layer anti-promo filtering.
  */
 export function parseBankNotification(
@@ -111,7 +111,7 @@ export function parseBankNotification(
     .join(" — ")
     .trim();
 
-  if (combinedRaw.length < 6 || combinedRaw.length > 1500) return null;
+  if (combinedRaw.length < 4 || combinedRaw.length > 1500) return null;
 
   // 0. Run 3-Layer Promo, Marketing, OTP & Failed Transaction Shield
   if (isPromotionalOrSpamNotification(cleanText, cleanTitle, cleanSubtitle)) {
@@ -120,7 +120,7 @@ export function parseBankNotification(
 
   const lower = `${cleanSourceApp} ${cleanTitle} ${cleanSubtitle} ${cleanText}`.toLowerCase();
 
-  // 1. Check for banking / e-wallet signal keywords
+  // 1. Check for banking / e-wallet / payment / currency signal keywords
   const bankSignals = [
     "bca",
     "m-transfer",
@@ -155,11 +155,17 @@ export function parseBankNotification(
     "dana",
     "linkaja",
     "qris",
+    "apple pay",
+    "wallet",
+    "kartu",
+    "card",
     "transfer",
     "transfer berhasil",
     "kamu berhasil transfer",
+    "pembayaran",
     "pembayaran berhasil",
     "pembayaran sukses",
+    "transaksi",
     "transaksi berhasil",
     "top up",
     "top-up",
@@ -169,13 +175,23 @@ export function parseBankNotification(
     "uang masuk",
     "debit",
     "kredit",
+    "bayar",
     "kamu telah bayar",
     "kamu berhasil bayar",
     "berhasil bayar",
     "berhasil dibayar",
+    "sebesar",
+    "senilai",
+    "rp",
+    "idr",
+    "paid",
+    "payment",
+    "purchase",
+    "spent",
   ];
 
-  const hasSignal = bankSignals.some((sig) => lower.includes(sig));
+  const hasSignal =
+    Boolean(cleanSourceApp) || bankSignals.some((sig) => lower.includes(sig));
   if (!hasSignal) return null;
 
   // Strip secondary discount/hemat clauses before extracting the primary transaction amount
@@ -221,12 +237,14 @@ export function parseBankNotification(
     }
   }
 
-  // Fallback: look for standalone formatted numbers (supporting 1.000, 5.000, 10.000, 100.000, etc.)
+  // Fallback: look for standalone formatted numbers (supporting 1.000, 5.000, 10.000, 100.000, or raw >= 1000)
   if (amount <= 0) {
-    const fallbackNum = sanitizedForAmount.match(/\b(\d{1,3}(?:\.\d{3})+)\b/);
+    const fallbackNum =
+      sanitizedForAmount.match(/\b(\d{1,3}(?:[.,]\d{3})+)\b/) ||
+      sanitizedForAmount.match(/\b(\d{4,10})\b/);
     if (fallbackNum && fallbackNum[1]) {
-      const num = parseFloat(fallbackNum[1].replace(/\./g, ""));
-      if (!isNaN(num) && num >= 1000) amount = num;
+      const num = parseFloat(fallbackNum[1].replace(/[.,]/g, ""));
+      if (!isNaN(num) && num >= 500) amount = num;
     }
   }
 
@@ -296,6 +314,9 @@ export function parseBankNotification(
   } else if (lower.includes("linkaja")) {
     sourceApp = "LinkAja";
     matchedSourceWallet = findWalletByKeyword("linkaja");
+  } else if (lower.includes("apple pay")) {
+    sourceApp = "Apple Pay";
+    matchedSourceWallet = findWalletByKeyword("apple pay") || findWalletByKeyword("bca");
   } else if (lower.includes("qris")) {
     sourceApp = cleanSourceApp || "QRIS";
   }
@@ -303,6 +324,13 @@ export function parseBankNotification(
   // If explicit sourceApp was provided in metadata and still no wallet matched, try direct matching
   if (!matchedSourceWallet && cleanSourceApp && wallets.length > 0) {
     matchedSourceWallet = findWalletByKeyword(cleanSourceApp);
+  }
+
+  // Also check if any of the user's wallet names appear directly in the notification text
+  if (!matchedSourceWallet && wallets.length > 0) {
+    matchedSourceWallet = wallets.find((w) =>
+      lower.includes(w.name.trim().toLowerCase()),
+    );
   }
 
   // Fallback to primary wallet if not resolved
@@ -381,7 +409,7 @@ export function parseBankNotification(
 
     if (!merchantOrNote) {
       const targetMatch = cleanText.match(
-        /(?:ke|di|pada|untuk|merchant)\s+([A-Za-z0-9\s&'.-]+?)(?:\s+(?:berhasil|sukses|sebesar|senilai|rp|tanggal|via|pakai|dengan|\.|\n|$))/i,
+        /(?:ke|di|pada|untuk|at|merchant)\s+([A-Za-z0-9\s&'.-]+?)(?:\s+(?:berhasil|sukses|sebesar|senilai|rp|idr|tanggal|via|pakai|dengan|\.|\n|$))/i,
       );
       if (targetMatch && targetMatch[1]) {
         let extracted = targetMatch[1].trim();
@@ -399,7 +427,7 @@ export function parseBankNotification(
       let remaining = cleanText
         .replace(/(?:sebesar\s+rp\.?|senilai\s+rp\.?|rp\.?|idr)\s*[\d.,]+/gi, "")
         .replace(
-          /transfer|berhasil|sukses|pembayaran|sebesar|senilai|transaksi|debit|kredit|rekening|kamu telah bayar|kamu berhasil bayar|kamu berhasil/gi,
+          /transfer|berhasil|sukses|pembayaran|sebesar|senilai|transaksi|debit|kredit|rekening|kamu telah bayar|kamu berhasil bayar|kamu berhasil|wallet tap/gi,
           "",
         )
         .replace(/[0-9]{6,}/g, "")

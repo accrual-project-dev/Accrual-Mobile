@@ -14,6 +14,8 @@ import {
   parseBankNotification,
   isPromotionalOrSpamNotification,
 } from "../../lib/bankNotificationParser";
+import { parseCurrencyAmount } from "../../lib/deepLinkHandler";
+import { parseNaturalTransaction } from "../../lib/nlpParser";
 import { parseSlipText } from "../../lib/slipParser";
 import { classifySemanticCategory } from "../../lib/semanticClassifier";
 import { getMerchantMemory } from "../../lib/merchantCategoryMemory";
@@ -158,7 +160,7 @@ export function useInboxDrain() {
           continue;
         }
 
-        // 2. Try intelligent enrichment via Bank Notification Parser or Slip Parser
+        // 2. Try intelligent enrichment via Bank Notification Parser, Slip Parser, or NLP Parser
         let resolvedAmount = Math.abs(Number(item.amount || 0));
         let resolvedType: "income" | "expense" | "transfer" =
           item.direction === "income" ? "income" : "expense";
@@ -197,6 +199,16 @@ export function useInboxDrain() {
             resolvedToWalletName = bankParsed.suggestedToWalletName;
             resolvedCatId = bankParsed.suggestedCategoryId || null;
             resolvedCatName = bankParsed.suggestedCategoryName || resolvedCatName;
+          } else if (resolvedAmount <= 0) {
+            const nlpFallback = parseNaturalTransaction(rawText, categories, wallets);
+            if (nlpFallback && nlpFallback.amount && nlpFallback.amount > 0) {
+              resolvedAmount = nlpFallback.amount;
+              resolvedType = nlpFallback.type === "transfer" ? "transfer" : nlpFallback.type === "income" ? "income" : "expense";
+              resolvedDesc = nlpFallback.note || resolvedDesc;
+              resolvedWalletId = nlpFallback.walletId || null;
+              resolvedCatId = nlpFallback.categoryId || null;
+              resolvedCatName = nlpFallback.categoryName || resolvedCatName;
+            }
           }
         } else if (
           (item.source === "shortcut_screenshot" || item.source === "smart_text") &&
@@ -235,14 +247,47 @@ export function useInboxDrain() {
               resolvedCatName = bankFallback.suggestedCategoryName || null;
             }
           }
-        } else if (item.source === "card_transaction" && rawText && resolvedAmount <= 0) {
-          const firstNum = rawText.match(/(\d+(?:[.,]\d+)?)/);
-          if (firstNum) {
-            resolvedAmount = Math.round(Number(firstNum[1].replace(/,/g, "")));
+        } else if (item.source === "card_transaction" && rawText) {
+          // Support structured multi-line ("55.000\nStarbucks\nBCA") AND 1-step Shortcut Input text
+          const lines = rawText
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter(Boolean);
+          if (resolvedAmount <= 0 && lines.length > 0) {
+            const lineAmt = parseCurrencyAmount(lines[0]);
+            if (lineAmt > 0 && /^[\d.,\sRpIdr$-]+$/i.test(lines[0])) {
+              resolvedAmount = Math.round(lineAmt);
+              if (lines.length >= 2 && !resolvedDesc) resolvedDesc = lines[1];
+              if (lines.length >= 3 && !resolvedWalletName) resolvedWalletName = lines[2];
+            }
           }
-          const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-          if (lines.length >= 2 && !resolvedDesc) resolvedDesc = lines[1];
-          if (lines.length >= 3 && !resolvedWalletName) resolvedWalletName = lines[2];
+          if (resolvedAmount <= 0) {
+            const bankParsed = parseBankNotification(rawText, categories, wallets, {
+              sourceApp: item.source_app || item.wallet_hint || "Apple Pay",
+              title: item.title || item.merchant,
+            });
+            if (bankParsed && bankParsed.amount > 0) {
+              resolvedAmount = bankParsed.amount;
+              resolvedDesc = resolvedDesc || bankParsed.merchantOrNote;
+              resolvedWalletId = bankParsed.suggestedWalletId || null;
+              resolvedWalletName = resolvedWalletName || bankParsed.suggestedWalletName;
+              resolvedCatId = bankParsed.suggestedCategoryId || null;
+              resolvedCatName = resolvedCatName || bankParsed.suggestedCategoryName || null;
+            }
+          }
+          if (resolvedAmount <= 0) {
+            const nlpParsed = parseNaturalTransaction(rawText, categories, wallets);
+            if (nlpParsed && nlpParsed.amount && nlpParsed.amount > 0) {
+              resolvedAmount = nlpParsed.amount;
+              resolvedDesc = resolvedDesc || nlpParsed.note || "";
+              resolvedWalletId = nlpParsed.walletId || null;
+              resolvedCatId = nlpParsed.categoryId || null;
+              resolvedCatName = resolvedCatName || nlpParsed.categoryName || null;
+            } else {
+              const fallbackAmt = parseCurrencyAmount(rawText);
+              if (fallbackAmt > 0) resolvedAmount = Math.round(fallbackAmt);
+            }
+          }
         }
 
         if (resolvedAmount <= 0) continue;
@@ -357,7 +402,6 @@ export function useInboxDrain() {
         });
       }
 
-
       // Notify UI if Dialog Glass directly recorded transactions
       if (directRecordedCount > 0 && lastDirectRecordedInfo) {
         window.dispatchEvent(
@@ -392,10 +436,6 @@ export function useInboxDrain() {
           ? isIndonesian
             ? "Notifikasi Transaksi"
             : "Transaction Notification"
-          : firstSource === "smart_text"
-          ? isIndonesian
-            ? "Teks Papan Klip Pintar"
-            : "Smart Clipboard Text"
           : firstSource === "card_transaction"
           ? isIndonesian
             ? "Transaksi Kartu / Dompet"
@@ -407,8 +447,6 @@ export function useInboxDrain() {
       const draftSource: DraftSourceType =
         firstSource === "shortcut_notification"
           ? "notification"
-          : firstSource === "smart_text"
-          ? "smart_text"
           : firstSource === "card_transaction"
           ? "wallet_tap"
           : "screen_scan";

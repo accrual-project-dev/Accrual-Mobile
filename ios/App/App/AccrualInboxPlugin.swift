@@ -59,10 +59,14 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                 var items: [[String: Any]] = []
                 for file in files {
                     guard let data = try? Data(contentsOf: file),
-                          let item = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          item["owner_id"] as? String == owner,
+                          var item = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                          let fileOwner = item["owner_id"] as? String,
+                          (fileOwner == owner || fileOwner == DraftInbox.defaultFallbackOwner),
                           let id = item["id"] as? String,
                           DraftInbox.validID(id), file.lastPathComponent == "\(id).json" else { continue }
+                    if fileOwner == DraftInbox.defaultFallbackOwner && owner != DraftInbox.defaultFallbackOwner {
+                        item["owner_id"] = owner
+                    }
                     items.append(item)
                 }
                 DraftInbox.updateBadge(forOwner: owner)
@@ -164,7 +168,9 @@ public class AccrualInboxPlugin: CAPPlugin, CAPBridgedPlugin {
                     let file = directory.appendingPathComponent("\(id).json")
                     guard let data = try? Data(contentsOf: file),
                           let item = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          item["id"] as? String == id, item["owner_id"] as? String == owner else { continue }
+                          item["id"] as? String == id,
+                          let fileOwner = item["owner_id"] as? String,
+                          (fileOwner == owner || fileOwner == DraftInbox.defaultFallbackOwner) else { continue }
                     do {
                         try FileManager.default.removeItem(at: file)
                         removed.append(id)

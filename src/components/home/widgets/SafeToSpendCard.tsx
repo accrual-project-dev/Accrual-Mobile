@@ -78,7 +78,7 @@ export function SafeToSpendCard({
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-end pb-0.5">
-                  <span className="text-[10px] font-bold text-[var(--text-primary)] leading-none font-mono">
+                  <span className="text-[10px] font-bold text-[var(--text-primary)] leading-none tabular-nums">
                     {spentPercent}%
                   </span>
                   <span className="text-[7px] text-[var(--text-tertiary)] leading-none mt-0.5">
@@ -92,7 +92,7 @@ export function SafeToSpendCard({
                 <span className="text-[8.5px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] block truncate">
                   {isIndonesian ? "Sisa Anggaran" : "Left to Spend"}
                 </span>
-                <span className="text-[13.5px] font-bold text-[var(--text-primary)] truncate block leading-tight font-mono">
+                <span className="text-[13.5px] font-bold text-[var(--text-primary)] truncate block leading-tight tabular-nums">
                   {formatWithPreferred(leftToSpend)}
                 </span>
               </div>
@@ -110,7 +110,7 @@ export function SafeToSpendCard({
                 <span className="text-[8px] text-[var(--text-tertiary)] truncate">
                   {isIndonesian ? "Aman/hr:" : "Safe/d:"}
                 </span>
-                <span className="text-[9.5px] font-bold text-[var(--text-primary)] font-mono truncate ml-1">
+                <span className="text-[9.5px] font-bold text-[var(--text-primary)] tabular-nums truncate ml-1">
                   {formatWithPreferred(safeDaily)}
                 </span>
               </div>
@@ -125,7 +125,7 @@ export function SafeToSpendCard({
                 <span className="text-[8px] text-[var(--text-tertiary)]">
                   {isIndonesian ? "Sisa:" : "Days:"}
                 </span>
-                <span className="text-[9.5px] font-bold text-[var(--text-primary)] font-mono">
+                <span className="text-[9.5px] font-bold text-[var(--text-primary)] tabular-nums">
                   {daysLeft}
                 </span>
               </div>
@@ -136,7 +136,7 @@ export function SafeToSpendCard({
     );
   }
 
-  // Full / Expanded Size View (Foto 3 Style)
+  // Full / Expanded Size View
   return (
     <section
       onClick={onOpenDetail}
@@ -144,7 +144,6 @@ export function SafeToSpendCard({
       style={{
         background: "var(--bg-elevated)",
         border: "1px solid var(--glass-border)",
-        boxShadow: "var(--shadow-card)",
       }}
     >
       <div className="flex items-center justify-between">
@@ -195,7 +194,7 @@ export function SafeToSpendCard({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
-            <span className="text-[16px] font-bold text-[var(--text-primary)] leading-none font-mono">
+            <span className="text-[16px] font-bold text-[var(--text-primary)] leading-none tabular-nums">
               {spentPercent}%
             </span>
             <span className="text-[9px] text-[var(--text-tertiary)] leading-none mt-0.5">
@@ -209,10 +208,10 @@ export function SafeToSpendCard({
           <span className="text-[9.5px] uppercase font-semibold text-[var(--text-tertiary)] block">
             {isIndonesian ? "Sisa Anggaran" : "Left to Spend"}
           </span>
-          <span className="text-[20px] font-bold text-[var(--text-primary)] font-mono block leading-tight">
+          <span className="text-[20px] font-bold text-[var(--text-primary)] tabular-nums block leading-tight">
             {formatWithPreferred(leftToSpend)}
           </span>
-          <span className="text-[10px] text-[var(--text-tertiary)] font-mono block">
+          <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums block">
             {isIndonesian ? "dari" : "of"} {formatWithPreferred(budget > 0 ? budget : spent + leftToSpend)}
           </span>
         </div>
@@ -231,7 +230,7 @@ export function SafeToSpendCard({
             <span className="text-[8.5px] text-[var(--text-tertiary)] block">
               {isIndonesian ? "Aman dibelanjakan" : "Safe to spend"}
             </span>
-            <span className="text-[13px] font-bold text-[var(--text-primary)] font-mono">
+            <span className="text-[13px] font-bold text-[var(--text-primary)] tabular-nums">
               {formatWithPreferred(safeDaily)}{isIndonesian ? "/hari" : "/day"}
             </span>
           </div>
@@ -247,7 +246,7 @@ export function SafeToSpendCard({
           <span className="text-[8.5px] text-[var(--text-tertiary)] block">
             {isIndonesian ? "Sisa hari" : "Days left"}
           </span>
-          <span className="text-[14px] font-bold text-[var(--text-primary)] font-mono">
+          <span className="text-[14px] font-bold text-[var(--text-primary)] tabular-nums">
             {daysLeft}
           </span>
         </div>

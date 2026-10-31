@@ -14,7 +14,9 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  Play,
 } from "lucide-react";
+import { format } from "date-fns";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useToast } from "../../contexts/ToastContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -23,6 +25,10 @@ import { useSpace } from "../../contexts/SpaceContext";
 import { useCategories } from "../../hooks/useCategories";
 import { useWallets } from "../../hooks/useWallets";
 import { triggerHaptic, triggerSuccessHaptic } from "../../lib/haptics";
+import {
+  saveDraftBatch,
+  resolveActiveDraftSpaceId,
+} from "../../lib/draftTransactionService";
 import {
   isValidICloudLink,
   getSavedICloudLinks,
@@ -49,23 +55,26 @@ export type TabType =
   | "notification_reader"
   | "glass_dialog"
   | "wallet_tap"
-  | "smart_text"
   | "receipt_scan";
 
 export type PresetId =
   | "screen_scan"
   | "glass_dialog"
   | "notification_reader"
-  | "smart_text"
   | "wallet_tap"
   | "voice_entry"
   | "receipt_scan";
 
 function mapInitialTab(t?: TabType): PresetId {
-  if (t === "glass_dialog") return "glass_dialog";
-  if (t === "notification_reader" || t === "automation") return "notification_reader";
-  if (t === "wallet_tap") return "wallet_tap";
-  if (t === "smart_text" || t === "action_button" || t === "ways_to_add") return "smart_text";
+  if (t === "glass_dialog" || t === "action_button" || t === "ways_to_add") {
+    return "glass_dialog";
+  }
+  if (t === "notification_reader" || t === "automation") {
+    return "notification_reader";
+  }
+  if (t === "wallet_tap") {
+    return "wallet_tap";
+  }
   return "screen_scan";
 }
 
@@ -255,7 +264,7 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
     ],
   },
 
-  // 3. NOTIFICATION READER (Self-Setup)
+  // 3. NOTIFICATION READER (1-Step Input Automation)
   {
     id: "notification_reader",
     icon: Bell,
@@ -263,13 +272,12 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
     tabLabelEn: "Notifications",
     titleId: "Log Notifikasi Bank",
     titleEn: "Bank Notification Logger",
-    taglineId: "Otomatis tangkap mutasi bank/e-wallet & saring promo/OTP.",
-    taglineEn: "Auto-capture bank/e-wallet alerts & filter out promos/OTPs.",
+    taglineId: "Otomatis tangkap mutasi bank/e-wallet hanya dengan 1 input (Shortcut Input) & saring promo/OTP.",
+    taglineEn: "Auto-capture bank/e-wallet alerts with 1 input (Shortcut Input) & filter out promos/OTPs.",
     targetBadgeId: "Masuk ke Draft",
     targetBadgeEn: "Saves to Draft",
     icloudUrl: "",
-    directScheme:
-      "accrual://notify?text=[Teks]&title=[Judul]&subtitle=[Subjudul]&app=[Aplikasi]&at=[Tanggal]&draft=true",
+    directScheme: "accrual://notify?text=[Shortcut Input]&draft=true",
     hasICloudLink: false,
     isPersonalAutomation: true,
     actions: [
@@ -279,15 +287,15 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         icon: Bell,
         titleId: "When I Receive Notification",
         titleEn: "When I Receive Notification",
-        pills: ["BCA, Mandiri, GoPay, DANA..."],
+        pills: ["BCA, Livin', GoPay, DANA..."],
       },
       {
         id: "act-n2",
         type: "standard",
         icon: ShieldCheck,
-        titleId: "Log Notification Transaction",
-        titleEn: "Log Notification Transaction",
-        pills: ["Notification", "Title", "Subtitle", "App", "Received At"],
+        titleId: "Log bank notification",
+        titleEn: "Log bank notification",
+        pills: ["Shortcut Input"],
         isNativeIntent: true,
       },
     ],
@@ -296,80 +304,27 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         number: 1,
         titleId: "Buka Tab Automasi di Pintasan iOS",
         titleEn: "Open Automation Tab in iOS Shortcuts",
-        bodyId: "Ketuk (+) › pilih 'Saat Saya Menerima Pemberitahuan' › aktifkan 'Jalankan Segera'.",
+        bodyId: "Ketuk (+) › pilih 'Saat Saya Menerima Pemberitahuan' (When I Receive Notification) › pilih 'Jalankan Segera' (Run Immediately).",
         bodyEn: "Tap (+) › select 'When I Receive Notification' › enable 'Run Immediately'.",
       },
       {
         number: 2,
-        titleId: "Pilih Aplikasi Bank & E-Wallet",
-        titleEn: "Select Bank & E-Wallet Apps",
-        bodyId: "Pilih BCA, Livin', BRImo, BNI, SeaBank, Jago, GoPay, DANA, OVO, atau ShopeePay.",
-        bodyEn: "Pick BCA, Livin', BRImo, BNI, SeaBank, Jago, GoPay, DANA, OVO, or ShopeePay.",
+        titleId: "Pilih Aplikasi Bank / E-Wallet",
+        titleEn: "Select Bank / E-Wallet Apps",
+        bodyId: "Pilih aplikasi seperti myBCA, BCA mobile, Livin', BRImo, wondr, SeaBank, Jago, GoPay, DANA, OVO, atau ShopeePay.",
+        bodyEn: "Pick apps like myBCA, BCA mobile, Livin', BRImo, wondr, SeaBank, Jago, GoPay, DANA, OVO, or ShopeePay.",
       },
       {
         number: 3,
-        titleId: "Pilih Aksi Accrual 'Log Notification Transaction'",
-        titleEn: "Select Accrual 'Log Notification Transaction'",
-        bodyId: "Buat Pintasan Kosong Baru › cari Accrual › pilih Log Notification Transaction.",
-        bodyEn: "Create Blank Shortcut › search Accrual › select Log Notification Transaction.",
+        titleId: "Hubungkan ke 'Shortcut Input' (1 Klik)",
+        titleEn: "Connect to 'Shortcut Input' (1 Tap)",
+        bodyId: "Pilih 'Buat Pintasan Kosong Baru' › cari Accrual › pilih 'Log Notification Transaction' › isi kolom Notification dengan 'Shortcut Input'.",
+        bodyEn: "Select 'Create Blank Shortcut' › search Accrual › pick 'Log Notification Transaction' › set Notification to 'Shortcut Input'.",
       },
     ],
   },
 
-  // 4. SMART TEXT (Self-Setup)
-  {
-    id: "smart_text",
-    icon: FileText,
-    tabLabelId: "Smart Text",
-    tabLabelEn: "Smart Text",
-    titleId: "Smart Clipboard",
-    titleEn: "Smart Clipboard",
-    taglineId: "Ekstrak teks mutasi yang baru disalin di papan klip ke Draft.",
-    taglineEn: "Extract copied transaction text from clipboard into Drafts.",
-    targetBadgeId: "Masuk ke Draft",
-    targetBadgeEn: "Saves to Draft",
-    icloudUrl: "",
-    directScheme: "accrual://smart-text?text=[Papan Klip]&draft=true",
-    hasICloudLink: false,
-    isPersonalAutomation: false,
-    actions: [
-      {
-        id: "act-st1",
-        type: "standard",
-        icon: Copy,
-        titleId: "Get Clipboard",
-        titleEn: "Get Clipboard",
-        pills: ["Papan Klip"],
-      },
-      {
-        id: "act-st2",
-        type: "standard",
-        icon: Sparkles,
-        titleId: "Log Smart Text Transaction",
-        titleEn: "Log Smart Text Transaction",
-        pills: ["Clipboard"],
-        isNativeIntent: true,
-      },
-    ],
-    steps: [
-      {
-        number: 1,
-        titleId: "Buat Pintasan Baru (+)",
-        titleEn: "Create New Shortcut (+)",
-        bodyId: "Tambahkan aksi bawaan 'Get Clipboard' (Dapatkan Papan Klip).",
-        bodyEn: "Add the built-in 'Get Clipboard' action.",
-      },
-      {
-        number: 2,
-        titleId: "Tambahkan Aksi Accrual 'Log Smart Text Transaction'",
-        titleEn: "Add Accrual 'Log Smart Text Transaction'",
-        bodyId: "Cari Accrual › pilih Log Smart Text Transaction › hubungkan ke [Clipboard].",
-        bodyEn: "Search Accrual › select Log Smart Text Transaction › pass [Clipboard].",
-      },
-    ],
-  },
-
-  // 5. WALLET TAP (Self-Setup)
+  // 4. WALLET TAP (1-Step Input Automation)
   {
     id: "wallet_tap",
     icon: CreditCard,
@@ -377,13 +332,13 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
     tabLabelEn: "Wallet Tap",
     titleId: "Wallet & NFC Tap",
     titleEn: "Wallet & NFC Tap",
-    taglineId: "Otomatis catat saat tap kartu Apple Pay atau tag NFC.",
-    taglineEn: "Auto-log when tapping an Apple Pay card or NFC tag.",
+    taglineId: "Otomatis catat transaksi saat tap kartu Apple Pay atau tag NFC hanya dengan 1 variabel.",
+    taglineEn: "Auto-log transactions when tapping an Apple Pay card or NFC tag with a single variable.",
     targetBadgeId: "Masuk ke Draft",
     targetBadgeEn: "Saves to Draft",
     icloudUrl: "",
     directScheme:
-      "accrual://wallet-tap?amount=[Jumlah]&merchant=[Merchant]&wallet=[Kartu]&datetime=[Tanggal]&draft=true",
+      "accrual://wallet-tap?text=[Shortcut Input]&draft=true",
     hasICloudLink: false,
     isPersonalAutomation: true,
     actions: [
@@ -393,32 +348,39 @@ export const SHORTCUT_PRESETS: ShortcutPreset[] = [
         icon: CreditCard,
         titleId: "When I Tap Wallet Card / NFC",
         titleEn: "When I Tap Wallet Card / NFC",
-        pills: ["Trigger"],
+        pills: ["Transaction / NFC"],
       },
       {
         id: "act-w2",
         type: "standard",
         icon: Sparkles,
-        titleId: "Log Card Transaction",
-        titleEn: "Log Card Transaction",
-        pills: ["Amount", "Merchant", "Card"],
+        titleId: "Log card transaction",
+        titleEn: "Log card transaction",
+        pills: ["Shortcut Input"],
         isNativeIntent: true,
       },
     ],
     steps: [
       {
         number: 1,
-        titleId: "Buka Tab Automasi › Transaksi / NFC",
-        titleEn: "Open Automation Tab › Transaction / NFC",
-        bodyId: "Pilih kartu Apple Pay atau scan stiker NFC Anda.",
-        bodyEn: "Select your Apple Pay card or scan your NFC tag.",
+        titleId: "Buka Tab Automasi › Transaksi atau NFC",
+        titleEn: "Open Automation Tab › Transaction or NFC",
+        bodyId: "Ketuk (+) di tab Automasi › pilih pemicu 'Transaksi' (Kartu Dompet) atau 'NFC' › pilih 'Jalankan Segera'.",
+        bodyEn: "Tap (+) in Automation › choose 'Transaction' (Wallet Card) or 'NFC' trigger › select 'Run Immediately'.",
       },
       {
         number: 2,
-        titleId: "Tambahkan Aksi Accrual 'Log Card Transaction'",
-        titleEn: "Add Accrual 'Log Card Transaction'",
-        bodyId: "Cari Accrual › pilih Log Card Transaction › petakan Amount, Merchant, dan Card.",
-        bodyEn: "Search Accrual › select Log Card Transaction › map Amount, Merchant, and Card.",
+        titleId: "Pilih Kartu atau Scan Tag NFC",
+        titleEn: "Select Card or Scan NFC Tag",
+        bodyId: "Pilih kartu pembayaran Anda atau tempelkan stiker NFC.",
+        bodyEn: "Select your payment card or scan your NFC sticker.",
+      },
+      {
+        number: 3,
+        titleId: "Tambahkan 'Log Card Transaction'",
+        titleEn: "Add 'Log Card Transaction'",
+        bodyId: "Pilih 'Buat Pintasan Kosong Baru' › cari Accrual › pilih 'Log Card Transaction' › hubungkan langsung ke 'Shortcut Input' (atau isi Merchant & Kartu di opsi tambahan).",
+        bodyEn: "Select 'Create Blank Shortcut' › search Accrual › pick 'Log Card Transaction' › pass 'Shortcut Input' directly (or fill Merchant & Card in optional fields).",
       },
     ],
   },
@@ -439,7 +401,7 @@ export function AppleShortcutsGuideModal({
   const { theme } = useTheme();
   const isDark = theme !== "light";
   const { showToast } = useToast();
-  const { activeSpace } = useSpace();
+  const { activeSpace, activeSpaceId, defaultSpaceId } = useSpace();
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
 
@@ -538,6 +500,109 @@ export function AppleShortcutsGuideModal({
     setTimeout(() => setCopiedKey(null), 2200);
   };
 
+  const copySchemeTemplate = (schemeText: string, keyName: string) => {
+    triggerSuccessHaptic();
+    navigator.clipboard.writeText(schemeText);
+    setCopiedKey(keyName);
+    showToast(
+      isIndonesian
+        ? "URL skema berhasil disalin"
+        : "Shortcut URL scheme copied",
+      "info",
+      () => {},
+    );
+    setTimeout(() => setCopiedKey(null), 2200);
+  };
+
+  const handleSimulateAutomation = (presetId: "notification_reader" | "wallet_tap") => {
+    triggerSuccessHaptic();
+    const targetSpaceId = resolveActiveDraftSpaceId(
+      activeSpaceId !== "all" ? activeSpaceId : defaultSpaceId,
+    );
+    const defaultCat =
+      categories.find((c) => c.type !== "income") || categories[0];
+    const defaultWal = wallets[0];
+    const now = new Date();
+
+    if (presetId === "notification_reader") {
+      saveDraftBatch(
+        [
+          {
+            id: `sim-notif-${Date.now()}`,
+            date: format(now, "yyyy-MM-dd"),
+            time: format(now, "HH:mm"),
+            description: "Kopi Kenangan (QRIS)",
+            cleanDescription: "Kopi Kenangan (QRIS)",
+            amount: 38500,
+            type: "expense",
+            walletId: defaultWal?.id || null,
+            walletName: defaultWal?.name || "BCA",
+            suggestedCategoryId: defaultCat?.id || null,
+            suggestedCategoryName:
+              defaultCat?.name || (isIndonesian ? "Makanan & Minuman" : "Food & Drink"),
+            suggestedCategoryEmoji: defaultCat?.emoji || "Utensils",
+            isDuplicate: false,
+            selected: true,
+            raw: "Pembayaran QRIS sebesar Rp 38.500 di Kopi Kenangan berhasil.",
+            confidence: 0.96,
+            needsReview: false,
+            spaceId: targetSpaceId,
+            spaceName: activeSpaceLabel,
+          },
+        ],
+        isIndonesian ? "Notifikasi Bank" : "Bank Notification",
+        "notification",
+        targetSpaceId,
+      );
+      showToast(
+        isIndonesian
+          ? "Simulasi Notifikasi Bank berhasil masuk ke Draft"
+          : "Simulated Bank Notification staged to Drafts",
+        "info",
+        null,
+        3000,
+      );
+    } else {
+      saveDraftBatch(
+        [
+          {
+            id: `sim-wallet-${Date.now()}`,
+            date: format(now, "yyyy-MM-dd"),
+            time: format(now, "HH:mm"),
+            description: "Apple Pay • Starbucks",
+            cleanDescription: "Apple Pay • Starbucks",
+            amount: 55000,
+            type: "expense",
+            walletId: defaultWal?.id || null,
+            walletName: defaultWal?.name || "Apple Pay",
+            suggestedCategoryId: defaultCat?.id || null,
+            suggestedCategoryName:
+              defaultCat?.name || (isIndonesian ? "Makanan & Minuman" : "Food & Drink"),
+            suggestedCategoryEmoji: defaultCat?.emoji || "Utensils",
+            isDuplicate: false,
+            selected: true,
+            raw: "Wallet Tap Rp 55.000 Starbucks",
+            confidence: 0.95,
+            needsReview: false,
+            spaceId: targetSpaceId,
+            spaceName: activeSpaceLabel,
+          },
+        ],
+        isIndonesian ? "Transaksi Kartu / Dompet" : "Wallet Card Tap",
+        "wallet_tap",
+        targetSpaceId,
+      );
+      showToast(
+        isIndonesian
+          ? "Simulasi Wallet Tap berhasil masuk ke Draft"
+          : "Simulated Wallet Tap staged to Drafts",
+        "info",
+        null,
+        3000,
+      );
+    }
+  };
+
   const pillSurface = isDark
     ? "rgba(255, 255, 255, 0.06)"
     : "rgba(0, 0, 0, 0.045)";
@@ -554,9 +619,9 @@ export function AppleShortcutsGuideModal({
           paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 18px), 24px)",
         }}
       >
-        {/* 1. Interactive Icon Pill Switcher */}
+        {/* 1. Interactive 4-Tab Icon Pill Switcher (Smart Text removed) */}
         <div
-          className="grid grid-cols-5 gap-1 p-1 rounded-2xl border"
+          className="grid grid-cols-4 gap-1 p-1 rounded-2xl border"
           style={{
             background: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.03)",
             borderColor: "var(--glass-border)",
@@ -579,7 +644,7 @@ export function AppleShortcutsGuideModal({
                 }`}
               >
                 <TabIcon size={14} strokeWidth={isSelected ? 2.1 : 1.7} />
-                <span className="text-[10px] font-semibold truncate max-w-full">
+                <span className="text-[10.5px] font-semibold truncate max-w-full">
                   {isIndonesian ? preset.tabLabelId : preset.tabLabelEn}
                 </span>
               </button>
@@ -597,7 +662,7 @@ export function AppleShortcutsGuideModal({
         >
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3
                   className="text-[15px] font-bold"
                   style={{ color: "var(--text-primary)" }}
@@ -631,7 +696,7 @@ export function AppleShortcutsGuideModal({
           <button
             type="button"
             onClick={handlePrimaryAction}
-            className="w-full h-10.5 rounded-xl font-semibold text-[12.5px] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all shadow-sm"
+            className="w-full h-10.5 rounded-xl font-semibold text-[12.5px] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all"
             style={{
               background: isDark ? "#ffffff" : "#09090c",
               color: isDark ? "#09090c" : "#ffffff",
@@ -651,8 +716,8 @@ export function AppleShortcutsGuideModal({
                 <ExternalLink size={14} strokeWidth={2.2} />
                 <span>
                   {isIndonesian
-                    ? "Buka Aplikasi Pintasan iOS"
-                    : "Open iOS Shortcuts App"}
+                    ? "Buka Tab Automasi di Pintasan iOS"
+                    : "Open Automation in iOS Shortcuts"}
                 </span>
               </>
             )}
@@ -747,7 +812,108 @@ export function AppleShortcutsGuideModal({
           </div>
         </div>
 
-        {/* 3. Interactive Ready Copy-Paste Boxes ONLY for Dialog Glass */}
+        {/* 3A. Quick Helper & Instant Simulation for Notification Reader & Wallet Tap */}
+        {(activePreset.id === "notification_reader" ||
+          activePreset.id === "wallet_tap") && (
+          <div
+            className="rounded-2xl p-3.5 border space-y-2.5 text-left"
+            style={{
+              background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+              borderColor: "var(--glass-border)",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h4
+                  className="text-[12.5px] font-bold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {isIndonesian
+                    ? "Opsi Cepat & Uji Coba"
+                    : "Quick Fallback & Live Test"}
+                </h4>
+                <p
+                  className="text-[11px] mt-0.5 leading-snug"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {activePreset.id === "notification_reader"
+                    ? isIndonesian
+                      ? "Cukup hubungkan 'Shortcut Input' ke blok Accrual, atau gunakan aksi 'Open URLs' dengan skema di bawah ini:"
+                      : "Simply pass 'Shortcut Input' into the Accrual action, or use 'Open URLs' with the scheme below:"
+                    : isIndonesian
+                    ? "Cukup hubungkan 'Shortcut Input' ke blok Accrual, atau gunakan aksi 'Open URLs' saat kartu di-tap:"
+                    : "Simply pass 'Shortcut Input' into the Accrual action, or use 'Open URLs' when your card is tapped:"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  copySchemeTemplate(
+                    activePreset.id === "notification_reader"
+                      ? "accrual://notify?text="
+                      : "accrual://wallet-tap?text=",
+                    `scheme-${activePreset.id}`,
+                  )
+                }
+                className="h-9 px-3 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                style={{
+                  background:
+                    copiedKey === `scheme-${activePreset.id}`
+                      ? isDark
+                        ? "#ffffff"
+                        : "#09090c"
+                      : pillSurface,
+                  color:
+                    copiedKey === `scheme-${activePreset.id}`
+                      ? isDark
+                        ? "#09090c"
+                        : "#ffffff"
+                      : "var(--text-primary)",
+                  borderColor: "var(--glass-border)",
+                }}
+              >
+                {copiedKey === `scheme-${activePreset.id}` ? (
+                  <>
+                    <Check size={12} strokeWidth={2.5} />
+                    <span>{isIndonesian ? "URL Tersalin" : "URL Copied"}</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={11.5} strokeWidth={2} />
+                    <span>
+                      {isIndonesian ? "Salin URL Skema" : "Copy URL Scheme"}
+                    </span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleSimulateAutomation(
+                    activePreset.id as "notification_reader" | "wallet_tap",
+                  )
+                }
+                className="h-9 px-3 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                style={{
+                  background: pillSurface,
+                  color: "var(--text-primary)",
+                  borderColor: "var(--glass-border)",
+                }}
+              >
+                <Play size={11.5} strokeWidth={2.2} />
+                <span>
+                  {isIndonesian ? "Uji Coba ke Draft" : "Test to Draft"}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 3B. Interactive Ready Copy-Paste Boxes ONLY for Dialog Glass */}
         {activePreset.id === "glass_dialog" && (
           <div
             className="rounded-2xl p-3.5 border space-y-2.5 text-left"
@@ -792,7 +958,7 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "1. Kotak Text Kategori" : "1. Category Text Box"}
                   </span>
                   <pre
-                    className="text-[10.5px] leading-snug font-mono whitespace-pre-wrap max-h-24 overflow-y-auto no-scrollbar py-1 px-1.5 rounded-lg border"
+                    className="text-[10.5px] leading-snug font-medium whitespace-pre-wrap max-h-24 overflow-y-auto no-scrollbar py-1 px-1.5 rounded-lg border"
                     style={{
                       background: pillSurface,
                       borderColor: "var(--glass-border)",
@@ -852,7 +1018,7 @@ export function AppleShortcutsGuideModal({
                     {isIndonesian ? "2. Kotak Text Akun" : "2. Account Text Box"}
                   </span>
                   <pre
-                    className="text-[10.5px] leading-snug font-mono whitespace-pre-wrap max-h-24 overflow-y-auto no-scrollbar py-1 px-1.5 rounded-lg border"
+                    className="text-[10.5px] leading-snug font-medium whitespace-pre-wrap max-h-24 overflow-y-auto no-scrollbar py-1 px-1.5 rounded-lg border"
                     style={{
                       background: pillSurface,
                       borderColor: "var(--glass-border)",
@@ -899,7 +1065,7 @@ export function AppleShortcutsGuideModal({
           </div>
         )}
 
-        {/* 4. Collapsible / Interactive Setup Steps Accordion (Zero Overwhelm) */}
+        {/* 4. Collapsible / Interactive Setup Steps Accordion */}
         <div
           className="rounded-2xl border overflow-hidden"
           style={{
