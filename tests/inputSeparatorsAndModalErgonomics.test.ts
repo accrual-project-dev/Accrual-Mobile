@@ -47,12 +47,14 @@ describe("Input Separators & Modal Viewport Hardening Suite", () => {
       expect(content).not.toContain("max-h-[75vh]");
     });
 
-    it("uses unconstrained luxury viewport max-h-[88dvh] sm:max-h-[80vh]", () => {
-      expect(content).toContain("max-h-[88dvh] sm:max-h-[80vh]");
+    it("uses the shared BottomSheet viewport instead of an independent height cap", () => {
+      expect(content).toContain("<BottomSheet isOpen={isOpen} onClose={onClose}>");
+      const sheet = fs.readFileSync(path.resolve(__dirname, "../src/components/ui/BottomSheet.tsx"), "utf-8");
+      expect(sheet).toContain("92dvh");
     });
 
-    it("maintains min-h-0 and overflow-y-auto on inner popover scroll containers with pb-3", () => {
-      expect(content).toContain("flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-3");
+    it("maintains min-h-0 and overflow-y-auto on inner popover scroll containers with bottom padding", () => {
+      expect(content).toContain("flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-2");
     });
 
     it("enforces safe area bottom inset on popover overlay wrappers", () => {

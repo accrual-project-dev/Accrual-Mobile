@@ -96,9 +96,8 @@ describe("Phase 4: Glass Confirmation Modal & Strict Non-Mixed Localization Suit
 
       // No unlocalized raw 'Search Actions' string spans should remain
       expect(content).not.toContain(">Search Actions</span>");
-      const registry = fs.readFileSync(path.resolve(__dirname, "../src/lib/shortcutsConfig.ts"), "utf-8");
-      expect(registry).toContain("titleId");
-      expect(registry).toContain("titleEn");
+      expect(content).toContain("isIndonesian ? act.titleId : act.titleEn");
+      expect(content).toContain("isIndonesian ? step.titleId : step.titleEn");
     });
   });
 

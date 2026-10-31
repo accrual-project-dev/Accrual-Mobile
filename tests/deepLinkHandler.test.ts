@@ -206,15 +206,18 @@ describe("DeepLink & iOS Shortcuts URL Scheme Handler", () => {
     // Quick log buttons
     expect(parseDeepLink("accrual://log?type=expense", mockCategories, mockWallets)).toEqual({
       action: "transaction",
-      prefilledValues: { type: "expense" },
+      spaceId: "personal",
+      prefilledValues: { type: "expense", spaceId: "personal" },
     });
     expect(parseDeepLink("accrual://log?type=income", mockCategories, mockWallets)).toEqual({
       action: "transaction",
-      prefilledValues: { type: "income" },
+      spaceId: "personal",
+      prefilledValues: { type: "income", spaceId: "personal" },
     });
     expect(parseDeepLink("accrual://log?type=transfer", mockCategories, mockWallets)).toEqual({
       action: "transaction",
-      prefilledValues: { type: "transfer" },
+      spaceId: "personal",
+      prefilledValues: { type: "transfer", spaceId: "personal" },
     });
     expect(parseDeepLink("accrual://log?type=scan", mockCategories, mockWallets)).toEqual({
       action: "scan",
