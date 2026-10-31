@@ -1,16 +1,22 @@
-// ======================================================================
-// ACCRUAL WIDGET & APPINTENTS SYNCHRONIZATION SERVICE
-// Strictly compliant with GEMINI.md:
-// - Rule 1: No native colored emojis
-// - Rule 2: Monochrome Apple Luxury Theme System
-// - Rule 4: Graceful offline & local fallback resilience
-// ======================================================================
-
-import { registerPlugin, Capacitor } from "@capacitor/core";
+﻿import { registerPlugin, Capacitor } from "@capacitor/core";
+import { format } from "date-fns";
 
 export interface WidgetHeatmapDot {
   intensity: number;
   hasSpend: boolean;
+  isToday?: boolean;
+}
+
+export interface WidgetCategorySlice {
+  name: string;
+  pct: number;
+  amountFormatted: string;
+}
+
+export interface WidgetBillItem {
+  title: string;
+  amountFormatted: string;
+  dueLabel: string;
 }
 
 export interface WidgetSnapshotPayload {
@@ -27,8 +33,8 @@ export interface WidgetSnapshotPayload {
   theme?: "light" | "dark";
   lastUpdated: string;
   sparkline: number[];
+  spaceName?: string;
 
-  // Expanded fields for 10 Home Widgets & 5 Lock Screen Accessories
   savingsRate: number;
   savingsTarget: number;
   monthlySavingsFormatted: string;
@@ -37,11 +43,13 @@ export interface WidgetSnapshotPayload {
   monthlyInflowFormatted: string;
   monthlyOutflowFormatted: string;
   netCashflowFormatted: string;
+  isPositiveCashflow?: boolean;
   cashflowBars: number[];
   capitalHealthScore: number;
   capitalHealthTier: string;
   heatmapDots: WidgetHeatmapDot[];
   activeDaysCount: number;
+  noSpendDaysCount?: number;
   solvencyScore: number;
   debtRatio: number;
   liquidPct: number;
@@ -54,18 +62,37 @@ export interface WidgetSnapshotPayload {
   dailyAverageFormatted: string;
   volatilityVariance: number;
 
-  // Foto 1, 2, 3 Widget Modernization Suite
   liquidCashFormatted: string;
   liquidCashRaw: number;
   liquidCashChangeFormatted: string;
+  isLiquidCashPositive?: boolean;
   liquidCashSparkline: number[];
   safeToSpendDailyFormatted: string;
   safeToSpendRemainingFormatted: string;
   safeToSpendBudgetFormatted: string;
+  safeToSpendSpentTodayFormatted?: string;
+  safeToSpendDailyQuotaFormatted?: string;
   safeToSpendPercent: number;
+  dailyBurnPacePercent?: number;
+  dailyBurnPaceStatus?: string;
   daysLeftInMonth: number;
   cashflowDeltaVsLastMonth: string;
+  isCashflowDeltaPositive?: boolean;
   monthShortName: string;
+
+  topCategories?: WidgetCategorySlice[];
+  upcomingBills?: WidgetBillItem[];
+  activeSubsCount?: number;
+  activeSubsTotalFormatted?: string;
+  draftPendingCount?: number;
+  thisWeekWave?: number[];
+  lastWeekWave?: number[];
+  weekDeltaFormatted?: string;
+  isWeekDeltaPositive?: boolean;
+  insightHeadlinePct?: string;
+  insightTitle?: string;
+  insightSubtitle?: string;
+  lockInsightLine?: string;
 }
 
 export interface PendingBackTapTx {
@@ -101,24 +128,16 @@ class WidgetSyncService {
   private lastSyncedHash: string | null = null;
   private isSyncing = false;
 
-  /**
-   * Synchronizes the real-time financial snapshot with the iOS App Group container.
-   * Renders instantly inside SwiftUI Home Screen & Lock Screen widgets.
-   */
   public async syncSnapshot(snapshot: WidgetSnapshotPayload): Promise<boolean> {
-    const hash = JSON.stringify(snapshot);
-    if (this.lastSyncedHash === hash) {
-      return true; // Avoid unnecessary IPC roundtrips if data is identical
-    }
+    const payloadWithoutTimestamp = { ...snapshot, lastUpdated: "" };
+    const hash = JSON.stringify(payloadWithoutTimestamp);
+    if (this.lastSyncedHash === hash) return true;
 
-    // Web / local development fallback
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") {
       try {
-        localStorage.setItem("accrual_widget_snapshot", hash);
+        localStorage.setItem("accrual_widget_snapshot", JSON.stringify(snapshot));
         this.lastSyncedHash = hash;
-      } catch {
-        // Silently tolerate storage issues in sandboxes
-      }
+      } catch {}
       return true;
     }
 
@@ -129,10 +148,9 @@ class WidgetSyncService {
       await WidgetBridge.updateSnapshot({ snapshot });
       this.lastSyncedHash = hash;
       return true;
-    } catch (err) {
-      console.warn("[WidgetSyncService] updateSnapshot failed, saving locally:", err);
+    } catch {
       try {
-        localStorage.setItem("accrual_widget_snapshot", hash);
+        localStorage.setItem("accrual_widget_snapshot", JSON.stringify(snapshot));
       } catch {}
       return false;
     } finally {
@@ -140,19 +158,10 @@ class WidgetSyncService {
     }
   }
 
-  /**
-   * Checks for offline transactions captured via iPhone Back Tap, Siri, or Action Button (AppIntents)
-   * while Accrual was not actively running.
-   */
-  public async retrievePendingIngestion(): Promise<{
-    transactions: PendingBackTapTx[];
-    voiceLogs: PendingBackTapVoice[];
-    navigation?: string | null;
-  }> {
+  public async retrievePendingIngestion() {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") {
       return { transactions: [], voiceLogs: [], navigation: null };
     }
-
     try {
       const result = await WidgetBridge.getPendingIngestion();
       return {
@@ -160,71 +169,44 @@ class WidgetSyncService {
         voiceLogs: Array.isArray(result?.voiceLogs) ? result.voiceLogs : [],
         navigation: result?.navigation || null,
       };
-    } catch (err) {
-      console.warn("[WidgetSyncService] retrievePendingIngestion failed:", err);
+    } catch {
       return { transactions: [], voiceLogs: [], navigation: null };
     }
   }
 
-  /**
-   * Clears pending transactions from the native App Group queue once successfully processed.
-   */
   public async clearPendingIngestion(): Promise<boolean> {
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") {
-      return true;
-    }
-
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return true;
     try {
       await WidgetBridge.clearPendingIngestion();
       return true;
-    } catch (err) {
-      console.warn("[WidgetSyncService] clearPendingIngestion failed:", err);
+    } catch {
       return false;
     }
   }
 
-  /**
-   * Computes a normalized 7-day velocity array (0-100 scale) for the widget sparkline.
-   */
   public generate7DaySparkline(
     transactions: Array<{ amount: number; type: string; occurred_on?: string; date?: string }>,
-    currentNetWorth: number
+    currentBalance: number
   ): number[] {
     const points: number[] = [];
     const now = new Date();
-
-    // Generate cumulative snapshots for the past 7 days
     for (let i = 6; i >= 0; i--) {
       const targetDate = new Date(now);
       targetDate.setDate(now.getDate() - i);
-      const targetIso = targetDate.toISOString().slice(0, 10);
-
-      // Delta of transactions occurring strictly after this target day
+      const targetIso = format(targetDate, "yyyy-MM-dd");
       const subsequentDelta = transactions
-        .filter((t) => {
-          const rawDate = t.occurred_on || t.date || "";
-          return rawDate.slice(0, 10) > targetIso;
-        })
-        .reduce((acc, t) => {
-          if (t.type === "expense") return acc - t.amount;
-          if (t.type === "income") return acc + t.amount;
-          return acc;
-        }, 0);
-
-      const estimatedDayNetWorth = Math.max(0, currentNetWorth - subsequentDelta);
-      points.push(estimatedDayNetWorth);
+        .filter((t) => (t.occurred_on || t.date || "").slice(0, 10) > targetIso)
+        .reduce((acc, t) => (t.type === "expense" ? acc - t.amount : t.type === "income" ? acc + t.amount : acc), 0);
+      points.push(Math.max(0, currentBalance - subsequentDelta));
     }
-
-    // Normalize to 0-100 for SVG / SwiftUI Path rendering
     const min = Math.min(...points);
     const max = Math.max(...points);
     const range = max - min;
-
     if (range === 0) {
-      return [50, 50, 50, 50, 50, 50, 50];
+      const flatVal = currentBalance > 0 ? 50 : 0;
+      return [flatVal, flatVal, flatVal, flatVal, flatVal, flatVal, flatVal];
     }
-
-    return points.map((p) => Math.round(((p - min) / range) * 100));
+    return points.map((p) => Math.max(10, Math.min(95, Math.round(12 + ((p - min) / range) * 80))));
   }
 }
 

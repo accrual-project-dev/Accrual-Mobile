@@ -1,24 +1,26 @@
-import WidgetKit
+﻿import WidgetKit
 import SwiftUI
 
 struct AccrualCoreHomeWidgets: WidgetBundle {
     var body: some Widget {
+        SafeToSpendWidget()
         NetWorthHorizonWidget()
         PortfolioAllocationWidget()
         LiquidCashRunwayWidget()
         SavingsRateRingWidget()
         MonthlyCashflowBarWidget()
-        SafeToSpendWidget()
     }
 }
 
 struct AccrualAdvancedHomeWidgets: WidgetBundle {
     var body: some Widget {
-        QuickLogStationWidget()
         CapitalHealthWidget()
-        ActivityMatrixWidget()
         BalanceSheetWidget()
         SpendingStabilityWidget()
+        ActivityMatrixWidget()
+        QuickLogStationWidget()
+        VelocityInsightWidget()
+        SubscriptionRadarWidget()
     }
 }
 
@@ -35,9 +37,10 @@ struct AccrualLockScreenWidgets: WidgetBundle {
 @available(iOS 18.0, *)
 struct AccrualControlWidgets: WidgetBundle {
     var body: some Widget {
-        AccrualVoiceControl()
-        AccrualScanControl()
         AccrualQuickAddControl()
+        AccrualScanControl()
+        AccrualVoiceControl()
+        AccrualDraftReviewControl()
     }
 }
 
