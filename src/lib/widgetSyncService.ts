@@ -1,4 +1,4 @@
-﻿import { registerPlugin, Capacitor } from "@capacitor/core";
+import { registerPlugin, Capacitor } from "@capacitor/core";
 import { format } from "date-fns";
 
 export interface WidgetHeatmapDot {
@@ -118,7 +118,7 @@ export interface WidgetBridgePlugin {
     voiceLogs: PendingBackTapVoice[];
     navigation?: string | null;
   }>;
-  clearPendingIngestion(): Promise<{ success: boolean }>;
+  clearPendingIngestion(options: { transactionIds?: string[]; voiceLogIds?: string[]; navigation?: string }): Promise<{ success: boolean }>;
   reloadWidgets(): Promise<{ success: boolean }>;
 }
 
@@ -174,11 +174,11 @@ class WidgetSyncService {
     }
   }
 
-  public async clearPendingIngestion(): Promise<boolean> {
+  public async clearPendingIngestion(options: { transactionIds?: string[]; voiceLogIds?: string[]; navigation?: string } = {}): Promise<boolean> {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return true;
     try {
-      await WidgetBridge.clearPendingIngestion();
-      return true;
+      const result = await WidgetBridge.clearPendingIngestion(options);
+      return result.success === true;
     } catch {
       return false;
     }

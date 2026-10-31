@@ -1183,7 +1183,7 @@ export function useAddTransaction() {
       };
 
       // Always save to persistent pending mutations queue first
-      const mutation = enqueuePendingMutation("insert", fullTx, getCaptureOwner(currentUser?.id || userId), !!input.expectedUserId);
+      const mutation = enqueuePendingMutation("insert", fullTx, getCaptureOwner(currentUser?.id || userId), true);
 
       if (!currentUser?.id) {
         return fullTx;

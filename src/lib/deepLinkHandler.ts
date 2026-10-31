@@ -45,6 +45,7 @@ export interface DeepLinkResult {
     | "none";
   path?: string;
   autoSave?: boolean;
+  requiresReview?: boolean;
   fromShortcut?: boolean;
   isIgnoredPromo?: boolean;
   sourceChannel?: DraftSourceType;
@@ -875,7 +876,22 @@ export function parseDeepLink(
         params.get("otomatis") ||
         ""
       ).toLowerCase();
+      const exactMatches = <T extends { id: string; name: string }>(items: T[], hint: string) => items.filter(item => item.id.toLowerCase() === hint.toLowerCase() || item.name.toLowerCase() === hint.toLowerCase());
+      if (directWallet) {
+        const matches = exactMatches(wallets, directWallet);
+        matchedWal = matches.length === 1 ? matches[0] : undefined;
+      }
+      if (directCategory) {
+        const matches = exactMatches(categories, directCategory);
+        matchedCat = matches.length === 1 ? matches[0] : undefined;
+      }
+      if (directToWallet) {
+        const matches = exactMatches(wallets, directToWallet);
+        matchedToWal = matches.length === 1 ? matches[0] : undefined;
+      }
+      const needsReview = (!!directWallet && !matchedWal) || (!!directCategory && !matchedCat) || (!!directToWallet && !matchedToWal) || (!!directType && !["income", "expense", "transfer"].includes(directType)) || ((directType === "transfer" || !!directToWallet) && (!matchedWal || !matchedToWal || matchedWal.id === matchedToWal.id));
       const shouldAutoSave =
+        !needsReview &&
         (autoParam === "true" || autoParam === "1" || autoParam === "ya") &&
         !isNaN(cleanNum) &&
         cleanNum > 0;
@@ -890,6 +906,7 @@ export function parseDeepLink(
       return {
         action: "transaction",
         autoSave: shouldAutoSave,
+        requiresReview: needsReview,
         fromShortcut: true,
         sourceChannel: resolvedChannel,
         spaceId: resolvedSpaceId,

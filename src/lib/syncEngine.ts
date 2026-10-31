@@ -19,9 +19,10 @@ const DEAD_STORAGE_KEY = "TROUVAILLE_DEAD_MUTATIONS_V1";
 export function getPendingMutations(strict = false): PendingMutation[] {
   try {
     const raw = localStorage.getItem(PENDING_STORAGE_KEY);
-    if (!raw) return [];
+    if (raw === null) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) throw new Error("Invalid persisted mutation queue");
+    return parsed;
   } catch (err) {
     console.error("[syncEngine] Failed to read pending mutations:", err);
     if (strict) throw err;
@@ -161,7 +162,7 @@ export function enqueuePendingMutation(
   type: "insert" | "update" | "delete",
   payload: any,
   captureOwnerId?: string | null,
-  strict = false,
+  strict = true,
 ): PendingMutation {
   const mutations = getPendingMutations(strict);
   const newMutation: PendingMutation = {
@@ -176,13 +177,14 @@ export function enqueuePendingMutation(
 
   const txId = payload.id;
   let nextMutations = mutations;
+  const sameTransaction = (m: PendingMutation) => m.payload?.id === txId && (m.captureOwnerId || m.payload?.user_id || null) === newMutation.captureOwnerId;
 
   if (txId) {
     if (type === "delete") {
-      nextMutations = mutations.filter((m) => m.payload?.id !== txId);
+      nextMutations = mutations.filter((m) => !sameTransaction(m));
       nextMutations.push(newMutation);
     } else if (type === "update") {
-      const existingIdx = mutations.findIndex((m) => m.payload?.id === txId);
+      const existingIdx = mutations.findIndex(sameTransaction);
       if (existingIdx >= 0) {
         nextMutations[existingIdx] = {
           ...nextMutations[existingIdx],
@@ -196,7 +198,7 @@ export function enqueuePendingMutation(
       }
     } else if (type === "insert") {
       nextMutations = mutations.filter(
-        (m) => !(m.payload?.id === txId && m.type === "delete"),
+        (m) => !sameTransaction(m),
       );
       nextMutations.push(newMutation);
     } else {

@@ -11,7 +11,6 @@ import type { ParsedStatementItem } from "./statementParser";
 const STORAGE_KEY = "trouvaille_draft_transactions";
 const ACTIVE_SPACE_STORAGE_KEY = "trouvaille_active_space_id";
 const DEFAULT_SPACE_STORAGE_KEY = "trouvaille_default_ledger_id";
-const EXPIRATION_DAYS = 7;
 
 let captureDraftOwner: string | null = null;
 export function setCaptureDraftOwner(owner: string | null): void {
@@ -70,24 +69,24 @@ function notifyDraftsUpdated() {
 }
 
 /**
- * Loads all draft batches from localStorage, automatically purging expired ones (> 7 days).
+ * Loads pending draft batches without expiring unreviewed financial records.
  */
-function readDraftBatches(spaceId?: string | null, includeAll = false): DraftBatch[] {
+function readDraftBatches(spaceId?: string | null, includeAll = false, strict = false): DraftBatch[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: DraftBatch[] = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      if (strict) throw new Error("Invalid persisted drafts");
+      return [];
+    }
 
-    const now = Date.now();
-    const maxAgeMs = EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 
-    // Filter out batches older than EXPIRATION_DAYS
+    // Keep unreviewed records until the owner explicitly removes them.
     const valid = parsed
       .filter((b) => {
-        const createdTime = new Date(b.createdAt).getTime();
-        return !isNaN(createdTime) && now - createdTime < maxAgeMs && b.items && b.items.length > 0;
+        return b.items && b.items.length > 0;
       })
       .map((b) => ({
         ...b,
@@ -103,6 +102,7 @@ function readDraftBatches(spaceId?: string | null, includeAll = false): DraftBat
     return scoped;
   } catch (err) {
     console.warn("[DraftService] Failed to read drafts from storage:", err);
+    if (strict) throw err;
     return [];
   }
 }
@@ -148,7 +148,7 @@ export function saveDraftBatch(
     const incomingIds = new Set(items.map((it) => it.id));
 
     // Remove any existing items with identical IDs before inserting updated items
-    const existing = readDraftBatches(null, true)
+    const existing = readDraftBatches(null, true, true)
       .map((b) => ({
         ...b,
         items: b.items.filter((it) => !incomingIds.has(it.id) || !visibleToOwner(it)),
@@ -186,7 +186,7 @@ export function saveDraftBatch(
  */
 export function deleteDraftBatch(batchId: string): void {
   try {
-    const existing = readDraftBatches(null, true);
+    const existing = readDraftBatches(null, true, true);
     const updated = existing.map((b) => b.id === batchId ? { ...b, items: b.items.filter((item) => !visibleToOwner(item)) } : b).filter((b) => b.items.length > 0);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     notifyDraftsUpdated();
@@ -210,7 +210,7 @@ export function removeDraftItems(itemIds: string[]): void {
   if (!itemIds || itemIds.length === 0) return;
   try {
     const idSet = new Set(itemIds);
-    const existing = readDraftBatches(null, true);
+    const existing = readDraftBatches(null, true, true);
     const updated = existing
       .map((b) => ({
         ...b,
