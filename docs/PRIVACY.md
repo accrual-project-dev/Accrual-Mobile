@@ -18,6 +18,7 @@ To provide core wealth tracking and multi-asset portfolio features, Accrual proc
 
 ### A. Account Identification
 - **Name, Email Address & User ID:** If you sign in via Email, Sign in with Apple, or Google Sign-In, we store your authenticated User ID and email address to manage your account session and secure cloud backup.
+- **Profile photo:** If you choose and save a profile photo while signed in, a resized copy is stored with your account metadata in Supabase.
 - **Sign in with Apple:** Supports Apple's Private Relay ("Hide My Email"), allowing you to register with an anonymous, forwarded email address.
 
 ### B. Financial Portfolio & Transaction Data
@@ -25,7 +26,7 @@ To provide core wealth tracking and multi-asset portfolio features, Accrual proc
 - **Statement Import Data:** Financial records imported via PDF or spreadsheet files are processed directly on your device. Only sanitized transaction rows are saved to your authenticated database.
 
 ### C. Device Permissions
-- **Biometric Authentication (Face ID / Touch ID):** Used strictly on-device to lock and unlock the application vault. Biometric measurements are handled entirely by Apple Secure Enclave and never leave your device.
+- **Biometric Authentication (Face ID / Touch ID):** Used strictly on-device to lock and unlock the application vault. Biometric verification is handled by the operating system; Accrual does not receive biometric measurements.
 - **Camera & Photo Library:** Requested only when you choose to scan physical receipts or upload statement documents.
 - **Microphone & Speech Recognition:** Requested only if you utilize voice quick-add commands. Speech recognition uses the platform speech service; availability and processing depend on the device and platform settings.
 
@@ -40,7 +41,7 @@ To provide core wealth tracking and multi-asset portfolio features, Accrual proc
 ---
 
 ## 4. Third-Party Service Providers
-We partner only with industry-standard, security-audited infrastructure providers:
+We use the following service providers:
 - **Apple StoreKit & RevenueCat:** Apple processes payments. RevenueCat processes purchase history, subscription status, user identifiers, and technical information for purchase validation, restoration, and purchase analytics. Full card numbers are not provided to Accrual.
 - **Supabase Cloud (PostgreSQL):** Stores account and financial records for signed-in users. Invited members can access shared ledgers according to their permissions. Cloud synchronization uses HTTPS; financial records are not end-to-end encrypted.
 
