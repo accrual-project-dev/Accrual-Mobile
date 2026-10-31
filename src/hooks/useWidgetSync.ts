@@ -462,6 +462,8 @@ export function useWidgetSync() {
     try {
       const { transactions, voiceLogs, navigation } = await widgetSyncService.retrievePendingIngestion();
       let ingestedCount = 0;
+      const transactionIds: string[] = [];
+      const voiceLogIds: string[] = [];
 
       if (navigation === "add") {
         window.dispatchEvent(new CustomEvent("trouvaille:open-quick-add"));
@@ -487,6 +489,7 @@ export function useWidgetSync() {
             const matchedWallet = wallets.find((w) => w.name.toLowerCase() === tx.wallet.toLowerCase());
             const cleanNote = (tx.note || "").trim();
             await addTransactionMutation.mutateAsync({
+              id: tx.id,
               amount: tx.amount,
               category_id: matchedCat?.id || categories[0]?.id || null,
               wallet_id: matchedWallet?.id || wallets[0]?.id || null,
@@ -495,6 +498,7 @@ export function useWidgetSync() {
               type: (tx as any).type || "expense",
             });
             ingestedCount++;
+            transactionIds.push(tx.id);
           } catch {}
         }
       }
@@ -504,6 +508,7 @@ export function useWidgetSync() {
         for (const vLog of voiceLogs) {
           if (vLog.text && vLog.text.trim()) {
             try {
+              const countBefore = ingestedCount + draftIngestedCount;
               const rawText = vLog.text.trim();
               let parsedItems: ParsedStatementItem[] = [];
               if (isMultiTransactionHistoryText(rawText)) {
@@ -535,12 +540,14 @@ export function useWidgetSync() {
                 }
               }
               if (parsedItems.length > 0) {
-                saveDraftBatch(parsedItems, isIndonesian ? "Tangkapan Layar" : "Screenshot", "back_tap");
+                const saved = saveDraftBatch(parsedItems.map((item, index) => ({ ...item, id: `${vLog.id}:${index}` })), isIndonesian ? "Tangkapan Layar" : "Screenshot", "back_tap");
+                if (!saved) throw new Error("Failed to persist widget draft");
                 draftIngestedCount += parsedItems.length;
               } else {
                 const bankResult = parseBankNotification(rawText, categories, wallets);
                 if (bankResult && bankResult.amount > 0) {
                   await addTransactionMutation.mutateAsync({
+                    id: vLog.id,
                     amount: bankResult.amount,
                     category_id: bankResult.suggestedCategoryId || categories[0]?.id || null,
                     wallet_id: bankResult.suggestedWalletId || wallets[0]?.id || null,
@@ -553,6 +560,7 @@ export function useWidgetSync() {
                   const parsed = parseNaturalTransaction(rawText, categories, wallets);
                   if (parsed.amount && parsed.amount > 0) {
                     await addTransactionMutation.mutateAsync({
+                      id: vLog.id,
                       amount: parsed.amount,
                       category_id: parsed.categoryId || categories[0]?.id || null,
                       wallet_id: parsed.walletId || wallets[0]?.id || null,
@@ -564,13 +572,14 @@ export function useWidgetSync() {
                   }
                 }
               }
+              if (ingestedCount + draftIngestedCount > countBefore) voiceLogIds.push(vLog.id);
             } catch {}
           }
         }
       }
 
       if (ingestedCount > 0 || draftIngestedCount > 0 || navigation) {
-        await widgetSyncService.clearPendingIngestion();
+        await widgetSyncService.clearPendingIngestion({ transactionIds, voiceLogIds, ...(navigation ? { navigation } : {}) });
       }
       if (draftIngestedCount > 0 || ingestedCount > 0) {
         triggerSuccessHaptic();

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=2 --exclude \"scripts/**\" && node scripts/apple-account-deletion.test.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "generate:icons": "node scripts/generate-all-app-icons.cjs",

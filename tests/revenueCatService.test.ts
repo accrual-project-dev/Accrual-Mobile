@@ -51,6 +51,7 @@ describe("RevenueCat In-App Purchase Service (StoreKit 2)", () => {
 
   describe("3. CustomerInfo to UserSubscription Mapping Engine", () => {
     it("maps active trial subscription correctly", () => {
+      const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-16T00:00:00Z"));
       const mockCustomerInfo = {
         entitlements: {
           active: {
@@ -77,6 +78,7 @@ describe("RevenueCat In-App Purchase Service (StoreKit 2)", () => {
       expect(sub.isLifetime).toBe(false);
       expect(sub.trialEndAt).toBe("2026-10-22T00:00:00.000Z");
       expect(sub.currentPeriodEnd).toBe("2026-10-22T00:00:00.000Z");
+      clock.mockRestore();
     });
 
     it("maps active lifetime purchase correctly with null expiration", () => {

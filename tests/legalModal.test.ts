@@ -42,7 +42,8 @@ describe("Legal & Privacy Policy Architecture Suite", () => {
 
     // Local & Cloud Storage Isolation
     expect(content).toContain("Penyimpanan Data & Mode Tamu");
-    expect(content).toContain("Row Level Security");
+    expect(content).toContain("Cloud sync is not end-to-end encrypted");
+    expect(content).toContain("RevenueCat");
 
     // On-device Receipt OCR
     expect(content).toContain("Pemrosesan Struk");
@@ -69,11 +70,11 @@ describe("Legal & Privacy Policy Architecture Suite", () => {
     expect(content).toContain("Account Security Responsibility");
   });
 
-  it("LegalModal enforces Data Sovereignty and military-grade cryptography standards", () => {
+  it("LegalModal describes encrypted backup exports and data portability", () => {
     const content = fs.readFileSync(legalModalPath, "utf-8");
 
     // Military-grade Cryptography
-    expect(content).toContain("Kriptografi Brankas Perangkat Keras");
+    expect(content).toContain("Ekspor Cadangan Terenkripsi");
     expect(content).toContain("PBKDF2");
     expect(content).toContain("AES-GCM");
     expect(content).toContain("100.000 iterasi");

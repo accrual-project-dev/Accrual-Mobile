@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   parseBankNotification,
   isPromotionalOrSpamNotification,
@@ -27,7 +27,12 @@ const mockWallets: Wallet[] = [
 ];
 
 describe("Shortcuts & Automation Reform Suite", () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("window", { dispatchEvent: () => true });
+    vi.stubGlobal("CustomEvent", class {});
+    vi.stubGlobal("localStorage", { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => store.set(key, value), removeItem: (key: string) => store.delete(key) });
     clearAllDrafts();
     localStorage.setItem("trouvaille_active_space_id", "space-business");
   });
