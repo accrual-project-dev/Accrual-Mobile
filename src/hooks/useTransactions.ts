@@ -1,3 +1,4 @@
+import { isConfirmedPromoReplay } from "../lib/confirmedPromoReplay";
 import { useMemo } from "react";
 import { getCaptureOwner } from "../features/inbox/captureOwner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -83,6 +84,7 @@ export function normalizeLocalOccurredOn(raw?: string | null): string {
 
 function sortTransactionsDesc(transactions: Transaction[]) {
   return transactions
+    .filter((transaction) => !isConfirmedPromoReplay(transaction?.note))
     .map((t) =>
       t && t.occurred_on
         ? { ...t, occurred_on: normalizeLocalOccurredOn(t.occurred_on) }
@@ -450,10 +452,11 @@ if (typeof window !== "undefined") {
  * Serves from preloaded in-memory cache or local storage fallback.
  */
 export function getStoredTransactionsSnapshot(userId?: string): Transaction[] | undefined {
+  if (inMemoryTransactionsSnapshot) inMemoryTransactionsSnapshot = inMemoryTransactionsSnapshot.filter(item => !isConfirmedPromoReplay(item.note));
   if (inMemoryTransactionsSnapshot && inMemoryTransactionsSnapshot.length > 0) {
     if (userId && userId !== "guest_local_user") {
       const filtered = inMemoryTransactionsSnapshot.filter((t: Transaction) => !t.user_id || t.user_id === userId);
-      return filtered.length > 0 ? filtered : inMemoryTransactionsSnapshot;
+      return filtered;
     }
     return inMemoryTransactionsSnapshot;
   }
@@ -463,12 +466,12 @@ export function getStoredTransactionsSnapshot(userId?: string): Transaction[] | 
     if (!raw) return undefined;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      inMemoryTransactionsSnapshot = parsed;
+      inMemoryTransactionsSnapshot = parsed.filter(item => !isConfirmedPromoReplay(item.note));
       if (userId && userId !== "guest_local_user") {
-        const filtered = parsed.filter((t: Transaction) => !t.user_id || t.user_id === userId);
-        return filtered.length > 0 ? filtered : parsed;
+        const filtered = inMemoryTransactionsSnapshot!.filter((t: Transaction) => !t.user_id || t.user_id === userId);
+        return filtered;
       }
-      return parsed;
+      return inMemoryTransactionsSnapshot;
     }
   } catch {}
   return undefined;

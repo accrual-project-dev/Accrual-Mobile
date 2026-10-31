@@ -1,3 +1,4 @@
+import { isConfirmedPromoReplay } from "./confirmedPromoReplay";
 import { supabase } from "./supabase";
 import type { Transaction } from "./types";
 
@@ -22,7 +23,7 @@ export function getPendingMutations(strict = false): PendingMutation[] {
     if (raw === null) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) throw new Error("Invalid persisted mutation queue");
-    return parsed;
+    return parsed.filter((mutation: PendingMutation) => !isConfirmedPromoReplay(mutation.payload?.note));
   } catch (err) {
     console.error("[syncEngine] Failed to read pending mutations:", err);
     if (strict) throw err;
