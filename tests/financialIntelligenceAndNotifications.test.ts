@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Polyfill localStorage in node test environment
 const store: Record<string, string> = {};
@@ -54,9 +54,13 @@ vi.mock("@capacitor/local-notifications", () => ({
 
 describe("Audit #23: Financial Intelligence, Notifications & Dynamic Scheduling Suite", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-15T12:00:00'));
     localStorage.clear();
     vi.clearAllMocks();
   });
+
+  afterEach(() => vi.useRealTimers());
 
   describe("1. Stored Currency Formatter (formatStoredCurrency)", () => {
     it("formats IDR accurately as default when no preferred currency is set", () => {

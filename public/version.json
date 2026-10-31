@@ -1,18 +1,14 @@
 {
-  "version": "1.3.27",
-  "build": 1327,
-  "releaseDate": "2026-10-29",
-  "name": "Accrual v1.3.27",
+  "version": "1.3.35",
+  "build": 1335,
+  "releaseDate": "2026-11-01",
+  "name": "Accrual v1.3.35",
   "changelog": [
-    "Tangkapan layar dan notifikasi diantrekan di perangkat sebelum diproses saat aplikasi aktif dan terbuka kuncinya",
-    "Pembukuan otomatis memerlukan bukti pembayaran berhasil, buku kas, serta pemetaan akun dan kategori yang pasti",
-    "Tangkapan ambigu dan kemungkinan duplikat dapat dikoreksi di kotak tinjauan tanpa kedaluwarsa otomatis",
-    "Panduan pemasangan manual, perlindungan pergantian akun, dan persetujuan pemindahan tangkapan tamu"
+    "Perbaikan metadata Siri untuk validasi App Store",
+    "Rilis awal berfokus pada iPhone; dukungan native iPad menyusul"
   ],
   "changelog_en": [
-    "Screen and notification captures queue on device before processing while the app is active and unlocked",
-    "Automatic booking requires successful payment evidence, an explicit ledger, and exact wallet and category mapping",
-    "Ambiguous captures and possible duplicates can be corrected in the review inbox without automatic expiration",
-    "Manual setup guidance, account isolation, and explicit consent for guest capture migration"
+    "Corrected Siri metadata for App Store validation",
+    "Initial release focuses on iPhone; native iPad support will follow"
   ]
 }

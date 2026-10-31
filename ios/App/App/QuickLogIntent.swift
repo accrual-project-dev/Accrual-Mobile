@@ -460,7 +460,7 @@ public struct VoiceLogExpenseIntent: AppIntent {
 @available(iOS 16.0, *)
 public struct LogCardTransactionIntent: AppIntent {
     public static var title: LocalizedStringResource = "Log Card Transaction"
-    public static var description = IntentDescription("Auto-capture Apple Pay, Wallet Card Tap, or NFC transaction into Accrual Drafts.")
+    public static var description = IntentDescription("Capture wallet card-tap or NFC transaction text for review in Accrual.")
     public static var openAppWhenRun = false
     public static var isDiscoverable = true
     @Parameter(title: "Shortcut Input / Transaction Details") public var transactionInput: String?

@@ -53,12 +53,15 @@ describe("Input Separators & Modal Viewport Hardening Suite", () => {
       expect(sheet).toContain("92dvh");
     });
 
-    it("maintains min-h-0 and overflow-y-auto on inner popover scroll containers with bottom padding", () => {
-      expect(content).toContain("flex-1 overflow-y-auto space-y-1 no-scrollbar min-h-0 pb-2");
+    it("keeps pickers inside one shared scroll container without nested popover scrollbars", () => {
+      expect(content.match(/<BottomSheet /g)).toHaveLength(1);
+      expect(content).not.toContain("overflow-y-auto");
+      const sheet = fs.readFileSync(path.resolve(__dirname, "../src/components/ui/BottomSheet.tsx"), "utf-8");
+      expect(sheet).toMatch(/min-h-0\s+flex-1\s+overflow-y-auto/);
     });
 
-    it("enforces safe area bottom inset on popover overlay wrappers", () => {
-      expect(content).toContain("pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)] sm:pb-4");
+    it("enforces safe area bottom inset inside the unified sheet", () => {
+      expect(content).toContain("pb-[max(calc(env(safe-area-inset-bottom,0px)+16px),24px)]");
     });
 
     it("provides bottom breathing room on transaction card list", () => {
