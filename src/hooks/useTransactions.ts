@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getCaptureOwner } from "../features/inbox/captureOwner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import type { Transaction, TransactionType, Category } from "../lib/types";
@@ -42,6 +43,7 @@ export interface TransactionInput {
   ledger_id?: string | null;
   created_by_name?: string | null;
   created_by_user_id?: string | null;
+  expectedUserId?: string;
 }
 
 export interface TransactionFilters {
@@ -574,13 +576,18 @@ export async function fetchAllTransactionsFromSupabase(
   } = await supabase.auth.getSession();
   const user = session?.user;
   const effectiveUserId = filters?.userId || user?.id;
+  const captureOwner = getCaptureOwner(effectiveUserId);
+  const ownedPendingMutations = () => getPendingMutations().filter((mutation) => {
+    const owner = mutation.captureOwnerId || mutation.payload?.user_id;
+    return !owner || owner === captureOwner;
+  });
 
   const pageSize = 500;
   const allRecords: Transaction[] = [];
 
   // Offline / Guest Local Mode: Fast path
   if (effectiveUserId === "guest_local_user" || localStorage.getItem("trouvaille_guest_mode") === "true") {
-    const pendingMutations = getPendingMutations();
+    const pendingMutations = ownedPendingMutations();
     const pendingDeletes = new Set<string>();
     const pendingUpserts = new Map<string, Transaction>();
     for (const m of pendingMutations) {
@@ -738,7 +745,7 @@ export async function fetchAllTransactionsFromSupabase(
             );
           }
           // Overlay pending mutations onto restored backup
-          const pendingMutations = getPendingMutations();
+          const pendingMutations = ownedPendingMutations();
           const pendingDeletes = new Set<string>();
           const pendingUpserts = new Map<string, Transaction>();
           for (const m of pendingMutations) {
@@ -834,7 +841,7 @@ export async function fetchAllTransactionsFromSupabase(
     uniqueRecords = sortTransactionsDesc(allRecords);
   } else {
     // Deduplicate and overlay local pending mutations
-    const pendingMutations = getPendingMutations();
+    const pendingMutations = ownedPendingMutations();
     const pendingDeletes = new Set<string>();
     const pendingUpserts = new Map<string, Transaction>();
 
@@ -1116,6 +1123,9 @@ export function useAddTransaction() {
         data: { session },
       } = await supabase.auth.getSession();
       const currentUser = session?.user || (userId ? { id: userId } : null);
+      if (input.expectedUserId && currentUser?.id !== input.expectedUserId) {
+        throw new Error("Capture session changed before booking");
+      }
 
       const effectiveId = input.id || generateUUID();
       input.id = effectiveId;
@@ -1173,7 +1183,7 @@ export function useAddTransaction() {
       };
 
       // Always save to persistent pending mutations queue first
-      const mutation = enqueuePendingMutation("insert", fullTx);
+      const mutation = enqueuePendingMutation("insert", fullTx, getCaptureOwner(currentUser?.id || userId), !!input.expectedUserId);
 
       if (!currentUser?.id) {
         return fullTx;
@@ -1283,10 +1293,14 @@ export function useAddTransaction() {
         space_id: assignedLedger,
       };
 
-      upsertTransactionAcrossCaches(qc, optimisticItem);
+      if (!newTx.expectedUserId) upsertTransactionAcrossCaches(qc, optimisticItem);
       return { snapshots, optimisticItem };
     },
-    onSuccess: (savedTx, _vars, context) => {
+    onSuccess: async (savedTx, vars, context) => {
+      if (vars.expectedUserId) {
+        const { data } = await supabase.auth.getSession();
+        if ((data.session?.user?.id || (userId === "guest_local_user" ? userId : undefined)) !== vars.expectedUserId) return;
+      }
       // Orphan cleanup: if optimistic item ID differed from savedTx ID, remove the old one
       if (context?.optimisticItem && context.optimisticItem.id !== savedTx.id) {
         removeTransactionFromCaches(qc, context.optimisticItem.id);
@@ -1299,11 +1313,15 @@ export function useAddTransaction() {
     },
     onError: (_err, _newTx, context) => {
       // Do NOT rollback if transaction was enqueued
-      if (context?.optimisticItem) {
+      if (!_newTx.expectedUserId && context?.optimisticItem) {
         upsertTransactionAcrossCaches(qc, context.optimisticItem);
       }
     },
-    onSettled: () => {
+    onSettled: async (_data, _error, vars) => {
+      if (vars.expectedUserId) {
+        const { data } = await supabase.auth.getSession();
+        if ((data.session?.user?.id || (userId === "guest_local_user" ? userId : undefined)) !== vars.expectedUserId) return;
+      }
       qc.invalidateQueries({ queryKey: ["wallets"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
       flushPendingMutations().catch(() => {});
@@ -1367,7 +1385,7 @@ export function useBatchAddTransactions() {
           created_by_user_id: currentUser?.id || userId || null,
         };
 
-        const mutation = enqueuePendingMutation("insert", fullTx);
+        const mutation = enqueuePendingMutation("insert", fullTx, getCaptureOwner(currentUser?.id || userId));
 
         const dbPayload: any = {
           id: effectiveId,
@@ -1548,7 +1566,7 @@ export function useUpdateTransaction() {
       }
 
       // DO NOT include id or user_id or space_id in cleanUpdate payload sent to supabase.update()!
-      const mutation = enqueuePendingMutation("update", { id, ...cleanUpdate, space_id: cleanUpdate.ledger_id });
+      const mutation = enqueuePendingMutation("update", { id, ...cleanUpdate, space_id: cleanUpdate.ledger_id }, getCaptureOwner(userId));
 
       try {
         let query = supabase
@@ -1638,10 +1656,11 @@ export function useUpdateTransaction() {
 
 export function useDeleteTransaction() {
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const mutation = enqueuePendingMutation("delete", { id });
+      const mutation = enqueuePendingMutation("delete", { id }, getCaptureOwner(user?.id));
       try {
         const q = supabase.from("transactions").delete().eq("id", id);
         const { error } = await q;
@@ -1694,7 +1713,7 @@ export function useBatchDeleteTransactions() {
     mutationFn: async (ids: string[]) => {
       if (!ids || ids.length === 0) return ids;
       const mutationIds = ids.map((id) => {
-        const m = enqueuePendingMutation("delete", { id });
+        const m = enqueuePendingMutation("delete", { id }, getCaptureOwner(user?.id));
         return { id, mutationId: m.id };
       });
 

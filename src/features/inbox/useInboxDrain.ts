@@ -5,6 +5,7 @@ import { AccrualInbox, type InboxDraft } from "../../plugins/accrualInbox";
 import { getCaptureOwner } from "./captureOwner";
 import {
   saveDraftBatch,
+  setCaptureDraftOwner,
   resolveActiveDraftSpaceId,
   type DraftSourceType,
 } from "../../lib/draftTransactionService";
@@ -34,6 +35,11 @@ export function useInboxDrain() {
   const { data: categories = [] } = useCategories();
   const { data: wallets = [] } = useWallets();
   const addTxMutation = useAddTransaction();
+
+  useEffect(() => {
+    setCaptureDraftOwner(getCaptureOwner(user?.id));
+    return () => setCaptureDraftOwner(null);
+  }, [user?.id]);
 
   const drainInbox = useCallback(async () => {
     if (isDrainingRef.current) return;
@@ -117,6 +123,7 @@ export function useInboxDrain() {
 
           await addTxMutation.mutateAsync({
             id: item.id,
+            expectedUserId: user?.id,
             amount: directAmount,
             type: matchedCat?.type === "income" ? "income" : "expense",
             category_id: matchedCat?.id || null,
@@ -348,8 +355,6 @@ export function useInboxDrain() {
         });
       }
 
-      // Acknowledge all processed IDs so native cleans up files and resets app icon badge
-      await AccrualInbox.ack({ ids: allIds, ownerId });
 
       // Notify UI if Dialog Glass directly recorded transactions
       if (directRecordedCount > 0 && lastDirectRecordedInfo) {
@@ -374,7 +379,10 @@ export function useInboxDrain() {
         );
       }
 
-      if (validStatementItems.length === 0) return;
+      if (validStatementItems.length === 0) {
+        await AccrualInbox.ack({ ids: allIds, ownerId });
+        return;
+      }
 
       const firstSource = items.find((i) => i.source !== "glass_dialog")?.source;
       const sourceTitle =
@@ -403,7 +411,9 @@ export function useInboxDrain() {
           ? "wallet_tap"
           : "screen_scan";
 
-      saveDraftBatch(validStatementItems, sourceTitle, draftSource, targetSpaceId);
+      const savedBatchId = saveDraftBatch(validStatementItems, sourceTitle, draftSource, targetSpaceId);
+      if (!savedBatchId) throw new Error("Failed to persist captured drafts");
+      await AccrualInbox.ack({ ids: allIds, ownerId });
 
       // Fire native local notification
       const firstItem = validStatementItems[0];

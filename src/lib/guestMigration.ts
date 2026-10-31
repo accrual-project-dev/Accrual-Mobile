@@ -1,4 +1,6 @@
 import { supabase } from "./supabase";
+import { GUEST_CAPTURE_OWNER_KEY } from "../features/inbox/captureOwner";
+import { adoptCaptureDrafts, discardCaptureDrafts, hasCaptureDrafts } from "./draftTransactionService";
 import { WALLETS_BACKUP_STORAGE_KEY } from "../hooks/useWallets";
 import { TX_BACKUP_STORAGE_KEY, generateUUID } from "../hooks/useTransactions";
 import {
@@ -29,7 +31,9 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
   }
 
   const migrationKey = `trouvaille_migrated_guest_${userId}`;
-  if (localStorage.getItem(migrationKey) === "true" || !hasGuestData()) {
+  const guestOwner = localStorage.getItem(GUEST_CAPTURE_OWNER_KEY);
+  const hasCurrentGuestCapture = !!guestOwner && (getPendingMutations().some(m => m.captureOwnerId === guestOwner) || hasCaptureDrafts(guestOwner));
+  if ((localStorage.getItem(migrationKey) === "true" && !hasCurrentGuestCapture) || (!hasGuestData() && !hasCurrentGuestCapture)) {
     localStorage.setItem(migrationKey, "true");
     return { walletsMigrated: 0, transactionsMigrated: 0 };
   }
@@ -80,7 +84,8 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
 
     // Include existing pending mutations re-assigned to current user
     for (const m of existingMutations) {
-      if (m.payload && m.payload.id) {
+      const belongsToGuest = guestOwner ? m.captureOwnerId === guestOwner : m.payload?.user_id === "guest_local_user" && !m.captureOwnerId;
+      if (belongsToGuest && m.type === "insert" && m.payload?.id) {
         allPendingTxMap.set(m.payload.id, { ...m.payload, user_id: userId });
       }
     }
@@ -91,7 +96,7 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
         const cachedTxs: Transaction[] = JSON.parse(cachedTxRaw);
         if (Array.isArray(cachedTxs)) {
           for (const tx of cachedTxs) {
-            if (tx.id && !allPendingTxMap.has(tx.id)) {
+            if (tx.id && (tx.user_id === "guest_local_user" || !tx.user_id) && !allPendingTxMap.has(tx.id)) {
               allPendingTxMap.set(tx.id, { ...tx, user_id: userId });
             }
           }
@@ -102,17 +107,19 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
     }
 
     if (allPendingTxMap.size > 0) {
-      const nextMutations = Array.from(allPendingTxMap.values()).map((txPayload) => ({
+      const retainedMutations = existingMutations.filter(m => guestOwner ? m.captureOwnerId !== guestOwner : !(m.payload?.user_id === "guest_local_user" && !m.captureOwnerId));
+      const migratedMutations = Array.from(allPendingTxMap.values()).map((txPayload) => ({
         id: `migrated-${txPayload.id}`,
         type: "insert" as const,
         entity: "transaction" as const,
         payload: { ...txPayload, user_id: userId },
+        captureOwnerId: userId,
         timestamp: new Date().toISOString(),
         retryCount: 0,
       }));
 
-      savePendingMutations(nextMutations);
-      transactionsMigrated = nextMutations.length;
+      savePendingMutations([...retainedMutations, ...migratedMutations], true);
+      transactionsMigrated = migratedMutations.length;
 
       // Flush to Supabase
       await flushPendingMutations({ force: true });
@@ -132,6 +139,8 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
       console.warn("[migrateGuestDataToCloud] Asset migration notice:", assetMigErr);
     }
 
+    if (guestOwner) adoptCaptureDrafts(guestOwner, userId);
+
     // Mark migration as completed for this user
     localStorage.setItem(migrationKey, "true");
     localStorage.removeItem("trouvaille_guest_mode");
@@ -140,6 +149,7 @@ export async function migrateGuestDataToCloud(userId: string): Promise<Migration
     localStorage.removeItem("trouvaille_usdt_pref_guest_local_user");
   } catch (err) {
     console.error("[migrateGuestDataToCloud] Migration process failed:", err);
+    throw err;
   }
 
   return { walletsMigrated, transactionsMigrated };
@@ -195,8 +205,10 @@ export function discardGuestData(userId?: string): void {
     localStorage.removeItem("trouvaille_pending_guest_migration");
 
     // Clean mutations originating from guest
+    const guestOwner = localStorage.getItem(GUEST_CAPTURE_OWNER_KEY);
+    if (guestOwner) discardCaptureDrafts(guestOwner);
     const remainingMutations = getPendingMutations().filter(
-      (m) => m.payload?.user_id && m.payload.user_id !== "guest_local_user",
+      (m) => guestOwner ? m.captureOwnerId !== guestOwner : m.payload?.user_id !== "guest_local_user",
     );
     savePendingMutations(remainingMutations);
 

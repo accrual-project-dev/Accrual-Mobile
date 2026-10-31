@@ -10,12 +10,13 @@ export interface PendingMutation {
   retryCount: number;
   lastAttemptAt?: string;
   lastError?: string;
+  captureOwnerId?: string | null;
 }
 
 const PENDING_STORAGE_KEY = "TROUVAILLE_PENDING_MUTATIONS_V2";
 const DEAD_STORAGE_KEY = "TROUVAILLE_DEAD_MUTATIONS_V1";
 
-export function getPendingMutations(): PendingMutation[] {
+export function getPendingMutations(strict = false): PendingMutation[] {
   try {
     const raw = localStorage.getItem(PENDING_STORAGE_KEY);
     if (!raw) return [];
@@ -23,15 +24,17 @@ export function getPendingMutations(): PendingMutation[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.error("[syncEngine] Failed to read pending mutations:", err);
+    if (strict) throw err;
     return [];
   }
 }
 
-export function savePendingMutations(mutations: PendingMutation[]): void {
+export function savePendingMutations(mutations: PendingMutation[], strict = false): void {
   try {
     localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(mutations));
   } catch (err) {
     console.error("[syncEngine] Failed to persist pending mutations:", err);
+    if (strict) throw err;
   }
 }
 
@@ -157,13 +160,16 @@ export function getMutationBackoffMs(retryCount: number): number {
 export function enqueuePendingMutation(
   type: "insert" | "update" | "delete",
   payload: any,
+  captureOwnerId?: string | null,
+  strict = false,
 ): PendingMutation {
-  const mutations = getPendingMutations();
+  const mutations = getPendingMutations(strict);
   const newMutation: PendingMutation = {
     id: `mut-${Date.now()}-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 8)}`,
     type,
     entity: "transaction",
     payload,
+    captureOwnerId: captureOwnerId ?? payload?.user_id ?? null,
     timestamp: new Date().toISOString(),
     retryCount: 0,
   };
@@ -183,7 +189,7 @@ export function enqueuePendingMutation(
           payload: { ...nextMutations[existingIdx].payload, ...payload },
           timestamp: new Date().toISOString(),
         };
-        savePendingMutations(nextMutations);
+        savePendingMutations(nextMutations, strict);
         return nextMutations[existingIdx];
       } else {
         nextMutations.push(newMutation);
@@ -200,7 +206,7 @@ export function enqueuePendingMutation(
     nextMutations.push(newMutation);
   }
 
-  savePendingMutations(nextMutations);
+  savePendingMutations(nextMutations, strict);
   return newMutation;
 }
 
@@ -307,6 +313,10 @@ export async function flushPendingMutations(options?: {
     };
 
     for (const mutation of mutations) {
+      // Keep retained transactions bound to their original account.
+      const owner = mutation.captureOwnerId || mutation.payload?.user_id;
+      if (owner && owner !== user.id) continue;
+
       // Respect exponential backoff unless forced (e.g. manual sync or network reconnect)
       if (!options?.force && mutation.lastAttemptAt && mutation.retryCount > 0) {
         const lastAttemptMs = new Date(mutation.lastAttemptAt).getTime();

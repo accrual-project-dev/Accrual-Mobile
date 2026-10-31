@@ -13,6 +13,15 @@ const ACTIVE_SPACE_STORAGE_KEY = "trouvaille_active_space_id";
 const DEFAULT_SPACE_STORAGE_KEY = "trouvaille_default_ledger_id";
 const EXPIRATION_DAYS = 7;
 
+let captureDraftOwner: string | null = null;
+export function setCaptureDraftOwner(owner: string | null): void {
+  if (captureDraftOwner === owner) return;
+  captureDraftOwner = owner;
+  notifyDraftsUpdated();
+}
+const visibleToOwner = (item: ParsedStatementItem) =>
+  !captureDraftOwner || !item.captureOwnerId || item.captureOwnerId === captureDraftOwner;
+
 export type DraftSourceType =
   | "back_tap"
   | "screen_scan"
@@ -63,7 +72,7 @@ function notifyDraftsUpdated() {
 /**
  * Loads all draft batches from localStorage, automatically purging expired ones (> 7 days).
  */
-export function getDraftBatches(spaceId?: string | null): DraftBatch[] {
+function readDraftBatches(spaceId?: string | null, includeAll = false): DraftBatch[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -89,15 +98,17 @@ export function getDraftBatches(spaceId?: string | null): DraftBatch[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
     }
 
-    if (spaceId && spaceId !== "all") {
-      return valid.filter((b) => (b.spaceId || "personal") === spaceId);
-    }
-
-    return valid;
+    const scoped = includeAll ? valid : valid.map((batch) => ({ ...batch, items: batch.items.filter(visibleToOwner) })).filter((batch) => batch.items.length > 0);
+    if (spaceId && spaceId !== "all") return scoped.filter((batch) => (batch.spaceId || "personal") === spaceId);
+    return scoped;
   } catch (err) {
     console.warn("[DraftService] Failed to read drafts from storage:", err);
     return [];
   }
+}
+
+export function getDraftBatches(spaceId?: string | null): DraftBatch[] {
+  return readDraftBatches(spaceId);
 }
 
 /**
@@ -137,10 +148,10 @@ export function saveDraftBatch(
     const incomingIds = new Set(items.map((it) => it.id));
 
     // Remove any existing items with identical IDs before inserting updated items
-    const existing = getDraftBatches()
+    const existing = readDraftBatches(null, true)
       .map((b) => ({
         ...b,
-        items: b.items.filter((it) => !incomingIds.has(it.id)),
+        items: b.items.filter((it) => !incomingIds.has(it.id) || !visibleToOwner(it)),
       }))
       .filter((b) => b.items.length > 0);
 
@@ -175,8 +186,8 @@ export function saveDraftBatch(
  */
 export function deleteDraftBatch(batchId: string): void {
   try {
-    const existing = getDraftBatches();
-    const updated = existing.filter((b) => b.id !== batchId);
+    const existing = readDraftBatches(null, true);
+    const updated = existing.map((b) => b.id === batchId ? { ...b, items: b.items.filter((item) => !visibleToOwner(item)) } : b).filter((b) => b.items.length > 0);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     notifyDraftsUpdated();
   } catch (err) {
@@ -199,11 +210,11 @@ export function removeDraftItems(itemIds: string[]): void {
   if (!itemIds || itemIds.length === 0) return;
   try {
     const idSet = new Set(itemIds);
-    const existing = getDraftBatches();
+    const existing = readDraftBatches(null, true);
     const updated = existing
       .map((b) => ({
         ...b,
-        items: b.items.filter((it) => !idSet.has(it.id)),
+        items: b.items.filter((it) => !idSet.has(it.id) || !visibleToOwner(it)),
       }))
       .filter((b) => b.items.length > 0);
 
@@ -219,19 +230,32 @@ export function removeDraftItems(itemIds: string[]): void {
  */
 export function clearAllDrafts(spaceId?: string | null): void {
   try {
-    if (spaceId && spaceId !== "all") {
-      const existing = getDraftBatches();
-      const remaining = existing.filter((b) => (b.spaceId || "personal") !== spaceId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
+    const remaining = readDraftBatches(null, true).map((batch) => ({
+      ...batch,
+      items: batch.items.filter((item) => !visibleToOwner(item) || (!!spaceId && spaceId !== "all" && (batch.spaceId || "personal") !== spaceId)),
+    })).filter((batch) => batch.items.length > 0);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
     notifyDraftsUpdated();
   } catch (err) {
     console.error("[DraftService] Failed to clear drafts:", err);
   }
 }
 
+export function hasCaptureDrafts(owner: string): boolean {
+  return readDraftBatches(null, true).some((batch) => batch.items.some((item) => item.captureOwnerId === owner));
+}
+
+export function adoptCaptureDrafts(fromOwner: string, toOwner: string): void {
+  const batches = readDraftBatches(null, true).map((batch) => ({ ...batch, items: batch.items.map((item) => item.captureOwnerId === fromOwner ? { ...item, captureOwnerId: toOwner } : item) }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(batches));
+  notifyDraftsUpdated();
+}
+
+export function discardCaptureDrafts(owner: string): void {
+  const batches = readDraftBatches(null, true).map((batch) => ({ ...batch, items: batch.items.filter((item) => item.captureOwnerId !== owner) })).filter((batch) => batch.items.length > 0);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(batches));
+  notifyDraftsUpdated();
+}
 /**
  * React hook to reactively subscribe to draft updates in any component,
  * automatically scoped to the provided activeSpaceId (or all spaces).
