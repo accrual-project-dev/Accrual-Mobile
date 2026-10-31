@@ -1,23 +1,21 @@
-import WidgetKit
+﻿import WidgetKit
 import SwiftUI
 
 // MARK: - Shared Timeline Provider
 struct AccrualTimelineProvider: TimelineProvider {
     func placeholder(in context: Context) -> AccrualEntry {
-        AccrualEntry(date: Date(), snapshot: .preview)
+        AccrualEntry(date: Date(), snapshot: .emptyZero)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (AccrualEntry) -> ()) {
-        let snapshot = AccrualWidgetSnapshot.loadFromAppGroup()
-        completion(AccrualEntry(date: Date(), snapshot: snapshot))
+        completion(AccrualEntry(date: Date(), snapshot: AccrualWidgetSnapshot.loadFromAppGroup()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<AccrualEntry>) -> ()) {
         let snapshot = AccrualWidgetSnapshot.loadFromAppGroup()
-        let currentDate = Date()
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate
-        let timeline = Timeline(entries: [AccrualEntry(date: currentDate, snapshot: snapshot)], policy: .after(nextUpdate))
-        completion(timeline)
+        let now = Date()
+        let next = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now
+        completion(Timeline(entries: [AccrualEntry(date: now, snapshot: snapshot)], policy: .after(next)))
     }
 }
 
@@ -26,14 +24,16 @@ struct AccrualEntry: TimelineEntry {
     let snapshot: AccrualWidgetSnapshot
 }
 
-// MARK: - Container Background & Rim Light Wrapper
+// MARK: - Adaptive Monochrome Shell
 struct AccrualWidgetShell<Content: View>: View {
     @Environment(\.colorScheme) var colorScheme
     let snapshot: AccrualWidgetSnapshot
+    var zeroPadding: Bool = false
     let content: (Bool) -> Content
 
-    init(snapshot: AccrualWidgetSnapshot, @ViewBuilder content: @escaping (Bool) -> Content) {
+    init(snapshot: AccrualWidgetSnapshot, zeroPadding: Bool = false, @ViewBuilder content: @escaping (Bool) -> Content) {
         self.snapshot = snapshot
+        self.zeroPadding = zeroPadding
         self.content = content
     }
 
@@ -44,10 +44,9 @@ struct AccrualWidgetShell<Content: View>: View {
     var body: some View {
         ZStack(alignment: .top) {
             content(isDark)
-                .padding(14)
+                .padding(zeroPadding ? 0 : 14)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Specular Rim Light Reflection
             SpecularRimLight(isDark: isDark)
                 .allowsHitTesting(false)
         }
@@ -68,462 +67,644 @@ extension View {
     }
 }
 
+// MARK: - Vector Shapes
+struct FullBleedHorizonArcShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let start = CGPoint(x: 0, y: rect.height * 0.88)
+        let end = CGPoint(x: rect.width, y: rect.height * 0.88)
+        let control = CGPoint(x: rect.width * 0.5, y: -rect.height * 0.32)
+        path.move(to: start)
+        path.addQuadCurve(to: end, control: control)
+        return path
+    }
+
+    static func pointOnQuadBezier(t: CGFloat, rect: CGRect) -> CGPoint {
+        let p0 = CGPoint(x: 0, y: rect.height * 0.88)
+        let p1 = CGPoint(x: rect.width * 0.5, y: -rect.height * 0.32)
+        let p2 = CGPoint(x: rect.width, y: rect.height * 0.88)
+        let mt = 1 - t
+        let x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x
+        let y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y
+        return CGPoint(x: x, y: y)
+    }
+}
+
+struct SmoothAreaShape: Shape {
+    let points: [Int]
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard points.count > 1 else { return path }
+        let step = rect.width / CGFloat(points.count - 1)
+        let coords: [CGPoint] = points.enumerated().map { idx, val in
+            CGPoint(
+                x: CGFloat(idx) * step,
+                y: rect.height - (CGFloat(val) / 100.0 * (rect.height - 8)) - 4
+            )
+        }
+        path.move(to: CGPoint(x: 0, y: rect.height))
+        path.addLine(to: coords[0])
+        for i in 1..<coords.count {
+            let prev = coords[i - 1]
+            let curr = coords[i]
+            let midX = (prev.x + curr.x) / 2
+            path.addCurve(to: curr, control1: CGPoint(x: midX, y: prev.y), control2: CGPoint(x: midX, y: curr.y))
+        }
+        path.addLine(to: CGPoint(x: rect.width, y: rect.height))
+        path.closeSubpath()
+        return path
+    }
+}
+
+struct SmoothLineShape: Shape {
+    let points: [Int]
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard points.count > 1 else { return path }
+        let step = rect.width / CGFloat(points.count - 1)
+        let coords: [CGPoint] = points.enumerated().map { idx, val in
+            CGPoint(
+                x: CGFloat(idx) * step,
+                y: rect.height - (CGFloat(val) / 100.0 * (rect.height - 8)) - 4
+            )
+        }
+        path.move(to: coords[0])
+        for i in 1..<coords.count {
+            let prev = coords[i - 1]
+            let curr = coords[i]
+            let midX = (prev.x + curr.x) / 2
+            path.addCurve(to: curr, control1: CGPoint(x: midX, y: prev.y), control2: CGPoint(x: midX, y: curr.y))
+        }
+        return path
+    }
+}
+
 // ======================================================================
-// MARK: - 1. NET WORTH HORIZON (Medium: 329x155)
+// MARK: - 1. DAILY BURN PACE / SAFE TO SPEND (Full-Bleed Horizon Arc - S/M/L)
 // ======================================================================
-struct NetWorthHorizonMediumView: View {
+struct SafeToSpendAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
     let snapshot: AccrualWidgetSnapshot
     let isDark: Bool
 
+    var t: CGFloat {
+        min(0.94, max(0.06, CGFloat(snapshot.safeDailyBurnPacePercent) / 100.0))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
             HStack {
-                Text(snapshot.isIndo ? "KEKAYAAN BERSIH" : "NET WORTH")
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(1.0)
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Image(systemName: snapshot.isPositive24h ? "arrow.up.right" : "arrow.down.right")
-                        .font(.system(size: 9, weight: .bold))
-                    Text(snapshot.change24hFormatted)
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                }
-                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(AccrualTheme.fillSubtle(isDark: isDark))
-                .cornerRadius(6)
-            }
-
-            Spacer()
-
-            // Main Metric
-            if snapshot.isPrivacyMode {
-                Text("••••••••")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-            } else {
-                Text(snapshot.netWorthFormatted)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Spacer()
-
-            // Smooth Vector Area Horizon Sparkline
-            ZStack(alignment: .bottomTrailing) {
-                HorizonAreaShape(points: snapshot.sparkline)
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                (isDark ? Color.white : Color.black).opacity(0.18),
-                                (isDark ? Color.white : Color.black).opacity(0.01)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(AccrualTheme.fillSubtle(isDark: isDark))
+                        .frame(width: 20, height: 20)
+                        .overlay(
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 9.5, weight: .bold))
+                                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
                         )
-                    )
-                    .frame(height: 38)
-
-                HorizonLineShape(points: snapshot.sparkline)
-                    .stroke(
-                        isDark ? Color.white.opacity(0.85) : Color.black.opacity(0.85),
-                        style: StrokeStyle(lineWidth: 1.75, lineCap: .round, lineJoin: .round)
-                    )
-                    .frame(height: 38)
-
-                // Glowing Node at endpoint
-                Circle()
-                    .fill(isDark ? Color.white : Color.black)
-                    .frame(width: 5, height: 5)
-                    .offset(x: -1, y: -2)
-            }
-
-            // Subtitle
-            HStack {
-                Text(snapshot.isIndo ? "Tren 30 Hari Terakhir" : "Last 30 Days Trend")
-                    .font(.system(size: 9, weight: .medium))
+                    Text(snapshot.isIndo ? "Ritme Harian" : "Burn Pace")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                Spacer()
-                Text(snapshot.safeNetCashflow)
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
             }
-            .padding(.top, 4)
-        }
-    }
-}
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
 
-// ======================================================================
-// MARK: - 2. ALOKASI PORTOFOLIO (Medium: 329x155)
-// ======================================================================
-struct PortfolioAllocationMediumView: View {
-    let snapshot: AccrualWidgetSnapshot
-    let isDark: Bool
+            Spacer(minLength: 2)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Header
-            HStack {
-                Text(snapshot.isIndo ? "ALOKASI PORTOFOLIO" : "PORTFOLIO ALLOCATION")
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(1.0)
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
-                Spacer()
-
-                Text(snapshot.safeGrossAssets)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-            }
-
-            Spacer()
-
-            // 2-Column Donut + Breakdown
-            HStack(spacing: 16) {
-                // Left: 3-Segment Donut
+            GeometryReader { geo in
+                let orbPt = FullBleedHorizonArcShape.pointOnQuadBezier(t: t, rect: geo.frame(in: .local))
                 ZStack {
-                    Circle()
-                        .stroke(AccrualTheme.fillSubtle(isDark: isDark), lineWidth: 8)
-                        .frame(width: 72, height: 72)
-
-                    Circle()
-                        .trim(from: 0, to: CGFloat(snapshot.safeLiquidPct / 100))
-                        .stroke(isDark ? Color.white : Color.black, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 72, height: 72)
-
-                    Circle()
-                        .trim(from: CGFloat(snapshot.safeLiquidPct / 100), to: CGFloat((snapshot.safeLiquidPct + snapshot.safeGrowthPct) / 100))
-                        .stroke((isDark ? Color.white : Color.black).opacity(0.55), style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 72, height: 72)
-
-                    Circle()
-                        .trim(from: CGFloat((snapshot.safeLiquidPct + snapshot.safeGrowthPct) / 100), to: 1.0)
-                        .stroke((isDark ? Color.white : Color.black).opacity(0.25), style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 72, height: 72)
-
-                    VStack(spacing: 1) {
-                        Text("\(Int(snapshot.safeLiquidPct))%")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                        Text(snapshot.isIndo ? "Kas" : "Cash")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                    }
-                }
-
-                // Right: 3 Asset Class Rows
-                VStack(alignment: .leading, spacing: 5) {
-                    AssetClassLegendRow(
-                        title: snapshot.isIndo ? "Aset Lancar & Kas" : "Liquid & Cash",
-                        pct: snapshot.safeLiquidPct,
-                        opacity: 1.0,
-                        isDark: isDark
-                    )
-                    AssetClassLegendRow(
-                        title: snapshot.isIndo ? "Investasi & Efek" : "Investments",
-                        pct: snapshot.safeGrowthPct,
-                        opacity: 0.55,
-                        isDark: isDark
-                    )
-                    AssetClassLegendRow(
-                        title: snapshot.isIndo ? "Aset Riil & Fisik" : "Real Assets",
-                        pct: snapshot.safeFixedPct,
-                        opacity: 0.25,
-                        isDark: isDark
-                    )
-                }
-                .frame(maxWidth: .infinity)
-            }
-
-            Spacer()
-        }
-    }
-}
-
-struct AssetClassLegendRow: View {
-    let title: String
-    let pct: Double
-    let opacity: Double
-    let isDark: Bool
-
-    var body: some View {
-        HStack {
-            Circle()
-                .fill(isDark ? Color.white.opacity(opacity) : Color.black.opacity(opacity))
-                .frame(width: 6, height: 6)
-
-            Text(title)
-                .font(.system(size: 9.5, weight: .medium))
-                .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-                .lineLimit(1)
-
-            Spacer()
-
-            Text("\(String(format: "%.0f", pct))%")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-        }
-    }
-}
-
-// ======================================================================
-// MARK: - 3. POSISI KAS LIKUID (Small: 155x155 - Foto 1 Style)
-// ======================================================================
-struct LiquidCashRunwaySmallView: View {
-    let snapshot: AccrualWidgetSnapshot
-    let isDark: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: Icon + Label
-            HStack(spacing: 5) {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 9.5, weight: .semibold))
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
-                Text(snapshot.isIndo ? "Kas likuid" : "Liquid cash")
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
-                Spacer()
-            }
-
-            Spacer(minLength: 4)
-
-            // Main Metric: Real Liquid Cash (not net worth)
-            VStack(alignment: .leading, spacing: 3) {
-                if snapshot.isPrivacyMode {
-                    Text("••••••••")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                } else {
-                    Text(snapshot.safeLiquidCash)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-
-                // Trend Badge: ↗ 0.7% vs Sep
-                HStack(spacing: 3) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 7.5, weight: .bold))
-                    Text(snapshot.safeLiquidCashChange)
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                }
-                .foregroundColor(isDark ? Color.white : Color.black)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2.5)
-                .background(AccrualTheme.fillSubtle(isDark: isDark))
-                .cornerRadius(6)
-            }
-
-            Spacer(minLength: 6)
-
-            // Smooth Sparkline with end-point dot
-            ZStack(alignment: .bottomTrailing) {
-                HorizonAreaShape(points: snapshot.safeLiquidCashSparkline)
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                (isDark ? Color.white : Color.black).opacity(0.18),
-                                (isDark ? Color.white : Color.black).opacity(0.01)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
+                    FullBleedHorizonArcShape()
+                        .stroke(
+                            (isDark ? Color.white : Color.black).opacity(0.14),
+                            style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
                         )
-                    )
-                    .frame(height: 32)
 
-                HorizonLineShape(points: snapshot.safeLiquidCashSparkline)
-                    .stroke(
-                        isDark ? Color.white.opacity(0.85) : Color.black.opacity(0.85),
-                        style: StrokeStyle(lineWidth: 1.75, lineCap: .round, lineJoin: .round)
-                    )
-                    .frame(height: 32)
+                    FullBleedHorizonArcShape()
+                        .trim(from: 0, to: t)
+                        .stroke(
+                            isDark ? Color.white : Color.black,
+                            style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+                        )
 
-                Circle()
-                    .fill(isDark ? Color.white : Color.black)
-                    .frame(width: 5, height: 5)
-                    .offset(x: -1, y: -2)
+                    Circle()
+                        .fill((isDark ? Color.white : Color.black).opacity(0.24))
+                        .frame(width: 18, height: 18)
+                        .position(orbPt)
+
+                    Circle()
+                        .fill(isDark ? Color.white : Color.black)
+                        .frame(width: 9, height: 9)
+                        .position(orbPt)
+
+                    VStack(spacing: 2) {
+                        Text(snapshot.isIndo ? "Kuota harian terpakai" : "Your daily burn level")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+
+                        Text("\(snapshot.safeDailyBurnPacePercent)%")
+                            .font(.system(size: family == .systemSmall ? 24 : 30, weight: .bold, design: .rounded))
+                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+
+                        Text(snapshot.safeDailyBurnPaceStatus)
+                            .font(.system(size: 9.5, weight: .semibold))
+                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 2.5)
+                            .background(AccrualTheme.fillSubtle(isDark: isDark))
+                            .cornerRadius(99)
+                    }
+                    .offset(y: 12)
+                }
             }
-        }
-    }
-}
+            .frame(height: family == .systemSmall ? 84 : 96)
 
-// ======================================================================
-// MARK: - 4. RASIO TABUNGAN RING (Small: 155x155)
-// ======================================================================
-struct SavingsRateRingSmallView: View {
-    let snapshot: AccrualWidgetSnapshot
-    let isDark: Bool
-
-    var body: some View {
-        VStack(alignment: .center, spacing: 0) {
-            // Header
-            HStack {
-                Text(snapshot.isIndo ? "RASIO TABUNGAN" : "SAVINGS RATE")
-                    .font(.system(size: 9.5, weight: .semibold))
-                    .tracking(0.8)
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-                Spacer()
-            }
-
-            Spacer()
-
-            // Ring Gauge
-            ZStack {
-                Circle()
-                    .stroke(AccrualTheme.fillSubtle(isDark: isDark), lineWidth: 7)
-                    .frame(width: 68, height: 68)
-
-                Circle()
-                    .trim(from: 0, to: min(1.0, CGFloat(snapshot.safeSavingsRate) / 100.0))
-                    .stroke(isDark ? Color.white : Color.black, style: StrokeStyle(lineWidth: 7, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .frame(width: 68, height: 68)
-
-                VStack(spacing: 0) {
-                    Text("\(snapshot.safeSavingsRate)%")
-                        .font(.system(size: 15, weight: .bold, design: .monospaced))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                    Text("Target \(snapshot.safeSavingsTarget)%")
-                        .font(.system(size: 7.5, weight: .semibold))
+            if family == .systemLarge {
+                VStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        LargeKpiTile(label: snapshot.isIndo ? "KUOTA HARI INI" : "DAILY QUOTA", value: snapshot.safeDailyQuota, isDark: isDark)
+                        LargeKpiTile(label: snapshot.isIndo ? "TERPAKAI" : "SPENT TODAY", value: snapshot.safeSpentToday, isDark: isDark)
+                        LargeKpiTile(label: snapshot.isIndo ? "SISA AMAN" : "SAFE LEFT", value: snapshot.safeSafeToSpendDaily, isDark: isDark)
+                    }
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(snapshot.isIndo ? "Sisa Anggaran Bulan Ini" : "Monthly Budget Remaining")
+                                .font(.system(size: 9.5, weight: .medium))
+                                .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                            Text("\(snapshot.safeSafeToSpendRemaining) / \(snapshot.safeSafeToSpendBudget)")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                        }
+                        Spacer()
+                        Text("\(snapshot.safeDaysLeftInMonth) \(snapshot.isIndo ? "hr tersisa" : "days left")")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(AccrualTheme.fillSubtle(isDark: isDark))
+                            .cornerRadius(8)
+                    }
+                    .padding(10)
+                    .background(AccrualTheme.fillSubtle(isDark: isDark))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 12)
+            } else {
+                HStack {
+                    Text("\(snapshot.isIndo ? "Sisa" : "Left"): \(snapshot.safeSafeToSpendDaily)")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                    Spacer()
+                    Text("\(snapshot.safeDaysLeftInMonth) \(snapshot.isIndo ? "hr" : "d")")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
                         .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
                 }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 10)
+            }
+        }
+    }
+}
+
+struct LargeKpiTile: View {
+    let label: String
+    let value: String
+    let isDark: Bool
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 7.5, weight: .bold))
+                .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AccrualTheme.fillSubtle(isDark: isDark))
+        .cornerRadius(10)
+    }
+}
+
+// ======================================================================
+// MARK: - 2. TOTAL BALANCE / NET WORTH HORIZON (Full-Bleed Area Curve - S/M/L)
+// ======================================================================
+struct NetWorthHorizonAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(snapshot.isIndo ? "Total kekayaan" : "Total balance")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                    Spacer()
+                    Text(snapshot.currencySymbol)
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2.5)
+                        .background(AccrualTheme.fillSubtle(isDark: isDark))
+                        .cornerRadius(99)
+                }
+
+                Text(snapshot.netWorthFormatted)
+                    .font(.system(size: family == .systemSmall ? 19 : 25, weight: .bold, design: .rounded))
+                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                HStack(spacing: 6) {
+                    Text(snapshot.safeNetCashflow)
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+
+                    HStack(spacing: 2.5) {
+                        Image(systemName: snapshot.isPositive24h ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 7.5, weight: .bold))
+                        Text(snapshot.change24hFormatted)
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(AccrualTheme.fillSubtle(isDark: isDark))
+                    .cornerRadius(99)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+
+            if family == .systemLarge {
+                HStack(spacing: 6) {
+                    LargeKpiTile(label: snapshot.isIndo ? "KAS LIKUID" : "LIQUID CASH", value: snapshot.safeLiquidCash, isDark: isDark)
+                    LargeKpiTile(label: snapshot.isIndo ? "PEMASUKAN" : "INFLOW", value: snapshot.safeMonthlyInflow, isDark: isDark)
+                    LargeKpiTile(label: snapshot.isIndo ? "PENGELUARAN" : "OUTFLOW", value: snapshot.safeMonthlyOutflow, isDark: isDark)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
-            // Footer
-            HStack {
-                Text(snapshot.isIndo ? "Terkumpul:" : "Saved:")
-                    .font(.system(size: 8.5, weight: .medium))
-                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                Spacer()
-                Text(snapshot.safeMonthlySavings)
-                    .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+            ZStack(alignment: .bottom) {
+                SmoothAreaShape(points: snapshot.sparkline)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                (isDark ? Color.white : Color.black).opacity(0.24),
+                                (isDark ? Color.white : Color.black).opacity(0.02)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: family == .systemLarge ? 120 : 64)
+
+                SmoothLineShape(points: snapshot.sparkline)
+                    .stroke(
+                        isDark ? Color.white : Color.black,
+                        style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round)
+                    )
+                    .frame(height: family == .systemLarge ? 120 : 64)
+
+                HStack(spacing: 14) {
+                    Text("24H")
+                        .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                    Text("7D")
+                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background((isDark ? Color.black : Color.white).opacity(0.75))
+                        .cornerRadius(99)
+                    Text("30D")
+                        .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                }
+                .padding(.bottom, 8)
             }
         }
     }
 }
 
 // ======================================================================
-// MARK: - 5. ARUS KAS BULANAN & HEATMAP (Medium: 329x155 - Foto 2 Style)
+// MARK: - 3. SINGLE-TRACK GAPPED DONUT (Zero Dummy Slices - S/M/L)
 // ======================================================================
-struct MonthlyCashflowBarMediumView: View {
+struct PortfolioAllocationAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
     let snapshot: AccrualWidgetSnapshot
     let isDark: Bool
 
-    private func heatmapColor(dot: WidgetHeatmapDot) -> Color {
-        guard dot.hasSpend else {
-            return isDark ? Color.white.opacity(0.06) : Color.black.opacity(0.05)
-        }
-        let alpha = max(0.25, min(1.0, dot.intensity))
-        return (isDark ? Color.white : Color.black).opacity(alpha)
-    }
-
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            // Left Column: Hero Delta + Subtitles
-            VStack(alignment: .leading, spacing: 0) {
-                // Header: Icon + Title
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
-                    Text(snapshot.isIndo ? "Arus kas bulan ini" : "Cashflow this month")
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-                }
-
+        let cats = snapshot.safeTopCategories
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(snapshot.isIndo ? "PENGELUARAN" : "EXPENSES")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(isDark ? Color.black : Color.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(isDark ? Color.white : Color.black)
+                    .cornerRadius(99)
                 Spacer()
-
-                // Hero Delta Nominal (Inflow - Outflow)
-                if snapshot.isPrivacyMode {
-                    Text("••••••••")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                } else {
-                    Text(snapshot.safeNetCashflow)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-
-                // Delta vs Last Month Pill
-                HStack(spacing: 3) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 7.5, weight: .bold))
-                    Text(snapshot.safeCashflowDeltaVsLastMonth)
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                }
-                .foregroundColor(isDark ? Color.white : Color.black)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2.5)
-                .background(AccrualTheme.fillSubtle(isDark: isDark))
-                .cornerRadius(6)
-                .padding(.top, 4)
-
-                Spacer()
-
-                // Subtitle: Inflow & Outflow breakdown
-                Text("\(snapshot.isIndo ? "Masuk" : "In"): \(snapshot.safeMonthlyInflow) • \(snapshot.isIndo ? "Keluar" : "Out"): \(snapshot.safeMonthlyOutflow)")
-                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Spacer(minLength: 4)
-
-            // Right Column: Month Header + Calendar Heatmap Matrix + M T W T F S S
-            VStack(alignment: .trailing, spacing: 6) {
                 Text(snapshot.safeMonthShortName)
                     .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                     .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                    .padding(.trailing, 14)
+            }
 
-                HStack(spacing: 5) {
-                    // 4 Columns of 7 Day Squares
-                    HStack(spacing: 3.5) {
-                        ForEach(0..<4, id: \.self) { col in
-                            VStack(spacing: 3.5) {
-                                ForEach(0..<7, id: \.self) { row in
-                                    let idx = col * 7 + row
-                                    let dot = idx < snapshot.safeHeatmapDots.count
-                                        ? snapshot.safeHeatmapDots[idx]
-                                        : WidgetHeatmapDot(intensity: 0, hasSpend: false)
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(heatmapColor(dot: dot))
-                                        .frame(width: 10, height: 10)
+            Spacer(minLength: 0)
+
+            HStack(spacing: 14) {
+                ZStack {
+                    if cats.isEmpty {
+                        Circle()
+                            .stroke(AccrualTheme.fillSubtle(isDark: isDark), lineWidth: 8.5)
+                    } else {
+                        let gap: Double = cats.count > 1 ? 0.03 : 0.0
+                        let p0 = Double(cats.indices.contains(0) ? cats[0].pct : 0) / 100.0
+                        let p1 = Double(cats.indices.contains(1) ? cats[1].pct : 0) / 100.0
+                        let p2 = Double(cats.indices.contains(2) ? cats[2].pct : 0) / 100.0
+
+                        Circle()
+                            .stroke(AccrualTheme.fillSubtle(isDark: isDark), lineWidth: 8.5)
+
+                        if p0 > 0 {
+                            Circle()
+                                .trim(from: 0, to: max(0.02, p0 - gap))
+                                .stroke(isDark ? Color.white : Color.black, style: StrokeStyle(lineWidth: 8.5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                        if p1 > 0 {
+                            Circle()
+                                .trim(from: p0, to: max(p0 + 0.02, p0 + p1 - gap))
+                                .stroke((isDark ? Color.white : Color.black).opacity(0.62), style: StrokeStyle(lineWidth: 8.5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                        if p2 > 0 {
+                            Circle()
+                                .trim(from: p0 + p1, to: max(p0 + p1 + 0.02, p0 + p1 + p2 - gap))
+                                .stroke((isDark ? Color.white : Color.black).opacity(0.36), style: StrokeStyle(lineWidth: 8.5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                        if cats.count > 3 {
+                            Circle()
+                                .trim(from: p0 + p1 + p2, to: max(p0 + p1 + p2 + 0.02, 1.0 - gap))
+                                .stroke((isDark ? Color.white : Color.black).opacity(0.18), style: StrokeStyle(lineWidth: 8.5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                    }
+
+                    VStack(spacing: 1) {
+                        Text(snapshot.safeMonthlyOutflow)
+                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .padding(.horizontal, 6)
+                        Text("Total")
+                            .font(.system(size: 7.5, weight: .medium))
+                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                    }
+                }
+                .frame(width: family == .systemLarge ? 105 : 76, height: family == .systemLarge ? 105 : 76)
+
+                if family != .systemSmall {
+                    if cats.isEmpty {
+                        Text(snapshot.isIndo ? "Belum ada pengeluaran bulan ini" : "No expenses recorded this month")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(Array(cats.prefix(4).enumerated()), id: \.offset) { idx, item in
+                                let opacities: [Double] = [1.0, 0.65, 0.40, 0.22]
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill((isDark ? Color.white : Color.black).opacity(opacities[idx % 4]))
+                                        .frame(width: 6, height: 6)
+                                    Text(item.name)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text("\(item.pct)%")
+                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
                                 }
                             }
                         }
                     }
+                }
+            }
 
-                    // Weekday Labels M T W T F S S
-                    VStack(spacing: 3.5) {
-                        ForEach(["M", "T", "W", "T", "F", "S", "S"], id: \.self) { day in
-                            Text(day)
-                                .font(.system(size: 7, weight: .bold, design: .monospaced))
-                                .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                                .frame(height: 10)
+            if family == .systemLarge && !cats.isEmpty {
+                VStack(spacing: 5) {
+                    ForEach(Array(cats.prefix(3).enumerated()), id: \.offset) { _, item in
+                        HStack {
+                            Text(item.name)
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                            Spacer()
+                            Text(item.amountFormatted)
+                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(AccrualTheme.fillSubtle(isDark: isDark))
+                        .cornerRadius(8)
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+// ======================================================================
+// MARK: - 4. LIQUID CASH RUNWAY (Full-Bleed Sparkline - S/M/L)
+// ======================================================================
+struct LiquidCashAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 9.5, weight: .semibold))
+                    Text(snapshot.isIndo ? "Kas Likuid" : "Liquid Cash")
+                        .font(.system(size: 10.5, weight: .semibold))
+                    Spacer()
+                }
+                .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+
+                Text(snapshot.safeLiquidCash)
+                    .font(.system(size: family == .systemSmall ? 18 : 22, weight: .bold, design: .rounded))
+                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                HStack(spacing: 3) {
+                    Image(systemName: snapshot.safeIsLiquidCashPositive ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(size: 7.5, weight: .bold))
+                    Text(snapshot.safeLiquidCashChange)
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                }
+                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2.5)
+                .background(AccrualTheme.fillSubtle(isDark: isDark))
+                .cornerRadius(6)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+
+            if family == .systemLarge {
+                HStack(spacing: 6) {
+                    LargeKpiTile(label: snapshot.isIndo ? "RUNWAY KAS" : "CASH RUNWAY", value: "\(String(format: "%.1f", snapshot.safeRunwayMonths)) bln", isDark: isDark)
+                    LargeKpiTile(label: snapshot.isIndo ? "BURN HARIAN" : "DAILY BURN", value: snapshot.safeDailyBurn, isDark: isDark)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
+            }
+
+            Spacer(minLength: 4)
+
+            ZStack(alignment: .bottomTrailing) {
+                SmoothAreaShape(points: snapshot.safeLiquidCashSparkline)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                (isDark ? Color.white : Color.black).opacity(0.20),
+                                (isDark ? Color.white : Color.black).opacity(0.01)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: family == .systemLarge ? 110 : 44)
+
+                SmoothLineShape(points: snapshot.safeLiquidCashSparkline)
+                    .stroke(
+                        isDark ? Color.white : Color.black,
+                        style: StrokeStyle(lineWidth: 2.0, lineCap: .round, lineJoin: .round)
+                    )
+                    .frame(height: family == .systemLarge ? 110 : 44)
+            }
+        }
+    }
+}
+
+// ======================================================================
+// MARK: - 5. MONTHLY CASHFLOW & 28-DAY HEATMAP MATRIX (S/M/L)
+// ======================================================================
+struct MonthlyCashflowHeatmapAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+
+    private func cellColor(dot: WidgetHeatmapDot) -> Color {
+        let base = isDark ? Color.white : Color.black
+        guard dot.hasSpend else { return base.opacity(0.07) }
+        return base.opacity(max(0.28, min(1.0, dot.intensity)))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 9, weight: .bold))
+                        Text(snapshot.isIndo ? "Arus Kas" : "Cashflow")
+                            .font(.system(size: 10.5, weight: .semibold))
+                    }
+                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+
+                    Text(snapshot.safeNetCashflow)
+                        .font(.system(size: family == .systemSmall ? 17 : 21, weight: .bold, design: .rounded))
+                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    HStack(spacing: 3) {
+                        Image(systemName: snapshot.safeIsCashflowDeltaPositive ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 7.5, weight: .bold))
+                        Text(snapshot.safeCashflowDeltaVsLastMonth)
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(AccrualTheme.fillSubtle(isDark: isDark))
+                    .cornerRadius(6)
+
+                    if family != .systemSmall {
+                        Spacer(minLength: 2)
+                        Text("\(snapshot.isIndo ? "Masuk" : "In"): \(snapshot.safeMonthlyInflow) • \(snapshot.isIndo ? "Keluar" : "Out"): \(snapshot.safeMonthlyOutflow)")
+                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                }
+
+                if family != .systemSmall {
+                    Spacer(minLength: 2)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(snapshot.safeMonthShortName)
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+
+                        HStack(spacing: 3.5) {
+                            ForEach(0..<4, id: \.self) { col in
+                                VStack(spacing: 3.5) {
+                                    ForEach(0..<7, id: \.self) { row in
+                                        let idx = col * 7 + row
+                                        let dot = idx < snapshot.safeHeatmapDots.count
+                                            ? snapshot.safeHeatmapDots[idx]
+                                            : WidgetHeatmapDot(intensity: 0, hasSpend: false)
+                                        RoundedRectangle(cornerRadius: 2.5)
+                                            .fill(cellColor(dot: dot))
+                                            .frame(width: 10, height: 10)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 2.5)
+                                                    .stroke(isDark ? Color.white : Color.black, lineWidth: (dot.isToday ?? false) ? 1.2 : 0)
+                                            )
+                                    }
+                                }
+                            }
                         }
                     }
+                }
+            }
+
+            if family == .systemLarge {
+                Divider().background(AccrualTheme.cardBorder(isDark: isDark))
+                HStack(spacing: 6) {
+                    LargeKpiTile(label: snapshot.isIndo ? "HARI AKTIF" : "ACTIVE DAYS", value: "\(snapshot.safeActiveDaysCount) / 28 hr", isDark: isDark)
+                    LargeKpiTile(label: snapshot.isIndo ? "BEBAS BELANJA" : "NO-SPEND DAYS", value: "\(snapshot.safeNoSpendDaysCount) hr", isDark: isDark)
+                    LargeKpiTile(label: snapshot.isIndo ? "RATA-RATA" : "DAILY AVG", value: snapshot.safeDailyAverage, isDark: isDark)
                 }
             }
         }
@@ -531,429 +712,114 @@ struct MonthlyCashflowBarMediumView: View {
 }
 
 // ======================================================================
-// MARK: - 6. STASIUN CATAT CEPAT 1-KETUKAN (Small: 155x155)
+// MARK: - 6. CAPPED VERTICAL PILLAR BARS (S/M/L)
 // ======================================================================
-struct QuickLogStationSmallView: View {
+struct CapitalHealthPillarAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+
+    var body: some View {
+        let bars = snapshot.safeCashflowBars
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(snapshot.isIndo ? "PERFORMA MODAL" : "PERFORMANCE")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(isDark ? Color.black : Color.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2.5)
+                    .background(isDark ? Color.white : Color.black)
+                    .cornerRadius(99)
+                Spacer()
+                Text("\(snapshot.safeCapitalHealthScore)/100")
+                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(snapshot.safeCapitalHealthTier)
+                    .font(.system(size: family == .systemSmall ? 20 : 24, weight: .bold, design: .rounded))
+                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                Text("\(snapshot.isIndo ? "Solvensi" : "Solvency") \(snapshot.safeSolvencyScore)%")
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+            }
+
+            Spacer(minLength: 2)
+
+            HStack(alignment: .bottom, spacing: 6) {
+                ForEach(Array(bars.prefix(6).enumerated()), id: \.offset) { _, val in
+                    VStack(spacing: 2) {
+                        Capsule()
+                            .fill(isDark ? Color.white : Color.black)
+                            .frame(height: 3)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill((isDark ? Color.white : Color.black).opacity(val >= 80 ? 0.55 : 0.25))
+                            .frame(height: max(8, CGFloat(val) * (family == .systemLarge ? 1.1 : 0.52)))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+
+            if family == .systemLarge {
+                HStack(spacing: 6) {
+                    LargeKpiTile(label: snapshot.isIndo ? "RASIO TABUNGAN" : "SAVINGS RATE", value: "\(snapshot.safeSavingsRate)%", isDark: isDark)
+                    LargeKpiTile(label: snapshot.isIndo ? "RUNWAY LIKUID" : "LIQUID RUNWAY", value: "\(String(format: "%.1f", snapshot.safeRunwayMonths)) bln", isDark: isDark)
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+}
+
+// ======================================================================
+// MARK: - 7. BALANCE SHEET PROPORTION BAR (S/M/L)
+// ======================================================================
+struct BalanceSheetProportionAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
     let snapshot: AccrualWidgetSnapshot
     let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(snapshot.isIndo ? "CATAT CEPAT" : "QUICK LOG")
-                .font(.system(size: 9.5, weight: .semibold))
-                .tracking(0.8)
-                .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
-            Spacer()
-
-            VStack(spacing: 6) {
-                Link(destination: URL(string: "accrual://log?type=expense")!) {
-                    QuickActionTile(
-                        iconName: "minus.circle.fill",
-                        label: snapshot.isIndo ? "Pengeluaran" : "Expense",
-                        isDark: isDark
-                    )
-                }
-
-                Link(destination: URL(string: "accrual://log?type=income")!) {
-                    QuickActionTile(
-                        iconName: "plus.circle.fill",
-                        label: snapshot.isIndo ? "Pemasukan" : "Income",
-                        isDark: isDark
-                    )
-                }
-
-                Link(destination: URL(string: "accrual://log?type=transfer")!) {
-                    QuickActionTile(
-                        iconName: "arrow.left.arrow.right.circle.fill",
-                        label: snapshot.isIndo ? "Transfer" : "Transfer",
-                        isDark: isDark
-                    )
-                }
-            }
-        }
-    }
-}
-
-struct QuickActionTile: View {
-    let iconName: String
-    let label: String
-    let isDark: Bool
-
-    var body: some View {
-        HStack {
-            Image(systemName: iconName)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-
-            Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
-        .background(AccrualTheme.fillSubtle(isDark: isDark))
-        .cornerRadius(8)
-    }
-}
-
-// ======================================================================
-// MARK: - 7. KESEHATAN MODAL (Small: 155x155 - Semicircle Rainbow Arc)
-// ======================================================================
-struct RainbowArcShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.addArc(
-            center: CGPoint(x: rect.midX, y: rect.maxY),
-            radius: min(rect.width / 2, rect.height),
-            startAngle: .degrees(180),
-            endAngle: .degrees(360),
-            clockwise: false
-        )
-        return path
-    }
-}
-
-struct CapitalHealthSmallView: View {
-    let snapshot: AccrualWidgetSnapshot
-    let isDark: Bool
-
-    var body: some View {
-        VStack(alignment: .center, spacing: 0) {
-            // Header
-            HStack {
-                Text(snapshot.isIndo ? "KESEHATAN MODAL" : "CAPITAL HEALTH")
-                    .font(.system(size: 9.5, weight: .semibold))
-                    .tracking(0.8)
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-                Spacer()
-            }
-
-            Spacer()
-
-            // 180° Rainbow Arc Gauge
-            ZStack {
-                // Background Track Arc
-                RainbowArcShape()
-                    .stroke(
-                        isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.08),
-                        style: StrokeStyle(lineWidth: 7.5, lineCap: .round)
-                    )
-
-                // Foreground Progress Arc
-                RainbowArcShape()
-                    .trim(from: 0.0, to: CGFloat(snapshot.safeCapitalHealthScore) / 100.0)
-                    .stroke(
-                        isDark ? Color.white : Color.black,
-                        style: StrokeStyle(lineWidth: 7.5, lineCap: .round)
-                    )
-
-                // Central Score Content
-                VStack(spacing: 0) {
-                    Text("\(snapshot.safeCapitalHealthScore)")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-
-                    Text(snapshot.safeCapitalHealthTier)
-                        .font(.system(size: 9.5, weight: .bold))
-                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-                }
-                .offset(y: 8)
-            }
-            .frame(width: 106, height: 55)
-
-            Spacer()
-
-            // Footer Solvency
-            HStack {
-                Text(snapshot.isIndo ? "Solvabilitas" : "Solvency")
-                    .font(.system(size: 8.5, weight: .medium))
-                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                Spacer()
-                Text("\(snapshot.safeSolvencyScore)/100")
-                    .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-            }
-        }
-    }
-}
-
-// ======================================================================
-// MARK: - SAFE TO SPEND (Medium: 329x155 - Foto 3 Style)
-// ======================================================================
-struct SafeToSpendMediumView: View {
-    let snapshot: AccrualWidgetSnapshot
-    let isDark: Bool
-
-    var body: some View {
-        VStack(spacing: 10) {
-            // Top Row: Gauge + Left to spend
-            HStack(spacing: 16) {
-                // Left 180° Gauge
-                ZStack {
-                    RainbowArcShape()
-                        .stroke(
-                            isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.08),
-                            style: StrokeStyle(lineWidth: 7, lineCap: .round)
-                        )
-
-                    RainbowArcShape()
-                        .trim(from: 0.0, to: CGFloat(snapshot.safeSafeToSpendPercent) / 100.0)
-                        .stroke(
-                            isDark ? Color.white : Color.black,
-                            style: StrokeStyle(lineWidth: 7, lineCap: .round)
-                        )
-
-                    VStack(spacing: 0) {
-                        Text("\(snapshot.safeSafeToSpendPercent)%")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                        Text(snapshot.isIndo ? "Terpakai" : "Spent")
-                            .font(.system(size: 7.5, weight: .medium))
-                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                    }
-                    .offset(y: 7)
-                }
-                .frame(width: 80, height: 42)
-
-                // Right: Left to spend info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(snapshot.isIndo ? "Sisa Anggaran" : "Left to spend")
-                        .font(.system(size: 9.5, weight: .medium))
-                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-
-                    if snapshot.isPrivacyMode {
-                        Text("••••••••")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                    } else {
-                        Text(snapshot.safeSafeToSpendRemaining)
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    }
-
-                    Text("\(snapshot.isIndo ? "dari" : "of") \(snapshot.safeSafeToSpendBudget)")
-                        .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                }
-
-                Spacer()
-            }
-
-            // Bottom Row: Safe to spend capsule + Days left block
-            HStack(spacing: 8) {
-                // Safe to spend daily capsule
-                VStack(alignment: .leading, spacing: 1.5) {
-                    Text(snapshot.isIndo ? "Aman dibelanjakan" : "Safe to spend")
-                        .font(.system(size: 8.5, weight: .medium))
-                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-
-                    Text(snapshot.safeSafeToSpendDaily)
-                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AccrualTheme.fillSubtle(isDark: isDark))
-                .cornerRadius(10)
-
-                // Days left block
-                VStack(alignment: .center, spacing: 1.5) {
-                    Text(snapshot.isIndo ? "Sisa hari" : "Days left")
-                        .font(.system(size: 8.5, weight: .medium))
-                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-
-                    Text("\(snapshot.safeDaysLeftInMonth)")
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(AccrualTheme.fillSubtle(isDark: isDark))
-                .cornerRadius(10)
-            }
-        }
-    }
-}
-
-// ======================================================================
-// MARK: - 8. MATRIKS AKTIVITAS BULANAN / HALF CARD (Small: 155x155)
-// ======================================================================
-struct ActivityMatrixSmallView: View {
-    let snapshot: AccrualWidgetSnapshot
-    let isDark: Bool
-
-    let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
-
-    private func dotColor(dot: WidgetHeatmapDot, isDark: Bool) -> Color {
-        let base = isDark ? Color.white : Color.black
-        if dot.intensity > 0.6 {
-            return base
-        } else if dot.intensity > 0.2 {
-            return base.opacity(isDark ? 0.45 : 0.40)
-        } else if dot.hasSpend {
-            return base.opacity(isDark ? 0.20 : 0.18)
-        } else {
-            return base.opacity(0.06)
-        }
-    }
-
-    private var displayDots: [(offset: Int, element: WidgetHeatmapDot)] {
-        Array(snapshot.safeHeatmapDots.prefix(28).enumerated())
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
-                Text(snapshot.isIndo ? "MATRIKS AKTIVITAS" : "ACTIVITY MATRIX")
-                    .font(.system(size: 9.5, weight: .semibold))
-                    .tracking(0.8)
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-                Spacer()
-            }
-
-            Spacer()
-
-            // 7x4 28-day Activity Dot Grid
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(displayDots, id: \.offset) { _, dot in
-                    Circle()
-                        .fill(dotColor(dot: dot, isDark: isDark))
-                        .frame(width: 10, height: 10)
-                }
-            }
-            .frame(maxWidth: 130)
-            .frame(maxWidth: .infinity, alignment: .center)
-
-            Spacer()
-
-            // Footer
-            VStack(spacing: 3) {
-                Divider()
-                    .background(AccrualTheme.cardBorder(isDark: isDark))
-
-                HStack {
-                    Text(snapshot.isIndo ? "Hari Aktif" : "Active Days")
-                        .font(.system(size: 8.5, weight: .medium))
-                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-
-                    Spacer()
-
-                    Text("\(snapshot.safeActiveDaysCount) \(snapshot.isIndo ? "dari 28 hr" : "of 28 d")")
-                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                }
-            }
-        }
-    }
-}
-
-// ======================================================================
-// MARK: - 9. STRUKTUR NERACA DENGAN CHART SOLVENSI (Medium: 329x155)
-// ======================================================================
-struct BalanceSheetMediumView: View {
-    let snapshot: AccrualWidgetSnapshot
-    let isDark: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
             HStack {
                 Text(snapshot.isIndo ? "STRUKTUR NERACA" : "BALANCE SHEET")
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(1.0)
+                    .font(.system(size: 9.5, weight: .bold))
+                    .tracking(0.8)
                     .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
                 Spacer()
-
-                Text("\(snapshot.isIndo ? "Rasio Utang" : "Debt Ratio"): \(String(format: "%.1f", snapshot.safeDebtRatio))%")
-                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                Text("\(snapshot.isIndo ? "Solvensi" : "Solvency") \(snapshot.safeSolvencyScore)%")
+                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
             }
 
-            Spacer()
-
-            // 2-Column: Left Concentric Solvency Rings, Right Balance Pillars
-            HStack(spacing: 16) {
-                // Left: Concentric Solvency Rings
-                ZStack {
-                    // Outer Ring: Liquid
-                    Circle()
-                        .stroke(AccrualTheme.fillSubtle(isDark: isDark), lineWidth: 4.5)
-                        .frame(width: 80, height: 80)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(snapshot.safeLiquidPct / 100))
-                        .stroke(isDark ? Color.white : Color.black, style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 80, height: 80)
-
-                    // Middle Ring: Investments
-                    Circle()
-                        .stroke(AccrualTheme.fillSubtle(isDark: isDark), lineWidth: 4.5)
-                        .frame(width: 64, height: 64)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(snapshot.safeGrowthPct / 100))
-                        .stroke((isDark ? Color.white : Color.black).opacity(0.65), style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 64, height: 64)
-
-                    // Inner Ring: Debt
-                    Circle()
-                        .stroke(AccrualTheme.fillSubtle(isDark: isDark), lineWidth: 4)
-                        .frame(width: 48, height: 48)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(snapshot.safeDebtRatio / 100))
-                        .stroke((isDark ? Color.white : Color.black).opacity(0.35), style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 48, height: 48)
-
-                    // Center: Solvency %
-                    VStack(spacing: 0) {
-                        Text("\(snapshot.safeSolvencyScore)%")
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                        Text(snapshot.isIndo ? "Solvensi" : "Solvency")
-                            .font(.system(size: 7, weight: .semibold))
-                            .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                    }
+            GeometryReader { geo in
+                let w = geo.size.width
+                let lW = max(8, w * CGFloat(snapshot.safeLiquidPct / 100.0))
+                let gW = max(8, w * CGFloat(snapshot.safeGrowthPct / 100.0))
+                HStack(spacing: 3) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(isDark ? Color.white : Color.black)
+                        .frame(width: lW)
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill((isDark ? Color.white : Color.black).opacity(0.48))
+                        .frame(width: gW)
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill((isDark ? Color.white : Color.black).opacity(0.18))
+                        .frame(maxWidth: .infinity)
                 }
-
-                // Right: 3 Financial Pillars
-                VStack(alignment: .leading, spacing: 6) {
-                    BalanceMetricRow(
-                        label: snapshot.isIndo ? "Aset Kotor" : "Gross Assets",
-                        value: snapshot.safeGrossAssets,
-                        isDark: isDark
-                    )
-                    BalanceMetricRow(
-                        label: snapshot.isIndo ? "Liabilitas" : "Liabilities",
-                        value: snapshot.safeLiabilities,
-                        isDark: isDark
-                    )
-                    Divider()
-                        .background(AccrualTheme.cardBorder(isDark: isDark))
-                    BalanceMetricRow(
-                        label: snapshot.isIndo ? "Ekuitas Bersih" : "Net Equity",
-                        value: snapshot.safeNetEquity,
-                        isDark: isDark,
-                        isBold: true
-                    )
-                }
-                .frame(maxWidth: .infinity)
             }
+            .frame(height: 10)
 
-            Spacer()
+            Spacer(minLength: 0)
+
+            VStack(spacing: 5) {
+                BalanceMetricRow(label: snapshot.isIndo ? "Aset Kotor" : "Gross Assets", value: snapshot.safeGrossAssets, isDark: isDark)
+                BalanceMetricRow(label: snapshot.isIndo ? "Liabilitas" : "Liabilities", value: snapshot.safeLiabilities, isDark: isDark)
+                Divider().background(AccrualTheme.cardBorder(isDark: isDark))
+                BalanceMetricRow(label: snapshot.isIndo ? "Ekuitas Bersih" : "Net Equity", value: snapshot.safeNetEquity, isDark: isDark, isBold: true)
+            }
         }
     }
 }
@@ -963,334 +829,613 @@ struct BalanceMetricRow: View {
     let value: String
     let isDark: Bool
     var isBold: Bool = false
-
     var body: some View {
         HStack {
             Text(label)
                 .font(.system(size: 9.5, weight: isBold ? .semibold : .medium))
                 .foregroundColor(isBold ? AccrualTheme.textPrimary(isDark: isDark) : AccrualTheme.textSecondary(isDark: isDark))
-
             Spacer()
-
             Text(value)
-                .font(.system(size: 10, weight: isBold ? .bold : .medium, design: .monospaced))
+                .font(.system(size: 10, weight: isBold ? .bold : .semibold, design: .monospaced))
                 .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                .lineLimit(1)
         }
     }
 }
 
 // ======================================================================
-// MARK: - 10. STABILITAS PENGELUARAN (Small: 155x155)
+// MARK: - 8. DUAL WAVE COMPARISON (S/M/L)
 // ======================================================================
-struct SpendingStabilitySmallView: View {
+struct DualWaveStabilityAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
     let snapshot: AccrualWidgetSnapshot
     let isDark: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header + Status Pill
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(snapshot.isIndo ? "Komparasi Ritme" : "Pace Comparison")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                    Spacer()
+                    Text(snapshot.safeSpendingStatus)
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundColor(isDark ? Color.black : Color.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(isDark ? Color.white : Color.black)
+                        .cornerRadius(99)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(snapshot.safeWeekDelta)
+                        .font(.system(size: family == .systemSmall ? 22 : 26, weight: .bold, design: .rounded))
+                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                    Text(snapshot.isIndo ? "vs pekan lalu" : "vs last week")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+
+            Spacer(minLength: 4)
+
+            ZStack {
+                SmoothLineShape(points: snapshot.safeLastWeekWave)
+                    .stroke(
+                        (isDark ? Color.white : Color.black).opacity(0.32),
+                        style: StrokeStyle(lineWidth: 1.6, lineCap: .round, dash: [4, 4])
+                    )
+                    .frame(height: family == .systemLarge ? 110 : 52)
+
+                SmoothLineShape(points: snapshot.safeThisWeekWave)
+                    .stroke(
+                        isDark ? Color.white : Color.black,
+                        style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round)
+                    )
+                    .frame(height: family == .systemLarge ? 110 : 52)
+            }
+            .padding(.bottom, 10)
+        }
+    }
+}
+
+// ======================================================================
+// MARK: - 9. EDITORIAL VELOCITY INSIGHT (S/M/L)
+// ======================================================================
+struct VelocityInsightAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(snapshot.isIndo ? "STABILITAS" : "STABILITY")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(0.5)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
-
+                HStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isDark ? Color.white : Color.black)
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(isDark ? Color.black : Color.white)
+                        )
+                    Text("Insight")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                }
                 Spacer()
-
-                Text(snapshot.safeSpendingStatus)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
+                Text(snapshot.safeSpaceName)
+                    .font(.system(size: 8.5, weight: .semibold))
+                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2.5)
                     .background(AccrualTheme.fillSubtle(isDark: isDark))
-                    .cornerRadius(6)
+                    .cornerRadius(99)
             }
 
-            Spacer()
+            Spacer(minLength: 2)
 
-            // Main Metric
-            VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.safeDailyAverage)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+            HStack(alignment: .top, spacing: 4) {
+                Text(snapshot.safeInsightPct)
+                    .font(.system(size: family == .systemSmall ? 34 : 42, weight: .light, design: .rounded))
                     .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
-                Text(snapshot.isIndo ? "Rata-rata Harian" : "Daily Average")
-                    .font(.system(size: 8.5, weight: .medium))
-                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                    .padding(.top, 6)
             }
 
-            Spacer()
+            Text(snapshot.safeInsightTitle)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                .lineLimit(2)
 
-            // Pulse Activity Wave
-            HStack {
-                Text("\(snapshot.safeVolatilityVariance)% \(snapshot.isIndo ? "Variansi" : "Variance")")
-                    .font(.system(size: 8.5, weight: .medium))
+            if family != .systemSmall && !snapshot.safeInsightSubtitle.isEmpty {
+                Text(snapshot.safeInsightSubtitle)
+                    .font(.system(size: 9.5, weight: .regular))
                     .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
-                Spacer()
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 2)
+
+            HStack(spacing: 5) {
+                ForEach(0..<5, id: \.self) { idx in
+                    Capsule()
+                        .fill((isDark ? Color.white : Color.black).opacity(idx == 1 ? 1.0 : 0.22))
+                        .frame(height: 3)
+                }
             }
         }
     }
 }
 
 // ======================================================================
-// MARK: - 5 LOCK SCREEN ACCESSORIES
+// MARK: - 10. SUBSCRIPTION & DRAFT RADAR (Zero Dummy Bills - S/M/L)
 // ======================================================================
+struct SubscriptionRadarAdaptiveView: View {
+    @Environment(\.widgetFamily) var family
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
 
-// 1. Lock Screen: Net Worth Horizon (Rectangular 155x68)
+    var body: some View {
+        let bills = snapshot.safeUpcomingBills
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(snapshot.isIndo ? "TAGIHAN & DRAFT" : "BILLS & DRAFTS")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                Spacer()
+                if snapshot.safeDraftCount > 0 {
+                    Text("\(snapshot.safeDraftCount) Draft")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundColor(isDark ? Color.black : Color.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(isDark ? Color.white : Color.black)
+                        .cornerRadius(99)
+                }
+            }
+
+            Text("\(snapshot.safeActiveSubsCount) \(snapshot.isIndo ? "tagihan aktif" : "active bills")")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+
+            Text(snapshot.safeActiveSubsTotal)
+                .font(.system(size: family == .systemSmall ? 20 : 24, weight: .bold, design: .rounded))
+                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Spacer(minLength: 2)
+
+            if let first = bills.first {
+                HStack {
+                    Text("\(first.title) • \(first.amountFormatted)")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                        .lineLimit(1)
+                    Spacer()
+                    Text(first.dueLabel)
+                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+                }
+                .padding(8)
+                .background(AccrualTheme.fillSubtle(isDark: isDark))
+                .cornerRadius(8)
+            } else {
+                HStack {
+                    Text(snapshot.isIndo ? "Tidak ada tagihan jatuh tempo" : "No upcoming bills due")
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                    Spacer()
+                }
+                .padding(8)
+                .background(AccrualTheme.fillSubtle(isDark: isDark))
+                .cornerRadius(8)
+            }
+        }
+    }
+}
+
+// ======================================================================
+// MARK: - 11. SAVINGS RATE, 28-DAY MATRIX & QUICK LOG STATION
+// ======================================================================
+struct SavingsRateRingSmallView: View {
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: "arrow.up.right.circle.fill")
+                    .font(.system(size: 12, weight: .bold))
+                Spacer()
+                Text("Target \(snapshot.safeSavingsTarget)%")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+            }
+            Spacer()
+            Text("↗ \(snapshot.safeSavingsRate)%")
+                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+            Text(snapshot.isIndo ? "Rasio Tabungan" : "Savings Rate")
+                .font(.system(size: 9.5, weight: .medium))
+                .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+            Spacer()
+            Text(snapshot.safeMonthlySavings)
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(AccrualTheme.fillSubtle(isDark: isDark))
+                .cornerRadius(99)
+        }
+    }
+}
+
+struct ActivityMatrixSmallView: View {
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+    let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(snapshot.isIndo ? "MATRIKS 28 HARI" : "28-DAY MATRIX")
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.8)
+                .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+            Spacer()
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(Array(snapshot.safeHeatmapDots.prefix(28).enumerated()), id: \.offset) { _, dot in
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill((isDark ? Color.white : Color.black).opacity(dot.hasSpend ? max(0.3, dot.intensity) : 0.08))
+                        .frame(width: 10, height: 10)
+                }
+            }
+            Spacer()
+            HStack {
+                Text(snapshot.isIndo ? "Bebas Belanja" : "No-Spend")
+                    .font(.system(size: 8.5, weight: .medium))
+                    .foregroundColor(AccrualTheme.textTertiary(isDark: isDark))
+                Spacer()
+                Text("\(snapshot.safeNoSpendDaysCount)/28 hr")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+            }
+        }
+    }
+}
+
+struct QuickLogStationSmallView: View {
+    let snapshot: AccrualWidgetSnapshot
+    let isDark: Bool
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(snapshot.isIndo ? "AKSI 1-KETUKAN" : "1-TAP ACTIONS")
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.8)
+                .foregroundColor(AccrualTheme.textSecondary(isDark: isDark))
+            Spacer()
+            Link(destination: URL(string: "accrual://add")!) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                    Text(snapshot.isIndo ? "Catat Cepat" : "Quick Add")
+                        .font(.system(size: 10, weight: .semibold))
+                    Spacer()
+                }
+                .foregroundColor(isDark ? Color.black : Color.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(isDark ? Color.white : Color.black)
+                .cornerRadius(8)
+            }
+            Link(destination: URL(string: "accrual://scan")!) {
+                HStack {
+                    Image(systemName: "doc.viewfinder.fill")
+                    Text(snapshot.isIndo ? "Pindai Struk" : "Scan Receipt")
+                        .font(.system(size: 10, weight: .semibold))
+                    Spacer()
+                }
+                .foregroundColor(AccrualTheme.textPrimary(isDark: isDark))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(AccrualTheme.fillSubtle(isDark: isDark))
+                .cornerRadius(8)
+            }
+        }
+    }
+}
+
+// ======================================================================
+// MARK: - LOCK SCREEN ACCESSORIES (Text + Micro-Chart + Contextual Insight)
+// ======================================================================
+struct LockScreenInlineView: View {
+    let snapshot: AccrualWidgetSnapshot
+    var body: some View {
+        Text("\(snapshot.isIndo ? "Sisa Hari Ini" : "Safe Today"): \(snapshot.safeSafeToSpendDaily) (\(snapshot.safeDailyBurnPacePercent)%)")
+    }
+}
+
 struct LockScreenNetWorthRectView: View {
     let snapshot: AccrualWidgetSnapshot
-
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text(snapshot.isIndo ? "Kekayaan Bersih" : "Net Worth")
-                    .font(.system(size: 9, weight: .medium))
-                    .textCase(.uppercase)
+                Text(snapshot.isIndo ? "SISA AMAN HARI INI" : "SAFE TO SPEND TODAY")
+                    .font(.system(size: 8.5, weight: .bold))
                 Spacer()
-                Text(snapshot.change24hFormatted)
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                Text("\(snapshot.safeDailyBurnPacePercent)%")
+                    .font(.system(size: 8.5, weight: .bold, design: .monospaced))
             }
-
-            Text(snapshot.netWorthFormatted)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+            Text(snapshot.safeSafeToSpendDaily)
+                .font(.system(size: 14.5, weight: .bold, design: .rounded))
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            HorizonLineShape(points: snapshot.sparkline)
-                .stroke(Color.primary, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                .frame(height: 12)
+            ProgressView(value: min(1.0, Double(snapshot.safeDailyBurnPacePercent) / 100.0))
+                .progressViewStyle(.linear)
+            Text("✦ \(snapshot.safeLockInsightLine)")
+                .font(.system(size: 8, weight: .medium))
+                .lineLimit(1)
+                .opacity(0.85)
         }
     }
 }
 
-// 2. Lock Screen: Alokasi Portofolio (Rectangular 155x68)
 struct LockScreenPortfolioRectView: View {
     let snapshot: AccrualWidgetSnapshot
-
     var body: some View {
-        HStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .stroke(Color.primary.opacity(0.2), lineWidth: 4)
-                    .frame(width: 36, height: 36)
-                Circle()
-                    .trim(from: 0, to: CGFloat(snapshot.safeLiquidPct / 100))
-                    .stroke(Color.primary, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .frame(width: 36, height: 36)
-                Text("\(Int(snapshot.safeLiquidPct))%")
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
-            }
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(snapshot.isIndo ? "Alokasi" : "Allocation")
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(snapshot.isIndo ? "ARUS KAS & RITME" : "CASHFLOW & PACE")
                     .font(.system(size: 8.5, weight: .bold))
-                    .textCase(.uppercase)
-                Text("Kas: \(Int(snapshot.safeLiquidPct))%")
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
-                Text("Inv: \(Int(snapshot.safeGrowthPct))%")
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
-                    .opacity(0.8)
-                Text("Riil: \(Int(snapshot.safeFixedPct))%")
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
-                    .opacity(0.6)
-            }
-        }
-    }
-}
-
-// 3. Lock Screen: Pill Card Savings Runway (Rectangular 155x68)
-struct LockScreenSavingsRunwayRectView: View {
-    let snapshot: AccrualWidgetSnapshot
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(snapshot.isIndo ? "Cadangan Hidup" : "Savings Runway")
-                    .font(.system(size: 9, weight: .medium))
-                    .textCase(.uppercase)
                 Spacer()
-                Text(snapshot.safeRunwayMonths >= 6 ? (snapshot.isIndo ? "Aman" : "Safe") : (snapshot.isIndo ? "Waspada" : "Caution"))
-                    .font(.system(size: 8, weight: .bold))
+                Text(snapshot.safeCashflowDeltaVsLastMonth)
+                    .font(.system(size: 8.5, weight: .bold, design: .monospaced))
             }
-
-            Text("\(String(format: "%.1f", snapshot.safeRunwayMonths)) \(snapshot.isIndo ? "Bulan" : "Months")")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-
-            ProgressView(value: min(1.0, snapshot.safeRunwayMonths / 12.0))
-                .progressViewStyle(.linear)
-        }
-    }
-}
-
-// 4. Lock Screen: Pill Card Spending Stability (Rectangular 155x68)
-struct LockScreenSpendingStabilityRectView: View {
-    let snapshot: AccrualWidgetSnapshot
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(snapshot.isIndo ? "Stabilitas" : "Stability")
-                    .font(.system(size: 9, weight: .medium))
-                    .textCase(.uppercase)
-                Spacer()
-                Text(snapshot.safeSpendingStatus)
-                    .font(.system(size: 8, weight: .bold))
-            }
-
-            Text(snapshot.safeDailyAverage)
+            Text(snapshot.safeNetCashflow)
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .lineLimit(1)
+            SmoothLineShape(points: snapshot.sparkline)
+                .stroke(Color.primary, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                .frame(height: 10)
+            Text("✦ \(snapshot.safeInsightSubtitle)")
+                .font(.system(size: 8, weight: .medium))
+                .lineLimit(1)
+                .opacity(0.85)
+        }
+    }
+}
 
+struct LockScreenSavingsRunwayRectView: View {
+    let snapshot: AccrualWidgetSnapshot
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("\(snapshot.safeVolatilityVariance)% \(snapshot.isIndo ? "Variansi" : "Variance")")
-                    .font(.system(size: 7.5, weight: .medium))
-                    .opacity(0.7)
+                Text(snapshot.isIndo ? "KETAHANAN KAS" : "CASH RUNWAY")
+                    .font(.system(size: 8.5, weight: .bold))
                 Spacer()
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 8, weight: .semibold))
+                Text("\(snapshot.safeSolvencyScore)% Solv")
+                    .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+            }
+            Text("\(String(format: "%.1f", snapshot.safeRunwayMonths)) \(snapshot.isIndo ? "Bulan" : "Months") • \(snapshot.safeLiquidCash)")
+                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                .lineLimit(1)
+            ProgressView(value: min(1.0, snapshot.safeRunwayMonths / 12.0))
+                .progressViewStyle(.linear)
+            Text("✦ \(snapshot.isIndo ? "Rata-rata" : "Avg") \(snapshot.safeDailyAverage)")
+                .font(.system(size: 8, weight: .medium))
+                .lineLimit(1)
+                .opacity(0.85)
+        }
+    }
+}
+
+struct LockScreenSpendingStabilityRectView: View {
+    let snapshot: AccrualWidgetSnapshot
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(snapshot.isIndo ? "RADAR TAGIHAN & DRAFT" : "BILLS & DRAFTS")
+                    .font(.system(size: 8.5, weight: .bold))
+                Spacer()
+                Text("\(snapshot.safeDraftCount) Draft")
+                    .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+            }
+            Text("\(snapshot.safeActiveSubsCount) \(snapshot.isIndo ? "Tagihan" : "Bills") • \(snapshot.safeActiveSubsTotal)")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .lineLimit(1)
+            if let first = snapshot.safeUpcomingBills.first {
+                Text("✦ \(first.title) (\(first.dueLabel)) • \(first.amountFormatted)")
+                    .font(.system(size: 8, weight: .medium))
+                    .lineLimit(1)
+                    .opacity(0.85)
+            } else {
+                Text("✦ \(snapshot.isIndo ? "Tidak ada tagihan jatuh tempo" : "No upcoming bills due")")
+                    .font(.system(size: 8, weight: .medium))
+                    .lineLimit(1)
+                    .opacity(0.85)
             }
         }
     }
 }
 
-// 5. Lock Screen: Catat Cepat 1-Tap Launcher (Circular 68x68)
-// STRICT REQUIREMENT: Only the App Logo Icon, NO TEXT!
 struct LockScreenQuickLogCircularView: View {
     var body: some View {
         ZStack {
-            // Outer Circular Gauge Track
-            Circle()
-                .stroke(Color.primary.opacity(0.2), lineWidth: 2.5)
-
-            // Accrual 3-Pebble Zen Logo Icon Centered
-            AccrualZenLogoIcon(size: 26)
-                .foregroundColor(.primary)
+            Circle().stroke(Color.primary.opacity(0.22), lineWidth: 2.5)
+            AccrualZenLogoIcon(size: 26).foregroundColor(.primary)
         }
         .widgetURL(URL(string: "accrual://add"))
     }
 }
 
-// Lock Screen Inline Accessory (Above Clock)
-struct LockScreenInlineView: View {
-    let snapshot: AccrualWidgetSnapshot
-
-    var body: some View {
-        Text("Accrual: \(snapshot.netWorthFormatted) (\(snapshot.change24hFormatted))")
-    }
-}
-
-// MARK: - Horizon Vector Paths
-struct HorizonLineShape: Shape {
-    let points: [Int]
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        guard points.count > 1 else { return path }
-        let step = rect.width / CGFloat(points.count - 1)
-
-        for (index, point) in points.enumerated() {
-            let x = CGFloat(index) * step
-            let y = rect.height - (CGFloat(point) / 100.0 * (rect.height - 4)) - 2
-            if index == 0 {
-                path.move(to: CGPoint(x: x, y: y))
-            } else {
-                path.addLine(to: CGPoint(x: x, y: y))
+// ======================================================================
+// MARK: - WIDGET CONFIGURATIONS (All Support Small, Medium, Large)
+// ======================================================================
+struct SafeToSpendWidget: Widget {
+    let kind: String = "SafeToSpendWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot, zeroPadding: true) { isDark in
+                SafeToSpendAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
             }
+            .widgetURL(URL(string: "accrual://statistics"))
         }
-        return path
+        .configurationDisplayName("Daily Burn Pace")
+        .description("Full-bleed horizon arc with glowing orb and daily safe-to-spend telemetry.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
     }
 }
 
-struct HorizonAreaShape: Shape {
-    let points: [Int]
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        guard points.count > 1 else { return path }
-        let step = rect.width / CGFloat(points.count - 1)
-
-        path.move(to: CGPoint(x: 0, y: rect.height))
-        for (index, point) in points.enumerated() {
-            let x = CGFloat(index) * step
-            let y = rect.height - (CGFloat(point) / 100.0 * (rect.height - 4)) - 2
-            path.addLine(to: CGPoint(x: x, y: y))
-        }
-        path.addLine(to: CGPoint(x: rect.width, y: rect.height))
-        path.closeSubpath()
-        return path
-    }
-}
-
-// ======================================================================
-// MARK: - WIDGET DEFINITIONS
-// ======================================================================
-
-// 1. Net Worth Horizon
 struct NetWorthHorizonWidget: Widget {
     let kind: String = "NetWorthHorizonWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                NetWorthHorizonMediumView(snapshot: entry.snapshot, isDark: isDark)
+            AccrualWidgetShell(snapshot: entry.snapshot, zeroPadding: true) { isDark in
+                NetWorthHorizonAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
             }
             .widgetURL(URL(string: "accrual://assets"))
         }
-        .configurationDisplayName("Net Worth Horizon")
-        .description("Net worth trajectory curve with glowing node and velocity trend.")
-        .supportedFamilies([.systemMedium])
+        .configurationDisplayName("Total Balance Curve")
+        .description("Edge-to-edge monochrome area curve with net worth and cashflow telemetry.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
 }
 
-// 2. Alokasi Portofolio
 struct PortfolioAllocationWidget: Widget {
     let kind: String = "PortfolioAllocationWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                PortfolioAllocationMediumView(snapshot: entry.snapshot, isDark: isDark)
+                PortfolioAllocationAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
             }
-            .widgetURL(URL(string: "accrual://assets"))
+            .widgetURL(URL(string: "accrual://statistics"))
         }
-        .configurationDisplayName("Portfolio Allocation")
-        .description("Asset allocation donut chart: liquid cash, growth, and real assets.")
-        .supportedFamilies([.systemMedium])
+        .configurationDisplayName("Expense Donut")
+        .description("Single-track gapped monochrome donut with top spending categories.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
 }
 
-// 3. Posisi Kas Likuid (Foto 1 Style)
 struct LiquidCashRunwayWidget: Widget {
     let kind: String = "LiquidCashRunwayWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                LiquidCashRunwaySmallView(snapshot: entry.snapshot, isDark: isDark)
+            AccrualWidgetShell(snapshot: entry.snapshot, zeroPadding: true) { isDark in
+                LiquidCashAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
             }
             .widgetURL(URL(string: "accrual://assets"))
         }
-        .configurationDisplayName("Liquid Cash")
-        .description("Real liquid cash reserves and velocity trend.")
-        .supportedFamilies([.systemSmall])
+        .configurationDisplayName("Liquid Cash Curve")
+        .description("Real liquid cash position with full-bleed 7-day curve.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
 }
 
-// 4. Rasio Tabungan Ring
+struct MonthlyCashflowBarWidget: Widget {
+    let kind: String = "MonthlyCashflowBarWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                MonthlyCashflowHeatmapAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
+            }
+            .widgetURL(URL(string: "accrual://statistics"))
+        }
+        .configurationDisplayName("Cashflow & Heatmap")
+        .description("Monthly net cashflow delta paired with 28-day spend heatmap matrix.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
+    }
+}
+
+struct CapitalHealthWidget: Widget {
+    let kind: String = "CapitalHealthWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                CapitalHealthPillarAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
+            }
+            .widgetURL(URL(string: "accrual://statistics"))
+        }
+        .configurationDisplayName("Capital Performance Pillars")
+        .description("Capped vertical pillar bars with capital health and solvency score.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
+    }
+}
+
+struct BalanceSheetWidget: Widget {
+    let kind: String = "BalanceSheetWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                BalanceSheetProportionAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
+            }
+            .widgetURL(URL(string: "accrual://assets"))
+        }
+        .configurationDisplayName("Balance Sheet Bar")
+        .description("Segmented proportion bar with gross assets, liabilities, and net equity.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
+    }
+}
+
+struct SpendingStabilityWidget: Widget {
+    let kind: String = "SpendingStabilityWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot, zeroPadding: true) { isDark in
+                DualWaveStabilityAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
+            }
+            .widgetURL(URL(string: "accrual://statistics"))
+        }
+        .configurationDisplayName("Dual Wave Pace")
+        .description("Full-bleed solid vs dashed dual wave comparing this week against last week.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
+    }
+}
+
+struct VelocityInsightWidget: Widget {
+    let kind: String = "VelocityInsightWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                VelocityInsightAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
+            }
+            .widgetURL(URL(string: "accrual://statistics"))
+        }
+        .configurationDisplayName("Executive Forecast Insight")
+        .description("Editorial typography forecast card with monochrome spotlight and stepper.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
+    }
+}
+
+struct SubscriptionRadarWidget: Widget {
+    let kind: String = "SubscriptionRadarWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                SubscriptionRadarAdaptiveView(snapshot: entry.snapshot, isDark: isDark)
+            }
+            .widgetURL(URL(string: "accrual://bills"))
+        }
+        .configurationDisplayName("Bills & Draft Radar")
+        .description("Upcoming recurring bills countdown and pending shortcut draft counter.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .contentMarginsDisabled()
+    }
+}
+
 struct SavingsRateRingWidget: Widget {
     let kind: String = "SavingsRateRingWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
@@ -1298,89 +1443,15 @@ struct SavingsRateRingWidget: Widget {
             }
             .widgetURL(URL(string: "accrual://statistics"))
         }
-        .configurationDisplayName("Savings Rate")
-        .description("Monthly savings rate concentric progress ring against target.")
-        .supportedFamilies([.systemSmall])
+        .configurationDisplayName("Savings Velocity")
+        .description("Monthly savings rate velocity card.")
+        .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
 }
 
-// 5. Arus Kas Bulanan & Heatmap (Foto 2 Style)
-struct MonthlyCashflowBarWidget: Widget {
-    let kind: String = "MonthlyCashflowBarWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                MonthlyCashflowBarMediumView(snapshot: entry.snapshot, isDark: isDark)
-            }
-            .widgetURL(URL(string: "accrual://statistics"))
-        }
-        .configurationDisplayName("Monthly Cashflow")
-        .description("Net cashflow delta with monthly daily activity heatmap.")
-        .supportedFamilies([.systemMedium])
-        .contentMarginsDisabled()
-    }
-}
-
-// 5B. Aman Dibelanjakan / Safe to Spend (Foto 3 Style)
-struct SafeToSpendWidget: Widget {
-    let kind: String = "SafeToSpendWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                SafeToSpendMediumView(snapshot: entry.snapshot, isDark: isDark)
-            }
-            .widgetURL(URL(string: "accrual://statistics"))
-        }
-        .configurationDisplayName("Safe to Spend")
-        .description("Monthly budget pacing, remaining allowance, and daily safe-to-spend limit.")
-        .supportedFamilies([.systemMedium])
-        .contentMarginsDisabled()
-    }
-}
-
-// 6. Stasiun Catat Cepat 1-Ketukan
-struct QuickLogStationWidget: Widget {
-    let kind: String = "QuickLogStationWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                QuickLogStationSmallView(snapshot: entry.snapshot, isDark: isDark)
-            }
-            .widgetURL(URL(string: "accrual://log?type=expense"))
-        }
-        .configurationDisplayName("Quick Log Station")
-        .description("1-tap action buttons to log expense, income, or transfer.")
-        .supportedFamilies([.systemSmall])
-        .contentMarginsDisabled()
-    }
-}
-
-// 7. Kesehatan Modal (Capital Health)
-struct CapitalHealthWidget: Widget {
-    let kind: String = "CapitalHealthWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                CapitalHealthSmallView(snapshot: entry.snapshot, isDark: isDark)
-            }
-            .widgetURL(URL(string: "accrual://statistics"))
-        }
-        .configurationDisplayName("Capital Health")
-        .description("Financial health score and portfolio resilience index.")
-        .supportedFamilies([.systemSmall])
-        .contentMarginsDisabled()
-    }
-}
-
-// 8. Matriks Aktivitas Bulanan (Activity Matrix - Small Half Card)
 struct ActivityMatrixWidget: Widget {
     let kind: String = "ActivityMatrixWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
@@ -1388,64 +1459,39 @@ struct ActivityMatrixWidget: Widget {
             }
             .widgetURL(URL(string: "accrual://transactions"))
         }
-        .configurationDisplayName("Activity Matrix")
-        .description("28-day frequency and intensity transaction cadence matrix.")
+        .configurationDisplayName("28-Day Heatmap")
+        .description("28-day spending intensity matrix and no-spend day counter.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+        .contentMarginsDisabled()
+    }
+}
+
+struct QuickLogStationWidget: Widget {
+    let kind: String = "QuickLogStationWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
+            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
+                QuickLogStationSmallView(snapshot: entry.snapshot, isDark: isDark)
+            }
+            .widgetURL(URL(string: "accrual://add"))
+        }
+        .configurationDisplayName("Quick Action Station")
+        .description("1-tap launcher for quick entry and receipt scanner.")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }
 }
 
-// 9. Struktur Neraca Portofolio (Balance Sheet)
-struct BalanceSheetWidget: Widget {
-    let kind: String = "BalanceSheetWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                BalanceSheetMediumView(snapshot: entry.snapshot, isDark: isDark)
-            }
-            .widgetURL(URL(string: "accrual://reports"))
-        }
-        .configurationDisplayName("Balance Sheet")
-        .description("Portfolio solvency concentric gauge, gross assets, and net equity.")
-        .supportedFamilies([.systemMedium])
-        .contentMarginsDisabled()
-    }
-}
-
-// 10. Stabilitas Pengeluaran (Spending Stability)
-struct SpendingStabilityWidget: Widget {
-    let kind: String = "SpendingStabilityWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
-            AccrualWidgetShell(snapshot: entry.snapshot) { isDark in
-                SpendingStabilitySmallView(snapshot: entry.snapshot, isDark: isDark)
-            }
-            .widgetURL(URL(string: "accrual://statistics"))
-        }
-        .configurationDisplayName("Spending Stability")
-        .description("Expense volatility variance index and daily burn average.")
-        .supportedFamilies([.systemSmall])
-        .contentMarginsDisabled()
-    }
-}
-
-// ======================================================================
-// MARK: - 5 LOCK SCREEN ACCESSORIES WIDGETS
-// ======================================================================
-
-// 1. Lock Screen: Net Worth Horizon & Inline
+// MARK: - Lock Screen Widgets
 struct LockScreenNetWorthWidget: Widget {
     let kind: String = "LockScreenNetWorthWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenNetWorthEntryView(snapshot: entry.snapshot)
-                .widgetURL(URL(string: "accrual://assets"))
+                .widgetURL(URL(string: "accrual://statistics"))
         }
-        .configurationDisplayName("Net Worth (Lock Screen)")
-        .description("Smooth net worth curve and 24-hour delta percentage.")
+        .configurationDisplayName("Safe to Spend & Insight")
+        .description("Daily safe-to-spend limit, progress bar, and contextual insight.")
         .supportedFamilies([.accessoryRectangular, .accessoryInline])
     }
 }
@@ -1453,7 +1499,6 @@ struct LockScreenNetWorthWidget: Widget {
 struct LockScreenNetWorthEntryView: View {
     @Environment(\.widgetFamily) var family
     let snapshot: AccrualWidgetSnapshot
-
     var body: some View {
         if family == .accessoryInline {
             LockScreenInlineView(snapshot: snapshot)
@@ -1463,83 +1508,70 @@ struct LockScreenNetWorthEntryView: View {
     }
 }
 
-// 2. Lock Screen: Alokasi Portofolio
 struct LockScreenPortfolioWidget: Widget {
     let kind: String = "LockScreenPortfolioWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenPortfolioRectView(snapshot: entry.snapshot)
-                .widgetURL(URL(string: "accrual://assets"))
+                .widgetURL(URL(string: "accrual://statistics"))
         }
-        .configurationDisplayName("Portfolio Allocation (Lock Screen)")
-        .description("Concentric allocation ring: cash, investments, and physical assets.")
+        .configurationDisplayName("Cashflow & Curve")
+        .description("Monthly net cashflow, sparkline curve, and efficiency insight.")
         .supportedFamilies([.accessoryRectangular])
     }
 }
 
-// 3. Lock Screen: Pill Card Savings Runway
 struct LockScreenSavingsRunwayWidget: Widget {
     let kind: String = "LockScreenSavingsRunwayWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenSavingsRunwayRectView(snapshot: entry.snapshot)
                 .widgetURL(URL(string: "accrual://assets"))
         }
-        .configurationDisplayName("Savings Runway (Lock Screen)")
-        .description("Emergency survival runway months indicator.")
+        .configurationDisplayName("Runway & Daily Burn")
+        .description("Cash survival runway months, gauge bar, and daily average.")
         .supportedFamilies([.accessoryRectangular])
     }
 }
 
-// 4. Lock Screen: Pill Card Spending Stability
 struct LockScreenSpendingStabilityWidget: Widget {
     let kind: String = "LockScreenSpendingStabilityWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { entry in
             LockScreenSpendingStabilityRectView(snapshot: entry.snapshot)
-                .widgetURL(URL(string: "accrual://statistics"))
+                .widgetURL(URL(string: "accrual://bills"))
         }
-        .configurationDisplayName("Spending Stability (Lock Screen)")
-        .description("Daily expense average and volatility variance.")
+        .configurationDisplayName("Bills & Drafts Radar")
+        .description("Upcoming recurring bills countdown and pending shortcut drafts.")
         .supportedFamilies([.accessoryRectangular])
     }
 }
 
-// 5. Lock Screen: Catat Cepat (Pure Logo Icon)
 struct LockScreenQuickLogWidget: Widget {
     let kind: String = "LockScreenQuickLogWidget"
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AccrualTimelineProvider()) { _ in
             LockScreenQuickLogCircularView()
                 .widgetURL(URL(string: "accrual://add"))
         }
-        .configurationDisplayName("Quick Log (Lock Screen)")
-        .description("1-tap pebble logo button for instant transaction entry.")
+        .configurationDisplayName("1-Tap Quick Log")
+        .description("Instant transaction entry launcher from Lock Screen.")
         .supportedFamilies([.accessoryCircular])
     }
 }
 
-// ======================================================================
-// MARK: - iOS 18 LOCK SCREEN & CONTROL CENTER CONTROLS (Foto 4 & 5)
-// ======================================================================
+// MARK: - iOS 18 Control Center Controls
 #if canImport(AppIntents)
 import AppIntents
 
 @available(iOS 18.0, *)
 struct VoiceEntryControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Voice Entry"
-    static var description = IntentDescription("Open Accrual voice recording modal")
     static var openAppWhenRun: Bool = true
     static var isDiscoverable: Bool { false }
-
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {
-        let suiteName = "group.com.syntheticae.accrual"
-        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        let defaults = UserDefaults(suiteName: "group.com.syntheticae.accrual") ?? .standard
         defaults.set("voice", forKey: "pending_intent_navigation")
         defaults.synchronize()
         return .result(opensIntent: OpenURLIntent(URL(string: "accrual://voice")!))
@@ -1549,14 +1581,11 @@ struct VoiceEntryControlIntent: AppIntent {
 @available(iOS 18.0, *)
 struct ScanReceiptControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Scan Receipt"
-    static var description = IntentDescription("Open Accrual camera scanner for receipts and invoices")
     static var openAppWhenRun: Bool = true
     static var isDiscoverable: Bool { false }
-
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {
-        let suiteName = "group.com.syntheticae.accrual"
-        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        let defaults = UserDefaults(suiteName: "group.com.syntheticae.accrual") ?? .standard
         defaults.set("scan", forKey: "pending_intent_navigation")
         defaults.synchronize()
         return .result(opensIntent: OpenURLIntent(URL(string: "accrual://scan")!))
@@ -1566,17 +1595,28 @@ struct ScanReceiptControlIntent: AppIntent {
 @available(iOS 18.0, *)
 struct QuickAddControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Quick Add"
-    static var description = IntentDescription("Open Accrual transaction entry keypad")
     static var openAppWhenRun: Bool = true
     static var isDiscoverable: Bool { false }
-
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {
-        let suiteName = "group.com.syntheticae.accrual"
-        let defaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
+        let defaults = UserDefaults(suiteName: "group.com.syntheticae.accrual") ?? .standard
         defaults.set("add", forKey: "pending_intent_navigation")
         defaults.synchronize()
         return .result(opensIntent: OpenURLIntent(URL(string: "accrual://add")!))
+    }
+}
+
+@available(iOS 18.0, *)
+struct DraftReviewControlIntent: AppIntent {
+    static var title: LocalizedStringResource = "Review Drafts"
+    static var openAppWhenRun: Bool = true
+    static var isDiscoverable: Bool { false }
+    @MainActor
+    func perform() async throws -> some IntentResult & OpensIntent {
+        let defaults = UserDefaults(suiteName: "group.com.syntheticae.accrual") ?? .standard
+        defaults.set("review", forKey: "pending_intent_navigation")
+        defaults.synchronize()
+        return .result(opensIntent: OpenURLIntent(URL(string: "accrual://transactions")!))
     }
 }
 
@@ -1589,7 +1629,6 @@ struct AccrualVoiceControl: ControlWidget {
             }
         }
         .displayName("Voice Entry")
-        .description("Quickly dictate a transaction into Accrual.")
     }
 }
 
@@ -1602,7 +1641,6 @@ struct AccrualScanControl: ControlWidget {
             }
         }
         .displayName("Scan Receipt")
-        .description("Instantly activate receipt camera scanner.")
     }
 }
 
@@ -1615,7 +1653,18 @@ struct AccrualQuickAddControl: ControlWidget {
             }
         }
         .displayName("Quick Add")
-        .description("Instantly open new transaction keypad in Accrual.")
+    }
+}
+
+@available(iOS 18.0, *)
+struct AccrualDraftReviewControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "com.syntheticae.accrual.control.drafts") {
+            ControlWidgetButton(action: DraftReviewControlIntent()) {
+                Label("Review Drafts", systemImage: "tray.full.fill")
+            }
+        }
+        .displayName("Review Drafts")
     }
 }
 #endif
