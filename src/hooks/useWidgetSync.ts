@@ -14,7 +14,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { triggerSuccessHaptic } from "../lib/haptics";
 import { parseNaturalTransaction } from "../lib/nlpParser";
-import { parseBankNotification } from "../lib/bankNotificationParser";
+import { parseBankNotification, isPromotionalOrSpamNotification } from "../lib/bankNotificationParser";
 import { parseSlipText } from "../lib/slipParser";
 import {
   isMultiTransactionHistoryText,
@@ -485,6 +485,10 @@ export function useWidgetSync() {
       if (transactions.length > 0) {
         for (const tx of transactions) {
           try {
+            if (isPromotionalOrSpamNotification(tx.note || "", tx.category, tx.wallet)) {
+              transactionIds.push(tx.id);
+              continue;
+            }
             const matchedCat = categories.find((c) => c.name.toLowerCase() === tx.category.toLowerCase());
             const matchedWallet = wallets.find((w) => w.name.toLowerCase() === tx.wallet.toLowerCase());
             const cleanNote = (tx.note || "").trim();
@@ -510,6 +514,10 @@ export function useWidgetSync() {
             try {
               const countBefore = ingestedCount + draftIngestedCount;
               const rawText = vLog.text.trim();
+              if (isPromotionalOrSpamNotification(rawText)) {
+                voiceLogIds.push(vLog.id);
+                continue;
+              }
               let parsedItems: ParsedStatementItem[] = [];
               if (isMultiTransactionHistoryText(rawText)) {
                 parsedItems = parseScreenshotHistory(rawText, allTxs, categories, wallets) || [];
@@ -578,7 +586,7 @@ export function useWidgetSync() {
         }
       }
 
-      if (ingestedCount > 0 || draftIngestedCount > 0 || navigation) {
+      if (transactionIds.length > 0 || voiceLogIds.length > 0 || navigation) {
         await widgetSyncService.clearPendingIngestion({ transactionIds, voiceLogIds, ...(navigation ? { navigation } : {}) });
       }
       if (draftIngestedCount > 0 || ingestedCount > 0) {

@@ -80,6 +80,8 @@ export function useInboxDrain() {
 
       for (const item of items) {
         const rawText = (item.raw_text || "").trim();
+        // Reject blocked notification content before every parser and direct-save path.
+        if (rawText && isPromotionalOrSpamNotification(rawText, item.title, item.subtitle)) continue;
 
         const parsedDate = new Date(item.transaction_date || item.captured_at);
         const validDate = !isNaN(parsedDate.getTime()) ? parsedDate : new Date();

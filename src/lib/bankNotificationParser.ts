@@ -30,6 +30,7 @@ export interface DetectedBankNotification {
  * Layer 1: Hard Promotional, Marketing, Voucher & Loan Offer Blacklist
  */
 export const PROMO_BLACKLIST_PATTERNS: RegExp[] = [
+  /\bsiap[\s-]*siap\s+dapetin\b/i,
   /\b(?:diskon|cashback|voucher|voucer|promo|promosi|reward|rewards|kupon|coupon)\b/i,
   /\b(?:serbu|klaim|claim|undian|hadiah|flash\s*sale|payday\s*sale|special\s*offer|penawaran\s*spesial)\b/i,
   /\b(?:bunga\s*rendah|limit\s*pinjaman|limit\s*kredit|ajukan\s*sekarang|aktifkan\s*paylater|spaylater\s*kamu|gopay\s*later\s*kamu)\b/i,
