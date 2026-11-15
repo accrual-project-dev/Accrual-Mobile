@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Activity,
   Pause,
-  Share2,
 } from "lucide-react";
 import type { Transaction, Category } from "../../lib/types";
 import { triggerHaptic } from "../../lib/haptics";
@@ -19,7 +18,6 @@ import { resolveTransactionCategory } from "../../lib/categoryResolver";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { usePrivacy } from "../../contexts/PrivacyContext";
-import { useToast } from "../../contexts/ToastContext";
 import {
   buildCascadeCategories,
   buildSpendingHeatmap,
@@ -59,9 +57,6 @@ export function FinancialWrappedModal({
   const isDark = theme !== "light";
   const { formatWithPreferred, formatCompactWithPreferred, currencyMeta } = useCurrency();
   const { isStealthMode } = usePrivacy();
-  const { showToast } = useToast();
-  const [isExporting, setIsExporting] = useState(false);
-  const posterRef = useRef<HTMLDivElement>(null);
 
   const formatMoney = (amount: number) => {
     return isStealthMode ? `${currencyMeta?.symbol || "Rp"} ••••••••` : formatWithPreferred(amount);
@@ -172,61 +167,6 @@ export function FinancialWrappedModal({
       return t.occurred_on.startsWith(yearKey);
     });
   }, [transactions, mode, monthKey, yearKey]);
-
-  const handleSharePoster = async () => {
-    if (!posterRef.current || isExporting) return;
-    triggerHaptic("medium");
-    setIsExporting(true);
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(posterRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: null,
-        logging: false,
-      });
-      const blob = await new Promise<Blob | null>((res) =>
-        canvas.toBlob(res, "image/png"),
-      );
-      if (!blob) throw new Error("Failed to create blob");
-      const filename = `Accrual-Wrapped-${periodTitle.replace(/\s+/g, "-")}.png`;
-      const file = new File([blob], filename, { type: "image/png" });
-
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Accrual Wrapped · ${periodTitle}`,
-          text: `Accrual Financial Wrapped · ${periodTitle}`,
-        });
-        showToast(
-          isIndonesian ? "Berhasil dibagikan!" : "Successfully shared!",
-          "info",
-        );
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-        showToast(
-          isIndonesian ? "Poster berhasil diunduh!" : "Poster downloaded!",
-          "info",
-        );
-      }
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        showToast(
-          isIndonesian ? "Gagal membagikan poster" : "Failed to share poster",
-          "error",
-        );
-      }
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   // Aggregates & Insights
   const stats = useMemo(() => {
@@ -3344,7 +3284,6 @@ export function FinancialWrappedModal({
                 >
                   {/* Luxury Report Poster */}
                   <div
-                    ref={posterRef}
                     className={`p-5 rounded-3xl backdrop-blur-3xl relative overflow-hidden text-left border ${
                       isDark
                         ? "bg-gradient-to-b from-white/[0.08] to-white/[0.02] border-white/[0.16]"
@@ -3531,35 +3470,8 @@ export function FinancialWrappedModal({
                     </div>
                   </div>
 
-                  {/* Share Poster & Done Buttons */}
+                  {/* Done Button */}
                   <div className="flex items-center gap-2.5 relative z-50 pointer-events-auto">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSharePoster();
-                      }}
-                      disabled={isExporting}
-                      aria-label={
-                        isIndonesian ? "Bagikan poster rekap" : "Share recap poster"
-                      }
-                      className={`flex-1 py-3.5 rounded-2xl text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-lg border ${
-                        isDark
-                          ? "bg-white/10 text-white border-white/20 hover:bg-white/15"
-                          : "bg-black/5 text-black border-black/15 hover:bg-black/10"
-                      } ${isExporting ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >
-                      <Share2 size={15} strokeWidth={2} />
-                      <span>
-                        {isExporting
-                          ? isIndonesian
-                            ? "Memproses..."
-                            : "Processing..."
-                          : isIndonesian
-                            ? "Bagikan Poster"
-                            : "Share Poster"}
-                      </span>
-                    </button>
                     <button
                       type="button"
                       onClick={(e) => {

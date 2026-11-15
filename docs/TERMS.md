@@ -2,7 +2,8 @@
 
 **Effective Date:** October 27, 2026  
 **Official Contact:** accrual.project.app@gmail.com  
-**Application:** Accrual: Net Worth Tracker (`com.syntheticae.accrual`)
+**Application:** Accrual (`com.syntheticae.accrual`)  
+**Developer & Publisher:** Aji Fras Aditya (Independent Developer)
 
 ---
 
@@ -12,9 +13,10 @@ By downloading, accessing, or using Accrual ("the Application"), you agree to be
 ---
 
 ## 2. Financial Disclaimer
-Accrual is a personal wealth tracking, organization, and portfolio visualization tool. 
-- Accrual does **NOT** provide certified investment, tax, legal, or financial advisory services.
-- All valuations, asset price curves, simulations, and financial projections are provided for personal informational and organizational purposes only.
+Accrual is an independent, manual personal bookkeeping, expense logging, and mathematical visualization utility created by individual developer **Aji Fras Aditya**.
+- "Accrual" refers to the accounting term and app title, NOT a financial institution, bank, or investment firm.
+- Accrual does **NOT** connect to bank accounts, hold funds, process payments, execute trades, or provide certified investment, tax, legal, or financial advisory services.
+- All entries, budgets, and projections are manually recorded by the user for personal informational and organizational purposes only.
 - You are solely responsible for all financial, investment, or tax decisions you make.
 
 ---
@@ -40,4 +42,4 @@ You may terminate your agreement at any time by deleting your account within the
 ## 6. Contact Information
 For billing questions or technical support:  
 **Email:** `accrual.project.app@gmail.com`  
-**Developer:** Syntheticae Dev Team
+**Developer:** Aji Fras Aditya

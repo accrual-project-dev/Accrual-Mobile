@@ -2666,7 +2666,7 @@ export function SettingsPage({
                     const body = encodeURIComponent(
                       `Halo Tim Accrual,\n\nSaya ingin memberikan saran / masukan fitur:\n\n---\nVersi: v${APP_VERSION}\nPlatform: iOS`
                     );
-                    window.location.href = `mailto:support@syntheticae.studio?subject=${subject}&body=${body}`;
+                    window.location.href = `mailto:accrual.project.app@gmail.com?subject=${subject}&body=${body}`;
                   }}
                   className="flex items-center justify-between py-2.5 px-3.5 min-h-[46px] active:bg-white/[0.04] transition-colors cursor-pointer text-left w-full"
                 >

@@ -1,5 +1,8 @@
 # Accrual for iPhone — Support
 
+**Developer & Publisher:** Aji Fras Aditya (Independent Developer)  
+**Important Notice:** Accrual is an independent manual bookkeeping and personal expense log utility. It is not a financial institution and does not connect to banks, hold funds, or execute transfers, payments, or trades.
+
 For technical support, account questions, synchronization issues, or purchase restoration, email **[accrual.project.app@gmail.com](mailto:accrual.project.app@gmail.com)**.
 
 Include your app version, iPhone model, iOS version, steps to reproduce the problem, and any error message. Do not send your password, Apple verification codes, or sensitive financial records. Redact private information from screenshots.
